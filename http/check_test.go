@@ -28,7 +28,6 @@ func NewMockCheckBackend() *CheckBackend {
 		Logger: zap.NewNop().With(zap.String("handler", "check")),
 
 		CheckService:               mock.NewCheckService(),
-		TaskService:                &mock.TaskService{},
 		UserResourceMappingService: mock.NewUserResourceMappingService(),
 		LabelService:               mock.NewLabelService(),
 		UserService:                mock.NewUserService(),
@@ -469,7 +468,6 @@ func TestService_handleGetCheck(t *testing.T) {
 func TestService_handlePostCheck(t *testing.T) {
 	type fields struct {
 		CheckService        influxdb.CheckService
-		TaskService         influxdb.TaskService
 		OrganizationService influxdb.OrganizationService
 	}
 	type args struct {
@@ -491,11 +489,6 @@ func TestService_handlePostCheck(t *testing.T) {
 		{
 			name: "create a new check",
 			fields: fields{
-				TaskService: &mock.TaskService{
-					CreateTaskFn: func(ctx context.Context, tc influxdb.TaskCreate) (*influxdb.Task, error) {
-						return &influxdb.Task{ID: 3}, nil
-					},
-				},
 				CheckService: &mock.CheckService{
 					CreateCheckFn: func(ctx context.Context, c influxdb.Check, userID influxdb.ID) error {
 						c.SetID(influxTesting.MustIDBase16("020f755c3c082000"))
@@ -589,7 +582,6 @@ func TestService_handlePostCheck(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			checkBackend := NewMockCheckBackend()
-			checkBackend.TaskService = tt.fields.TaskService
 			checkBackend.CheckService = tt.fields.CheckService
 			checkBackend.OrganizationService = tt.fields.OrganizationService
 			h := NewCheckHandler(checkBackend)
@@ -899,7 +891,6 @@ func TestService_handlePatchCheck(t *testing.T) {
 
 func TestService_handleUpdateCheck(t *testing.T) {
 	type fields struct {
-		TaskService  influxdb.TaskService
 		CheckService influxdb.CheckService
 	}
 	type args struct {
@@ -921,15 +912,7 @@ func TestService_handleUpdateCheck(t *testing.T) {
 		{
 			name: "update a check name",
 			fields: fields{
-				TaskService: &mock.TaskService{
-					CreateTaskFn: func(ctx context.Context, tc influxdb.TaskCreate) (*influxdb.Task, error) {
-						return &influxdb.Task{ID: 3}, nil
-					},
-					DeleteTaskFn: func(ctx context.Context, id influxdb.ID) error {
-						return nil
-					},
-				},
-				CheckService: &mock.CheckService{
+				&mock.CheckService{
 					UpdateCheckFn: func(ctx context.Context, id influxdb.ID, chk influxdb.Check) (influxdb.Check, error) {
 						if id == influxTesting.MustIDBase16("020f755c3c082000") {
 							d := &check.Deadman{
@@ -1008,15 +991,7 @@ func TestService_handleUpdateCheck(t *testing.T) {
 		{
 			name: "check not found",
 			fields: fields{
-				TaskService: &mock.TaskService{
-					CreateTaskFn: func(ctx context.Context, tc influxdb.TaskCreate) (*influxdb.Task, error) {
-						return &influxdb.Task{ID: 3}, nil
-					},
-					DeleteTaskFn: func(ctx context.Context, id influxdb.ID) error {
-						return nil
-					},
-				},
-				CheckService: &mock.CheckService{
+				&mock.CheckService{
 					UpdateCheckFn: func(ctx context.Context, id influxdb.ID, chk influxdb.Check) (influxdb.Check, error) {
 						return nil, &influxdb.Error{
 							Code: influxdb.ENotFound,
@@ -1043,7 +1018,6 @@ func TestService_handleUpdateCheck(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			checkBackend := NewMockCheckBackend()
 			checkBackend.HTTPErrorHandler = ErrorHandler(0)
-			checkBackend.TaskService = tt.fields.TaskService
 			checkBackend.CheckService = tt.fields.CheckService
 			h := NewCheckHandler(checkBackend)
 
