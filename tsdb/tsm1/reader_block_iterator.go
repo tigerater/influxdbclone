@@ -10,9 +10,6 @@ type BlockIterator struct {
 
 // PeekNext returns the next key to be iterated or an empty string.
 func (b *BlockIterator) PeekNext() []byte {
-	if len(b.entries) > 1 {
-		return b.iter.Key()
-	}
 	return b.iter.Peek()
 }
 

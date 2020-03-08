@@ -20,7 +20,6 @@ import (
 // the BucketHandler.
 type BucketBackend struct {
 	Logger *zap.Logger
-	influxdb.HTTPErrorHandler
 
 	BucketService              influxdb.BucketService
 	BucketOperationLogService  influxdb.BucketOperationLogService
@@ -33,8 +32,7 @@ type BucketBackend struct {
 // NewBucketBackend returns a new instance of BucketBackend.
 func NewBucketBackend(b *APIBackend) *BucketBackend {
 	return &BucketBackend{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger.With(zap.String("handler", "bucket")),
+		Logger: b.Logger.With(zap.String("handler", "bucket")),
 
 		BucketService:              b.BucketService,
 		BucketOperationLogService:  b.BucketOperationLogService,
@@ -48,7 +46,7 @@ func NewBucketBackend(b *APIBackend) *BucketBackend {
 // BucketHandler represents an HTTP API handler for buckets.
 type BucketHandler struct {
 	*httprouter.Router
-	influxdb.HTTPErrorHandler
+
 	Logger *zap.Logger
 
 	BucketService              influxdb.BucketService
@@ -74,9 +72,8 @@ const (
 // NewBucketHandler returns a new instance of BucketHandler.
 func NewBucketHandler(b *BucketBackend) *BucketHandler {
 	h := &BucketHandler{
-		Router:           NewRouter(b.HTTPErrorHandler),
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger,
+		Router: NewRouter(),
+		Logger: b.Logger,
 
 		BucketService:              b.BucketService,
 		BucketOperationLogService:  b.BucketOperationLogService,
@@ -94,7 +91,6 @@ func NewBucketHandler(b *BucketBackend) *BucketHandler {
 	h.HandlerFunc("DELETE", bucketsIDPath, h.handleDeleteBucket)
 
 	memberBackend := MemberBackend{
-		HTTPErrorHandler:           b.HTTPErrorHandler,
 		Logger:                     b.Logger.With(zap.String("handler", "member")),
 		ResourceType:               influxdb.BucketsResourceType,
 		UserType:                   influxdb.Member,
@@ -106,7 +102,6 @@ func NewBucketHandler(b *BucketBackend) *BucketHandler {
 	h.HandlerFunc("DELETE", bucketsIDMembersIDPath, newDeleteMemberHandler(memberBackend))
 
 	ownerBackend := MemberBackend{
-		HTTPErrorHandler:           b.HTTPErrorHandler,
 		Logger:                     b.Logger.With(zap.String("handler", "member")),
 		ResourceType:               influxdb.BucketsResourceType,
 		UserType:                   influxdb.Owner,
@@ -118,10 +113,9 @@ func NewBucketHandler(b *BucketBackend) *BucketHandler {
 	h.HandlerFunc("DELETE", bucketsIDOwnersIDPath, newDeleteMemberHandler(ownerBackend))
 
 	labelBackend := &LabelBackend{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger.With(zap.String("handler", "label")),
-		LabelService:     b.LabelService,
-		ResourceType:     influxdb.BucketsResourceType,
+		Logger:       b.Logger.With(zap.String("handler", "label")),
+		LabelService: b.LabelService,
+		ResourceType: influxdb.BucketsResourceType,
 	}
 	h.HandlerFunc("GET", bucketsIDLabelsPath, newGetLabelsHandler(labelBackend))
 	h.HandlerFunc("POST", bucketsIDLabelsPath, newPostLabelHandler(labelBackend))
@@ -304,12 +298,12 @@ func (h *BucketHandler) handlePostBucket(w http.ResponseWriter, r *http.Request)
 
 	req, err := decodePostBucketRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.BucketService.CreateBucket(ctx, req.Bucket); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -354,19 +348,19 @@ func (h *BucketHandler) handleGetBucket(w http.ResponseWriter, r *http.Request) 
 
 	req, err := decodeGetBucketRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	b, err := h.BucketService.FindBucketByID(ctx, req.BucketID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	labels, err := h.LabelService.FindResourceLabels(ctx, influxdb.LabelMappingFilter{ResourceID: b.ID})
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -407,12 +401,12 @@ func (h *BucketHandler) handleDeleteBucket(w http.ResponseWriter, r *http.Reques
 
 	req, err := decodeDeleteBucketRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.BucketService.DeleteBucket(ctx, req.BucketID); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -453,13 +447,13 @@ func (h *BucketHandler) handleGetBuckets(w http.ResponseWriter, r *http.Request)
 
 	req, err := decodeGetBucketsRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	bs, _, err := h.BucketService.FindBuckets(ctx, req.filter, req.opts)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -518,19 +512,19 @@ func (h *BucketHandler) handlePatchBucket(w http.ResponseWriter, r *http.Request
 
 	req, err := decodePatchBucketRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	b, err := h.BucketService.UpdateBucket(ctx, req.BucketID, req.Update)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	labels, err := h.LabelService.FindResourceLabels(ctx, influxdb.LabelMappingFilter{ResourceID: b.ID})
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -611,6 +605,7 @@ func (s *BucketService) FindBucketByID(ctx context.Context, id influxdb.ID) (*in
 		return nil, err
 	}
 	SetToken(s.Token, req)
+	tracing.InjectToHTTPRequest(span, req)
 
 	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
 	resp, err := hc.Do(req)
@@ -697,6 +692,7 @@ func (s *BucketService) FindBuckets(ctx context.Context, filter influxdb.BucketF
 
 	req.URL.RawQuery = query.Encode()
 	SetToken(s.Token, req)
+	tracing.InjectToHTTPRequest(span, req)
 
 	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
 	resp, err := hc.Do(req)
@@ -749,6 +745,7 @@ func (s *BucketService) CreateBucket(ctx context.Context, b *influxdb.Bucket) er
 
 	req.Header.Set("Content-Type", "application/json")
 	SetToken(s.Token, req)
+	tracing.InjectToHTTPRequest(span, req)
 
 	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
 
@@ -850,13 +847,13 @@ func (h *BucketHandler) handleGetBucketLog(w http.ResponseWriter, r *http.Reques
 
 	req, err := decodeGetBucketLogRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	log, _, err := h.BucketOperationLogService.GetBucketOperationLog(ctx, req.BucketID, req.opts)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 

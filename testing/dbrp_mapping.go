@@ -217,10 +217,7 @@ func CreateDBRPMapping(
 				},
 			},
 			wants: wants{
-				err: &platform.Error{
-					Code: platform.EConflict,
-					Msg:  "dbrp mapping already exists",
-				},
+				err: errors.New("dbrp mapping already exists"),
 				dbrpMappings: []*platform.DBRPMapping{
 					{
 						Cluster:         "cluster1",
@@ -515,10 +512,7 @@ func FindDBRPMappingByKey(
 				RetentionPolicy: "retention_policyA",
 			},
 			wants: wants{
-				err: &platform.Error{
-					Code: platform.ENotFound,
-					Msg:  "dbrp mapping not found",
-				},
+				err: errors.New("dbrp mapping not found"),
 			},
 		},
 	}
@@ -644,38 +638,6 @@ func FindDBRPMapping(
 					Default:         true,
 					OrganizationID:  MustIDBase16(dbrpOrg3ID),
 					BucketID:        MustIDBase16(dbrpBucketBID),
-				},
-			},
-		},
-		{
-			name: "find dbrpMapping with invalid filter",
-			fields: DBRPMappingFields{
-				DBRPMappings: []*platform.DBRPMapping{
-					{
-						Cluster:         "cluster",
-						Database:        "database",
-						RetentionPolicy: "retention_policyA",
-						Default:         false,
-						OrganizationID:  MustIDBase16(dbrpOrg3ID),
-						BucketID:        MustIDBase16(dbrpBucketAID),
-					},
-					{
-						Cluster:         "cluster",
-						Database:        "database",
-						RetentionPolicy: "retention_policyB",
-						Default:         true,
-						OrganizationID:  MustIDBase16(dbrpOrg3ID),
-						BucketID:        MustIDBase16(dbrpBucketBID),
-					},
-				},
-			},
-			args: args{
-				filter: platform.DBRPMappingFilter{},
-			},
-			wants: wants{
-				err: &platform.Error{
-					Code: platform.EInvalid,
-					Msg:  "no filter parameters provided",
 				},
 			},
 		},

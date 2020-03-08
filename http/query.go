@@ -279,7 +279,6 @@ func QueryRequestFromProxyRequest(req *query.ProxyRequest) (*QueryRequest, error
 	case lang.FluxCompiler:
 		qr.Type = "flux"
 		qr.Query = c.Query
-		qr.Extern = c.Extern
 	case repl.Compiler:
 		qr.Type = "flux"
 		qr.Spec = c.Spec

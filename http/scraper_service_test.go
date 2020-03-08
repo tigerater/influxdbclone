@@ -207,7 +207,6 @@ func TestService_handleGetScraperTargets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scraperBackend := NewMockScraperBackend()
-			scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 			scraperBackend.ScraperStorageService = tt.fields.ScraperTargetStoreService
 			scraperBackend.OrganizationService = tt.fields.OrganizationService
 			scraperBackend.BucketService = tt.fields.BucketService
@@ -344,7 +343,6 @@ func TestService_handleGetScraperTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scraperBackend := NewMockScraperBackend()
-			scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 			scraperBackend.ScraperStorageService = tt.fields.ScraperTargetStoreService
 			scraperBackend.OrganizationService = tt.fields.OrganizationService
 			scraperBackend.BucketService = tt.fields.BucketService
@@ -452,7 +450,6 @@ func TestService_handleDeleteScraperTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scraperBackend := NewMockScraperBackend()
-			scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 			scraperBackend.ScraperStorageService = tt.fields.Service
 			h := NewScraperHandler(scraperBackend)
 
@@ -583,7 +580,6 @@ func TestService_handlePostScraperTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scraperBackend := NewMockScraperBackend()
-			scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 			scraperBackend.ScraperStorageService = tt.fields.ScraperTargetStoreService
 			scraperBackend.OrganizationService = tt.fields.OrganizationService
 			scraperBackend.BucketService = tt.fields.BucketService
@@ -761,7 +757,6 @@ func TestService_handlePatchScraperTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scraperBackend := NewMockScraperBackend()
-			scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 			scraperBackend.ScraperStorageService = tt.fields.ScraperTargetStoreService
 			scraperBackend.OrganizationService = tt.fields.OrganizationService
 			scraperBackend.BucketService = tt.fields.BucketService
@@ -837,7 +832,6 @@ func initScraperService(f platformtesting.TargetFields, t *testing.T) (influxdb.
 	}
 
 	scraperBackend := NewMockScraperBackend()
-	scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 	scraperBackend.ScraperStorageService = svc
 	scraperBackend.OrganizationService = svc
 	scraperBackend.BucketService = &mock.BucketService{

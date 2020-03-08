@@ -6,9 +6,8 @@ import (
 
 // User is a user. 🎉
 type User struct {
-	ID      ID     `json:"id,omitempty"`
-	Name    string `json:"name"`
-	OAuthID string `json:"oauthID,omitempty"`
+	ID   ID     `json:"id,omitempty"`
+	Name string `json:"name"`
 }
 
 // Ops for user errors and op log.

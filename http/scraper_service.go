@@ -17,7 +17,6 @@ import (
 // ScraperBackend is all services and associated parameters required to construct
 // the ScraperHandler.
 type ScraperBackend struct {
-	influxdb.HTTPErrorHandler
 	Logger *zap.Logger
 
 	ScraperStorageService      influxdb.ScraperTargetStoreService
@@ -31,8 +30,7 @@ type ScraperBackend struct {
 // NewScraperBackend returns a new instance of ScraperBackend.
 func NewScraperBackend(b *APIBackend) *ScraperBackend {
 	return &ScraperBackend{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger.With(zap.String("handler", "scraper")),
+		Logger: b.Logger.With(zap.String("handler", "scraper")),
 
 		ScraperStorageService:      b.ScraperTargetStoreService,
 		BucketService:              b.BucketService,
@@ -46,7 +44,6 @@ func NewScraperBackend(b *APIBackend) *ScraperBackend {
 // ScraperHandler represents an HTTP API handler for scraper targets.
 type ScraperHandler struct {
 	*httprouter.Router
-	influxdb.HTTPErrorHandler
 	Logger                     *zap.Logger
 	UserService                influxdb.UserService
 	UserResourceMappingService influxdb.UserResourceMappingService
@@ -69,8 +66,7 @@ const (
 // NewScraperHandler returns a new instance of ScraperHandler.
 func NewScraperHandler(b *ScraperBackend) *ScraperHandler {
 	h := &ScraperHandler{
-		Router:                     NewRouter(b.HTTPErrorHandler),
-		HTTPErrorHandler:           b.HTTPErrorHandler,
+		Router:                     NewRouter(),
 		Logger:                     b.Logger,
 		UserService:                b.UserService,
 		UserResourceMappingService: b.UserResourceMappingService,
@@ -86,7 +82,6 @@ func NewScraperHandler(b *ScraperBackend) *ScraperHandler {
 	h.HandlerFunc("DELETE", targetsPath+"/:id", h.handleDeleteScraperTarget)
 
 	memberBackend := MemberBackend{
-		HTTPErrorHandler:           b.HTTPErrorHandler,
 		Logger:                     b.Logger.With(zap.String("handler", "member")),
 		ResourceType:               influxdb.ScraperResourceType,
 		UserType:                   influxdb.Member,
@@ -98,7 +93,6 @@ func NewScraperHandler(b *ScraperBackend) *ScraperHandler {
 	h.HandlerFunc("DELETE", targetsIDMembersIDPath, newDeleteMemberHandler(memberBackend))
 
 	ownerBackend := MemberBackend{
-		HTTPErrorHandler:           b.HTTPErrorHandler,
 		Logger:                     b.Logger.With(zap.String("handler", "member")),
 		ResourceType:               influxdb.ScraperResourceType,
 		UserType:                   influxdb.Owner,
@@ -110,10 +104,9 @@ func NewScraperHandler(b *ScraperBackend) *ScraperHandler {
 	h.HandlerFunc("DELETE", targetsIDOwnersIDPath, newDeleteMemberHandler(ownerBackend))
 
 	labelBackend := &LabelBackend{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger.With(zap.String("handler", "label")),
-		LabelService:     b.LabelService,
-		ResourceType:     influxdb.ScraperResourceType,
+		Logger:       b.Logger.With(zap.String("handler", "label")),
+		LabelService: b.LabelService,
+		ResourceType: influxdb.ScraperResourceType,
 	}
 	h.HandlerFunc("GET", targetsIDLabelsPath, newGetLabelsHandler(labelBackend))
 	h.HandlerFunc("POST", targetsIDLabelsPath, newPostLabelHandler(labelBackend))
@@ -127,23 +120,23 @@ func (h *ScraperHandler) handlePostScraperTarget(w http.ResponseWriter, r *http.
 	ctx := r.Context()
 	req, err := decodeScraperTargetAddRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	auth, err := pctx.GetAuthorizer(ctx)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.ScraperStorageService.AddTarget(ctx, req, auth.GetUserID()); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	resp, err := h.newTargetResponse(ctx, *req)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	if err := encodeResponse(ctx, w, http.StatusCreated, resp); err != nil {
@@ -158,12 +151,12 @@ func (h *ScraperHandler) handleDeleteScraperTarget(w http.ResponseWriter, r *htt
 
 	id, err := decodeScraperTargetIDRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.ScraperStorageService.RemoveTarget(ctx, *id); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -176,25 +169,25 @@ func (h *ScraperHandler) handlePatchScraperTarget(w http.ResponseWriter, r *http
 
 	update, err := decodeScraperTargetUpdateRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	auth, err := pctx.GetAuthorizer(ctx)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	target, err := h.ScraperStorageService.UpdateTarget(ctx, update, auth.GetUserID())
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	resp, err := h.newTargetResponse(ctx, *target)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -209,18 +202,18 @@ func (h *ScraperHandler) handleGetScraperTarget(w http.ResponseWriter, r *http.R
 
 	id, err := decodeScraperTargetIDRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	target, err := h.ScraperStorageService.GetTargetByID(ctx, *id)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	resp, err := h.newTargetResponse(ctx, *target)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -270,18 +263,18 @@ func (h *ScraperHandler) handleGetScraperTargets(w http.ResponseWriter, r *http.
 	ctx := r.Context()
 	req, err := decodeScraperTargetsRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	targets, err := h.ScraperStorageService.ListTargets(ctx, req.filter)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	resp, err := h.newListTargetsResponse(ctx, targets)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 

@@ -17,7 +17,6 @@ import (
 // UserBackend is all services and associated parameters required to construct
 // the UserHandler.
 type UserBackend struct {
-	influxdb.HTTPErrorHandler
 	Logger                  *zap.Logger
 	UserService             influxdb.UserService
 	UserOperationLogService influxdb.UserOperationLogService
@@ -27,7 +26,6 @@ type UserBackend struct {
 // NewUserBackend creates a UserBackend using information in the APIBackend.
 func NewUserBackend(b *APIBackend) *UserBackend {
 	return &UserBackend{
-		HTTPErrorHandler:        b.HTTPErrorHandler,
 		Logger:                  b.Logger.With(zap.String("handler", "user")),
 		UserService:             b.UserService,
 		UserOperationLogService: b.UserOperationLogService,
@@ -38,7 +36,6 @@ func NewUserBackend(b *APIBackend) *UserBackend {
 // UserHandler represents an HTTP API handler for users.
 type UserHandler struct {
 	*httprouter.Router
-	influxdb.HTTPErrorHandler
 	Logger                  *zap.Logger
 	UserService             influxdb.UserService
 	UserOperationLogService influxdb.UserOperationLogService
@@ -57,9 +54,8 @@ const (
 // NewUserHandler returns a new instance of UserHandler.
 func NewUserHandler(b *UserBackend) *UserHandler {
 	h := &UserHandler{
-		Router:           NewRouter(b.HTTPErrorHandler),
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger,
+		Router: NewRouter(),
+		Logger: b.Logger,
 
 		UserService:             b.UserService,
 		UserOperationLogService: b.UserOperationLogService,
@@ -99,7 +95,7 @@ func (h *UserHandler) handlePutUserPassword(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 	_, err := h.putPassword(ctx, w, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -144,17 +140,17 @@ func (h *UserHandler) handlePostUser(w http.ResponseWriter, r *http.Request) {
 
 	req, err := decodePostUserRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.UserService.CreateUser(ctx, req.User); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusCreated, newUserResponse(req.User)); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 }
@@ -180,20 +176,27 @@ func (h *UserHandler) handleGetMe(w http.ResponseWriter, r *http.Request) {
 
 	a, err := icontext.GetAuthorizer(ctx)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
-	id := a.GetUserID()
-	user, err := h.UserService.FindUserByID(ctx, id)
+	var id influxdb.ID
+	switch s := a.(type) {
+	case *influxdb.Session:
+		id = s.UserID
+	case *influxdb.Authorization:
+		id = s.UserID
+	}
 
+	b, err := h.UserService.FindUserByID(ctx, id)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
-	if err := encodeResponse(ctx, w, http.StatusOK, newUserResponse(user)); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+	if err := encodeResponse(ctx, w, http.StatusOK, newUserResponse(b)); err != nil {
+		EncodeError(ctx, err, w)
+		return
 	}
 }
 
@@ -203,18 +206,18 @@ func (h *UserHandler) handleGetUser(w http.ResponseWriter, r *http.Request) {
 
 	req, err := decodeGetUserRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	b, err := h.UserService.FindUserByID(ctx, req.UserID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newUserResponse(b)); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 }
@@ -251,12 +254,12 @@ func (h *UserHandler) handleDeleteUser(w http.ResponseWriter, r *http.Request) {
 
 	req, err := decodeDeleteUserRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.UserService.DeleteUser(ctx, req.UserID); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -334,19 +337,19 @@ func (h *UserHandler) handleGetUsers(w http.ResponseWriter, r *http.Request) {
 
 	req, err := decodeGetUsersRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	users, _, err := h.UserService.FindUsers(ctx, req.filter)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	err = encodeResponse(ctx, w, http.StatusOK, newUsersResponse(users))
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 }
@@ -380,18 +383,18 @@ func (h *UserHandler) handlePatchUser(w http.ResponseWriter, r *http.Request) {
 
 	req, err := decodePatchUserRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	b, err := h.UserService.UpdateUser(ctx, req.UserID, req.Update)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newUserResponse(b)); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 }
@@ -684,18 +687,18 @@ func (h *UserHandler) handleGetUserLog(w http.ResponseWriter, r *http.Request) {
 
 	req, err := decodeGetUserLogRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	log, _, err := h.UserOperationLogService.GetUserOperationLog(ctx, req.UserID, req.opts)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newUserLogResponse(req.UserID, log)); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 }

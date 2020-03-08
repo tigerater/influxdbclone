@@ -16,7 +16,6 @@ import (
 // the DocumentHandler.
 type DocumentBackend struct {
 	Logger *zap.Logger
-	influxdb.HTTPErrorHandler
 
 	DocumentService influxdb.DocumentService
 	LabelService    influxdb.LabelService
@@ -25,10 +24,9 @@ type DocumentBackend struct {
 // NewDocumentBackend returns a new instance of DocumentBackend.
 func NewDocumentBackend(b *APIBackend) *DocumentBackend {
 	return &DocumentBackend{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger.With(zap.String("handler", "document")),
-		DocumentService:  b.DocumentService,
-		LabelService:     b.LabelService,
+		Logger:          b.Logger.With(zap.String("handler", "document")),
+		DocumentService: b.DocumentService,
+		LabelService:    b.LabelService,
 	}
 }
 
@@ -37,7 +35,6 @@ type DocumentHandler struct {
 	*httprouter.Router
 
 	Logger *zap.Logger
-	influxdb.HTTPErrorHandler
 
 	DocumentService influxdb.DocumentService
 	LabelService    influxdb.LabelService
@@ -54,9 +51,8 @@ const (
 // TODO(desa): this should probably take a namespace
 func NewDocumentHandler(b *DocumentBackend) *DocumentHandler {
 	h := &DocumentHandler{
-		Router:           NewRouter(b.HTTPErrorHandler),
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger,
+		Router: NewRouter(),
+		Logger: b.Logger,
 
 		DocumentService: b.DocumentService,
 		LabelService:    b.LabelService,
@@ -113,18 +109,18 @@ func (h *DocumentHandler) handlePostDocument(w http.ResponseWriter, r *http.Requ
 
 	req, err := decodePostDocumentRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	s, err := h.DocumentService.FindDocumentStore(ctx, req.Namespace)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	a, err := pcontext.GetAuthorizer(ctx)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -140,7 +136,7 @@ func (h *DocumentHandler) handlePostDocument(w http.ResponseWriter, r *http.Requ
 	}
 
 	if err := s.CreateDocument(ctx, req.Document, opts...); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -195,25 +191,25 @@ func (h *DocumentHandler) handleGetDocuments(w http.ResponseWriter, r *http.Requ
 
 	req, err := decodeGetDocumentsRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	s, err := h.DocumentService.FindDocumentStore(ctx, req.Namespace)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	a, err := pcontext.GetAuthorizer(ctx)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	opts := []influxdb.DocumentFindOptions{influxdb.IncludeLabels}
 	if req.Org != "" && req.OrgID != nil {
-		h.HandleHTTPError(ctx, &influxdb.Error{
+		EncodeError(ctx, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  "Please provide either org or orgID, not both",
 		}, w)
@@ -228,7 +224,7 @@ func (h *DocumentHandler) handleGetDocuments(w http.ResponseWriter, r *http.Requ
 
 	ds, err := s.FindDocuments(ctx, opts...)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -278,28 +274,28 @@ func (h *DocumentHandler) handlePostDocumentLabel(w http.ResponseWriter, r *http
 	ctx := r.Context()
 	_, _, err := h.getDocument(w, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	req, err := decodePostLabelMappingRequest(ctx, r, influxdb.DocumentsResourceType)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := req.Mapping.Validate(); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.LabelService.CreateLabelMapping(ctx, &req.Mapping); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	label, err := h.LabelService.FindLabelByID(ctx, req.Mapping.LabelID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	if err := encodeResponse(ctx, w, http.StatusCreated, newLabelResponse(label)); err != nil {
@@ -314,18 +310,18 @@ func (h *DocumentHandler) handleDeleteDocumentLabel(w http.ResponseWriter, r *ht
 	ctx := r.Context()
 	req, err := decodeDeleteLabelMappingRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	_, _, err = h.getDocument(w, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	_, err = h.LabelService.FindLabelByID(ctx, req.LabelID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -337,7 +333,7 @@ func (h *DocumentHandler) handleDeleteDocumentLabel(w http.ResponseWriter, r *ht
 
 	// remove the label
 	if err := h.LabelService.DeleteLabelMapping(ctx, mapping); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -348,7 +344,7 @@ func (h *DocumentHandler) handleGetDocumentLabel(w http.ResponseWriter, r *http.
 	ctx := r.Context()
 	d, _, err := h.getDocument(w, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	if err := encodeResponse(ctx, w, http.StatusOK, newLabelsResponse(d.Labels)); err != nil {
@@ -391,7 +387,7 @@ func (h *DocumentHandler) handleGetDocument(w http.ResponseWriter, r *http.Reque
 	ctx := r.Context()
 	d, namspace, err := h.getDocument(w, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -444,24 +440,24 @@ func (h *DocumentHandler) handleDeleteDocument(w http.ResponseWriter, r *http.Re
 
 	req, err := decodeDeleteDocumentRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	s, err := h.DocumentService.FindDocumentStore(ctx, req.Namespace)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	a, err := pcontext.GetAuthorizer(ctx)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := s.DeleteDocuments(ctx, influxdb.AuthorizedWhereID(a, req.ID)); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -513,24 +509,24 @@ func (h *DocumentHandler) handlePutDocument(w http.ResponseWriter, r *http.Reque
 
 	req, err := decodePutDocumentRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	s, err := h.DocumentService.FindDocumentStore(ctx, req.Namespace)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	a, err := pcontext.GetAuthorizer(ctx)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := s.UpdateDocument(ctx, req.Document, influxdb.Authorized(a)); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -538,7 +534,7 @@ func (h *DocumentHandler) handlePutDocument(w http.ResponseWriter, r *http.Reque
 
 	ds, err := s.FindDocuments(ctx, influxdb.WhereID(req.Document.ID), influxdb.IncludeContent)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -547,7 +543,7 @@ func (h *DocumentHandler) handlePutDocument(w http.ResponseWriter, r *http.Reque
 			Code: influxdb.EInternal,
 			Msg:  fmt.Sprintf("found more than one document with id %s; please report this error", req.ID),
 		}
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 

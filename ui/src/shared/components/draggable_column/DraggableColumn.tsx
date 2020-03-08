@@ -21,7 +21,7 @@ import {ErrorHandling} from 'src/shared/decorators/errors'
 
 // Types
 import {ComponentStatus} from '@influxdata/clockface'
-import {FieldOption} from 'src/types'
+import {LogsTableColumn} from 'src/types/logs'
 
 // Constants
 const columnType = 'column'
@@ -33,7 +33,7 @@ interface Props {
   index: number
   id: string
   key: string
-  onUpdateColumn: (column: FieldOption) => void
+  onUpdateColumn: (column: LogsTableColumn) => void
   isDragging?: boolean
   connectDragSource?: ConnectDragSource
   connectDropTarget?: ConnectDropTarget

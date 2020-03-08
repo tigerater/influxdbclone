@@ -37,7 +37,6 @@ const (
 // FluxBackend is all services and associated parameters required to construct
 // the FluxHandler.
 type FluxBackend struct {
-	platform.HTTPErrorHandler
 	Logger             *zap.Logger
 	QueryEventRecorder metric.EventRecorder
 
@@ -48,7 +47,6 @@ type FluxBackend struct {
 // NewFluxBackend returns a new instance of FluxBackend.
 func NewFluxBackend(b *APIBackend) *FluxBackend {
 	return &FluxBackend{
-		HTTPErrorHandler:   b.HTTPErrorHandler,
 		Logger:             b.Logger.With(zap.String("handler", "query")),
 		QueryEventRecorder: b.QueryEventRecorder,
 
@@ -65,7 +63,7 @@ type HTTPDialect interface {
 // FluxHandler implements handling flux queries.
 type FluxHandler struct {
 	*httprouter.Router
-	platform.HTTPErrorHandler
+
 	Logger *zap.Logger
 
 	Now                 func() time.Time
@@ -78,10 +76,9 @@ type FluxHandler struct {
 // NewFluxHandler returns a new handler at /api/v2/query for flux queries.
 func NewFluxHandler(b *FluxBackend) *FluxHandler {
 	h := &FluxHandler{
-		Router:           NewRouter(b.HTTPErrorHandler),
-		Now:              time.Now,
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger,
+		Router: NewRouter(),
+		Now:    time.Now,
+		Logger: b.Logger,
 
 		ProxyQueryService:   b.ProxyQueryService,
 		OrganizationService: b.OrganizationService,
@@ -127,7 +124,7 @@ func (h *FluxHandler) handleQuery(w http.ResponseWriter, r *http.Request) {
 			Op:   op,
 			Err:  err,
 		}
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -139,7 +136,7 @@ func (h *FluxHandler) handleQuery(w http.ResponseWriter, r *http.Request) {
 			Op:   op,
 			Err:  err,
 		}
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	orgID = req.Request.OrganizationID
@@ -155,7 +152,7 @@ func (h *FluxHandler) handleQuery(w http.ResponseWriter, r *http.Request) {
 			Msg:  fmt.Sprintf("unsupported dialect over HTTP: %T", req.Dialect),
 			Op:   op,
 		}
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	hd.SetHeaders(w)
@@ -170,7 +167,7 @@ func (h *FluxHandler) handleQuery(w http.ResponseWriter, r *http.Request) {
 				Op:   op,
 				Err:  err,
 			}
-			h.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 		h.Logger.Info("Error writing response to client",
@@ -198,7 +195,7 @@ func (h *FluxHandler) postFluxAST(w http.ResponseWriter, r *http.Request) {
 
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		h.HandleHTTPError(ctx, &platform.Error{
+		EncodeError(ctx, &platform.Error{
 			Code: platform.EInvalid,
 			Msg:  "invalid json",
 			Err:  err,
@@ -209,7 +206,7 @@ func (h *FluxHandler) postFluxAST(w http.ResponseWriter, r *http.Request) {
 	pkg := parser.ParseSource(request.Query)
 	if ast.Check(pkg) > 0 {
 		err := ast.GetError(pkg)
-		h.HandleHTTPError(ctx, &platform.Error{
+		EncodeError(ctx, &platform.Error{
 			Code: platform.EInvalid,
 			Msg:  "invalid AST",
 			Err:  err,
@@ -236,7 +233,7 @@ func (h *FluxHandler) postQueryAnalyze(w http.ResponseWriter, r *http.Request) {
 
 	var req QueryRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.HandleHTTPError(ctx, &platform.Error{
+		EncodeError(ctx, &platform.Error{
 			Code: platform.EInvalid,
 			Msg:  "invalid json",
 			Err:  err,
@@ -246,7 +243,7 @@ func (h *FluxHandler) postQueryAnalyze(w http.ResponseWriter, r *http.Request) {
 
 	a, err := req.Analyze()
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	if err := encodeResponse(ctx, w, http.StatusOK, a); err != nil {
@@ -281,7 +278,7 @@ func (h *FluxHandler) getFluxSuggestions(w http.ResponseWriter, r *http.Request)
 	for _, name := range names {
 		suggestion, err := completer.FunctionSuggestion(name)
 		if err != nil {
-			h.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -318,7 +315,7 @@ func (h *FluxHandler) getFluxSuggestion(w http.ResponseWriter, r *http.Request) 
 
 	suggestion, err := completer.FunctionSuggestion(name)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -353,9 +350,6 @@ func (s *FluxService) Query(ctx context.Context, w io.Writer, r *query.ProxyRequ
 	if err != nil {
 		return flux.Statistics{}, tracing.LogError(span, err)
 	}
-	params := url.Values{}
-	params.Set(OrgID, r.Request.OrganizationID.String())
-	u.RawQuery = params.Encode()
 
 	qreq, err := QueryRequestFromProxyRequest(r)
 	if err != nil {
@@ -376,6 +370,7 @@ func (s *FluxService) Query(ctx context.Context, w io.Writer, r *query.ProxyRequ
 	hreq.Header.Set("Content-Type", "application/json")
 	hreq.Header.Set("Accept", "text/csv")
 	hreq = hreq.WithContext(ctx)
+	tracing.InjectToHTTPRequest(span, hreq)
 
 	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
 	resp, err := hc.Do(hreq)
@@ -443,6 +438,7 @@ func (s *FluxQueryService) Query(ctx context.Context, r *query.Request) (flux.Re
 	hreq.Header.Set("Content-Type", "application/json")
 	hreq.Header.Set("Accept", "text/csv")
 	hreq = hreq.WithContext(ctx)
+	tracing.InjectToHTTPRequest(span, hreq)
 
 	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
 	resp, err := hc.Do(hreq)

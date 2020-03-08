@@ -16,7 +16,6 @@ var _ http.Handler = (*swaggerLoader)(nil)
 
 // swaggerLoader manages loading the swagger asset and serving it as JSON.
 type swaggerLoader struct {
-	influxdb.HTTPErrorHandler
 	logger *zap.Logger
 
 	// Ensure we only call initialize once.
@@ -29,8 +28,8 @@ type swaggerLoader struct {
 	loadErr error
 }
 
-func newSwaggerLoader(logger *zap.Logger, h influxdb.HTTPErrorHandler) *swaggerLoader {
-	return &swaggerLoader{logger: logger, HTTPErrorHandler: h}
+func newSwaggerLoader(logger *zap.Logger) *swaggerLoader {
+	return &swaggerLoader{logger: logger}
 }
 
 func (s *swaggerLoader) initialize() {
@@ -52,7 +51,7 @@ func (s *swaggerLoader) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	s.once.Do(s.initialize)
 
 	if s.loadErr != nil {
-		s.HandleHTTPError(r.Context(), &influxdb.Error{
+		EncodeError(r.Context(), &influxdb.Error{
 			Err:  s.loadErr,
 			Msg:  "this developer binary not built with assets",
 			Code: influxdb.EInternal,

@@ -56,7 +56,6 @@ func newResourceUsersResponse(opts platform.FindOptions, f platform.UserResource
 // MemberBackend is all services and associated parameters required to construct
 // member handler.
 type MemberBackend struct {
-	platform.HTTPErrorHandler
 	Logger *zap.Logger
 
 	ResourceType platform.ResourceType
@@ -73,13 +72,13 @@ func newPostMemberHandler(b MemberBackend) http.HandlerFunc {
 
 		req, err := decodePostMemberRequest(ctx, r)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
 		user, err := b.UserService.FindUserByID(ctx, req.MemberID)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -91,12 +90,12 @@ func newPostMemberHandler(b MemberBackend) http.HandlerFunc {
 		}
 
 		if err := b.UserResourceMappingService.CreateUserResourceMapping(ctx, mapping); err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
 		if err := encodeResponse(ctx, w, http.StatusCreated, newResourceUserResponse(user, b.UserType)); err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 	}
@@ -147,7 +146,7 @@ func newGetMembersHandler(b MemberBackend) http.HandlerFunc {
 
 		req, err := decodeGetMembersRequest(ctx, r)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -160,7 +159,7 @@ func newGetMembersHandler(b MemberBackend) http.HandlerFunc {
 		opts := platform.FindOptions{}
 		mappings, _, err := b.UserResourceMappingService.FindUserResourceMappings(ctx, filter)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -171,7 +170,7 @@ func newGetMembersHandler(b MemberBackend) http.HandlerFunc {
 			}
 			user, err := b.UserService.FindUserByID(ctx, m.UserID)
 			if err != nil {
-				b.HandleHTTPError(ctx, err, w)
+				EncodeError(ctx, err, w)
 				return
 			}
 
@@ -179,7 +178,7 @@ func newGetMembersHandler(b MemberBackend) http.HandlerFunc {
 		}
 
 		if err := encodeResponse(ctx, w, http.StatusOK, newResourceUsersResponse(opts, filter, users)); err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 	}
@@ -219,12 +218,12 @@ func newDeleteMemberHandler(b MemberBackend) http.HandlerFunc {
 
 		req, err := decodeDeleteMemberRequest(ctx, r)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
 		if err := b.UserResourceMappingService.DeleteUserResourceMapping(ctx, req.ResourceID, req.MemberID); err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 

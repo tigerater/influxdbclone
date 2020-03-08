@@ -19,7 +19,6 @@ import (
 // AuthorizationBackend is all services and associated parameters required to construct
 // the AuthorizationHandler.
 type AuthorizationBackend struct {
-	platform.HTTPErrorHandler
 	Logger *zap.Logger
 
 	AuthorizationService platform.AuthorizationService
@@ -31,8 +30,7 @@ type AuthorizationBackend struct {
 // NewAuthorizationBackend returns a new instance of AuthorizationBackend.
 func NewAuthorizationBackend(b *APIBackend) *AuthorizationBackend {
 	return &AuthorizationBackend{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger.With(zap.String("handler", "authorization")),
+		Logger: b.Logger.With(zap.String("handler", "authorization")),
 
 		AuthorizationService: b.AuthorizationService,
 		OrganizationService:  b.OrganizationService,
@@ -44,7 +42,6 @@ func NewAuthorizationBackend(b *APIBackend) *AuthorizationBackend {
 // AuthorizationHandler represents an HTTP API handler for authorizations.
 type AuthorizationHandler struct {
 	*httprouter.Router
-	platform.HTTPErrorHandler
 	Logger *zap.Logger
 
 	OrganizationService  platform.OrganizationService
@@ -56,9 +53,8 @@ type AuthorizationHandler struct {
 // NewAuthorizationHandler returns a new instance of AuthorizationHandler.
 func NewAuthorizationHandler(b *AuthorizationBackend) *AuthorizationHandler {
 	h := &AuthorizationHandler{
-		Router:           NewRouter(b.HTTPErrorHandler),
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger,
+		Router: NewRouter(),
+		Logger: b.Logger,
 
 		AuthorizationService: b.AuthorizationService,
 		OrganizationService:  b.OrganizationService,
@@ -188,13 +184,13 @@ func (h *AuthorizationHandler) handlePostAuthorization(w http.ResponseWriter, r 
 
 	req, err := decodePostAuthorizationRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	user, err := getAuthorizedUser(r, h.UserService)
 	if err != nil {
-		h.HandleHTTPError(ctx, platform.ErrUnableToCreateToken, w)
+		EncodeError(ctx, platform.ErrUnableToCreateToken, w)
 		return
 	}
 
@@ -202,18 +198,18 @@ func (h *AuthorizationHandler) handlePostAuthorization(w http.ResponseWriter, r 
 
 	org, err := h.OrganizationService.FindOrganizationByID(ctx, auth.OrgID)
 	if err != nil {
-		h.HandleHTTPError(ctx, platform.ErrUnableToCreateToken, w)
+		EncodeError(ctx, platform.ErrUnableToCreateToken, w)
 		return
 	}
 
 	if err := h.AuthorizationService.CreateAuthorization(ctx, auth); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	perms, err := newPermissionsResponse(ctx, auth.Permissions, h.LookupService)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -322,14 +318,14 @@ func (h *AuthorizationHandler) handleGetAuthorizations(w http.ResponseWriter, r 
 	req, err := decodeGetAuthorizationsRequest(ctx, r)
 	if err != nil {
 		h.Logger.Info("failed to decode request", zap.String("handler", "getAuthorizations"), zap.Error(err))
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	opts := platform.FindOptions{}
 	as, _, err := h.AuthorizationService.FindAuthorizations(ctx, req.filter, opts)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -349,7 +345,7 @@ func (h *AuthorizationHandler) handleGetAuthorizations(w http.ResponseWriter, r 
 
 		ps, err := newPermissionsResponse(ctx, a.Permissions, h.LookupService)
 		if err != nil {
-			h.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -357,7 +353,7 @@ func (h *AuthorizationHandler) handleGetAuthorizations(w http.ResponseWriter, r 
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newAuthsResponse(auths)); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 }
@@ -418,37 +414,37 @@ func (h *AuthorizationHandler) handleGetAuthorization(w http.ResponseWriter, r *
 	req, err := decodeGetAuthorizationRequest(ctx, r)
 	if err != nil {
 		h.Logger.Info("failed to decode request", zap.String("handler", "getAuthorization"), zap.Error(err))
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	a, err := h.AuthorizationService.FindAuthorizationByID(ctx, req.ID)
 	if err != nil {
 		// Don't log here, it should already be handled by the service
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	o, err := h.OrganizationService.FindOrganizationByID(ctx, a.OrgID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	u, err := h.UserService.FindUserByID(ctx, a.UserID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	ps, err := newPermissionsResponse(ctx, a.Permissions, h.LookupService)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newAuthResponse(a, o, u, ps)); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 }
@@ -484,42 +480,42 @@ func (h *AuthorizationHandler) handleUpdateAuthorization(w http.ResponseWriter, 
 	req, err := decodeUpdateAuthorizationRequest(ctx, r)
 	if err != nil {
 		h.Logger.Info("failed to decode request", zap.String("handler", "updateAuthorization"), zap.Error(err))
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	a, err := h.AuthorizationService.FindAuthorizationByID(ctx, req.ID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	a, err = h.AuthorizationService.UpdateAuthorization(ctx, a.ID, req.AuthorizationUpdate)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	o, err := h.OrganizationService.FindOrganizationByID(ctx, a.OrgID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	u, err := h.UserService.FindUserByID(ctx, a.UserID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	ps, err := newPermissionsResponse(ctx, a.Permissions, h.LookupService)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newAuthResponse(a, o, u, ps)); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 }
@@ -562,13 +558,13 @@ func (h *AuthorizationHandler) handleDeleteAuthorization(w http.ResponseWriter, 
 	req, err := decodeDeleteAuthorizationRequest(ctx, r)
 	if err != nil {
 		h.Logger.Info("failed to decode request", zap.String("handler", "deleteAuthorization"), zap.Error(err))
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.AuthorizationService.DeleteAuthorization(ctx, req.ID); err != nil {
 		// Don't log here, it should already be handled by the service
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 

@@ -10,14 +10,14 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/influxdata/influxdb"
+	influxdb "github.com/influxdata/influxdb"
 	"github.com/julienschmidt/httprouter"
 )
 
 // LabelHandler represents an HTTP API handler for labels
 type LabelHandler struct {
 	*httprouter.Router
-	influxdb.HTTPErrorHandler
+
 	Logger *zap.Logger
 
 	LabelService influxdb.LabelService
@@ -29,12 +29,11 @@ const (
 )
 
 // NewLabelHandler returns a new instance of LabelHandler
-func NewLabelHandler(s influxdb.LabelService, he influxdb.HTTPErrorHandler) *LabelHandler {
+func NewLabelHandler(s influxdb.LabelService) *LabelHandler {
 	h := &LabelHandler{
-		Router:           NewRouter(he),
-		HTTPErrorHandler: he,
-		Logger:           zap.NewNop(),
-		LabelService:     s,
+		Router:       NewRouter(),
+		Logger:       zap.NewNop(),
+		LabelService: s,
 	}
 
 	h.HandlerFunc("POST", labelsPath, h.handlePostLabel)
@@ -53,12 +52,12 @@ func (h *LabelHandler) handlePostLabel(w http.ResponseWriter, r *http.Request) {
 
 	req, err := decodePostLabelRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.LabelService.CreateLabel(ctx, req.Label); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -112,19 +111,19 @@ func (h *LabelHandler) handleGetLabels(w http.ResponseWriter, r *http.Request) {
 
 	req, err := decodeGetLabelsRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	labels, err := h.LabelService.FindLabels(ctx, req.filter)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	err = encodeResponse(ctx, w, http.StatusOK, newLabelsResponse(labels))
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 }
@@ -154,13 +153,13 @@ func (h *LabelHandler) handleGetLabel(w http.ResponseWriter, r *http.Request) {
 
 	req, err := decodeGetLabelRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	l, err := h.LabelService.FindLabelByID(ctx, req.LabelID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -201,12 +200,12 @@ func (h *LabelHandler) handleDeleteLabel(w http.ResponseWriter, r *http.Request)
 
 	req, err := decodeDeleteLabelRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.LabelService.DeleteLabel(ctx, req.LabelID); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -244,13 +243,13 @@ func (h *LabelHandler) handlePatchLabel(w http.ResponseWriter, r *http.Request) 
 
 	req, err := decodePatchLabelRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	l, err := h.LabelService.UpdateLabel(ctx, req.LabelID, req.Update)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -331,8 +330,7 @@ func newLabelsResponse(ls []*influxdb.Label) *labelsResponse {
 // LabelBackend is all services and associated parameters required to construct
 // label handlers.
 type LabelBackend struct {
-	Logger *zap.Logger
-	influxdb.HTTPErrorHandler
+	Logger       *zap.Logger
 	LabelService influxdb.LabelService
 	ResourceType influxdb.ResourceType
 }
@@ -344,13 +342,13 @@ func newGetLabelsHandler(b *LabelBackend) http.HandlerFunc {
 
 		req, err := decodeGetLabelMappingsRequest(ctx, r, b.ResourceType)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
 		labels, err := b.LabelService.FindResourceLabels(ctx, req.filter)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -394,23 +392,23 @@ func newPostLabelHandler(b *LabelBackend) http.HandlerFunc {
 
 		req, err := decodePostLabelMappingRequest(ctx, r, b.ResourceType)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
 		if err := req.Mapping.Validate(); err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
 		if err := b.LabelService.CreateLabelMapping(ctx, &req.Mapping); err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
 		label, err := b.LabelService.FindLabelByID(ctx, req.Mapping.LabelID)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -469,7 +467,7 @@ func newDeleteLabelHandler(b *LabelBackend) http.HandlerFunc {
 
 		req, err := decodeDeleteLabelMappingRequest(ctx, r)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -480,7 +478,7 @@ func newDeleteLabelHandler(b *LabelBackend) http.HandlerFunc {
 		}
 
 		if err := b.LabelService.DeleteLabelMapping(ctx, mapping); err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
