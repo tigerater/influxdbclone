@@ -28,9 +28,6 @@ type Service struct {
 	TokenGenerator influxdb.TokenGenerator
 	influxdb.TimeGenerator
 	Hash Crypt
-
-	// Organization & bucket specific validation.
-	IsValidOrgBucketID func(influxdb.ID) bool
 }
 
 // NewService returns an instance of a Service.
