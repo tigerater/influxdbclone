@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/models"
@@ -96,14 +95,12 @@ func (e *Engine) tagValuesNoPredicate(ctx context.Context, orgBucket, tagKeyByte
 
 	// With performance in mind, we explicitly do not check the context
 	// while scanning the entries in the cache.
-	prefixStr := string(prefix)
-	_ = e.Cache.ApplyEntryFn(func(sfkey string, entry *entry) error {
-		if !strings.HasPrefix(sfkey, prefixStr) {
+	_ = e.Cache.ApplyEntryFn(func(sfkey []byte, entry *entry) error {
+		if !bytes.HasPrefix(sfkey, prefix) {
 			return nil
 		}
 
-		// TODO(edd): consider the []byte() conversion here.
-		key, _ := SeriesAndFieldFromCompositeKey([]byte(sfkey))
+		key, _ := SeriesAndFieldFromCompositeKey(sfkey)
 		tags = models.ParseTagsWithTags(key, tags[:0])
 		curVal := tags.Get(tagKeyBytes)
 		if len(curVal) == 0 {
@@ -356,13 +353,12 @@ func (e *Engine) tagKeysNoPredicate(ctx context.Context, orgBucket []byte, start
 
 	// With performance in mind, we explicitly do not check the context
 	// while scanning the entries in the cache.
-	_ = e.Cache.ApplyEntryFn(func(sfkey string, entry *entry) error {
-		if !strings.HasPrefix(sfkey, string(prefix)) {
+	_ = e.Cache.ApplyEntryFn(func(sfkey []byte, entry *entry) error {
+		if !bytes.HasPrefix(sfkey, prefix) {
 			return nil
 		}
 
-		// TODO(edd): consider []byte conversion here.
-		key, _ := SeriesAndFieldFromCompositeKey([]byte(sfkey))
+		key, _ := SeriesAndFieldFromCompositeKey(sfkey)
 		tags = models.ParseTagsWithTags(key, tags[:0])
 		if keyset.IsSupersetKeys(tags) {
 			return nil
