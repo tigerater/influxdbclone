@@ -3,15 +3,7 @@ import _ from 'lodash'
 import {connect} from 'react-redux'
 
 // Component
-import {
-  Grid,
-  Form,
-  TextArea,
-  Dropdown,
-  Columns,
-  Icon,
-  IconFont,
-} from '@influxdata/clockface'
+import {Grid, Form, TextArea, Dropdown, Columns} from '@influxdata/clockface'
 
 // Utils
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -75,28 +67,16 @@ class MapVariableBuilder extends PureComponent<Props, State> {
             {
               <Form.Element label="Select A Default">
                 <Dropdown
-                  button={(active, onClick) => (
-                    <Dropdown.Button active={active} onClick={onClick}>
-                      {this.defaultID}
-                    </Dropdown.Button>
-                  )}
-                  menu={onCollapse => (
-                    <Dropdown.Menu onCollapse={onCollapse}>
-                      {entries.map(v => (
-                        <Dropdown.Item
-                          key={v.key}
-                          id={v.key}
-                          value={v.key}
-                          onClick={onSelectDefault}
-                          selected={v.key === this.defaultID}
-                        >
-                          <strong>{v.key}</strong>{' '}
-                          <Icon glyph={IconFont.CaretRight} /> {v.value}
-                        </Dropdown.Item>
-                      ))}
-                    </Dropdown.Menu>
-                  )}
-                />
+                  selectedID={this.defaultID}
+                  onChange={onSelectDefault}
+                  titleText="Key Values"
+                >
+                  {entries.map(v => (
+                    <Dropdown.Item key={v.key} id={v.key} value={v.key}>
+                      <strong>{v.key}</strong> -> {v.value}
+                    </Dropdown.Item>
+                  ))}
+                </Dropdown>
               </Form.Element>
             }
           </Grid.Column>
@@ -108,7 +88,7 @@ class MapVariableBuilder extends PureComponent<Props, State> {
   private get defaultID(): string {
     const {selected} = this.props
     const {entries} = this
-    const firstEntry = _.get(entries, '0.key', 'Enter values above')
+    const firstEntry = _.get(entries, '0.key', '')
 
     return _.get(selected, '0', firstEntry)
   }

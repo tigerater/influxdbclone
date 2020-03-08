@@ -2,7 +2,7 @@
 import React, {PureComponent} from 'react'
 
 // Components
-import {Dropdown, ComponentStatus} from '@influxdata/clockface'
+import {Dropdown, ComponentStatus} from 'src/clockface'
 
 // Types
 import {Bucket} from '@influxdata/influx'
@@ -15,36 +15,26 @@ interface Props {
 
 class BucketsDropdown extends PureComponent<Props> {
   public render() {
+    const {selectedBucketID, onSelectBucket} = this.props
+
     return (
       <Dropdown
-        testID="bucket-dropdown"
-        button={(active, onClick) => (
-          <Dropdown.Button
-            testID="bucket-dropdown--button"
-            active={active}
-            onClick={onClick}
-            status={this.status}
-          >
-            {this.selectedBucketName}
-          </Dropdown.Button>
-        )}
-        menu={onCollapse => (
-          <Dropdown.Menu onCollapse={onCollapse}>
-            {this.dropdownBuckets}
-          </Dropdown.Menu>
-        )}
-      />
+        titleText={this.title}
+        status={this.status}
+        selectedID={selectedBucketID}
+        onChange={onSelectBucket}
+      >
+        {this.dropdownBuckets}
+      </Dropdown>
     )
   }
 
-  private get selectedBucketName(): string {
-    const {selectedBucketID, buckets} = this.props
-
+  private get title(): string {
     if (this.isBucketsEmpty) {
       return 'No buckets found'
     }
 
-    return buckets.find(bucket => bucket.id === selectedBucketID).name
+    return ''
   }
 
   private get status(): ComponentStatus {
@@ -61,20 +51,13 @@ class BucketsDropdown extends PureComponent<Props> {
   }
 
   private get dropdownBuckets(): JSX.Element[] {
-    const {buckets, onSelectBucket, selectedBucketID} = this.props
-
+    const {buckets} = this.props
     if (this.isBucketsEmpty) {
       return []
     }
 
     return buckets.map(b => (
-      <Dropdown.Item
-        key={b.name}
-        value={b}
-        id={b.id}
-        onClick={onSelectBucket}
-        selected={b.id === selectedBucketID}
-      >
+      <Dropdown.Item key={b.name} value={b} id={b.id}>
         {b.name}
       </Dropdown.Item>
     ))

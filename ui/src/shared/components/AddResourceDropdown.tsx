@@ -8,6 +8,7 @@ import {
   ComponentColor,
   ComponentSize,
   Dropdown,
+  DropdownMode,
   ComponentStatus,
 } from '@influxdata/clockface'
 
@@ -37,29 +38,14 @@ export default class AddResourceDropdown extends PureComponent<Props> {
     const {titleText, status} = this.props
     return (
       <Dropdown
+        mode={DropdownMode.ActionList}
+        titleText={titleText || `Create ${this.props.resourceName}`}
+        icon={IconFont.Plus}
+        buttonColor={ComponentColor.Primary}
+        buttonSize={ComponentSize.Small}
         widthPixels={160}
-        testID="add-resource-dropdown"
-        button={(active, onClick) => (
-          <Dropdown.Button
-            testID="add-resource-dropdown--button"
-            active={active}
-            onClick={onClick}
-            color={ComponentColor.Primary}
-            size={ComponentSize.Small}
-            icon={IconFont.Plus}
-            status={status}
-          >
-            {titleText || `Create ${this.props.resourceName}`}
-          </Dropdown.Button>
-        )}
-        menu={onCollapse => (
-          <Dropdown.Menu
-            onCollapse={onCollapse}
-            testID="add-resource-dropdown--menu"
-          >
-            {this.optionItems}
-          </Dropdown.Menu>
-        )}
+        onChange={this.handleSelect}
+        status={status}
       >
         {this.optionItems}
       </Dropdown>
@@ -75,18 +61,16 @@ export default class AddResourceDropdown extends PureComponent<Props> {
       <Dropdown.Item
         id={newOption}
         key={newOption}
-        onClick={this.handleSelect}
         value={newOption}
-        testID="add-resource-dropdown--new"
+        testID="dropdown--item new"
       >
         {newOption}
       </Dropdown.Item>,
       <Dropdown.Item
         id={importOption}
         key={importOption}
-        onClick={this.handleSelect}
         value={importOption}
-        testID="add-resource-dropdown--import"
+        testID="dropdown--item import"
       >
         {importOption}
       </Dropdown.Item>,
@@ -97,9 +81,8 @@ export default class AddResourceDropdown extends PureComponent<Props> {
         <Dropdown.Item
           id={templateOption}
           key={templateOption}
-          onClick={this.handleSelect}
           value={templateOption}
-          testID="add-resource-dropdown--template"
+          testID="dropdown--item template"
         >
           {templateOption}
         </Dropdown.Item>

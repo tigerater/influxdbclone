@@ -13,7 +13,6 @@ module.exports = merge(common, {
     compress: true,
     proxy: {
       '/api/v2': 'http://localhost:9999',
-      '/debug/flush': 'http://localhost:9999',
     },
   },
   plugins: [

@@ -1,13 +1,8 @@
 // Libraries
 import React, {SFC} from 'react'
-import _ from 'lodash'
 
 // Components
-import {
-  Dropdown,
-  ComponentStatus,
-  DropdownMenuTheme,
-} from '@influxdata/clockface'
+import {Dropdown, ComponentStatus, DropdownMenuColors} from 'src/clockface'
 
 // Types
 import {ColorLabel} from 'src/types/colors'
@@ -26,6 +21,8 @@ interface DefaultProps {
 
 type Props = PassedProps & DefaultProps
 
+const titleCase = (name: string) => `${name[0].toUpperCase()}${name.slice(1)}`
+
 const ColorDropdown: SFC<Props> = props => {
   const {
     selected,
@@ -41,44 +38,25 @@ const ColorDropdown: SFC<Props> = props => {
 
   return (
     <Dropdown
+      customClass="color-dropdown"
+      selectedID={selected.name}
+      onChange={onChoose}
+      status={status}
       widthPixels={width}
-      button={(active, onClick) => (
-        <Dropdown.Button active={active} onClick={onClick} status={status}>
+      menuColor={DropdownMenuColors.Onyx}
+    >
+      {colors.map(color => (
+        <Dropdown.Item id={color.name} key={color.name} value={color}>
           <div className="color-dropdown--item">
             <div
               className="color-dropdown--swatch"
-              style={{backgroundColor: selected.hex}}
+              style={{backgroundColor: color.hex}}
             />
-            <div className="color-dropdown--name">
-              {_.capitalize(selected.name)}
-            </div>
+            <div className="color-dropdown--name">{titleCase(color.name)}</div>
           </div>
-        </Dropdown.Button>
-      )}
-      menu={onCollapse => (
-        <Dropdown.Menu onCollapse={onCollapse} theme={DropdownMenuTheme.Onyx}>
-          {colors.map(color => (
-            <Dropdown.Item
-              id={color.name}
-              key={color.name}
-              value={color}
-              selected={color.name === selected.name}
-              onClick={onChoose}
-            >
-              <div className="color-dropdown--item">
-                <div
-                  className="color-dropdown--swatch"
-                  style={{backgroundColor: color.hex}}
-                />
-                <div className="color-dropdown--name">
-                  {_.capitalize(color.name)}
-                </div>
-              </div>
-            </Dropdown.Item>
-          ))}
-        </Dropdown.Menu>
-      )}
-    />
+        </Dropdown.Item>
+      ))}
+    </Dropdown>
   )
 }
 

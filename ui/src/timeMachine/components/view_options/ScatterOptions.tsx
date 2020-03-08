@@ -12,7 +12,8 @@ import {
 } from '@influxdata/giraffe'
 
 // Components
-import {Form, Input, Grid, MultiSelectDropdown} from '@influxdata/clockface'
+import {Form, Input, Grid} from '@influxdata/clockface'
+import {Dropdown, MultiSelectDropdown} from 'src/clockface'
 import AxisAffixes from 'src/timeMachine/components/view_options/AxisAffixes'
 
 // Actions
@@ -127,30 +128,6 @@ const ScatterOptions: SFC<Props> = props => {
     ? ComponentStatus.Default
     : ComponentStatus.Disabled
 
-  const handleFillColumnSelect = (column: string): void => {
-    let updatedFillColumns
-
-    if (fillColumns.includes(column)) {
-      updatedFillColumns = fillColumns.filter(col => col !== column)
-    } else {
-      updatedFillColumns = [...fillColumns, column]
-    }
-
-    onSetFillColumns(updatedFillColumns)
-  }
-
-  const handleSymbolColumnSelect = (column: string): void => {
-    let updatedSymbolColumns
-
-    if (symbolColumns.includes(column)) {
-      updatedSymbolColumns = symbolColumns.filter(col => col !== column)
-    } else {
-      updatedSymbolColumns = [...symbolColumns, column]
-    }
-
-    onSetSymbolColumns(updatedSymbolColumns)
-  }
-
   return (
     <Grid.Column>
       <h4 className="view-options--header">Customize Scatter Plot</h4>
@@ -158,19 +135,37 @@ const ScatterOptions: SFC<Props> = props => {
 
       <Form.Element label="Symbol Column">
         <MultiSelectDropdown
-          options={availableGroupColumns}
-          selectedOptions={symbolColumns}
-          onSelect={handleSymbolColumnSelect}
-          buttonStatus={groupDropdownStatus}
-        />
+          selectedIDs={symbolColumns}
+          onChange={onSetSymbolColumns}
+          status={groupDropdownStatus}
+        >
+          {availableGroupColumns.map(columnName => (
+            <Dropdown.Item
+              id={columnName}
+              key={columnName}
+              value={{id: columnName}}
+            >
+              {columnName}
+            </Dropdown.Item>
+          ))}
+        </MultiSelectDropdown>
       </Form.Element>
       <Form.Element label="Fill Column">
         <MultiSelectDropdown
-          options={availableGroupColumns}
-          selectedOptions={fillColumns}
-          onSelect={handleFillColumnSelect}
-          buttonStatus={groupDropdownStatus}
-        />
+          selectedIDs={fillColumns}
+          onChange={onSetFillColumns}
+          status={groupDropdownStatus}
+        >
+          {availableGroupColumns.map(columnName => (
+            <Dropdown.Item
+              id={columnName}
+              key={columnName}
+              value={{id: columnName}}
+            >
+              {columnName}
+            </Dropdown.Item>
+          ))}
+        </MultiSelectDropdown>
       </Form.Element>
       <ColumnSelector
         selectedColumn={xColumn}

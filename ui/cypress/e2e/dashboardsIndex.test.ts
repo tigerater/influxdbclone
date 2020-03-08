@@ -20,11 +20,11 @@ describe('Dashboards', () => {
   })
 
   it('can create a dashboard from empty state', () => {
-    cy.getByTestID('empty-dashboards-list').within(() => {
-      cy.getByTestID('add-resource-dropdown--button').click()
-    })
+    cy.getByTestID('empty-state')
+      .contains('Create')
+      .click()
 
-    cy.getByTestID('add-resource-dropdown--new').click()
+    cy.getByTestID('dropdown--item new').click()
 
     cy.fixture('routes').then(({orgs}) => {
       cy.get<Organization>('@org').then(({id}) => {
@@ -36,9 +36,11 @@ describe('Dashboards', () => {
   })
 
   it('can create a dashboard from the header', () => {
-    cy.getByTestID('add-resource-dropdown--button').click()
+    cy.get('.page-header--container')
+      .contains('Create')
+      .click()
 
-    cy.getByTestID('add-resource-dropdown--new').click()
+    cy.getByTestID('dropdown--item new').click()
 
     cy.fixture('routes').then(({orgs}) => {
       cy.get<Organization>('@org').then(({id}) => {
@@ -49,15 +51,17 @@ describe('Dashboards', () => {
     cy.getByTestID('dashboard-card').should('have.length', 1)
   })
 
-  it.only('can create a dashboard from a Template', () => {
+  it('can create a dashboard from a Template', () => {
     cy.getByTestID('dashboard-card').should('have.length', 0)
     cy.get<Organization>('@org').then(({id}) => {
       cy.createDashboardTemplate(id)
     })
 
-    cy.getByTestID('add-resource-dropdown--button').click()
+    cy.get('.page-header--container')
+      .contains('Create')
+      .click()
 
-    cy.getByTestID('add-resource-dropdown--template').click()
+    cy.getByTestID('dropdown--item template').click()
 
     cy.getByTestID('template--Bashboard-Template').click()
 
@@ -113,7 +117,7 @@ describe('Dashboards', () => {
           .first()
           .click()
 
-        cy.get('.cf-input-field')
+        cy.get('.input-field')
           .type(newName)
           .type('{enter}')
       })
@@ -205,7 +209,7 @@ describe('Dashboards', () => {
 
         cy.getByTestID('dashboard-card')
           .first()
-          .get('.cf-label')
+          .get('.label')
           .should('contain', newLabelName)
       })
 

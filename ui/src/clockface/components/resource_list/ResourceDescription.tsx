@@ -3,11 +3,11 @@ import React, {Component, KeyboardEvent, ChangeEvent} from 'react'
 import classnames from 'classnames'
 
 // Components
-import {Input, Icon} from '@influxdata/clockface'
+import {Input} from '@influxdata/clockface'
 import {ClickOutside} from 'src/shared/components/ClickOutside'
 
 // Types
-import {ComponentSize, IconFont} from '@influxdata/clockface'
+import {ComponentSize} from '@influxdata/clockface'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -63,7 +63,7 @@ class ResourceDescription extends Component<Props, State> {
           onClick={this.handleStartEditing}
         >
           {description || 'No description'}
-          <Icon glyph={IconFont.Pencil} />
+          <span className="icon pencil" />
         </div>
       </div>
     )

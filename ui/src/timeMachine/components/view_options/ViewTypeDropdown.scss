@@ -1,12 +1,12 @@
 @import "src/style/modules";
 
 .view-type-dropdown {
-  .cf-dropdown-item--children, .cf-dropdown--selected {
+  .dropdown-item--children, .dropdown--selected {
     display: flex;
     align-items: center;
   }
 
-  .cf-dropdown--selected {
+  .dropdown--selected {
     .view-type-dropdown--name {
       margin-left: 8px;
     }

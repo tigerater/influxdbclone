@@ -1,6 +1,6 @@
 // Libraries
 import React from 'react'
-import {render, fireEvent} from 'react-testing-library'
+import {mount} from 'enzyme'
 
 // Components
 import OnboardingButtons from 'src/onboarding/components/OnboardingButtons'
@@ -14,7 +14,9 @@ const setup = (override = {}) => {
     ...override,
   }
 
-  return render(<OnboardingButtons {...props} />)
+  const wrapper = mount(<OnboardingButtons {...props} />)
+
+  return wrapper
 }
 
 describe('Onboarding.Components.OnboardingButtons', () => {
@@ -24,41 +26,41 @@ describe('Onboarding.Components.OnboardingButtons', () => {
       const backButtonText = 'Previous'
       const onClickBack = jest.fn()
 
-      const {getByTestId} = setup({
+      const wrapper = setup({
         nextButtonText,
         backButtonText,
         onClickBack,
       })
 
-      const nextButton = getByTestId('next')
-      const backButton = getByTestId('back')
+      const nextButton = wrapper.find('[data-testid="next"]')
+      const backButton = wrapper.find('[data-testid="back"]')
 
-      const nextButtonLabel = nextButton.childNodes[0]
-      const backButtonLabel = backButton.childNodes[0]
+      const nextButtonLabel = nextButton.find('.button--label')
+      const backButtonLabel = backButton.find('.button--label')
 
-      fireEvent.click(backButton)
+      backButton.simulate('click')
 
-      expect(nextButton).toBeDefined()
-      expect(nextButtonLabel.textContent).toEqual(nextButtonText)
-      expect(nextButton.getAttribute('type')).toBe(ButtonType.Submit)
-      expect(backButtonLabel.textContent).toEqual(backButtonText)
-      expect(backButton.getAttribute('type')).toBe(ButtonType.Button)
+      expect(wrapper.exists()).toBe(true)
+      expect(nextButtonLabel.prop('children')).toEqual(nextButtonText)
+      expect(nextButton.prop('type')).toBe(ButtonType.Submit)
+      expect(backButtonLabel.prop('children')).toEqual(backButtonText)
+      expect(backButton.prop('type')).toBe(ButtonType.Button)
       expect(onClickBack).toBeCalled()
     })
 
     describe('if show skip', () => {
       it('renders the skip button', () => {
         const onClickSkip = jest.fn()
-        const {getByTestId} = setup({
+        const wrapper = setup({
           showSkip: true,
           onClickSkip,
         })
 
-        const skipButton = getByTestId('skip')
-        fireEvent.click(skipButton)
+        const skipButton = wrapper.find('[data-testid="skip"]')
+        skipButton.simulate('click')
 
-        expect(skipButton).toBeDefined()
-        expect(skipButton.getAttribute('type')).toBe(ButtonType.Button)
+        expect(skipButton.exists()).toBe(true)
+        expect(skipButton.prop('type')).toBe(ButtonType.Button)
         expect(onClickSkip).toBeCalled()
       })
     })

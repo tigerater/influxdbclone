@@ -54,7 +54,7 @@ export function defaultBuilderConfig(): BuilderConfig {
 function defaultLineViewProperties() {
   return {
     queries: [defaultViewQuery()],
-    colors: DEFAULT_LINE_COLORS,
+    colors: [],
     legend: {},
     note: '',
     showNoteWhenEmpty: false,

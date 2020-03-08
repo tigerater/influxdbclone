@@ -1,16 +1,16 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`Account rendering renders! 1`] = `
-<OverlayContainer
+<t
   maxWidth={800}
   testID="overlay--container"
 >
-  <OverlayHeader
+  <t
     onDismiss={[Function]}
     testID="overlay--header"
     title="My token"
   />
-  <OverlayBody
+  <t
     testID="overlay--body"
   >
     <CodeSnippet
@@ -282,6 +282,6 @@ exports[`Account rendering renders! 1`] = `
         />
       </PermissionsWidgetSection>
     </PermissionsWidget>
-  </OverlayBody>
-</OverlayContainer>
+  </t>
+</t>
 `;

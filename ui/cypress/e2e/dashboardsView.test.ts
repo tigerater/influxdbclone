@@ -27,7 +27,7 @@ describe('Dashboard', () => {
     const newName = 'new 🅱️ashboard'
 
     cy.get('.renamable-page-title--title').click()
-    cy.get('.cf-input-field')
+    cy.get('.input-field')
       .type(newName)
       .type('{enter}')
 

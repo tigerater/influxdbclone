@@ -3,9 +3,11 @@ import _ from 'lodash'
 import React from 'react'
 
 // Component
-import {Form, Grid, Dropdown} from '@influxdata/clockface'
+import {Form, Grid} from '@influxdata/clockface'
+import {Dropdown} from 'src/clockface'
 
 // Types
+import {DropdownMode} from 'src/clockface'
 import {FieldOption} from 'src/types/dashboards'
 
 interface Props {
@@ -19,33 +21,22 @@ const SortBy = ({fieldOptions, onChange, selected}: Props) => {
     <Grid.Column>
       <Form.Element label="Default Sort Field">
         <Dropdown
-          className="dropdown-stretch"
-          button={(active, onClick) => (
-            <Dropdown.Button active={active} onClick={onClick}>
-              {_.get(selected, 'displayName', 'Choose a sort field')}
-            </Dropdown.Button>
-          )}
-          menu={onCollapse => (
-            <Dropdown.Menu onCollapse={onCollapse}>
-              {fieldOptions
-                .filter(field => !!field.internalName)
-                .map(field => (
-                  <Dropdown.Item
-                    key={field.internalName}
-                    id={field.internalName}
-                    value={field}
-                    onClick={onChange}
-                    selected={
-                      field.internalName ===
-                      _.get(selected, 'internalName', null)
-                    }
-                  >
-                    {field.displayName}
-                  </Dropdown.Item>
-                ))}
-            </Dropdown.Menu>
-          )}
-        />
+          selectedID={_.get(selected, 'internalName', null)}
+          customClass="dropdown-stretch"
+          onChange={onChange}
+          mode={DropdownMode.ActionList}
+          titleText="Choose a sort field"
+        >
+          {fieldOptions.map(field => (
+            <Dropdown.Item
+              key={field.internalName}
+              id={field.internalName}
+              value={field}
+            >
+              {field.displayName}
+            </Dropdown.Item>
+          ))}
+        </Dropdown>
       </Form.Element>
     </Grid.Column>
   )

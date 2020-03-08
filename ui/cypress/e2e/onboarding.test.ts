@@ -59,6 +59,15 @@ describe('Onboarding', () => {
       .contains('Initial User Setup')
       .should('be.visible')
     cy.getByTestID('nav-step--setup').should('have.class', 'current')
+    cy.getByTestID('nav-step--setup')
+      .parent()
+      .children('span')
+      .children('span')
+      .should($span => {
+        expect($span)
+          .to.have.class('icon')
+          .and.to.have.class('circle-thick')
+      })
 
     cy.getByTestID('nav-step--complete')
       .parent()
@@ -72,7 +81,7 @@ describe('Onboarding', () => {
     cy.getByTestID('next').should('be.disabled')
 
     cy.getByTestID('next')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     //Check tooltips
@@ -104,7 +113,7 @@ describe('Onboarding', () => {
     cy.getByTestID('input-field--bucketname').type(user.bucket)
 
     cy.getByTestID('next')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     cy.getByTestID('next')
@@ -252,14 +261,14 @@ describe('Onboarding', () => {
 
     cy.getByTestID('next')
       .should('be.disabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     cy.getByTestID('input-field--password').type(user.password)
 
     cy.getByTestID('next')
       .should('be.disabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     cy.getByTestID('input-field--password-chk').type('drowssap')
@@ -277,7 +286,7 @@ describe('Onboarding', () => {
 
     cy.getByTestID('next')
       .should('be.disabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     cy.getByTestID('input-field--password-chk')
@@ -288,7 +297,7 @@ describe('Onboarding', () => {
 
     cy.getByTestID('next')
       .should('be.enabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     //check cleared username
@@ -296,14 +305,14 @@ describe('Onboarding', () => {
 
     cy.getByTestID('next')
       .should('be.disabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     cy.getByTestID('input-field--username').type(user.username)
 
     cy.getByTestID('next')
       .should('be.enabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     //check cleared password
@@ -316,14 +325,14 @@ describe('Onboarding', () => {
 
     cy.getByTestID('next')
       .should('be.disabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     cy.getByTestID('input-field--password').type(user.password)
 
     cy.getByTestID('next')
       .should('be.enabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     //check cleared org name
@@ -331,14 +340,14 @@ describe('Onboarding', () => {
 
     cy.getByTestID('next')
       .should('be.disabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     cy.getByTestID('input-field--orgname').type(user.org)
 
     cy.getByTestID('next')
       .should('be.enabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     //check cleared bucket name
@@ -346,14 +355,14 @@ describe('Onboarding', () => {
 
     cy.getByTestID('next')
       .should('be.disabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
 
     cy.getByTestID('input-field--bucketname').type(user.bucket)
 
     cy.getByTestID('next')
       .should('be.enabled')
-      .children('.cf-button--label')
+      .children('.button--label')
       .contains('Continue')
   })
 })

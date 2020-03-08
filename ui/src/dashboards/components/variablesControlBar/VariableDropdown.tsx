@@ -4,11 +4,7 @@ import {connect} from 'react-redux'
 import _ from 'lodash'
 
 // Components
-import {
-  Dropdown,
-  DropdownMenuTheme,
-  ComponentStatus,
-} from '@influxdata/clockface'
+import {Dropdown, DropdownMenuColors, ComponentStatus} from 'src/clockface'
 
 // Actions
 import {selectVariableValue} from 'src/dashboards/actions/index'
@@ -53,43 +49,25 @@ class VariableDropdown extends PureComponent<Props> {
       <div className="variable-dropdown">
         {/* TODO: Add variable description to title attribute when it is ready */}
         <Dropdown
+          selectedID={selectedKey}
+          onChange={this.handleSelect}
           widthPixels={140}
-          className="variable-dropdown--dropdown"
-          testID="variable-dropdown"
-          button={(active, onClick) => (
-            <Dropdown.Button
-              active={active}
-              onClick={onClick}
-              testID="variable-dropdown--button"
-              status={dropdownStatus}
-            >
-              {selectedKey || 'No Values'}
-            </Dropdown.Button>
-          )}
-          menu={onCollapse => (
-            <Dropdown.Menu
-              onCollapse={onCollapse}
-              theme={DropdownMenuTheme.Amethyst}
-            >
-              {dropdownValues.map(({name}) => (
-                /*
-                Use key as value since they are unique otherwise 
-                multiple selection appear in the dropdown
-              */
-                <Dropdown.Item
-                  key={name}
-                  id={name}
-                  value={name}
-                  onClick={this.handleSelect}
-                  selected={name === selectedKey}
-                  testID="variable-dropdown--item"
-                >
-                  {name}
-                </Dropdown.Item>
-              ))}
-            </Dropdown.Menu>
-          )}
-        />
+          titleText={selectedKey || 'No Values'}
+          customClass="variable-dropdown--dropdown"
+          menuColor={DropdownMenuColors.Amethyst}
+          buttonTestID="variable-dropdown"
+          status={dropdownStatus}
+        >
+          {dropdownValues.map(({name}) => (
+            /*
+              Use key as value since they are unique otherwise 
+              multiple selection appear in the dropdown
+            */
+            <Dropdown.Item key={name} id={name} value={name}>
+              {name}
+            </Dropdown.Item>
+          ))}
+        </Dropdown>
       </div>
     )
   }

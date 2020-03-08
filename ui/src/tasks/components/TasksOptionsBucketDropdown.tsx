@@ -4,7 +4,7 @@ import _ from 'lodash'
 import {connect} from 'react-redux'
 
 // Components
-import {Dropdown, ComponentStatus} from '@influxdata/clockface'
+import {Dropdown, ComponentStatus} from 'src/clockface'
 
 // Types
 import {Bucket} from '@influxdata/influx'
@@ -34,25 +34,14 @@ class TaskOptionsBucketDropdown extends PureComponent<Props> {
   }
 
   public render() {
-    const {selectedBucketName} = this.props
-
     return (
       <Dropdown
-        button={(active, onClick) => (
-          <Dropdown.Button
-            active={active}
-            onClick={onClick}
-            status={this.status}
-          >
-            {selectedBucketName}
-          </Dropdown.Button>
-        )}
-        menu={onCollapse => (
-          <Dropdown.Menu onCollapse={onCollapse}>
-            {this.dropdownItems}
-          </Dropdown.Menu>
-        )}
-      />
+        selectedID={this.selectedName}
+        onChange={this.props.onChangeBucketName}
+        status={this.status}
+      >
+        {this.dropdownItems}
+      </Dropdown>
     )
   }
 
@@ -62,13 +51,7 @@ class TaskOptionsBucketDropdown extends PureComponent<Props> {
     if (buckets && buckets.length) {
       return buckets.map(bucket => {
         return (
-          <Dropdown.Item
-            id={bucket.name}
-            key={bucket.name}
-            value={bucket.name}
-            onClick={this.props.onChangeBucketName}
-            selected={bucket.id === this.selectedName}
-          >
+          <Dropdown.Item id={bucket.name} key={bucket.name} value={bucket.name}>
             {bucket.name}
           </Dropdown.Item>
         )
@@ -76,7 +59,7 @@ class TaskOptionsBucketDropdown extends PureComponent<Props> {
     } else {
       return [
         <Dropdown.Item id="no-buckets" key="no-buckets" value="no-buckets">
-          No Buckets found in Org
+          {'no buckets found in org'}
         </Dropdown.Item>,
       ]
     }

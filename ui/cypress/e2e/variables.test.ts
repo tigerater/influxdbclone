@@ -11,11 +11,11 @@ describe('Variables', () => {
   })
 
   it('can create a variable', () => {
-    cy.get('.cf-empty-state').within(() => {
+    cy.get('.empty-state').within(() => {
       cy.contains('Create').click()
     })
 
-    cy.getByTestID('add-resource-dropdown--new').click()
+    cy.getByTestID('dropdown--item new').click()
 
     cy.getByInputName('name').type('Little Variable')
     cy.getByTestID('flux-editor').within(() => {

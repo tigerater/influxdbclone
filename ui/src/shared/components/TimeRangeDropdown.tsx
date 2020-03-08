@@ -4,7 +4,7 @@ import {get} from 'lodash'
 import moment from 'moment'
 
 // Components
-import {Dropdown} from '@influxdata/clockface'
+import {Dropdown, DropdownMode} from 'src/clockface'
 import DateRangePicker from 'src/shared/components/dateRangePicker/DateRangePicker'
 
 // Constants
@@ -63,38 +63,24 @@ class TimeRangeDropdown extends PureComponent<Props, State> {
         )}
         <div ref={this.dropdownRef}>
           <Dropdown
+            selectedID={timeRange.label}
+            onChange={this.handleChange}
             widthPixels={this.dropdownWidth}
-            button={(active, onClick) => (
-              <Dropdown.Button active={active} onClick={onClick}>
-                {this.formattedCustomTimeRange}
-              </Dropdown.Button>
-            )}
-            menu={onCollapse => (
-              <Dropdown.Menu
-                onCollapse={onCollapse}
-                overrideWidth={this.dropdownWidth + 50}
-              >
-                {TIME_RANGES.map(({label}) => {
-                  if (label === TIME_RANGE_LABEL) {
-                    return (
-                      <Dropdown.Divider key={label} text={label} id={label} />
-                    )
-                  }
-                  return (
-                    <Dropdown.Item
-                      key={label}
-                      value={label}
-                      id={label}
-                      selected={label === timeRange.label}
-                      onClick={this.handleChange}
-                    >
-                      {label}
-                    </Dropdown.Item>
-                  )
-                })}
-              </Dropdown.Menu>
-            )}
-          />
+            menuWidthPixels={this.dropdownWidth + 50}
+            titleText={this.formattedCustomTimeRange}
+            mode={DropdownMode.ActionList}
+          >
+            {TIME_RANGES.map(({label}) => {
+              if (label === TIME_RANGE_LABEL) {
+                return <Dropdown.Divider key={label} text={label} id={label} />
+              }
+              return (
+                <Dropdown.Item key={label} value={label} id={label}>
+                  {label}
+                </Dropdown.Item>
+              )
+            })}
+          </Dropdown>
         </div>
       </>
     )
@@ -119,7 +105,7 @@ class TimeRangeDropdown extends PureComponent<Props, State> {
   private get formattedCustomTimeRange(): string {
     const {timeRange} = this.props
     if (!this.isCustomTimeRange) {
-      return TIME_RANGES.find(range => range.lower === timeRange.lower).label
+      return timeRange.label
     }
 
     return `${moment(timeRange.lower).format(TIME_RANGE_FORMAT)} - ${moment(

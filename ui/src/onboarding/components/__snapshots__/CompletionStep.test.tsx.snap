@@ -40,13 +40,13 @@ exports[`Onboarding.Components.CompletionStep renders 1`] = `
         <dl
           className="wizard-completion--options"
         >
-          <Grid
+          <t
             testID="grid"
           >
-            <GridRow
+            <t
               testID="grid--row"
             >
-              <GridColumn
+              <t
                 testID="grid--column"
                 widthSM={4}
                 widthXS={12}
@@ -66,8 +66,8 @@ exports[`Onboarding.Components.CompletionStep renders 1`] = `
                     This will set up local metric collection and allow you to explore the features of InfluxDB 2.0 quickly.
                   </dd>
                 </div>
-              </GridColumn>
-              <GridColumn
+              </t>
+              <t
                 testID="grid--column"
                 widthSM={4}
                 widthXS={12}
@@ -87,8 +87,8 @@ exports[`Onboarding.Components.CompletionStep renders 1`] = `
                     This allows you to set up Telegraf, scrapers, and much more.
                   </dd>
                 </div>
-              </GridColumn>
-              <GridColumn
+              </t>
+              <t
                 testID="grid--column"
                 widthSM={4}
                 widthXS={12}
@@ -96,7 +96,7 @@ exports[`Onboarding.Components.CompletionStep renders 1`] = `
                 <div
                   className="wizard-completion--option"
                 >
-                  <Button
+                  <t
                     active={false}
                     color="success"
                     onClick={[MockFunction]}
@@ -115,9 +115,9 @@ exports[`Onboarding.Components.CompletionStep renders 1`] = `
                     Jump into InfluxDB 2.0 and set up data collection when you’re ready.
                   </dd>
                 </div>
-              </GridColumn>
-            </GridRow>
-          </Grid>
+              </t>
+            </t>
+          </t>
         </dl>
         <h5
           className="wizard-step--sub-title"

@@ -4,16 +4,11 @@ import classnames from 'classnames'
 import {Link} from 'react-router'
 
 // Components
-import {
-  Input,
-  SpinnerContainer,
-  TechnoSpinner,
-  Icon,
-} from '@influxdata/clockface'
+import {Input, SpinnerContainer, TechnoSpinner} from '@influxdata/clockface'
 import {ClickOutside} from 'src/shared/components/ClickOutside'
 
 // Types
-import {ComponentSize, IconFont} from '@influxdata/clockface'
+import {ComponentSize} from '@influxdata/clockface'
 import {RemoteDataState} from 'src/types'
 
 // Decorators
@@ -80,7 +75,7 @@ class ResourceEditableName extends Component<Props, State> {
           onClick={this.handleStartEditing}
           data-testid={buttonTestID}
         >
-          <Icon glyph={IconFont.Pencil} />
+          <span className="icon pencil" />
         </div>
         {this.input}
       </div>

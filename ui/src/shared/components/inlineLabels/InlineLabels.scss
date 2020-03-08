@@ -17,7 +17,7 @@ $inline-labels--margin: $ix-border / 2;
   flex-wrap: wrap;
   padding: $inline-labels--margin;
 
-  > .cf-label {
+  > .label {
     margin: $inline-labels--margin;
   }
 }
@@ -57,7 +57,7 @@ $label-edit-button-diameter: 18px; // Should be the same as the height of labels
     transform: translate(-50%, -50%) rotate(90deg);
   }
 
-  > .cf-button.cf-button-sm {
+  > .button.button-sm {
     position: absolute;
     z-index: 2;
     top: 50%;
@@ -70,7 +70,7 @@ $label-edit-button-diameter: 18px; // Should be the same as the height of labels
     transition: background-color 0.25s ease, border-color 0.25s ease,
       box-shadow 0.25s ease, height 0.25s ease, width 0.25s ease;
 
-    > .cf-button-icon {
+    > .button-icon {
       font-size: $form-sm-font;
       position: absolute;
       top: 50%;
@@ -79,7 +79,7 @@ $label-edit-button-diameter: 18px; // Should be the same as the height of labels
     }
   }
 
-  &:hover > .cf-button.cf-button-sm {
+  &:hover > .button.button-sm {
     width: $form-sm-height - $ix-marg-a;
     height: $form-sm-height - $ix-marg-a;
   }

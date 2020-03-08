@@ -8,7 +8,7 @@ import RefreshingView from 'src/shared/components/RefreshingView'
 
 // Types
 import {TimeRange} from 'src/types'
-import {ViewType, View} from 'src/types'
+import {ViewType, ViewShape, View} from 'src/types'
 
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
@@ -32,6 +32,8 @@ class ViewComponent extends Component<Props> {
     const {dashboardID} = this.props.params
 
     switch (view.properties.type) {
+      case ViewShape.Empty:
+        return this.emptyGraph
       case ViewType.Markdown:
         return <Markdown text={view.properties.note} />
       default:
@@ -44,6 +46,19 @@ class ViewComponent extends Component<Props> {
           />
         )
     }
+  }
+
+  private get emptyGraph(): JSX.Element {
+    return (
+      <div className="graph-empty">
+        <button
+          className="no-query--button btn btn-md btn-primary"
+          onClick={this.props.onEditCell}
+        >
+          <span className="icon plus" /> Add Data
+        </button>
+      </div>
+    )
   }
 }
 

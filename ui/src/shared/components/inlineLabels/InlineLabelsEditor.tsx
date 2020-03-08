@@ -116,11 +116,11 @@ class InlineLabelsEditor extends Component<Props, State> {
 
     return (
       <div
-        className="cf-label cf-label--xs cf-label--colorless"
+        className="label label--xs label--colorless"
         onClick={this.handleShowPopover}
         data-testid="inline-labels--empty"
       >
-        <span className="cf-label--name">Add a label</span>
+        <span className="label--name">Add a label</span>
       </div>
     )
   }

@@ -2,11 +2,11 @@
 import React, {PureComponent} from 'react'
 
 //Components
-import {Dropdown} from '@influxdata/clockface'
+import {MultiSelectDropdown, Dropdown} from 'src/clockface'
 
 // Types
 import {User} from '@influxdata/influx'
-import {ComponentStatus, DropdownItemType} from '@influxdata/clockface'
+import {ComponentStatus} from '@influxdata/clockface'
 
 interface Props {
   users: User[]
@@ -16,79 +16,30 @@ interface Props {
 
 export default class SelectUsers extends PureComponent<Props> {
   public render() {
-    const {users} = this.props
+    const {users, selectedUserIDs, onSelect} = this.props
 
     return (
-      <Dropdown
-        button={(active, onClick) => (
-          <Dropdown.Button
-            active={active}
-            onClick={onClick}
-            status={this.dropdownStatus}
-          >
-            {this.dropdownLabel}
-          </Dropdown.Button>
-        )}
-        menu={() => (
-          <Dropdown.Menu>
-            {users.map(u => (
-              <Dropdown.Item
-                type={DropdownItemType.Checkbox}
-                id={u.id}
-                key={u.id}
-                value={u}
-                selected={this.highlightSelectedItem(u)}
-                onClick={this.handleItemClick}
-              >
-                {u.name}
-              </Dropdown.Item>
-            ))}
-          </Dropdown.Menu>
-        )}
-      />
+      <MultiSelectDropdown
+        selectedIDs={selectedUserIDs}
+        onChange={onSelect}
+        emptyText={this.emptyText}
+        status={this.dropdownStatus}
+      >
+        {users.map(u => (
+          <Dropdown.Item id={u.id} key={u.id} value={u}>
+            {u.name}
+          </Dropdown.Item>
+        ))}
+      </MultiSelectDropdown>
     )
   }
 
-  private handleItemClick = (user: User): void => {
-    const {selectedUserIDs, onSelect} = this.props
-
-    let updatedSelectedUserIDs
-
-    if (selectedUserIDs.includes(user.id)) {
-      updatedSelectedUserIDs = selectedUserIDs.filter(id => id !== user.id)
-    } else {
-      updatedSelectedUserIDs = [...selectedUserIDs, user.id]
-    }
-
-    return onSelect(updatedSelectedUserIDs)
-  }
-
-  private highlightSelectedItem = (user: User): boolean => {
-    const {selectedUserIDs} = this.props
-
-    if (selectedUserIDs.includes(user.id)) {
-      return true
-    }
-
-    return false
-  }
-
-  private get dropdownLabel(): string {
-    const {users, selectedUserIDs} = this.props
-
+  private get emptyText(): string {
+    const {users} = this.props
     if (!users || !users.length) {
       return 'No users exist'
     }
-
-    if (!selectedUserIDs.length) {
-      return 'Select users'
-    }
-
-    const userNames = users
-      .filter(user => selectedUserIDs.includes(user.id))
-      .map(user => user.name)
-
-    return userNames.join(', ')
+    return 'Select user'
   }
 
   private get dropdownStatus(): ComponentStatus {

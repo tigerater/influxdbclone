@@ -8,9 +8,8 @@ exports[`StatusIndicator rendering renders! 1`] = `
     <div
       className="wizard-step--sparkle-container"
     >
-      <SparkleSpinner
+      <t
         loading="NotStarted"
-        sizePixels={100}
         testID="sparkle-spinner"
       />
     </div>

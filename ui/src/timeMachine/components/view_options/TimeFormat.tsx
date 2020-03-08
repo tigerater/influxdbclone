@@ -1,6 +1,6 @@
 // Libraries
 import React, {FunctionComponent} from 'react'
-import {SelectDropdown} from '@influxdata/clockface'
+import {Dropdown} from '@influxdata/clockface'
 
 // Utils
 import {resolveTimeFormat} from 'src/dashboards/utils/tableGraph'
@@ -17,11 +17,16 @@ const TimeFormatSetting: FunctionComponent<Props> = ({
   timeFormat,
   onTimeFormatChange,
 }) => (
-  <SelectDropdown
-    options={FORMAT_OPTIONS.map(option => option.text)}
-    selectedOption={resolveTimeFormat(timeFormat)}
-    onSelect={onTimeFormatChange}
-  />
+  <Dropdown
+    selectedID={resolveTimeFormat(timeFormat)}
+    onChange={onTimeFormatChange}
+  >
+    {FORMAT_OPTIONS.map(({text}) => (
+      <Dropdown.Item key={text} id={text} value={text}>
+        {text}
+      </Dropdown.Item>
+    ))}
+  </Dropdown>
 )
 
 export default TimeFormatSetting

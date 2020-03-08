@@ -1,24 +1,24 @@
 // Jest Snapshot v1, https://goo.gl/fbAQLP
 
 exports[`TaskForm rendering renders 1`] = `
-<Form
+<t
   testID="form-container"
 >
-  <Grid
+  <t
     testID="grid"
   >
-    <GridRow
+    <t
       testID="grid--row"
     >
-      <GridColumn
+      <t
         testID="grid--column"
         widthXS={12}
       >
-        <FormElement
+        <t
           label="Name"
           testID="form--element"
         >
-          <Input
+          <t
             autoFocus={false}
             autocomplete="off"
             disabledTitleText="This input is disabled"
@@ -33,17 +33,17 @@ exports[`TaskForm rendering renders 1`] = `
             type="text"
             value=""
           />
-        </FormElement>
-      </GridColumn>
-      <GridColumn
+        </t>
+      </t>
+      <t
         testID="grid--column"
         widthXS={12}
       >
-        <FormElement
+        <t
           label="Schedule Task"
           testID="form--element"
         >
-          <ComponentSpacer
+          <t
             alignItems="flex-start"
             direction="column"
             justifyContent="flex-start"
@@ -52,13 +52,13 @@ exports[`TaskForm rendering renders 1`] = `
             stretchToFitWidth={false}
             testID="component-spacer"
           >
-            <Radio
+            <t
               color="primary"
               shape="stretch"
               size="sm"
               testID="radio-button"
             >
-              <RadioButton
+              <t
                 active={false}
                 disabled={false}
                 disabledTitleText="This option is disabled"
@@ -69,8 +69,8 @@ exports[`TaskForm rendering renders 1`] = `
                 value="interval"
               >
                 Every
-              </RadioButton>
-              <RadioButton
+              </t>
+              <t
                 active={false}
                 disabled={false}
                 disabledTitleText="This option is disabled"
@@ -81,19 +81,19 @@ exports[`TaskForm rendering renders 1`] = `
                 value="cron"
               >
                 Cron
-              </RadioButton>
-            </Radio>
-          </ComponentSpacer>
-        </FormElement>
-      </GridColumn>
+              </t>
+            </t>
+          </t>
+        </t>
+      </t>
       <TaskScheduleFormFields
         onChangeInput={[MockFunction]}
       />
-      <GridColumn
+      <t
         testID="grid--column"
         widthXS={12}
       >
-        <FormElement
+        <t
           label="Token"
           testID="form--element"
         >
@@ -102,9 +102,9 @@ exports[`TaskForm rendering renders 1`] = `
             selectedToken=""
             tokens={Array []}
           />
-        </FormElement>
-      </GridColumn>
-    </GridRow>
-  </Grid>
-</Form>
+        </t>
+      </t>
+    </t>
+  </t>
+</t>
 `;

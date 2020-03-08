@@ -1,6 +1,8 @@
 // Import Components
 import AutoInput from './components/auto_input/AutoInput'
 import ConfirmationButton from './components/confirmation_button/ConfirmationButton'
+import Dropdown, {DropdownMode} from './components/dropdowns/Dropdown'
+import MultiSelectDropdown from './components/dropdowns/MultiSelectDropdown'
 import Form from './components/form_layout/Form'
 import MultipleInput, {
   MultiInputType,
@@ -50,15 +52,18 @@ export {
   ComponentStatus,
   ConfirmationButton,
   Context,
+  Dropdown,
   DropdownChild,
   DropdownMenuColors,
   DropdownMenuPosition,
+  DropdownMode,
   Form,
   FormElement,
   Greys,
   GridSizer,
   IconFont,
   IndexList,
+  MultiSelectDropdown,
   MultiInputType,
   MultipleInput,
   NavMenuType,
