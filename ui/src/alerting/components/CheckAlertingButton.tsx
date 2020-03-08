@@ -7,14 +7,12 @@ import {Button, ComponentColor, IconFont} from '@influxdata/clockface'
 
 // Utils
 import {getActiveTimeMachine} from 'src/timeMachine/selectors'
-import {isDraftQueryAlertable} from 'src/timeMachine/utils/queryBuilder'
 
 // Actions
 import {setActiveTab} from 'src/timeMachine/actions'
 
 // Types
-import {AppState, TimeMachineTab, DashboardDraftQuery} from 'src/types'
-import {ComponentStatus} from 'src/clockface'
+import {AppState, TimeMachineTab} from 'src/types'
 
 interface DispatchProps {
   setActiveTab: typeof setActiveTab
@@ -22,14 +20,12 @@ interface DispatchProps {
 
 interface StateProps {
   activeTab: TimeMachineTab
-  draftQueries: DashboardDraftQuery[]
 }
 
 type Props = DispatchProps & StateProps
 
 const CheckAlertingButton: FunctionComponent<Props> = ({
   setActiveTab,
-  draftQueries,
   activeTab,
 }) => {
   const handleClick = () => {
@@ -40,10 +36,6 @@ const CheckAlertingButton: FunctionComponent<Props> = ({
     }
   }
 
-  const alertingStatus = isDraftQueryAlertable(draftQueries)
-    ? ComponentStatus.Default
-    : ComponentStatus.Disabled
-
   return (
     <Button
       icon={IconFont.BellSolid}
@@ -52,7 +44,6 @@ const CheckAlertingButton: FunctionComponent<Props> = ({
           ? ComponentColor.Secondary
           : ComponentColor.Default
       }
-      status={alertingStatus}
       titleText="Add a Check to monitor this data"
       text="Monitoring & Alerting"
       onClick={handleClick}
@@ -61,9 +52,9 @@ const CheckAlertingButton: FunctionComponent<Props> = ({
 }
 
 const mstp = (state: AppState): StateProps => {
-  const {activeTab, draftQueries} = getActiveTimeMachine(state)
+  const {activeTab} = getActiveTimeMachine(state)
 
-  return {activeTab, draftQueries}
+  return {activeTab}
 }
 
 const mdtp: DispatchProps = {

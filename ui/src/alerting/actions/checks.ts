@@ -8,7 +8,7 @@ import * as copy from 'src/shared/copy/notifications'
 import * as api from 'src/client'
 
 // Utils
-import {getActiveTimeMachine, getSaveableView} from 'src/timeMachine/selectors'
+import {getActiveTimeMachine} from 'src/timeMachine/selectors'
 
 //Actions
 import {
@@ -20,18 +20,10 @@ import {
   setActiveTimeMachine,
 } from 'src/timeMachine/actions'
 import {setCheckStatus} from 'src/timeMachine/actions'
-import {createCellWithView} from 'src/dashboards/actions'
 
 // Types
-import {
-  Check,
-  GetState,
-  RemoteDataState,
-  CheckViewProperties,
-  View,
-} from 'src/types'
+import {Check, GetState, RemoteDataState, CheckViewProperties} from 'src/types'
 import {createView} from 'src/shared/utils/view'
-import {updateView} from 'src/dashboards/actions/views'
 
 export type Action =
   | ReturnType<typeof setAllChecks>
@@ -91,17 +83,13 @@ export const getCheckForTimeMachine = (checkID: string) => async (
       throw new Error(resp.data.message)
     }
 
-    const check = resp.data
-
     const view = createView<CheckViewProperties>('check')
-    // todo: when check has own view get view here until then:
-    view.properties.queries = [check.query]
-
+    // todo: when check has own view get view here
     dispatch(
       setActiveTimeMachine('alerting', {
         view,
         activeTab: 'alerting',
-        alerting: {check, checkStatus: RemoteDataState.Done},
+        alerting: {check: resp.data, checkStatus: RemoteDataState.Done},
       })
     )
   } catch (e) {
@@ -111,8 +99,8 @@ export const getCheckForTimeMachine = (checkID: string) => async (
   }
 }
 
-export const saveCheckFromTimeMachine = (dashboardID?: string) => async (
-  dispatch: Dispatch<any>,
+export const saveCheckFromTimeMachine = () => async (
+  dispatch: Dispatch<Action | NotificationAction>,
   getState: GetState
 ) => {
   try {
@@ -135,17 +123,6 @@ export const saveCheckFromTimeMachine = (dashboardID?: string) => async (
       : await api.postCheck({data: checkWithOrg})
 
     if (resp.status === 201 || resp.status === 200) {
-      if (dashboardID) {
-        const view = getSaveableView(state) as View<CheckViewProperties>
-        view.properties.checkID = resp.data.id
-
-        if (view.id) {
-          await dispatch(updateView(dashboardID, view))
-        } else {
-          await dispatch(createCellWithView(dashboardID, view))
-        }
-      }
-
       dispatch(setCheck(resp.data))
     } else {
       throw new Error(resp.data.message)

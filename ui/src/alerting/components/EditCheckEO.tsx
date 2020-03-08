@@ -18,7 +18,6 @@ import {
   setTimeMachineCheck,
   updateTimeMachineCheck,
 } from 'src/timeMachine/actions'
-import {executeQueries} from 'src/timeMachine/actions/queries'
 
 // Types
 import {
@@ -27,7 +26,6 @@ import {
   RemoteDataState,
   DashboardDraftQuery,
   TimeMachineID,
-  QueryView,
 } from 'src/types'
 
 interface DispatchProps {
@@ -36,11 +34,9 @@ interface DispatchProps {
   onUpdateTimeMachineCheck: typeof updateTimeMachineCheck
   onSetActiveTimeMachine: typeof setActiveTimeMachine
   onSetTimeMachineCheck: typeof setTimeMachineCheck
-  onExecuteQueries: typeof executeQueries
 }
 
 interface StateProps {
-  view: QueryView | null
   check: Partial<Check>
   query: DashboardDraftQuery
   checkStatus: RemoteDataState
@@ -51,7 +47,6 @@ type Props = WithRouterProps & DispatchProps & StateProps
 
 const EditCheckEditorOverlay: FunctionComponent<Props> = ({
   onUpdateCheck,
-  onExecuteQueries,
   onGetCheckForTimeMachine,
   onUpdateTimeMachineCheck,
   onSetTimeMachineCheck,
@@ -61,15 +56,10 @@ const EditCheckEditorOverlay: FunctionComponent<Props> = ({
   params: {checkID, orgID},
   query,
   check,
-  view,
 }) => {
   useEffect(() => {
     onGetCheckForTimeMachine(checkID)
   }, [checkID])
-
-  useEffect(() => {
-    onExecuteQueries()
-  }, [view])
 
   const handleUpdateName = (name: string) => {
     onUpdateTimeMachineCheck({name})
@@ -132,9 +122,7 @@ const mstp = (state: AppState): StateProps => {
     alerting: {check, checkStatus},
   } = getActiveTimeMachine(state)
 
-  const {view} = getActiveTimeMachine(state)
-
-  return {check, checkStatus, activeTimeMachineID, query: draftQueries[0], view}
+  return {check, checkStatus, activeTimeMachineID, query: draftQueries[0]}
 }
 
 const mdtp: DispatchProps = {
@@ -143,7 +131,6 @@ const mdtp: DispatchProps = {
   onUpdateTimeMachineCheck: updateTimeMachineCheck,
   onSetActiveTimeMachine: setActiveTimeMachine,
   onGetCheckForTimeMachine: getCheckForTimeMachine,
-  onExecuteQueries: executeQueries,
 }
 
 export default connect<StateProps, DispatchProps, {}>(

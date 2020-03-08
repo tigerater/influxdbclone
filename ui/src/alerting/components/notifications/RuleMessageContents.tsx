@@ -61,9 +61,6 @@ const RuleMessageContents: FC<Props> = ({rule}) => {
         />
       )
     }
-    case 'http': {
-      return <></>
-    }
 
     default:
       throw new Error('Unexpected endpoint type in <RuleMessageContents/>.')

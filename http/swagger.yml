@@ -9051,7 +9051,7 @@ components:
         id:
           readOnly: true
           type: string
-        endpointID:
+        notifyEndpointID:
           type: string
           readOnly: true
         orgID:
