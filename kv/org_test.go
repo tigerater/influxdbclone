@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/influxdata/influxdb"
-	"github.com/influxdata/influxdb/inmem"
 	"github.com/influxdata/influxdb/kv"
 	influxdbtesting "github.com/influxdata/influxdb/testing"
 )
@@ -70,14 +69,4 @@ func initOrganizationService(s kv.Store, f influxdbtesting.OrganizationFields, t
 			}
 		}
 	}
-}
-
-func TestService_CreateOrganization(t *testing.T) {
-	t.Run("InvalidOrgID", func(t *testing.T) {
-		svc := kv.NewService(inmem.NewKVStore())
-		svc.IsValidOrgBucketID = func(id influxdb.ID) bool { return false }
-		if err := svc.CreateOrganization(context.Background(), &influxdb.Organization{Name: "ORG"}); err == nil || err.Error() != `unable to generate valid org id` {
-			t.Fatalf("unexpected error: %#v", err)
-		}
-	})
 }
