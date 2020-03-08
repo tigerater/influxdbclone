@@ -26,20 +26,27 @@ import {
 import {createView} from 'src/shared/utils/view'
 
 // Constants
-import {TimeMachineEnum} from 'src/timeMachine/constants'
+import {
+  DE_TIME_MACHINE_ID,
+  VEO_TIME_MACHINE_ID,
+} from 'src/timeMachine/constants'
 
 // Types
 import {TimeMachineTab} from 'src/types/timeMachine'
-import {DashboardDraftQuery, QueryViewProperties} from 'src/types/dashboards'
+import {
+  DashboardDraftQuery,
+  QueryViewProperties,
+  QueryEditMode,
+} from 'src/types/dashboards'
 import {selectAggregateWindow} from '../actions/queryBuilder'
 
 describe('timeMachinesReducer', () => {
   test('it directs actions to the currently active timeMachine', () => {
     const state = initialState()
-    const de = state.timeMachines[TimeMachineEnum.DE]
-    const veo = state.timeMachines[TimeMachineEnum.VEO]
+    const de = state.timeMachines[DE_TIME_MACHINE_ID]
+    const veo = state.timeMachines[VEO_TIME_MACHINE_ID]
 
-    expect(state.activeTimeMachineID).toEqual(TimeMachineEnum.DE)
+    expect(state.activeTimeMachineID).toEqual(DE_TIME_MACHINE_ID)
     expect(de.activeTab).toEqual(TimeMachineTab.Queries)
     expect(veo.activeTab).toEqual(TimeMachineTab.Queries)
 
@@ -48,8 +55,8 @@ describe('timeMachinesReducer', () => {
       setActiveTab(TimeMachineTab.Visualization)
     )
 
-    const nextDE = nextState.timeMachines[TimeMachineEnum.DE]
-    const nextVEO = nextState.timeMachines[TimeMachineEnum.VEO]
+    const nextDE = nextState.timeMachines[DE_TIME_MACHINE_ID]
+    const nextVEO = nextState.timeMachines[VEO_TIME_MACHINE_ID]
 
     expect(nextDE.activeTab).toEqual(TimeMachineTab.Visualization)
     expect(nextVEO.activeTab).toEqual(TimeMachineTab.Queries)
@@ -58,7 +65,7 @@ describe('timeMachinesReducer', () => {
   test('it resets tab and draftScript state on a timeMachine when activated', () => {
     const state = initialState()
 
-    expect(state.activeTimeMachineID).toEqual(TimeMachineEnum.DE)
+    expect(state.activeTimeMachineID).toEqual(DE_TIME_MACHINE_ID)
 
     const activeTimeMachine = state.timeMachines[state.activeTimeMachineID]
 
@@ -70,7 +77,7 @@ describe('timeMachinesReducer', () => {
       {
         name: '',
         text: 'foo',
-        editMode: 'advanced',
+        editMode: QueryEditMode.Advanced,
         builderConfig: {
           buckets: [],
           tags: [],
@@ -81,7 +88,7 @@ describe('timeMachinesReducer', () => {
       {
         name: '',
         text: 'bar',
-        editMode: 'builder',
+        editMode: QueryEditMode.Builder,
         builderConfig: {
           buckets: [],
           tags: [],
@@ -93,10 +100,10 @@ describe('timeMachinesReducer', () => {
 
     const nextState = timeMachinesReducer(
       state,
-      setActiveTimeMachine(TimeMachineEnum.VEO, {view})
+      setActiveTimeMachine(VEO_TIME_MACHINE_ID, {view})
     )
 
-    expect(nextState.activeTimeMachineID).toEqual(TimeMachineEnum.VEO)
+    expect(nextState.activeTimeMachineID).toEqual(VEO_TIME_MACHINE_ID)
 
     const nextTimeMachine =
       nextState.timeMachines[nextState.activeTimeMachineID]
@@ -119,7 +126,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'foo',
-          editMode: 'builder',
+          editMode: QueryEditMode.Builder,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -131,7 +138,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'bar',
-          editMode: 'advanced',
+          editMode: QueryEditMode.Advanced,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -152,7 +159,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: '',
-          editMode: 'builder',
+          editMode: QueryEditMode.Builder,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -164,7 +171,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: '',
-          editMode: 'builder',
+          editMode: QueryEditMode.Builder,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -186,7 +193,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'foo',
-          editMode: 'advanced',
+          editMode: QueryEditMode.Advanced,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -198,7 +205,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'bar',
-          editMode: 'builder',
+          editMode: QueryEditMode.Builder,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -216,7 +223,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'foo',
-          editMode: 'advanced',
+          editMode: QueryEditMode.Advanced,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -228,7 +235,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'bar',
-          editMode: 'advanced',
+          editMode: QueryEditMode.Advanced,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -251,7 +258,7 @@ describe('timeMachineReducer', () => {
           {
             name: '',
             text: 'foo',
-            editMode: 'builder',
+            editMode: QueryEditMode.Builder,
             builderConfig: {
               buckets: [],
               tags: [],
@@ -262,7 +269,7 @@ describe('timeMachineReducer', () => {
           {
             name: '',
             text: 'bar',
-            editMode: 'advanced',
+            editMode: QueryEditMode.Advanced,
             builderConfig: {
               buckets: [],
               tags: [],
@@ -285,7 +292,7 @@ describe('timeMachineReducer', () => {
           {
             name: '',
             text: 'foo',
-            editMode: 'advanced',
+            editMode: QueryEditMode.Advanced,
             builderConfig: {
               buckets: [],
               tags: [],
@@ -296,7 +303,7 @@ describe('timeMachineReducer', () => {
           {
             name: '',
             text: 'bar',
-            editMode: 'builder',
+            editMode: QueryEditMode.Builder,
             builderConfig: {
               buckets: [],
               tags: [],
@@ -319,7 +326,7 @@ describe('timeMachineReducer', () => {
           {
             name: '',
             text: 'foo',
-            editMode: 'advanced',
+            editMode: QueryEditMode.Advanced,
             builderConfig: {
               buckets: [],
               tags: [],
@@ -330,7 +337,7 @@ describe('timeMachineReducer', () => {
           {
             name: '',
             text: 'bar',
-            editMode: 'builder',
+            editMode: QueryEditMode.Builder,
             builderConfig: {
               buckets: [],
               tags: [],
@@ -356,7 +363,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'a',
-          editMode: 'advanced',
+          editMode: QueryEditMode.Advanced,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -374,7 +381,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'a',
-          editMode: 'advanced',
+          editMode: QueryEditMode.Advanced,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -386,7 +393,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: '',
-          editMode: 'builder',
+          editMode: QueryEditMode.Builder,
           builderConfig: {
             buckets: [],
             tags: [{key: '_measurement', values: []}],
@@ -407,7 +414,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'a',
-          editMode: 'builder',
+          editMode: QueryEditMode.Builder,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -419,7 +426,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'b',
-          editMode: 'builder',
+          editMode: QueryEditMode.Builder,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -431,7 +438,7 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'c',
-          editMode: 'advanced',
+          editMode: QueryEditMode.Advanced,
           builderConfig: {
             buckets: [],
             tags: [],
@@ -486,14 +493,14 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'foo',
-          editMode: 'advanced',
+          editMode: QueryEditMode.Advanced,
           builderConfig,
           hidden: false,
         },
         {
           name: '',
           text: 'bar',
-          editMode: 'builder',
+          editMode: QueryEditMode.Builder,
           builderConfig,
           hidden: false,
         },
@@ -508,13 +515,13 @@ describe('timeMachineReducer', () => {
         {
           name: '',
           text: 'foo',
-          editMode: 'advanced',
+          editMode: QueryEditMode.Advanced,
           builderConfig,
           hidden: false,
         },
         {
           text: 'bar',
-          editMode: 'builder',
+          editMode: QueryEditMode.Builder,
           name: 'test query',
           builderConfig,
           hidden: false,
@@ -627,7 +634,7 @@ describe('timeMachineReducer', () => {
     const dq0 = {
       name: '',
       text: '',
-      editMode: 'advanced' as 'advanced',
+      editMode: QueryEditMode.Advanced,
       builderConfig,
       hidden: false,
     }
@@ -635,7 +642,7 @@ describe('timeMachineReducer', () => {
     const dq1 = {
       name: '',
       text: '',
-      editMode: 'builder' as 'builder',
+      editMode: QueryEditMode.Builder,
       builderConfig,
       hidden: false,
     }

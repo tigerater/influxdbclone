@@ -11,12 +11,12 @@ import CreateLabelOverlay from 'src/labels/components/CreateLabelOverlay'
 import {validateLabelUniqueness} from 'src/labels/utils/'
 
 // Types
-import {Label} from 'src/types'
+import {ILabel} from '@influxdata/influx'
 import {OverlayState} from 'src/types/overlay'
 
 // Constants
 export const ADD_NEW_LABEL_ITEM_ID = 'add-new-label'
-export const ADD_NEW_LABEL_LABEL: Label = {
+export const ADD_NEW_LABEL_LABEL: ILabel = {
   id: ADD_NEW_LABEL_ITEM_ID,
   name: '',
   properties: {
@@ -28,10 +28,10 @@ export const ADD_NEW_LABEL_LABEL: Label = {
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
-  selectedLabels: Label[]
-  labels: Label[]
-  onAddLabel: (label: Label) => void
-  onCreateLabel: (label: Label) => Promise<void>
+  selectedLabels: ILabel[]
+  labels: ILabel[]
+  onAddLabel: (label: ILabel) => void
+  onCreateLabel: (label: ILabel) => Promise<void>
 }
 
 interface State {
@@ -184,7 +184,7 @@ class InlineLabelsEditor extends Component<Props, State> {
     }
   }
 
-  private filterLabels = (searchTerm: string): Label[] => {
+  private filterLabels = (searchTerm: string): ILabel[] => {
     const filteredLabels = this.availableLabels.filter(label => {
       const lowercaseName = label.name.toLowerCase()
       const lowercaseSearchTerm = searchTerm.toLowerCase()
@@ -193,7 +193,7 @@ class InlineLabelsEditor extends Component<Props, State> {
     })
 
     const searchTermHasExactMatch = filteredLabels.reduce(
-      (acc: boolean, current: Label) => {
+      (acc: boolean, current: ILabel) => {
         return acc === true || current.name === searchTerm
       },
       false
@@ -206,7 +206,9 @@ class InlineLabelsEditor extends Component<Props, State> {
     return this.filteredLabelsWithoutAddButton(filteredLabels)
   }
 
-  private filteredLabelsWithAddButton = (filteredLabels: Label[]): Label[] => {
+  private filteredLabelsWithAddButton = (
+    filteredLabels: ILabel[]
+  ): ILabel[] => {
     const {searchTerm} = this.state
 
     const updatedAddButton = {...ADD_NEW_LABEL_LABEL, name: searchTerm}
@@ -225,18 +227,18 @@ class InlineLabelsEditor extends Component<Props, State> {
   }
 
   private filteredLabelsWithoutAddButton = (
-    filteredLabels: Label[]
-  ): Label[] => {
+    filteredLabels: ILabel[]
+  ): ILabel[] => {
     return filteredLabels.filter(label => label.id !== ADD_NEW_LABEL_ITEM_ID)
   }
 
-  private get availableLabels(): Label[] {
+  private get availableLabels(): ILabel[] {
     const {selectedLabels, labels} = this.props
 
     return _.differenceBy(labels, selectedLabels, label => label.name)
   }
 
-  private handleCreateLabel = async (label: Label) => {
+  private handleCreateLabel = async (label: ILabel) => {
     const {onCreateLabel, onAddLabel} = this.props
 
     try {

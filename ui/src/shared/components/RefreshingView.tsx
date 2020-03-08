@@ -23,6 +23,7 @@ import {
   DashboardQuery,
   VariableAssignment,
   QueryViewProperties,
+  ViewType,
   CheckViewProperties,
 } from 'src/types'
 
@@ -103,16 +104,17 @@ class RefreshingView extends PureComponent<Props, State> {
 
   private get queries(): DashboardQuery[] {
     const {properties} = this.props
+    const {type, queries} = properties
 
-    switch (properties.type) {
-      case 'single-stat':
-      case 'gauge':
-        return [properties.queries[0]]
-      case 'check':
-        return [properties.check.query]
-      default:
-        return properties.queries
+    if (type === ViewType.SingleStat) {
+      return [queries[0]]
     }
+
+    if (type === ViewType.Gauge) {
+      return [queries[0]]
+    }
+
+    return queries
   }
 
   private get variableAssignments(): VariableAssignment[] {
@@ -122,16 +124,9 @@ class RefreshingView extends PureComponent<Props, State> {
   }
 
   private get fallbackNote(): string {
-    const {properties} = this.props
+    const {note, showNoteWhenEmpty} = this.props.properties
 
-    switch (properties.type) {
-      case 'check':
-        return null
-      default:
-        const {note, showNoteWhenEmpty} = properties
-
-        return showNoteWhenEmpty ? note : null
-    }
+    return showNoteWhenEmpty ? note : null
   }
 
   private incrementSubmitToken = () => {

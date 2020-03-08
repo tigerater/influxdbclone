@@ -1,11 +1,9 @@
 // Libraries
+import {client} from 'src/utils/api'
 import {Dispatch} from 'react'
 
 // Constants
 import * as copy from 'src/shared/copy/notifications'
-
-// APIs
-import * as api from 'src/client'
 
 //Actions
 import {
@@ -22,7 +20,6 @@ export type Action =
   | ReturnType<typeof setCheck>
   | ReturnType<typeof removeCheck>
   | ReturnType<typeof setCurrentCheck>
-  | ReturnType<typeof updateCurrentCheck>
 
 export const setAllChecks = (status: RemoteDataState, checks?: Check[]) => ({
   type: 'SET_ALL_CHECKS' as 'SET_ALL_CHECKS',
@@ -39,17 +36,9 @@ export const removeCheck = (checkID: string) => ({
   payload: {checkID},
 })
 
-export const setCurrentCheck = (
-  status: RemoteDataState,
-  check?: Partial<Check>
-) => ({
+export const setCurrentCheck = (status: RemoteDataState, check?: Check) => ({
   type: 'SET_CURRENT_CHECK' as 'SET_CURRENT_CHECK',
   payload: {status, check},
-})
-
-export const updateCurrentCheck = (checkUpdate: Partial<Check>) => ({
-  type: 'UPDATE_CURRENT_CHECK' as 'UPDATE_CURRENT_CHECK',
-  payload: {status, checkUpdate},
 })
 
 export const getChecks = () => async (
@@ -64,13 +53,9 @@ export const getChecks = () => async (
       },
     } = getState()
 
-    const resp = await api.getChecks({query: {orgID}})
+    const checks = await client.checks.getAll(orgID)
 
-    if (resp.status !== 200) {
-      throw new Error(resp.data.message)
-    }
-
-    dispatch(setAllChecks(RemoteDataState.Done, resp.data.checks))
+    dispatch(setAllChecks(RemoteDataState.Done, checks))
   } catch (e) {
     console.error(e)
     dispatch(setAllChecks(RemoteDataState.Error))
@@ -84,13 +69,9 @@ export const getCurrentCheck = (checkID: string) => async (
   try {
     dispatch(setCurrentCheck(RemoteDataState.Loading))
 
-    const resp = await api.getCheck({checkID})
+    const check = await client.checks.get(checkID)
 
-    if (resp.status !== 200) {
-      throw new Error(resp.data.message)
-    }
-
-    dispatch(setCurrentCheck(RemoteDataState.Done, resp.data))
+    dispatch(setCurrentCheck(RemoteDataState.Done, check))
   } catch (e) {
     console.error(e)
     dispatch(setCurrentCheck(RemoteDataState.Error))
@@ -98,15 +79,11 @@ export const getCurrentCheck = (checkID: string) => async (
   }
 }
 
-export const createCheck = (check: Partial<Check>) => async (
+export const createCheck = (check: Check) => async (
   dispatch: Dispatch<Action | NotificationAction>
 ) => {
   try {
-    const resp = await api.postCheck({data: check as Check})
-
-    if (resp.status !== 201) {
-      throw new Error(resp.data.message)
-    }
+    client.checks.create(check)
   } catch (e) {
     console.error(e)
     dispatch(notify(copy.createCheckFailed(e.message)))
@@ -117,13 +94,8 @@ export const updateCheck = (check: Partial<Check>) => async (
   dispatch: Dispatch<Action | NotificationAction>
 ) => {
   try {
-    const resp = await api.patchCheck({checkID: check.id, data: check as Check})
-
-    if (resp.status !== 200) {
-      throw new Error(resp.data.message)
-    }
-
-    dispatch(setCheck(resp.data))
+    const updatedCheck = await client.checks.update(check.id, check)
+    dispatch(setCheck(updatedCheck))
   } catch (e) {
     console.error(e)
     dispatch(notify(copy.updateCheckFailed(e.message)))
@@ -134,12 +106,7 @@ export const deleteCheck = (checkID: string) => async (
   dispatch: Dispatch<Action | NotificationAction>
 ) => {
   try {
-    const resp = await api.deleteCheck({checkID})
-
-    if (resp.status !== 204) {
-      throw new Error(resp.data.message)
-    }
-
+    await client.checks.delete(checkID)
     dispatch(removeCheck(checkID))
   } catch (e) {
     console.error(e)

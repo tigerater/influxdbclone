@@ -18,7 +18,7 @@ import {
 import {setBucketInfo} from 'src/dataLoaders/actions/steps'
 
 // Types
-import {Bucket} from 'src/types'
+import {Bucket} from '@influxdata/influx'
 import {ComponentStatus} from '@influxdata/clockface'
 import {CollectorsStepProps} from 'src/dataLoaders/components/collectorsWizard/CollectorsWizard'
 import {TelegrafPlugin, BundleName} from 'src/types/dataLoaders'

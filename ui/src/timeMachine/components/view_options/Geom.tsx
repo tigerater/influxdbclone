@@ -8,22 +8,22 @@ import {Dropdown, Form, Grid} from '@influxdata/clockface'
 import {resolveGeom} from 'src/shared/utils/vis'
 
 // Types
-import {XYGeom} from 'src/types'
+import {XYViewGeom} from 'src/types'
 import {Columns} from '@influxdata/clockface'
 
 interface Props {
-  geom: XYGeom
-  onSetGeom: (geom: XYGeom) => void
+  geom: XYViewGeom
+  onSetGeom: (geom: XYViewGeom) => void
 }
 
-const getGeomLabel = (geom: XYGeom): string => {
+const getGeomLabel = (geom: XYViewGeom): string => {
   switch (geom) {
-    case 'monotoneX':
+    case XYViewGeom.MonotoneX:
       return 'Smooth'
-    case 'step':
+    case XYViewGeom.Step:
       return 'Step'
     default:
-    case 'line':
+    case XYViewGeom.Line:
       return 'Linear'
   }
 }
@@ -41,23 +41,23 @@ const Geom: SFC<Props> = ({geom, onSetGeom}) => {
           menu={onCollapse => (
             <Dropdown.Menu onCollapse={onCollapse}>
               <Dropdown.Item
-                value="line"
+                value={XYViewGeom.Line}
                 onClick={onSetGeom}
-                selected={geom === 'line'}
+                selected={geom === XYViewGeom.Line}
               >
                 Linear
               </Dropdown.Item>
               <Dropdown.Item
-                value="monotoneX"
+                value={XYViewGeom.MonotoneX}
                 onClick={onSetGeom}
-                selected={geom === 'monotoneX'}
+                selected={geom === XYViewGeom.MonotoneX}
               >
                 Smooth
               </Dropdown.Item>
               <Dropdown.Item
-                value="step"
+                value={XYViewGeom.Step}
                 onClick={onSetGeom}
-                selected={geom === 'step'}
+                selected={geom === XYViewGeom.Step}
               >
                 Step
               </Dropdown.Item>

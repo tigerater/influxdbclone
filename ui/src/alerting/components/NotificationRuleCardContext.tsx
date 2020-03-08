@@ -11,7 +11,7 @@ interface Props {
   onExport: () => void
 }
 
-const RuleCardContext: FunctionComponent<Props> = ({
+const NotificationRuleCardContext: FunctionComponent<Props> = ({
   onDelete,
   onClone,
   onExport,
@@ -39,4 +39,4 @@ const RuleCardContext: FunctionComponent<Props> = ({
   )
 }
 
-export default RuleCardContext
+export default NotificationRuleCardContext

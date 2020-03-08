@@ -1,14 +1,14 @@
 // Libraries
 import _ from 'lodash'
 
-// APIs
-import * as api from 'src/client'
-
 // Types
-import {Cell, NewCell, Dashboard, View, CreateDashboardRequest} from 'src/types'
+import {Cell, NewCell, Dashboard, View} from 'src/types'
+
+import {Cell as CellAPI, CreateDashboardRequest} from '@influxdata/influx'
+import {client} from 'src/utils/api'
 
 export const addDashboardIDToCells = (
-  cells: Cell[],
+  cells: CellAPI[],
   dashboardID: string
 ): Cell[] => {
   return cells.map(c => {
@@ -16,76 +16,48 @@ export const addDashboardIDToCells = (
   })
 }
 
+// TODO(desa): what to do about getting dashboards from another v2 source
 export const getDashboards = async (orgID: string): Promise<Dashboard[]> => {
-  const resp = await api.getDashboards({query: {orgID}})
+  const dashboards = await client.dashboards.getAll(orgID)
 
-  if (resp.status !== 200) {
-    throw new Error(resp.data.message)
-  }
-
-  return resp.data.dashboards.map(d => ({
+  return dashboards.map(d => ({
     ...d,
-    cells: addDashboardIDToCells(d.cells as Cell[], d.id),
+    cells: addDashboardIDToCells(d.cells, d.id),
   }))
 }
 
 export const getDashboard = async (id: string): Promise<Dashboard> => {
-  const resp = await api.getDashboard({dashboardID: id})
-
-  if (resp.status !== 200) {
-    throw new Error(resp.data.message)
-  }
-
-  const dashboard = resp.data
+  const dashboard = await client.dashboards.get(id)
 
   return {
     ...dashboard,
-    cells: addDashboardIDToCells(dashboard.cells as Cell[], dashboard.id),
+    cells: addDashboardIDToCells(dashboard.cells, dashboard.id),
   }
 }
 
 export const createDashboard = async (
   props: CreateDashboardRequest
 ): Promise<Dashboard> => {
-  const resp = await api.postDashboard({data: props})
-
-  if (resp.status !== 201) {
-    throw new Error(resp.data.message)
-  }
-
-  const dashboard = resp.data
+  const dashboard = await client.dashboards.create(props)
 
   return {
     ...dashboard,
-    cells: addDashboardIDToCells(dashboard.cells as Cell[], dashboard.id),
+    cells: addDashboardIDToCells(dashboard.cells, dashboard.id),
   }
 }
 
 export const deleteDashboard = async (dashboard: Dashboard): Promise<void> => {
-  const resp = await api.deleteDashboard({dashboardID: dashboard.id})
-
-  if (resp.status !== 204) {
-    throw new Error(resp.data.message)
-  }
+  await client.dashboards.delete(dashboard.id)
 }
 
 export const updateDashboard = async (
   dashboard: Dashboard
 ): Promise<Dashboard> => {
-  const resp = await api.patchDashboard({
-    dashboardID: dashboard.id,
-    data: dashboard,
-  })
-
-  if (resp.status !== 200) {
-    throw new Error(resp.data.message)
-  }
-
-  const updated = resp.data
+  const updated = await client.dashboards.update(dashboard.id, dashboard)
 
   return {
     ...updated,
-    cells: addDashboardIDToCells(updated.cells as Cell[], updated.id),
+    cells: addDashboardIDToCells(updated.cells, updated.id),
   }
 }
 
@@ -93,13 +65,7 @@ export const addCell = async (
   dashboardID: string,
   cell: NewCell
 ): Promise<Cell> => {
-  const resp = await api.postDashboardsCell({dashboardID, data: cell})
-
-  if (resp.status !== 201) {
-    throw new Error(resp.data.message)
-  }
-
-  const result = resp.data
+  const result = await client.dashboards.createCell(dashboardID, cell)
 
   const cellWithID = {...result, dashboardID}
 
@@ -110,39 +76,25 @@ export const updateCells = async (
   id: string,
   cells: Cell[]
 ): Promise<Cell[]> => {
-  const resp = await api.putDashboardsCells({dashboardID: id, data: cells})
+  const result = await client.dashboards.updateAllCells(id, cells)
 
-  if (resp.status !== 200) {
-    throw new Error(resp.data.message)
-  }
-
-  const result = resp.data.cells
-
-  return addDashboardIDToCells(result as Cell[], id)
+  return addDashboardIDToCells(result, id)
 }
 
 export const deleteCell = async (
   dashboardID: string,
   cell: Cell
 ): Promise<void> => {
-  const resp = await api.deleteDashboardsCell({dashboardID, cellID: cell.id})
-
-  if (resp.status !== 204) {
-    throw new Error(resp.data.message)
-  }
+  await client.dashboards.deleteCell(dashboardID, cell.id)
 }
 
 export const getView = async (
   dashboardID: string,
   cellID: string
 ): Promise<View> => {
-  const resp = await api.getDashboardsCellsView({dashboardID, cellID})
+  const data = await client.dashboards.getView(dashboardID, cellID)
 
-  if (resp.status !== 200) {
-    throw new Error(resp.data.message)
-  }
-
-  const view: View = {...resp.data, dashboardID, cellID}
+  const view: View = {...data, dashboardID, cellID}
 
   return view
 }
@@ -152,17 +104,9 @@ export const updateView = async (
   cellID: string,
   view: Partial<View>
 ): Promise<View> => {
-  const resp = await api.patchDashboardsCellsView({
-    dashboardID,
-    cellID,
-    data: view as View,
-  })
+  const data = await client.dashboards.updateView(dashboardID, cellID, view)
 
-  if (resp.status !== 200) {
-    throw new Error(resp.data.message)
-  }
-
-  const viewWithIDs: View = {...resp.data, dashboardID, cellID}
+  const viewWithIDs: View = {...data, dashboardID, cellID}
 
   return viewWithIDs
 }

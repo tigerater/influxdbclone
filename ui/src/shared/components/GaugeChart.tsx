@@ -7,13 +7,13 @@ import {AutoSizer} from 'react-virtualized'
 import Gauge from 'src/shared/components/Gauge'
 
 // Types
-import {GaugeViewProperties} from 'src/types/dashboards'
+import {GaugeView} from 'src/types/dashboards'
 
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
   value: number
-  properties: GaugeViewProperties
+  properties: GaugeView
 }
 
 @ErrorHandling

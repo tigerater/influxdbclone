@@ -4,7 +4,8 @@ import {withRouter, WithRouterProps} from 'react-router'
 import _ from 'lodash'
 
 // Components
-import {EmptyState, ResourceList} from '@influxdata/clockface'
+import {EmptyState} from '@influxdata/clockface'
+import {ResourceList} from 'src/clockface'
 import AddResourceDropdown from 'src/shared/components/AddResourceDropdown'
 import DashboardCards from 'src/dashboards/components/dashboard_index/DashboardCards'
 
@@ -20,7 +21,7 @@ interface OwnProps {
   onCloneDashboard: (dashboard: Dashboard) => void
   onUpdateDashboard: (dashboard: Dashboard) => void
   onFilterChange: (searchTerm: string) => void
-  filterComponent?: JSX.Element
+  filterComponent?: () => JSX.Element
   onImportDashboard: () => void
   dashboards: Dashboard[]
 }

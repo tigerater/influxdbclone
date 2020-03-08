@@ -57,7 +57,7 @@ interface OwnProps {
   position: HistogramPosition
   binCount: number
   colors: Color[]
-  xDomain: number[]
+  xDomain: [number, number]
   xAxisLabel: string
 }
 
@@ -168,7 +168,7 @@ const HistogramOptions: SFC<Props> = props => {
         />
       </Form.Element>
       <AutoDomainInput
-        domain={xDomain as [number, number]}
+        domain={xDomain}
         onSetDomain={onSetXDomain}
         label="X Axis Domain"
       />

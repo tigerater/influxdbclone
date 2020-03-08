@@ -27,6 +27,7 @@ import {
 
 // Utils
 import {GlobalAutoRefresher} from 'src/utils/AutoRefresher'
+import {createView} from 'src/shared/utils/view'
 import {
   extractRateLimitResourceName,
   extractRateLimitStatus,
@@ -37,6 +38,7 @@ import {
   DASHBOARD_LAYOUT_ROW_HEIGHT,
   AUTOREFRESH_DEFAULT,
 } from 'src/shared/constants'
+import {VEO_TIME_MACHINE_ID} from 'src/timeMachine/constants'
 import {DEFAULT_TIME_RANGE} from 'src/shared/constants/timeRanges'
 
 // Types
@@ -49,6 +51,9 @@ import {
   AppState,
   AutoRefresh,
   AutoRefreshStatus,
+  XYView,
+  ViewType,
+  QueryView,
 } from 'src/types'
 import {RemoteDataState} from 'src/types'
 import {WithRouterProps} from 'react-router'
@@ -294,8 +299,7 @@ class DashboardPage extends Component<Props, State> {
   }
 
   private handleAddCell = async (): Promise<void> => {
-    const {router, location} = this.props
-    router.push(`${location.pathname}/cells/new`)
+    this.showVEO()
   }
 
   private showNoteOverlay = async (id?: string): Promise<void> => {
@@ -307,15 +311,27 @@ class DashboardPage extends Component<Props, State> {
   }
 
   private handleEditView = (cellID: string): void => {
-    const {router, location} = this.props
-    router.push(`${location.pathname}/cells/${cellID}/edit`)
+    this.showVEO(cellID)
+  }
+
+  private showVEO = (id?: string): void => {
+    const {router, location, views, onSetActiveTimeMachine} = this.props
+    if (id) {
+      const view = _.get(views, `${id}.view`) as QueryView
+      onSetActiveTimeMachine(VEO_TIME_MACHINE_ID, {view})
+      router.push(`${location.pathname}/cells/${id}/edit`)
+    } else {
+      const view = createView<XYView>(ViewType.XY)
+      onSetActiveTimeMachine(VEO_TIME_MACHINE_ID, {view})
+      router.push(`${location.pathname}/cells/new`)
+    }
   }
 
   private handleCloneCell = async (cell: Cell): Promise<void> => {
     const {dashboard, onCreateCellWithView, views} = this.props
     const viewEntry = views[cell.id]
     if (viewEntry && viewEntry.view) {
-      await onCreateCellWithView(dashboard.id, viewEntry.view, cell)
+      await onCreateCellWithView(dashboard, viewEntry.view, cell)
     }
   }
 

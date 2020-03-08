@@ -1,9 +1,9 @@
 import React from 'react'
 
-import {ViewType} from 'src/types'
+import {ViewType} from 'src/types/dashboards'
 
 const GRAPHIC_SVGS = {
-  heatmap: (
+  [ViewType.Heatmap]: (
     <div className="vis-graphic">
       <svg
         width="100%"
@@ -240,7 +240,7 @@ const GRAPHIC_SVGS = {
       </svg>
     </div>
   ),
-  histogram: (
+  [ViewType.Histogram]: (
     <div className="vis-graphic">
       <svg
         width="100%"
@@ -469,7 +469,7 @@ const GRAPHIC_SVGS = {
       </svg>
     </div>
   ),
-  xy: (
+  [ViewType.XY]: (
     <div className="vis-graphic">
       <svg
         width="100%"
@@ -508,7 +508,7 @@ const GRAPHIC_SVGS = {
       </svg>
     </div>
   ),
-  'single-stat': (
+  [ViewType.SingleStat]: (
     <div className="vis-graphic">
       <svg
         width="100%"
@@ -547,7 +547,7 @@ const GRAPHIC_SVGS = {
       </svg>
     </div>
   ),
-  'line-plus-single-stat': (
+  [ViewType.LinePlusSingleStat]: (
     <div className="vis-graphic">
       <svg
         width="100%"
@@ -596,7 +596,7 @@ const GRAPHIC_SVGS = {
       </svg>
     </div>
   ),
-  gauge: (
+  [ViewType.Gauge]: (
     <div className="vis-graphic">
       <svg
         width="100%"
@@ -736,7 +736,7 @@ const GRAPHIC_SVGS = {
       </svg>
     </div>
   ),
-  table: (
+  [ViewType.Table]: (
     <div className="vis-graphic">
       <svg
         id="Table"
@@ -812,7 +812,7 @@ const GRAPHIC_SVGS = {
       </svg>
     </div>
   ),
-  scatter: (
+  [ViewType.Scatter]: (
     <div className="vis-graphic">
       <svg
         width="100%"
@@ -897,51 +897,45 @@ const GRAPHIC_SVGS = {
   ),
 }
 
-interface VisGraphic {
-  type: ViewType
-  name: string
-  graphic: JSX.Element
-}
-
-export const VIS_GRAPHICS: VisGraphic[] = [
+export const VIS_GRAPHICS = [
   {
-    type: 'xy',
+    type: ViewType.XY,
     name: 'Graph',
-    graphic: GRAPHIC_SVGS.xy,
+    graphic: GRAPHIC_SVGS[ViewType.XY],
   },
   {
-    type: 'line-plus-single-stat',
+    type: ViewType.LinePlusSingleStat,
     name: 'Graph + Single Stat',
-    graphic: GRAPHIC_SVGS['line-plus-single-stat'],
+    graphic: GRAPHIC_SVGS[ViewType.LinePlusSingleStat],
   },
   {
-    type: 'heatmap',
+    type: ViewType.Heatmap,
     name: 'Heatmap',
-    graphic: GRAPHIC_SVGS.heatmap,
+    graphic: GRAPHIC_SVGS[ViewType.Heatmap],
   },
   {
-    type: 'histogram',
+    type: ViewType.Histogram,
     name: 'Histogram',
-    graphic: GRAPHIC_SVGS.histogram,
+    graphic: GRAPHIC_SVGS[ViewType.Histogram],
   },
   {
-    type: 'single-stat',
+    type: ViewType.SingleStat,
     name: 'Single Stat',
-    graphic: GRAPHIC_SVGS['single-stat'],
+    graphic: GRAPHIC_SVGS[ViewType.SingleStat],
   },
   {
-    type: 'gauge',
+    type: ViewType.Gauge,
     name: 'Gauge',
-    graphic: GRAPHIC_SVGS.gauge,
+    graphic: GRAPHIC_SVGS[ViewType.Gauge],
   },
   {
-    type: 'table',
+    type: ViewType.Table,
     name: 'Table',
-    graphic: GRAPHIC_SVGS.table,
+    graphic: GRAPHIC_SVGS[ViewType.Table],
   },
   {
-    type: 'scatter',
+    type: ViewType.Scatter,
     name: 'Scatter',
-    graphic: GRAPHIC_SVGS.scatter,
+    graphic: GRAPHIC_SVGS[ViewType.Scatter],
   },
 ]

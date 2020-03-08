@@ -9,8 +9,7 @@ import _ from 'lodash'
 import {Form, Input, Button, Overlay} from '@influxdata/clockface'
 
 // Types
-import {Organization} from '@influxdata/influx'
-import {Bucket} from 'src/types'
+import {Organization, Bucket} from '@influxdata/influx'
 import {
   ButtonType,
   ComponentColor,
@@ -128,7 +127,7 @@ class CreateOrgOverlay extends PureComponent<Props, State> {
     const {org, bucket} = this.state
     const {createOrgWithBucket} = this.props
 
-    await createOrgWithBucket(org, bucket as any)
+    await createOrgWithBucket(org, bucket)
   }
 
   private closeModal = () => {
@@ -193,7 +192,9 @@ const mdtp = {
   createOrgWithBucket,
 }
 
-export default connect<{}, DispatchProps, OwnProps>(
-  null,
-  mdtp
-)(withRouter<OwnProps & DispatchProps>(CreateOrgOverlay))
+export default withRouter(
+  connect<{}, DispatchProps, OwnProps>(
+    null,
+    mdtp
+  )(CreateOrgOverlay)
+)

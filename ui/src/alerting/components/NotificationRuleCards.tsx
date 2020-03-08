@@ -2,24 +2,26 @@
 import React, {FunctionComponent} from 'react'
 
 // Components
-import NotificationRuleCard from 'src/alerting/components/notifications/RuleCard'
-import {EmptyState, ResourceList} from '@influxdata/clockface'
+import NotificationRuleCard from 'src/alerting/components/NotificationRuleCard'
+import {ResourceList} from 'src/clockface'
 
 // Types
 import {NotificationRule} from 'src/types'
-import {ComponentSize} from '@influxdata/clockface'
+import {EmptyState, ComponentSize} from '@influxdata/clockface'
 
 interface Props {
-  rules: NotificationRule[]
+  notificationRules: NotificationRule[]
 }
 
-const NotificationRuleCards: FunctionComponent<Props> = ({rules}) => {
+const NotificationRuleCards: FunctionComponent<Props> = ({
+  notificationRules,
+}) => {
   return (
     <>
       <ResourceList>
         <ResourceList.Body emptyState={<EmptyNotificationRulesList />}>
-          {rules.map(nr => (
-            <NotificationRuleCard key={nr.id} rule={nr} />
+          {notificationRules.map(nr => (
+            <NotificationRuleCard key={nr.id} notificationRule={nr} />
           ))}
         </ResourceList.Body>
       </ResourceList>

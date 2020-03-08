@@ -1,4 +1,15 @@
-import {Task, Dashboard, View, Label, TaskStatus} from 'src/types'
+import {
+  Task,
+  Dashboard,
+  View,
+  ViewShape,
+  ViewType,
+  XYViewGeom,
+  Scale,
+  QueryEditMode,
+  Label,
+  TaskStatus,
+} from 'src/types'
 import {IVariable as Variable} from '@influxdata/influx'
 
 export const myDashboard: Dashboard = {
@@ -23,11 +34,11 @@ export const myView: View = {
   id: 'cell_view_1',
   name: 'My Cell',
   properties: {
-    shape: 'chronograf-v2',
+    shape: ViewShape.ChronografV2,
     queries: [
       {
         text: 'v.bucket',
-        editMode: 'builder',
+        editMode: QueryEditMode.Builder,
         name: 'View Query',
         builderConfig: {
           buckets: ['bb8'],
@@ -53,7 +64,7 @@ export const myView: View = {
         prefix: '',
         suffix: '',
         base: '10',
-        scale: 'linear',
+        scale: Scale.Linear,
       },
       y: {
         bounds: ['', ''],
@@ -61,12 +72,12 @@ export const myView: View = {
         prefix: '',
         suffix: '',
         base: '10',
-        scale: 'linear',
+        scale: Scale.Linear,
       },
     },
-    type: 'xy',
+    type: ViewType.XY,
     legend: {},
-    geom: 'line',
+    geom: XYViewGeom.Line,
     colors: [],
     note: '',
     showNoteWhenEmpty: false,

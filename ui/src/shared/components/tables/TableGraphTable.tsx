@@ -27,7 +27,7 @@ const COLUMN_MIN_WIDTH = 100
 const ROW_HEIGHT = 30
 
 // Types
-import {TableViewProperties, TimeZone} from 'src/types'
+import {TableView, TimeZone} from 'src/types'
 import {TransformTableDataReturnType} from 'src/dashboards/utils/tableGraph'
 
 export interface ColumnWidths {
@@ -46,7 +46,7 @@ export interface CellRendererProps {
 interface OwnProps {
   dataTypes: {[x: string]: string}
   transformedDataBundle: TransformTableDataReturnType
-  properties: TableViewProperties
+  properties: TableView
   onSort: (fieldName: string) => void
   timeZone: TimeZone
 }

@@ -1,4 +1,4 @@
-import {Organization} from '../../src/types'
+import {Organization} from '@influxdata/influx'
 
 describe('Variables', () => {
   beforeEach(() => {

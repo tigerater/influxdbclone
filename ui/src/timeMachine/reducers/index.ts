@@ -8,7 +8,10 @@ import {createView, defaultViewQuery} from 'src/shared/utils/view'
 import {isConfigValid, buildQuery} from 'src/timeMachine/utils/queryBuilder'
 
 // Constants
-import {TimeMachineEnum} from 'src/timeMachine/constants'
+import {
+  VEO_TIME_MACHINE_ID,
+  DE_TIME_MACHINE_ID,
+} from 'src/timeMachine/constants'
 import {AUTOREFRESH_DEFAULT} from 'src/shared/constants'
 import {
   THRESHOLD_TYPE_TEXT,
@@ -21,10 +24,11 @@ import {
   ViewType,
   DashboardDraftQuery,
   BuilderConfig,
-  BuilderConfigAggregateWindow,
+  QueryEditMode,
   QueryView,
   QueryViewProperties,
   ExtractWorkingView,
+  BuilderConfigAggregateWindow,
 } from 'src/types/dashboards'
 import {Action} from 'src/timeMachine/actions'
 import {TimeMachineTab} from 'src/types/timeMachine'
@@ -67,11 +71,9 @@ export interface TimeMachineState {
 }
 
 export interface TimeMachinesState {
-  activeTimeMachineID: TimeMachineEnum
+  activeTimeMachineID: string
   timeMachines: {
-    [TimeMachineEnum.DE]: TimeMachineState
-    [TimeMachineEnum.VEO]: TimeMachineState
-    [TimeMachineEnum.Alerting]: TimeMachineState
+    [timeMachineID: string]: TimeMachineState
   }
 }
 
@@ -103,11 +105,10 @@ export const initialStateHelper = (): TimeMachineState => ({
 })
 
 export const initialState = (): TimeMachinesState => ({
-  activeTimeMachineID: TimeMachineEnum.DE,
+  activeTimeMachineID: DE_TIME_MACHINE_ID,
   timeMachines: {
-    [TimeMachineEnum.VEO]: initialStateHelper(),
-    [TimeMachineEnum.DE]: initialStateHelper(),
-    [TimeMachineEnum.Alerting]: initialStateHelper(),
+    [VEO_TIME_MACHINE_ID]: initialStateHelper(),
+    [DE_TIME_MACHINE_ID]: initialStateHelper(),
   },
 })
 
@@ -266,7 +267,7 @@ export const timeMachineReducer = (
       const {prefix, axis} = action.payload
       const viewType = state.view.properties.type
 
-      if (viewType === 'heatmap' || viewType == 'scatter') {
+      if (viewType === ViewType.Heatmap || viewType == ViewType.Scatter) {
         if (axis === 'x') {
           return setViewProperties(state, {xPrefix: prefix})
         }
@@ -279,7 +280,7 @@ export const timeMachineReducer = (
       const {suffix, axis} = action.payload
       const viewType = state.view.properties.type
 
-      if (viewType === 'heatmap' || viewType === 'scatter') {
+      if (viewType === ViewType.Heatmap || viewType === ViewType.Scatter) {
         if (axis === 'x') {
           return setViewProperties(state, {xSuffix: suffix})
         }
@@ -316,9 +317,9 @@ export const timeMachineReducer = (
       const {xAxisLabel} = action.payload
 
       switch (state.view.properties.type) {
-        case 'histogram':
-        case 'heatmap':
-        case 'scatter':
+        case ViewType.Histogram:
+        case ViewType.Heatmap:
+        case ViewType.Scatter:
           return setViewProperties(state, {xAxisLabel})
         default:
           return setYAxis(state, {label: xAxisLabel})
@@ -329,9 +330,9 @@ export const timeMachineReducer = (
       const {yAxisLabel} = action.payload
 
       switch (state.view.properties.type) {
-        case 'histogram':
-        case 'heatmap':
-        case 'scatter':
+        case ViewType.Histogram:
+        case ViewType.Heatmap:
+        case ViewType.Scatter:
           return setViewProperties(state, {yAxisLabel})
         default:
           return setYAxis(state, {label: yAxisLabel})
@@ -390,11 +391,11 @@ export const timeMachineReducer = (
       const {prefix} = action.payload
 
       switch (state.view.properties.type) {
-        case 'gauge':
-        case 'single-stat':
-        case 'line-plus-single-stat':
+        case ViewType.Gauge:
+        case ViewType.SingleStat:
+        case ViewType.LinePlusSingleStat:
           return setViewProperties(state, {prefix})
-        case 'xy':
+        case ViewType.XY:
           return setYAxis(state, {prefix})
         default:
           return state
@@ -405,11 +406,11 @@ export const timeMachineReducer = (
       const {suffix} = action.payload
 
       switch (state.view.properties.type) {
-        case 'gauge':
-        case 'single-stat':
-        case 'line-plus-single-stat':
+        case ViewType.Gauge:
+        case ViewType.SingleStat:
+        case ViewType.LinePlusSingleStat:
           return setViewProperties(state, {suffix})
-        case 'xy':
+        case ViewType.XY:
           return setYAxis(state, {suffix})
         default:
           return state
@@ -420,13 +421,13 @@ export const timeMachineReducer = (
       const {colors} = action.payload
 
       switch (state.view.properties.type) {
-        case 'gauge':
-        case 'single-stat':
-        case 'scatter':
-        case 'xy':
-        case 'histogram':
+        case ViewType.Gauge:
+        case ViewType.SingleStat:
+        case ViewType.Scatter:
+        case ViewType.XY:
+        case ViewType.Histogram:
           return setViewProperties(state, {colors})
-        case 'line-plus-single-stat':
+        case ViewType.LinePlusSingleStat:
           return setViewProperties(state, {
             colors: updateCorrectColors(state, colors),
           })
@@ -490,7 +491,7 @@ export const timeMachineReducer = (
       return produce(state, draftState => {
         const query = draftState.draftQueries[draftState.activeQueryIndex]
 
-        query.editMode = 'builder'
+        query.editMode = QueryEditMode.Builder
         query.hidden = false
 
         buildAllQueries(draftState)
@@ -503,7 +504,7 @@ export const timeMachineReducer = (
 
       draftQueries[activeQueryIndex] = {
         ...draftQueries[activeQueryIndex],
-        editMode: 'advanced',
+        editMode: QueryEditMode.Advanced,
       }
 
       return {
@@ -908,7 +909,7 @@ const buildActiveQuery = (draftState: TimeMachineState) => {
 
 const buildAllQueries = (draftState: TimeMachineState) => {
   draftState.draftQueries
-    .filter(query => query.editMode === 'builder')
+    .filter(query => query.editMode === QueryEditMode.Builder)
     .forEach(query => {
       if (isConfigValid(query.builderConfig)) {
         query.text = buildQuery(query.builderConfig)

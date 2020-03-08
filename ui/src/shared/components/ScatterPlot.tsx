@@ -20,13 +20,13 @@ import {DEFAULT_LINE_COLORS} from 'src/shared/constants/graphColorPalettes'
 import {INVALID_DATA_COPY} from 'src/shared/copy/cell'
 
 // Types
-import {RemoteDataState, ScatterViewProperties, TimeZone} from 'src/types'
+import {RemoteDataState, ScatterView, TimeZone} from 'src/types'
 
 interface Props {
   table: Table
   fluxGroupKeyUnion?: string[]
   loading: RemoteDataState
-  viewProperties: ScatterViewProperties
+  viewProperties: ScatterView
   children: (config: Config) => JSX.Element
   timeZone: TimeZone
 }

@@ -3,7 +3,7 @@ import React, {PureComponent} from 'react'
 
 // Components
 import {Member} from 'src/types'
-import {ResourceCard} from '@influxdata/clockface'
+import {ResourceList} from 'src/clockface'
 import MemberContextMenu from 'src/members/components/MemberContextMenu'
 
 interface Props {
@@ -17,13 +17,13 @@ export default class MemberCard extends PureComponent<Props> {
 
     return (
       <>
-        <ResourceCard
+        <ResourceList.Card
           testID="task-card"
-          contextMenu={
+          contextMenu={() => (
             <MemberContextMenu member={member} onDelete={onDelete} />
-          }
-          name={<ResourceCard.Name name={member.name} />}
-          metaData={[<>Role: {member.role}</>]}
+          )}
+          name={() => <ResourceList.Name name={member.name} />}
+          metaData={() => [<>Role: {member.role}</>]}
         />
       </>
     )

@@ -8,10 +8,11 @@ import {Form, Input, Grid} from '@influxdata/clockface'
 import {secondsToDuration} from 'src/utils/formatting'
 
 // Types
+import {BucketRetentionRules} from '@influxdata/influx'
 import {Columns, InputType} from '@influxdata/clockface'
 
 interface Props {
-  type: 'expire'
+  type: BucketRetentionRules.TypeEnum
   retentionSeconds: number
   onChangeInput: (e: ChangeEvent<HTMLInputElement>) => void
 }

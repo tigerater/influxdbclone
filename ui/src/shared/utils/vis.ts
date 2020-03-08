@@ -13,27 +13,27 @@ import {
 import {VIS_SIG_DIGITS} from 'src/shared/constants'
 
 // Types
-import {XYGeom, Axis, Base, TimeZone} from 'src/types'
+import {XYViewGeom, Axis, Base, TimeZone} from 'src/types'
 
 /*
   A geom may be stored as "line", "step", "monotoneX", "bar", or "stacked", but
   we currently only support the "line", "step", and "monotoneX" geoms.
 */
-export const resolveGeom = (geom: XYGeom) => {
-  if (geom === 'step' || geom === 'monotoneX') {
+export const resolveGeom = (geom: XYViewGeom) => {
+  if (geom === XYViewGeom.Step || geom === XYViewGeom.MonotoneX) {
     return geom
   }
 
-  return 'line'
+  return XYViewGeom.Line
 }
 
-export const geomToInterpolation = (geom: XYGeom): LineInterpolation => {
+export const geomToInterpolation = (geom: XYViewGeom): LineInterpolation => {
   const resolvedGeom = resolveGeom(geom)
 
   switch (resolvedGeom) {
-    case 'step':
+    case XYViewGeom.Step:
       return 'step'
-    case 'monotoneX':
+    case XYViewGeom.MonotoneX:
       return 'monotoneX'
     default:
       return 'linear'
@@ -94,13 +94,7 @@ export const filterNoisyColumns = (columns: string[], table: Table): string[] =>
 
     const keyData = table.getColumn(key)
 
-    for (const d of keyData) {
-      if (d !== keyData[0]) {
-        return true
-      }
-    }
-
-    return false
+    return !keyData.every(d => d === keyData[0])
   })
 
 export const parseBounds = (

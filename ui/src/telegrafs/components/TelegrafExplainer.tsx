@@ -14,7 +14,7 @@ const TelegrafExplainer: SFC = () => (
         <br />
         Here's a handy guide for{' '}
         <a
-          href="https://v2.docs.influxdata.com/v2.0/write-data/use-telegraf/"
+          href="https://docs.influxdata.com/telegraf/latest/introduction/getting-started/"
           target="_blank"
         >
           Getting Started with Telegraf

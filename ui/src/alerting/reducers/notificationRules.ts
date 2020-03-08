@@ -3,18 +3,18 @@ import {produce} from 'immer'
 
 // Types
 import {RemoteDataState, NotificationRule} from 'src/types'
-import {Action} from 'src/alerting/actions/notifications/rules'
+import {Action} from 'src/alerting/actions/notificationRules'
 
 export interface NotificationRulesState {
   status: RemoteDataState
   list: NotificationRule[]
-  current: {status: RemoteDataState; rule: NotificationRule}
+  current: {status: RemoteDataState; notificationRule: NotificationRule}
 }
 
 export const defaultNotificationRulesState: NotificationRulesState = {
   status: RemoteDataState.NotStarted,
   list: [],
-  current: {status: RemoteDataState.NotStarted, rule: null},
+  current: {status: RemoteDataState.NotStarted, notificationRule: null},
 }
 
 export default (
@@ -24,35 +24,37 @@ export default (
   produce(state, draftState => {
     switch (action.type) {
       case 'SET_ALL_NOTIFICATION_RULES':
-        const {status, rules} = action.payload
+        const {status, notificationRules} = action.payload
         draftState.status = status
-        if (rules) {
-          draftState.list = rules
+        if (notificationRules) {
+          draftState.list = notificationRules
         }
         return
 
       case 'SET_NOTIFICATION_RULE':
-        const newNotificationRule = action.payload.rule
-        const ruleIndex = state.list.findIndex(
+        const newNotificationRule = action.payload.notificationRule
+        const notificationRuleIndex = state.list.findIndex(
           nr => nr.id == newNotificationRule.id
         )
 
-        if (ruleIndex == -1) {
+        if (notificationRuleIndex == -1) {
           draftState.list.push(newNotificationRule)
         } else {
-          draftState.list[ruleIndex] = newNotificationRule
+          draftState.list[notificationRuleIndex] = newNotificationRule
         }
         return
 
       case 'REMOVE_NOTIFICATION_RULE':
-        const {ruleID} = action.payload
-        draftState.list = draftState.list.filter(nr => nr.id != ruleID)
+        const {notificationRuleID} = action.payload
+        draftState.list = draftState.list.filter(
+          nr => nr.id != notificationRuleID
+        )
         return
 
       case 'SET_CURRENT_NOTIFICATION_RULE':
         draftState.current.status = action.payload.status
-        if (action.payload.rule) {
-          draftState.current.rule = action.payload.rule
+        if (action.payload.notificationRule) {
+          draftState.current.notificationRule = action.payload.notificationRule
         }
         return
     }

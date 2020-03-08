@@ -13,7 +13,13 @@ import {
 } from 'src/shared/utils/vis'
 
 // Types
-import {FluxTable, QueryView, AppState, DashboardDraftQuery} from 'src/types'
+import {
+  FluxTable,
+  QueryView,
+  AppState,
+  DashboardDraftQuery,
+  ViewType,
+} from 'src/types'
 
 export const getActiveTimeMachine = (state: AppState) => {
   const {activeTimeMachineID, timeMachines} = state.timeMachines
@@ -143,7 +149,7 @@ export const getSaveableView = (state: AppState): QueryView & {id?: string} => {
     },
   }
 
-  if (saveableView.properties.type === 'histogram') {
+  if (saveableView.properties.type === ViewType.Histogram) {
     saveableView = {
       ...saveableView,
       properties: {
@@ -154,7 +160,7 @@ export const getSaveableView = (state: AppState): QueryView & {id?: string} => {
     }
   }
 
-  if (saveableView.properties.type === 'heatmap') {
+  if (saveableView.properties.type === ViewType.Heatmap) {
     saveableView = {
       ...saveableView,
       properties: {
@@ -165,7 +171,7 @@ export const getSaveableView = (state: AppState): QueryView & {id?: string} => {
     }
   }
 
-  if (saveableView.properties.type === 'scatter') {
+  if (saveableView.properties.type === ViewType.Scatter) {
     saveableView = {
       ...saveableView,
       properties: {
@@ -178,7 +184,7 @@ export const getSaveableView = (state: AppState): QueryView & {id?: string} => {
     }
   }
 
-  if (saveableView.properties.type === 'xy') {
+  if (saveableView.properties.type === ViewType.XY) {
     saveableView = {
       ...saveableView,
       properties: {
@@ -189,7 +195,7 @@ export const getSaveableView = (state: AppState): QueryView & {id?: string} => {
     }
   }
 
-  if (saveableView.properties.type === 'line-plus-single-stat') {
+  if (saveableView.properties.type === ViewType.LinePlusSingleStat) {
     saveableView = {
       ...saveableView,
       properties: {

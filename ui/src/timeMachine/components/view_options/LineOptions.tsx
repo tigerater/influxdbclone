@@ -37,12 +37,14 @@ import {
 
 // Types
 import {ViewType} from 'src/types'
-import {AppState, XYGeom, Axes, Color} from 'src/types'
+import {Axes, XYViewGeom} from 'src/types/dashboards'
+import {Color} from 'src/types/colors'
+import {AppState} from 'src/types'
 
 interface OwnProps {
   type: ViewType
   axes: Axes
-  geom?: XYGeom
+  geom?: XYViewGeom
   colors: Color[]
   shadeBelow?: boolean
 }

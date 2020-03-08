@@ -4,8 +4,8 @@ import {connect} from 'react-redux'
 import {withRouter, WithRouterProps} from 'react-router'
 
 // Components
-import {IconFont, ComponentColor, ResourceCard} from '@influxdata/clockface'
-import {Context} from 'src/clockface'
+import {IconFont, ComponentColor} from '@influxdata/clockface'
+import {ResourceList, Context} from 'src/clockface'
 import InlineLabels from 'src/shared/components/inlineLabels/InlineLabels'
 
 // Actions
@@ -19,7 +19,8 @@ import {createLabel as createLabelAsync} from 'src/labels/actions'
 import {viewableLabels} from 'src/labels/selectors'
 
 // Types
-import {AppState, Dashboard, Label} from 'src/types'
+import {ILabel} from '@influxdata/influx'
+import {AppState, Dashboard} from 'src/types'
 
 // Constants
 import {DEFAULT_DASHBOARD_NAME} from 'src/dashboards/constants'
@@ -34,7 +35,7 @@ interface PassedProps {
 }
 
 interface StateProps {
-  labels: Label[]
+  labels: ILabel[]
 }
 
 interface DispatchProps {
@@ -48,43 +49,49 @@ type Props = PassedProps & DispatchProps & StateProps & WithRouterProps
 
 class DashboardCard extends PureComponent<Props> {
   public render() {
-    const {dashboard, onFilterChange, labels} = this.props
+    const {
+      dashboard,
+      onFilterChange,
+      labels,
+      params: {orgID},
+    } = this.props
     const {id} = dashboard
 
     return (
-      <ResourceCard
+      <ResourceList.Card
         key={`dashboard-id--${id}`}
         testID="dashboard-card"
-        name={
-          <ResourceCard.EditableName
+        name={() => (
+          <ResourceList.EditableName
             onUpdate={this.handleUpdateDashboard}
+            hrefValue={`/orgs/${orgID}/dashboards/${dashboard.id}`}
             onClick={this.handleClickDashboard}
             name={dashboard.name}
             noNameString={DEFAULT_DASHBOARD_NAME}
-            testID="dashboard-card--name"
+            parentTestID="dashboard-card--name"
             buttonTestID="dashboard-card--name-button"
             inputTestID="dashboard-card--input"
           />
-        }
-        description={
-          <ResourceCard.Description
+        )}
+        description={() => (
+          <ResourceList.Description
             onUpdate={this.handleUpdateDescription}
             description={dashboard.description}
             placeholder={`Describe ${dashboard.name}`}
           />
-        }
-        labels={
+        )}
+        labels={() => (
           <InlineLabels
-            selectedLabels={dashboard.labels as Label[]}
+            selectedLabels={dashboard.labels}
             labels={labels}
             onFilterChange={onFilterChange}
             onAddLabel={this.handleAddLabel}
             onRemoveLabel={this.handleRemoveLabel}
             onCreateLabel={this.handleCreateLabel}
           />
-        }
-        metaData={[<>Last updated: {dashboard.meta.updatedAt}</>]}
-        contextMenu={this.contextMenu}
+        )}
+        updatedAt={dashboard.meta.updatedAt}
+        contextMenu={() => this.contextMenu}
       />
     )
   }
@@ -132,14 +139,7 @@ class DashboardCard extends PureComponent<Props> {
   }
 
   private handleClickDashboard = () => {
-    const {
-      onResetViews,
-      router,
-      dashboard,
-      params: {orgID},
-    } = this.props
-
-    router.push(`/orgs/${orgID}/dashboards/${dashboard.id}`)
+    const {onResetViews} = this.props
 
     onResetViews()
   }
@@ -151,19 +151,19 @@ class DashboardCard extends PureComponent<Props> {
     onUpdateDashboard(dashboard)
   }
 
-  private handleAddLabel = (label: Label): void => {
+  private handleAddLabel = (label: ILabel): void => {
     const {dashboard, onAddDashboardLabels} = this.props
 
-    onAddDashboardLabels(dashboard.id, [label as any])
+    onAddDashboardLabels(dashboard.id, [label])
   }
 
-  private handleRemoveLabel = (label: Label): void => {
+  private handleRemoveLabel = (label: ILabel): void => {
     const {dashboard, onRemoveDashboardLabels} = this.props
 
-    onRemoveDashboardLabels(dashboard.id, [label as any])
+    onRemoveDashboardLabels(dashboard.id, [label])
   }
 
-  private handleCreateLabel = async (label: Label): Promise<void> => {
+  private handleCreateLabel = async (label: ILabel): Promise<void> => {
     try {
       await this.props.onCreateLabel(label.name, label.properties)
 
