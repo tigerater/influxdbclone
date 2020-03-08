@@ -1,6 +1,5 @@
-import {Permission, PermissionResource, Bucket} from '@influxdata/influx'
-
-// Types
+import {Permission, PermissionResource, Authorization} from '@influxdata/influx'
+import {Bucket} from 'src/types'
 
 export const allAccessPermissions = (orgID: string) => [
   {
@@ -141,18 +140,6 @@ export const allBucketsPermissions = (
   ]
 }
 
-export const bucketPermissions = (
-  orgID: string,
-  permission: Permission.ActionEnum,
-  buckets: Bucket[]
-): Permission[] => {
-  if (!buckets) {
-    return allBucketsPermissions(orgID, permission)
-  }
-
-  return specificBucketsPermissions(buckets, permission)
-}
-
 export const selectBucket = (
   bucketName: string,
   selectedBuckets: string[]
@@ -169,4 +156,25 @@ export const selectBucket = (
 export enum BucketTab {
   AllBuckets = 'All Buckets',
   Scoped = 'Scoped',
+}
+
+/*
+  Given a list of authorizations, return only those that allow performing the
+  supplied `action` to all of the supplied `bucketNames`.
+*/
+export const filterIrrelevantAuths = (
+  auths: Authorization[],
+  action: 'read' | 'write',
+  bucketNames: string[]
+): Authorization[] => {
+  return auths.filter(auth =>
+    bucketNames.every(bucketName =>
+      auth.permissions.some(
+        permission =>
+          permission.action === action &&
+          permission.resource.type === 'buckets' &&
+          (!permission.resource.name || permission.resource.name === bucketName)
+      )
+    )
+  )
 }
