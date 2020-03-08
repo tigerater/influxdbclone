@@ -110,7 +110,6 @@ func newDocumentsResponse(ns string, docs []*influxdb.Document) *documentsRespon
 // handlePostDocument is the HTTP handler for the POST /api/v2/documents/:ns route.
 func (h *DocumentHandler) handlePostDocument(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("document create request", zap.String("r", fmt.Sprint(r)))
 
 	req, err := decodePostDocumentRequest(ctx, r)
 	if err != nil {
@@ -145,7 +144,7 @@ func (h *DocumentHandler) handlePostDocument(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	h.Logger.Debug("document created", zap.String("document", fmt.Sprint(req.Document)))
+	h.Logger.Info("document created")
 
 	if err := encodeResponse(ctx, w, http.StatusCreated, newDocumentResponse(req.Namespace, req.Document)); err != nil {
 		logEncodingError(h.Logger, r, err)
@@ -193,7 +192,6 @@ func decodePostDocumentRequest(ctx context.Context, r *http.Request) (*postDocum
 // handleGetDocuments is the HTTP handler for the GET /api/v2/documents/:ns route.
 func (h *DocumentHandler) handleGetDocuments(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("documents retrieve request", zap.String("r", fmt.Sprint(r)))
 
 	req, err := decodeGetDocumentsRequest(ctx, r)
 	if err != nil {
@@ -233,7 +231,6 @@ func (h *DocumentHandler) handleGetDocuments(w http.ResponseWriter, r *http.Requ
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("documents retrieved", zap.String("documents", fmt.Sprint(ds)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newDocumentsResponse(req.Namespace, ds)); err != nil {
 		logEncodingError(h.Logger, r, err)
@@ -279,7 +276,6 @@ func decodeGetDocumentsRequest(ctx context.Context, r *http.Request) (*getDocume
 
 func (h *DocumentHandler) handlePostDocumentLabel(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("document label create request", zap.String("r", fmt.Sprint(r)))
 	_, _, err := h.getDocument(w, r)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -306,8 +302,6 @@ func (h *DocumentHandler) handlePostDocumentLabel(w http.ResponseWriter, r *http
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("document label created", zap.String("label", fmt.Sprint(label)))
-
 	if err := encodeResponse(ctx, w, http.StatusCreated, newLabelResponse(label)); err != nil {
 		logEncodingError(h.Logger, r, err)
 		return
@@ -318,7 +312,6 @@ func (h *DocumentHandler) handlePostDocumentLabel(w http.ResponseWriter, r *http
 // then remove that label.
 func (h *DocumentHandler) handleDeleteDocumentLabel(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("document label delete request", zap.String("r", fmt.Sprint(r)))
 	req, err := decodeDeleteLabelMappingRequest(ctx, r)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -347,21 +340,17 @@ func (h *DocumentHandler) handleDeleteDocumentLabel(w http.ResponseWriter, r *ht
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("document label deleted", zap.String("mapping", fmt.Sprint(mapping)))
 
 	w.WriteHeader(http.StatusNoContent)
 }
 
 func (h *DocumentHandler) handleGetDocumentLabel(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("document label retrieve request", zap.String("r", fmt.Sprint(r)))
 	d, _, err := h.getDocument(w, r)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("document label retrieved", zap.String("labels", fmt.Sprint(d.Labels)))
-
 	if err := encodeResponse(ctx, w, http.StatusOK, newLabelsResponse(d.Labels)); err != nil {
 		logEncodingError(h.Logger, r, err)
 		return
@@ -400,14 +389,11 @@ func (h *DocumentHandler) getDocument(w http.ResponseWriter, r *http.Request) (*
 // handleGetDocument is the HTTP handler for the GET /api/v2/documents/:ns/:id route.
 func (h *DocumentHandler) handleGetDocument(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("document retrieve request", zap.String("r", fmt.Sprint(r)))
-
 	d, namspace, err := h.getDocument(w, r)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("document retrieved", zap.String("document", fmt.Sprint(d)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newDocumentResponse(namspace, d)); err != nil {
 		logEncodingError(h.Logger, r, err)
@@ -455,7 +441,6 @@ func decodeGetDocumentRequest(ctx context.Context, r *http.Request) (*getDocumen
 // handleDeleteDocument is the HTTP handler for the DELETE /api/v2/documents/:ns/:id route.
 func (h *DocumentHandler) handleDeleteDocument(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("document delete request", zap.String("r", fmt.Sprint(r)))
 
 	req, err := decodeDeleteDocumentRequest(ctx, r)
 	if err != nil {
@@ -480,7 +465,7 @@ func (h *DocumentHandler) handleDeleteDocument(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	h.Logger.Debug("document deleted", zap.String("documentID", fmt.Sprint(req.ID)))
+	h.Logger.Info("document deleted")
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -525,7 +510,6 @@ func decodeDeleteDocumentRequest(ctx context.Context, r *http.Request) (*deleteD
 // handlePutDocument is the HTTP handler for the PUT /api/v2/documents/:ns/:id route.
 func (h *DocumentHandler) handlePutDocument(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("document update request", zap.String("r", fmt.Sprint(r)))
 
 	req, err := decodePutDocumentRequest(ctx, r)
 	if err != nil {
@@ -550,6 +534,8 @@ func (h *DocumentHandler) handlePutDocument(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
+	h.Logger.Info("document updated")
+
 	ds, err := s.FindDocuments(ctx, influxdb.WhereID(req.Document.ID), influxdb.IncludeContent)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -566,8 +552,6 @@ func (h *DocumentHandler) handlePutDocument(w http.ResponseWriter, r *http.Reque
 	}
 
 	d := ds[0]
-
-	h.Logger.Debug("document updated", zap.String("document", fmt.Sprint(d)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newDocumentResponse(req.Namespace, d)); err != nil {
 		logEncodingError(h.Logger, r, err)

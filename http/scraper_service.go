@@ -125,8 +125,6 @@ func NewScraperHandler(b *ScraperBackend) *ScraperHandler {
 // handlePostScraperTarget is HTTP handler for the POST /api/v2/scrapers route.
 func (h *ScraperHandler) handlePostScraperTarget(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("scraper create request", zap.String("r", fmt.Sprint(r)))
-
 	req, err := decodeScraperTargetAddRequest(ctx, r)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -143,8 +141,6 @@ func (h *ScraperHandler) handlePostScraperTarget(w http.ResponseWriter, r *http.
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("scraper created", zap.String("scraper", fmt.Sprint(req)))
-
 	resp, err := h.newTargetResponse(ctx, *req)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -159,7 +155,6 @@ func (h *ScraperHandler) handlePostScraperTarget(w http.ResponseWriter, r *http.
 // handleDeleteScraperTarget is the HTTP handler for the DELETE /api/v2/scrapers/:id route.
 func (h *ScraperHandler) handleDeleteScraperTarget(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("scraper delete request", zap.String("r", fmt.Sprint(r)))
 
 	id, err := decodeScraperTargetIDRequest(ctx, r)
 	if err != nil {
@@ -171,7 +166,6 @@ func (h *ScraperHandler) handleDeleteScraperTarget(w http.ResponseWriter, r *htt
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("scraper deleted", zap.String("scraperTargetID", fmt.Sprint(id)))
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -179,7 +173,6 @@ func (h *ScraperHandler) handleDeleteScraperTarget(w http.ResponseWriter, r *htt
 // handlePatchScraperTarget is the HTTP handler for the PATCH /api/v2/scrapers/:id route.
 func (h *ScraperHandler) handlePatchScraperTarget(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("scraper update request", zap.String("r", fmt.Sprint(r)))
 
 	update, err := decodeScraperTargetUpdateRequest(ctx, r)
 	if err != nil {
@@ -198,7 +191,6 @@ func (h *ScraperHandler) handlePatchScraperTarget(w http.ResponseWriter, r *http
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("scraper updated", zap.String("scraper", fmt.Sprint(target)))
 
 	resp, err := h.newTargetResponse(ctx, *target)
 	if err != nil {
@@ -214,7 +206,6 @@ func (h *ScraperHandler) handlePatchScraperTarget(w http.ResponseWriter, r *http
 
 func (h *ScraperHandler) handleGetScraperTarget(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("scraper retrieve request", zap.String("r", fmt.Sprint(r)))
 
 	id, err := decodeScraperTargetIDRequest(ctx, r)
 	if err != nil {
@@ -226,7 +217,6 @@ func (h *ScraperHandler) handleGetScraperTarget(w http.ResponseWriter, r *http.R
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("scraper retrieved", zap.String("scraper", fmt.Sprint(target)))
 
 	resp, err := h.newTargetResponse(ctx, *target)
 	if err != nil {
@@ -278,8 +268,6 @@ func decodeScraperTargetsRequest(ctx context.Context, r *http.Request) (*getScra
 // handleGetScraperTargets is the HTTP handler for the GET /api/v2/scrapers route.
 func (h *ScraperHandler) handleGetScraperTargets(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("scrapers retrieve request", zap.String("r", fmt.Sprint(r)))
-
 	req, err := decodeScraperTargetsRequest(ctx, r)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -290,7 +278,6 @@ func (h *ScraperHandler) handleGetScraperTargets(w http.ResponseWriter, r *http.
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("scrapers retrieved", zap.String("scrapers", fmt.Sprint(targets)))
 
 	resp, err := h.newListTargetsResponse(ctx, targets)
 	if err != nil {
