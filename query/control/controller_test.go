@@ -10,7 +10,6 @@ import (
 
 	"github.com/influxdata/flux"
 	_ "github.com/influxdata/flux/builtin"
-	"github.com/influxdata/flux/codes"
 	"github.com/influxdata/flux/execute"
 	"github.com/influxdata/flux/execute/executetest"
 	"github.com/influxdata/flux/lang"
@@ -320,7 +319,7 @@ func TestController_AfterShutdown(t *testing.T) {
 
 	if _, err := ctrl.Query(context.Background(), makeRequest(mockCompiler)); err == nil {
 		t.Error("expected error")
-	} else if got, want := err.Error(), "query controller shutdown"; got != want {
+	} else if got, want := err.Error(), "<invalid> query controller shutdown"; got != want {
 		t.Errorf("unexpected error -want/+got\n\t- %q\n\t+ %q", want, got)
 	}
 }
@@ -334,17 +333,12 @@ func TestController_CompileError(t *testing.T) {
 
 	compiler := &mock.Compiler{
 		CompileFn: func(ctx context.Context) (flux.Program, error) {
-			return nil, &flux.Error{
-				Code: codes.Invalid,
-				Msg:  "expected error",
-			}
+			return nil, errors.New("expected error")
 		},
 	}
 	if _, err := ctrl.Query(context.Background(), makeRequest(compiler)); err == nil {
 		t.Error("expected error")
-	} else if got, want := err.Error(), "<invalid> expected error"; got != want {
-		// TODO(jsternberg): This should be "<invalid> compilation error: expected error", but the
-		// influxdb error library does not include the message when it is wrapping an error for some reason.
+	} else if got, want := err.Error(), "<invalid> compilation failed: expected error"; got != want {
 		t.Errorf("unexpected error -want/+got\n\t- %q\n\t+ %q", want, got)
 	}
 }

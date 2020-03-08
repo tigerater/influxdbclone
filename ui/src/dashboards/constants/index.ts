@@ -8,6 +8,9 @@ import {DEFAULT_TIME_FORMAT} from 'src/shared/constants'
 
 export const UNTITLED_GRAPH: string = 'Untitled Graph'
 
+export const TIME_FORMAT_TOOLTIP_LINK: string =
+  'http://momentjs.com/docs/#/parsing/string-format/'
+
 export const DEFAULT_DECIMAL_PLACES: DecimalPlaces = {
   isEnforced: true,
   digits: 2,
@@ -31,15 +34,17 @@ export const DEFAULT_TABLE_OPTIONS = {
   fixFirstColumn: DEFAULT_FIX_FIRST_COLUMN,
 }
 
+export const TIME_FORMAT_CUSTOM: string = 'Custom'
+
 export const FORMAT_OPTIONS: Array<{text: string}> = [
   {text: DEFAULT_TIME_FORMAT},
-  {text: 'MM/DD/YYYY HH:mm:ss.sss'},
+  {text: 'MM/DD/YYYY HH:mm:ss.SSS'},
   {text: 'YYYY/MM/DD HH:mm:ss'},
   {text: 'HH:mm:ss'},
-  {text: 'HH:mm:ss ZZ'},
-  {text: 'HH:mm:ss.sss'},
+  {text: 'HH:mm:ss.SSS'},
   {text: 'MMMM D, YYYY HH:mm:ss'},
   {text: 'dddd, MMMM D, YYYY HH:mm:ss'},
+  {text: TIME_FORMAT_CUSTOM},
 ]
 
 export type NewDefaultCell = Pick<

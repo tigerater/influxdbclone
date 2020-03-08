@@ -50,8 +50,6 @@ export enum ActionTypes {
   SetDashboardLimitStatus = 'SET_DASHBOARD_LIMIT_STATUS',
   SetBucketLimitStatus = 'SET_BUCKET_LIMIT_STATUS',
   SetTaskLimitStatus = 'SET_TASK_LIMIT_STATUS',
-  SetReadRateLimitStatus = 'SET_READ_RATE_LIMIT_STATUS',
-  SetWriteRateLimitStatus = 'SET_WRITE_RATE_LIMIT_STATUS',
 }
 
 export type Actions =
@@ -60,8 +58,6 @@ export type Actions =
   | SetDashboardLimitStatus
   | SetBucketLimitStatus
   | SetTaskLimitStatus
-  | SetReadRateLimitStatus
-  | SetWriteRateLimitStatus
 
 export interface SetLimits {
   type: ActionTypes.SetLimits
@@ -116,33 +112,6 @@ export const setTaskLimitStatus = (
     payload: {limitStatus},
   }
 }
-export interface SetReadRateLimitStatus {
-  type: ActionTypes.SetReadRateLimitStatus
-  payload: {limitStatus: LimitStatus}
-}
-
-export const setReadRateLimitStatus = (
-  limitStatus: LimitStatus
-): SetReadRateLimitStatus => {
-  return {
-    type: ActionTypes.SetReadRateLimitStatus,
-    payload: {limitStatus},
-  }
-}
-
-export interface SetWriteRateLimitStatus {
-  type: ActionTypes.SetWriteRateLimitStatus
-  payload: {limitStatus: LimitStatus}
-}
-
-export const setWriteRateLimitStatus = (
-  limitStatus: LimitStatus
-): SetWriteRateLimitStatus => {
-  return {
-    type: ActionTypes.SetWriteRateLimitStatus,
-    payload: {limitStatus},
-  }
-}
 
 export interface SetLimitsStatus {
   type: ActionTypes.SetLimitsStatus
@@ -169,17 +138,10 @@ export const getReadWriteLimits = () => async (
 
     const limits = await getReadWriteLimitsAJAX(org.id)
 
-    if (limits.read.status === LimitStatus.EXCEEDED) {
-      dispatch(notify(readLimitReached()))
-      dispatch(setReadRateLimitStatus(LimitStatus.EXCEEDED))
-    } else {
-      dispatch(setReadRateLimitStatus(LimitStatus.OK))
-    }
+    const isReadLimited = limits.read.status === LimitStatus.EXCEEDED
 
-    if (limits.write.status === LimitStatus.EXCEEDED) {
-      dispatch(setWriteRateLimitStatus(LimitStatus.EXCEEDED))
-    } else {
-      dispatch(setWriteRateLimitStatus(LimitStatus.OK))
+    if (isReadLimited) {
+      dispatch(notify(readLimitReached()))
     }
   } catch (e) {}
 }

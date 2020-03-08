@@ -1,11 +1,9 @@
 package influxdb
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/influxdata/flux"
-	"github.com/influxdata/flux/codes"
 	"github.com/influxdata/flux/execute"
 	"github.com/influxdata/flux/memory"
 	"github.com/influxdata/flux/plan"
@@ -13,6 +11,7 @@ import (
 	"github.com/influxdata/flux/values"
 	platform "github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/query"
+	"github.com/pkg/errors"
 )
 
 func init() {
@@ -33,10 +32,7 @@ func (bd *BucketsDecoder) Connect() error {
 func (bd *BucketsDecoder) Fetch() (bool, error) {
 	b, count := bd.deps.FindAllBuckets(bd.orgID)
 	if count <= 0 {
-		return false, &flux.Error{
-			Code: codes.NotFound,
-			Msg:  fmt.Sprintf("no buckets found in organization %v", bd.orgID),
-		}
+		return false, fmt.Errorf("no buckets found in organization %v", bd.orgID)
 	}
 	bd.buckets = b
 	return false, nil
@@ -101,10 +97,7 @@ func (bd *BucketsDecoder) Close() error {
 func createBucketsSource(prSpec plan.ProcedureSpec, dsid execute.DatasetID, a execute.Administration) (execute.Source, error) {
 	_, ok := prSpec.(*influxdb.BucketsProcedureSpec)
 	if !ok {
-		return nil, &flux.Error{
-			Code: codes.Internal,
-			Msg:  fmt.Sprintf("invalid spec type %T", prSpec),
-		}
+		return nil, fmt.Errorf("invalid spec type %T", prSpec)
 	}
 
 	// the dependencies used for FromKind are adequate for what we need here
@@ -112,10 +105,7 @@ func createBucketsSource(prSpec plan.ProcedureSpec, dsid execute.DatasetID, a ex
 	deps := a.Dependencies()[influxdb.BucketsKind].(BucketDependencies)
 	req := query.RequestFromContext(a.Context())
 	if req == nil {
-		return nil, &flux.Error{
-			Code: codes.Internal,
-			Msg:  "missing request on context",
-		}
+		return nil, errors.New("missing request on context")
 	}
 	orgID := req.OrganizationID
 

@@ -6,11 +6,11 @@ import {Plot, FromFluxResult} from '@influxdata/giraffe'
 import GaugeChart from 'src/shared/components/GaugeChart'
 import SingleStat from 'src/shared/components/SingleStat'
 import TableGraphs from 'src/shared/components/tables/TableGraphs'
-import HistogramPlot from 'src/shared/components/HistogramPlot'
-import HeatmapPlot from 'src/shared/components/HeatmapPlot'
+import HistogramContainer from 'src/shared/components/HistogramContainer'
+import HeatmapContainer from 'src/shared/components/HeatmapContainer'
 import FluxTablesTransform from 'src/shared/components/FluxTablesTransform'
-import XYPlot from 'src/shared/components/XYPlot'
-import ScatterPlot from 'src/shared/components/ScatterPlot'
+import XYContainer from 'src/shared/components/XYContainer'
+import ScatterContainer from 'src/shared/components/ScatterContainer'
 import LatestValueTransform from 'src/shared/components/LatestValueTransform'
 
 // Types
@@ -21,7 +21,6 @@ import {
   XYView,
   XYViewGeom,
   RemoteDataState,
-  TimeZone,
 } from 'src/types'
 
 interface Props {
@@ -29,7 +28,6 @@ interface Props {
   files: string[]
   loading: RemoteDataState
   properties: QueryViewProperties
-  timeZone: TimeZone
 }
 
 const ViewSwitcher: FunctionComponent<Props> = ({
@@ -37,7 +35,6 @@ const ViewSwitcher: FunctionComponent<Props> = ({
   loading,
   files,
   giraffeResult: {table, fluxGroupKeyUnion},
-  timeZone,
 }) => {
   switch (properties.type) {
     case ViewType.SingleStat:
@@ -52,13 +49,7 @@ const ViewSwitcher: FunctionComponent<Props> = ({
     case ViewType.Table:
       return (
         <FluxTablesTransform files={files}>
-          {tables => (
-            <TableGraphs
-              tables={tables}
-              properties={properties}
-              timeZone={timeZone}
-            />
-          )}
+          {tables => <TableGraphs tables={tables} properties={properties} />}
         </FluxTablesTransform>
       )
 
@@ -73,15 +64,14 @@ const ViewSwitcher: FunctionComponent<Props> = ({
 
     case ViewType.XY:
       return (
-        <XYPlot
+        <XYContainer
           table={table}
           fluxGroupKeyUnion={fluxGroupKeyUnion}
           viewProperties={properties}
           loading={loading}
-          timeZone={timeZone}
         >
           {config => <Plot config={config} />}
-        </XYPlot>
+        </XYContainer>
       )
 
     case ViewType.LinePlusSingleStat:
@@ -99,12 +89,11 @@ const ViewSwitcher: FunctionComponent<Props> = ({
       } as SingleStatView
 
       return (
-        <XYPlot
+        <XYContainer
           table={table}
           fluxGroupKeyUnion={fluxGroupKeyUnion}
           viewProperties={xyProperties}
           loading={loading}
-          timeZone={timeZone}
         >
           {config => (
             <Plot config={config}>
@@ -118,43 +107,40 @@ const ViewSwitcher: FunctionComponent<Props> = ({
               </LatestValueTransform>
             </Plot>
           )}
-        </XYPlot>
+        </XYContainer>
       )
 
     case ViewType.Histogram:
       return (
-        <HistogramPlot
+        <HistogramContainer
           table={table}
           loading={loading}
-          timeZone={timeZone}
           viewProperties={properties}
         >
           {config => <Plot config={config} />}
-        </HistogramPlot>
+        </HistogramContainer>
       )
 
     case ViewType.Heatmap:
       return (
-        <HeatmapPlot
+        <HeatmapContainer
           table={table}
           loading={loading}
-          timeZone={timeZone}
           viewProperties={properties}
         >
           {config => <Plot config={config} />}
-        </HeatmapPlot>
+        </HeatmapContainer>
       )
 
     case ViewType.Scatter:
       return (
-        <ScatterPlot
+        <ScatterContainer
           table={table}
           loading={loading}
           viewProperties={properties}
-          timeZone={timeZone}
         >
           {config => <Plot config={config} />}
-        </ScatterPlot>
+        </ScatterContainer>
       )
 
     default:

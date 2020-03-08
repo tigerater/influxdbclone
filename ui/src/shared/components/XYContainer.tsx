@@ -23,23 +23,21 @@ import {DEFAULT_LINE_COLORS} from 'src/shared/constants/graphColorPalettes'
 import {INVALID_DATA_COPY} from 'src/shared/copy/cell'
 
 // Types
-import {RemoteDataState, XYView, TimeZone} from 'src/types'
+import {RemoteDataState, XYView} from 'src/types'
 
 interface Props {
   table: Table
   fluxGroupKeyUnion: string[]
   loading: RemoteDataState
-  timeZone: TimeZone
   viewProperties: XYView
   children: (config: Config) => JSX.Element
 }
 
-const XYPlot: FunctionComponent<Props> = ({
+const XYContainer: FunctionComponent<Props> = ({
   table,
   fluxGroupKeyUnion,
   loading,
   children,
-  timeZone,
   viewProperties: {
     geom,
     colors,
@@ -47,13 +45,7 @@ const XYPlot: FunctionComponent<Props> = ({
     yColumn: storedYColumn,
     shadeBelow,
     axes: {
-      x: {
-        label: xAxisLabel,
-        prefix: xTickPrefix,
-        suffix: xTickSuffix,
-        base: xTickBase,
-        bounds: xBounds,
-      },
+      x: {label: xAxisLabel, bounds: xBounds},
       y: {
         label: yAxisLabel,
         prefix: yTickPrefix,
@@ -106,19 +98,12 @@ const XYPlot: FunctionComponent<Props> = ({
     table
   )
 
-  const xFormatter = getFormatter(table.getColumnType(xColumn), {
-    prefix: xTickPrefix,
-    suffix: xTickSuffix,
-    base: xTickBase,
-    timeZone,
-  })
-
-  const yFormatter = getFormatter(table.getColumnType(yColumn), {
-    prefix: yTickPrefix,
-    suffix: yTickSuffix,
-    base: yTickBase,
-    timeZone,
-  })
+  const yFormatter = getFormatter(
+    table.getColumnType(yColumn),
+    yTickPrefix,
+    yTickSuffix,
+    yTickBase
+  )
 
   const config: Config = {
     ...VIS_THEME,
@@ -132,10 +117,7 @@ const XYPlot: FunctionComponent<Props> = ({
     onSetYDomain,
     onResetYDomain,
     legendColumns,
-    valueFormatters: {
-      [xColumn]: xFormatter,
-      [yColumn]: yFormatter,
-    },
+    valueFormatters: {[yColumn]: yFormatter},
     layers: [
       {
         type: 'line',
@@ -158,4 +140,4 @@ const XYPlot: FunctionComponent<Props> = ({
   )
 }
 
-export default XYPlot
+export default XYContainer

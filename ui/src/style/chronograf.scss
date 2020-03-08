@@ -94,6 +94,7 @@
 @import 'src/timeMachine/components/ToolbarTab.scss';
 @import 'src/timeMachine/components/variableToolbar/VariableToolbar.scss';
 @import 'src/timeMachine/components/fluxFunctionsToolbar/FluxFunctionsToolbar.scss';
+@import 'src/timeMachine/components/view_options/TimeFormat.scss';
 @import 'src/timeMachine/components/view_options/HistogramOptions.scss';
 @import 'src/timeMachine/components/view_options/ViewOptions.scss';
 @import 'src/timeMachine/components/view_options/ViewTypeDropdown.scss';
@@ -108,7 +109,7 @@
 @import 'src/templates/components/createFromTemplateOverlay/CreateFromTemplateOverlay.scss';
 @import 'src/onboarding/components/SigninForm.scss';
 @import 'src/shared/components/ThresholdsSettings.scss';
-@import 'src/shared/components/ThresholdMarkers.scss';
+
 
 // External
 @import '../../node_modules/@influxdata/react-custom-scrollbars/dist/styles.css';

@@ -17,12 +17,11 @@ import {getDeep} from 'src/utils/wrappers'
 import {findTableNameHeaders} from 'src/dashboards/utils/tableGraph'
 
 // Types
-import {TableView, FieldOption, FluxTable, TimeZone} from 'src/types'
+import {TableView, FieldOption, FluxTable} from 'src/types'
 
 interface PassedProps {
   tables: FluxTable[]
   properties: TableView
-  timeZone: TimeZone
 }
 
 interface DispatchProps {
@@ -61,7 +60,7 @@ class TableGraphs extends PureComponent<Props, State> {
   }
 
   public render() {
-    const {tables, properties, timeZone} = this.props
+    const {tables, properties} = this.props
 
     return (
       <div className="time-machine-tables">
@@ -77,7 +76,6 @@ class TableGraphs extends PureComponent<Props, State> {
             key={this.nameOfSelectedTable}
             table={this.selectedTable}
             properties={properties}
-            timeZone={timeZone}
           />
         )}
         {!this.hasData && (

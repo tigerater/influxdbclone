@@ -4,12 +4,12 @@ import (
 	"fmt"
 
 	"github.com/influxdata/flux"
-	"github.com/influxdata/flux/codes"
 	"github.com/influxdata/flux/execute"
 	"github.com/influxdata/flux/plan"
 	"github.com/influxdata/flux/semantic"
 	"github.com/influxdata/flux/stdlib/influxdata/influxdb"
 	platform "github.com/influxdata/influxdb"
+	"github.com/pkg/errors"
 )
 
 const FromKind = "influxDBFrom"
@@ -50,16 +50,10 @@ func createFromOpSpec(args flux.Arguments, a *flux.Administration) (flux.Operati
 	}
 
 	if spec.Bucket == "" && spec.BucketID == "" {
-		return nil, &flux.Error{
-			Code: codes.Invalid,
-			Msg:  "must specify one of bucket or bucketID",
-		}
+		return nil, errors.New("must specify one of bucket or bucketID")
 	}
 	if spec.Bucket != "" && spec.BucketID != "" {
-		return nil, &flux.Error{
-			Code: codes.Invalid,
-			Msg:  "must specify only one of bucket or bucketID",
-		}
+		return nil, errors.New("must specify only one of bucket or bucketID")
 	}
 	return spec, nil
 }
@@ -105,10 +99,7 @@ type FromProcedureSpec struct {
 func newFromProcedure(qs flux.OperationSpec, pa plan.Administration) (plan.ProcedureSpec, error) {
 	spec, ok := qs.(*FromOpSpec)
 	if !ok {
-		return nil, &flux.Error{
-			Code: codes.Internal,
-			Msg:  fmt.Sprintf("invalid spec type %T", qs),
-		}
+		return nil, fmt.Errorf("invalid spec type %T", qs)
 	}
 
 	return &FromProcedureSpec{
@@ -148,10 +139,7 @@ func (s *FromProcedureSpec) PostPhysicalValidate(id plan.NodeID) error {
 	} else {
 		bucket = s.BucketID
 	}
-	return &flux.Error{
-		Code: codes.Invalid,
-		Msg:  fmt.Sprintf("cannot submit unbounded read to %q; try bounding 'from' with a call to 'range'", bucket),
-	}
+	return fmt.Errorf("cannot submit unbounded read to %q; try bounding 'from' with a call to 'range'", bucket)
 }
 
 func InjectFromDependencies(depsMap execute.Dependencies, deps Dependencies) error {

@@ -1,19 +1,17 @@
 // Libraries
 import {get} from 'lodash'
 import {
-  binaryPrefixFormatter,
-  timeFormatter,
-  siPrefixFormatter,
   Table,
   ColumnType,
   LineInterpolation,
   FromFluxResult,
 } from '@influxdata/giraffe'
 
-import {VIS_SIG_DIGITS} from 'src/shared/constants'
+// Utils
+import {formatNumber} from 'src/shared/utils/formatNumber'
 
 // Types
-import {XYViewGeom, Axis, Base, TimeZone} from 'src/types'
+import {XYViewGeom, Axis, Base} from 'src/types'
 
 /*
   A geom may be stored as "line", "step", "monotoneX", "bar", or "stacked", but
@@ -40,42 +38,15 @@ export const geomToInterpolation = (geom: XYViewGeom): LineInterpolation => {
   }
 }
 
-interface GetFormatterOptions {
-  prefix?: string
-  suffix?: string
-  base?: Base
-  timeZone?: TimeZone
-  trimZeros?: boolean
-}
-
 export const getFormatter = (
   columnType: ColumnType,
-  {prefix, suffix, base, timeZone, trimZeros = true}: GetFormatterOptions = {}
+  prefix: string = '',
+  suffix: string = '',
+  base: Base = ''
 ): null | ((x: any) => string) => {
-  if (columnType === 'number' && base === '2') {
-    return binaryPrefixFormatter({
-      prefix,
-      suffix,
-      significantDigits: VIS_SIG_DIGITS,
-    })
-  }
-
-  if (columnType === 'number') {
-    return siPrefixFormatter({
-      prefix,
-      suffix,
-      significantDigits: VIS_SIG_DIGITS,
-      trimZeros,
-    })
-  }
-
-  if (columnType === 'time') {
-    return timeFormatter({
-      timeZone: timeZone === 'Local' ? undefined : timeZone,
-    })
-  }
-
-  return null
+  return columnType === 'number'
+    ? x => `${prefix}${formatNumber(x, base)}${suffix}`
+    : null
 }
 
 const NOISY_LEGEND_COLUMNS = new Set(['_start', '_stop', 'result'])
@@ -224,19 +195,4 @@ export const defaultYColumn = (
   }
 
   return null
-}
-
-export const isInDomain = (value: number, domain: number[]) =>
-  value >= domain[0] && value <= domain[1]
-
-export const clamp = (value: number, domain: number[]) => {
-  if (value < domain[0]) {
-    return domain[0]
-  }
-
-  if (value > domain[1]) {
-    return domain[1]
-  }
-
-  return value
 }

@@ -2,24 +2,24 @@
 import {isInQuery} from 'src/variables/utils/hydrateVars'
 
 // Types
-import {QueryViewProperties, View, ViewProperties} from 'src/types'
-import {IVariable as Variable} from '@influxdata/influx'
-
-function isQueryViewProperties(vp: ViewProperties): vp is QueryViewProperties {
-  return (vp as QueryViewProperties).queries !== undefined
-}
+import {QueryView} from 'src/types/dashboards'
+import {IVariable as Variable, View} from '@influxdata/influx'
 
 /*
   Given a collection variables and a collection of views, return only the
   variables that are used in at least one of the view queries.
 */
 export const filterUnusedVars = (variables: Variable[], views: View[]) => {
-  const viewProperties = views.map(v => v.properties)
-  const queryViewProperties = viewProperties.filter(isQueryViewProperties)
+  const queryViews: QueryView[] = views.filter(
+    view => !!view.properties.queries
+  )
 
-  const queryTexts = queryViewProperties.reduce(
-    (acc, vp) => [...acc, ...vp.queries.map(query => query.text)],
-    [] as Array<string>
+  const queryTexts = queryViews.reduce(
+    (acc, view) => [
+      ...acc,
+      ...view.properties.queries.map(query => query.text),
+    ],
+    []
   )
 
   const varsInUse = variables.filter(variable =>

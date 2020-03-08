@@ -272,7 +272,7 @@ func decodeGetSourceBucketsRequest(ctx context.Context, r *http.Request) (*getSo
 // handlePostSource is the HTTP handler for the POST /api/v2/sources route.
 func (h *SourceHandler) handlePostSource(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("source create request", zap.String("r", fmt.Sprint(r)))
+
 	req, err := decodePostSourceRequest(ctx, r)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -285,7 +285,7 @@ func (h *SourceHandler) handlePostSource(w http.ResponseWriter, r *http.Request)
 	}
 
 	res := newSourceResponse(req.Source)
-	h.Logger.Debug("source created", zap.String("source", fmt.Sprint(res)))
+
 	if err := encodeResponse(ctx, w, http.StatusCreated, res); err != nil {
 		logEncodingError(h.Logger, r, err)
 		return
@@ -310,7 +310,7 @@ func decodePostSourceRequest(ctx context.Context, r *http.Request) (*postSourceR
 // handleGetSource is the HTTP handler for the GET /api/v2/sources/:id route.
 func (h *SourceHandler) handleGetSource(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("source retrieve request", zap.String("r", fmt.Sprint(r)))
+
 	req, err := decodeGetSourceRequest(ctx, r)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -324,7 +324,6 @@ func (h *SourceHandler) handleGetSource(w http.ResponseWriter, r *http.Request) 
 	}
 
 	res := newSourceResponse(s)
-	h.Logger.Debug("source retrieved", zap.String("source", fmt.Sprint(res)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, res); err != nil {
 		logEncodingError(h.Logger, r, err)
@@ -384,7 +383,7 @@ func decodeGetSourceRequest(ctx context.Context, r *http.Request) (*getSourceReq
 // handleDeleteSource is the HTTP handler for the DELETE /api/v2/sources/:id route.
 func (h *SourceHandler) handleDeleteSource(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("source delete request", zap.String("r", fmt.Sprint(r)))
+
 	req, err := decodeDeleteSourceRequest(ctx, r)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -395,7 +394,6 @@ func (h *SourceHandler) handleDeleteSource(w http.ResponseWriter, r *http.Reques
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("source deleted", zap.String("sourceID", fmt.Sprint(req.SourceID)))
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -428,7 +426,7 @@ func decodeDeleteSourceRequest(ctx context.Context, r *http.Request) (*deleteSou
 // handleGetSources is the HTTP handler for the GET /api/v2/sources route.
 func (h *SourceHandler) handleGetSources(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("sources retrieve request", zap.String("r", fmt.Sprint(r)))
+
 	req, err := decodeGetSourcesRequest(ctx, r)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -442,7 +440,6 @@ func (h *SourceHandler) handleGetSources(w http.ResponseWriter, r *http.Request)
 	}
 
 	res := newSourcesResponse(srcs)
-	h.Logger.Debug("sources retrieved", zap.String("sources", fmt.Sprint(res)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, res); err != nil {
 		logEncodingError(h.Logger, r, err)
@@ -462,7 +459,7 @@ func decodeGetSourcesRequest(ctx context.Context, r *http.Request) (*getSourcesR
 // handlePatchSource is the HTTP handler for the PATH /api/v2/sources route.
 func (h *SourceHandler) handlePatchSource(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	h.Logger.Debug("source update request", zap.String("r", fmt.Sprint(r)))
+
 	req, err := decodePatchSourceRequest(ctx, r)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -474,7 +471,6 @@ func (h *SourceHandler) handlePatchSource(w http.ResponseWriter, r *http.Request
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.Logger.Debug("source updated", zap.String("source", fmt.Sprint(b)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, b); err != nil {
 		logEncodingError(h.Logger, r, err)

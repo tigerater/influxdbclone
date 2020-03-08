@@ -20,7 +20,7 @@ import {DEFAULT_LINE_COLORS} from 'src/shared/constants/graphColorPalettes'
 import {INVALID_DATA_COPY} from 'src/shared/copy/cell'
 
 // Types
-import {RemoteDataState, ScatterView, TimeZone} from 'src/types'
+import {RemoteDataState, ScatterView} from 'src/types'
 
 interface Props {
   table: Table
@@ -28,19 +28,15 @@ interface Props {
   loading: RemoteDataState
   viewProperties: ScatterView
   children: (config: Config) => JSX.Element
-  timeZone: TimeZone
 }
 
-const ScatterPlot: FunctionComponent<Props> = ({
+const ScatterContainer: FunctionComponent<Props> = ({
   table,
   loading,
   children,
-  timeZone,
   viewProperties: {
     xAxisLabel,
     yAxisLabel,
-    xPrefix,
-    xSuffix,
     yPrefix,
     ySuffix,
     fillColumns: storedFill,
@@ -85,17 +81,11 @@ const ScatterPlot: FunctionComponent<Props> = ({
   const colorHexes =
     colors && colors.length ? colors : DEFAULT_LINE_COLORS.map(c => c.hex)
 
-  const xFormatter = getFormatter(table.getColumnType(xColumn), {
-    prefix: xPrefix,
-    suffix: xSuffix,
-    timeZone,
-  })
-
-  const yFormatter = getFormatter(table.getColumnType(yColumn), {
-    prefix: yPrefix,
-    suffix: ySuffix,
-    timeZone,
-  })
+  const yFormatter = getFormatter(
+    table.getColumnType(yColumn),
+    yPrefix,
+    ySuffix
+  )
 
   const config: Config = {
     ...VIS_THEME,
@@ -109,7 +99,6 @@ const ScatterPlot: FunctionComponent<Props> = ({
     onSetYDomain,
     onResetYDomain,
     valueFormatters: {
-      [xColumn]: xFormatter,
       [yColumn]: yFormatter,
     },
     layers: [
@@ -131,4 +120,4 @@ const ScatterPlot: FunctionComponent<Props> = ({
   )
 }
 
-export default ScatterPlot
+export default ScatterContainer

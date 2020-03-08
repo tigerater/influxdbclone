@@ -12,8 +12,6 @@ import DashboardComponent from 'src/dashboards/components/Dashboard'
 import ManualRefresh from 'src/shared/components/ManualRefresh'
 import {HoverTimeProvider} from 'src/dashboards/utils/hoverTime'
 import VariablesControlBar from 'src/dashboards/components/variablesControlBar/VariablesControlBar'
-import LimitChecker from 'src/cloud/components/LimitChecker'
-import AssetLimitAlert from 'src/cloud/components/AssetLimitAlert'
 
 // Actions
 import * as dashboardActions from 'src/dashboards/actions'
@@ -28,10 +26,6 @@ import {
 // Utils
 import {GlobalAutoRefresher} from 'src/utils/AutoRefresher'
 import {createView} from 'src/shared/utils/view'
-import {
-  extractRateLimitResourceName,
-  extractRateLimitStatus,
-} from 'src/cloud/utils/limits'
 
 // Constants
 import {
@@ -63,11 +57,9 @@ import * as AppActions from 'src/types/actions/app'
 import * as ColorsModels from 'src/types/colors'
 import {toggleShowVariablesControls} from 'src/userSettings/actions'
 import {Organization} from '@influxdata/influx'
-import {LimitStatus} from 'src/cloud/actions/limits'
+import LimitChecker from 'src/cloud/components/LimitChecker'
 
 interface StateProps {
-  resourceName: string
-  limitStatus: LimitStatus
   org: Organization
   links: Links
   zoomedTimeRange: TimeRange
@@ -172,8 +164,6 @@ class DashboardPage extends Component<Props, State> {
       zoomedTimeRange,
       dashboard,
       autoRefresh,
-      limitStatus,
-      resourceName,
       manualRefresh,
       onManualRefresh,
       inPresentationMode,
@@ -186,52 +176,47 @@ class DashboardPage extends Component<Props, State> {
     return (
       <Page titleTag={this.pageTitle}>
         <LimitChecker>
-          <AssetLimitAlert
-            resourceName={resourceName}
-            limitStatus={limitStatus}
-          >
-            <HoverTimeProvider>
-              <DashboardHeader
-                org={org}
+          <HoverTimeProvider>
+            <DashboardHeader
+              org={org}
+              dashboard={dashboard}
+              timeRange={timeRange}
+              autoRefresh={autoRefresh}
+              isHidden={inPresentationMode}
+              onAddCell={this.handleAddCell}
+              onAddNote={this.showNoteOverlay}
+              onManualRefresh={onManualRefresh}
+              zoomedTimeRange={zoomedTimeRange}
+              onRenameDashboard={this.handleRenameDashboard}
+              activeDashboard={dashboard ? dashboard.name : ''}
+              handleChooseAutoRefresh={this.handleChooseAutoRefresh}
+              onSetAutoRefreshStatus={this.handleSetAutoRefreshStatus}
+              handleChooseTimeRange={this.handleChooseTimeRange}
+              handleClickPresentationButton={handleClickPresentationButton}
+              toggleVariablesControlBar={onToggleShowVariablesControls}
+              isShowingVariablesControlBar={showVariablesControls}
+            />
+            {showVariablesControls && !!dashboard && (
+              <VariablesControlBar dashboardID={dashboard.id} />
+            )}
+            {!!dashboard && (
+              <DashboardComponent
+                inView={this.inView}
                 dashboard={dashboard}
                 timeRange={timeRange}
-                autoRefresh={autoRefresh}
-                isHidden={inPresentationMode}
+                manualRefresh={manualRefresh}
+                setScrollTop={this.setScrollTop}
+                onCloneCell={this.handleCloneCell}
+                inPresentationMode={inPresentationMode}
+                onPositionChange={this.handlePositionChange}
+                onDeleteCell={this.handleDeleteDashboardCell}
+                onEditView={this.handleEditView}
                 onAddCell={this.handleAddCell}
-                onAddNote={this.showNoteOverlay}
-                onManualRefresh={onManualRefresh}
-                zoomedTimeRange={zoomedTimeRange}
-                onRenameDashboard={this.handleRenameDashboard}
-                activeDashboard={dashboard ? dashboard.name : ''}
-                handleChooseAutoRefresh={this.handleChooseAutoRefresh}
-                onSetAutoRefreshStatus={this.handleSetAutoRefreshStatus}
-                handleChooseTimeRange={this.handleChooseTimeRange}
-                handleClickPresentationButton={handleClickPresentationButton}
-                toggleVariablesControlBar={onToggleShowVariablesControls}
-                isShowingVariablesControlBar={showVariablesControls}
+                onEditNote={this.showNoteOverlay}
               />
-              {showVariablesControls && !!dashboard && (
-                <VariablesControlBar dashboardID={dashboard.id} />
-              )}
-              {!!dashboard && (
-                <DashboardComponent
-                  inView={this.inView}
-                  dashboard={dashboard}
-                  timeRange={timeRange}
-                  manualRefresh={manualRefresh}
-                  setScrollTop={this.setScrollTop}
-                  onCloneCell={this.handleCloneCell}
-                  inPresentationMode={inPresentationMode}
-                  onPositionChange={this.handlePositionChange}
-                  onDeleteCell={this.handleDeleteDashboardCell}
-                  onEditView={this.handleEditView}
-                  onAddCell={this.handleAddCell}
-                  onEditNote={this.showNoteOverlay}
-                />
-              )}
-              {children}
-            </HoverTimeProvider>
-          </AssetLimitAlert>
+            )}
+            {children}
+          </HoverTimeProvider>
         </LimitChecker>
       </Page>
     )
@@ -375,7 +360,6 @@ const mstp = (state: AppState, {params: {dashboardID}}): StateProps => {
     views: {views},
     userSettings: {showVariablesControls},
     orgs: {org},
-    cloud: {limits},
   } = state
 
   const timeRange =
@@ -385,9 +369,6 @@ const mstp = (state: AppState, {params: {dashboardID}}): StateProps => {
 
   const dashboard = dashboards.list.find(d => d.id === dashboardID)
 
-  const resourceName = extractRateLimitResourceName(limits)
-  const limitStatus = extractRateLimitStatus(limits)
-
   return {
     org,
     links,
@@ -396,8 +377,6 @@ const mstp = (state: AppState, {params: {dashboardID}}): StateProps => {
     timeRange,
     dashboard,
     autoRefresh,
-    limitStatus,
-    resourceName,
     inPresentationMode,
     showVariablesControls,
   }

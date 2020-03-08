@@ -15,16 +15,11 @@ import {getDashboardValuesStatus} from 'src/variables/selectors'
 import {checkResultsLength} from 'src/shared/utils/vis'
 
 // Types
-import {
-  TimeRange,
-  RemoteDataState,
-  TimeZone,
-  AppState,
-  DashboardQuery,
-  VariableAssignment,
-  QueryViewProperties,
-  ViewType,
-} from 'src/types'
+import {TimeRange, RemoteDataState} from 'src/types'
+import {VariableAssignment} from 'src/types/ast'
+import {AppState} from 'src/types'
+import {DashboardQuery} from 'src/types/dashboards'
+import {QueryViewProperties, ViewType} from 'src/types/dashboards'
 
 interface OwnProps {
   timeRange: TimeRange
@@ -34,7 +29,6 @@ interface OwnProps {
 }
 
 interface StateProps {
-  timeZone: TimeZone
   variableAssignments: VariableAssignment[]
   variablesStatus: RemoteDataState
 }
@@ -66,7 +60,7 @@ class RefreshingView extends PureComponent<Props, State> {
   }
 
   public render() {
-    const {properties, manualRefresh, timeZone} = this.props
+    const {properties, manualRefresh} = this.props
     const {submitToken} = this.state
 
     return (
@@ -92,7 +86,6 @@ class RefreshingView extends PureComponent<Props, State> {
                 files={files}
                 loading={loading}
                 properties={properties}
-                timeZone={timeZone}
               />
             </EmptyQueryView>
           )
@@ -141,9 +134,7 @@ const mstp = (state: AppState, ownProps: OwnProps): StateProps => {
 
   const valuesStatus = getDashboardValuesStatus(state, ownProps.dashboardID)
 
-  const timeZone = state.app.persisted.timeZone
-
-  return {timeZone, variableAssignments, variablesStatus: valuesStatus}
+  return {variableAssignments, variablesStatus: valuesStatus}
 }
 
 export default connect<StateProps, {}, OwnProps>(mstp)(RefreshingView)
