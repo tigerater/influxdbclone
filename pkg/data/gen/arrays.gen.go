@@ -11,10 +11,6 @@ import (
 	"github.com/influxdata/influxdb/tsdb/tsm1"
 )
 
-type FloatValues interface {
-	Copy(*tsdb.FloatArray)
-}
-
 type floatArray struct {
 	tsdb.FloatArray
 }
@@ -30,15 +26,6 @@ func newFloatArrayLen(sz int) *floatArray {
 
 func (a *floatArray) Encode(b []byte) ([]byte, error) {
 	return tsm1.EncodeFloatArrayBlock(&a.FloatArray, b)
-}
-
-func (a *floatArray) Copy(dst *tsdb.FloatArray) {
-	dst.Timestamps = append(dst.Timestamps[:0], a.Timestamps...)
-	dst.Values = append(dst.Values[:0], a.Values...)
-}
-
-type IntegerValues interface {
-	Copy(*tsdb.IntegerArray)
 }
 
 type integerArray struct {
@@ -58,15 +45,6 @@ func (a *integerArray) Encode(b []byte) ([]byte, error) {
 	return tsm1.EncodeIntegerArrayBlock(&a.IntegerArray, b)
 }
 
-func (a *integerArray) Copy(dst *tsdb.IntegerArray) {
-	dst.Timestamps = append(dst.Timestamps[:0], a.Timestamps...)
-	dst.Values = append(dst.Values[:0], a.Values...)
-}
-
-type UnsignedValues interface {
-	Copy(*tsdb.UnsignedArray)
-}
-
 type unsignedArray struct {
 	tsdb.UnsignedArray
 }
@@ -82,15 +60,6 @@ func newUnsignedArrayLen(sz int) *unsignedArray {
 
 func (a *unsignedArray) Encode(b []byte) ([]byte, error) {
 	return tsm1.EncodeUnsignedArrayBlock(&a.UnsignedArray, b)
-}
-
-func (a *unsignedArray) Copy(dst *tsdb.UnsignedArray) {
-	dst.Timestamps = append(dst.Timestamps[:0], a.Timestamps...)
-	dst.Values = append(dst.Values[:0], a.Values...)
-}
-
-type StringValues interface {
-	Copy(*tsdb.StringArray)
 }
 
 type stringArray struct {
@@ -110,15 +79,6 @@ func (a *stringArray) Encode(b []byte) ([]byte, error) {
 	return tsm1.EncodeStringArrayBlock(&a.StringArray, b)
 }
 
-func (a *stringArray) Copy(dst *tsdb.StringArray) {
-	dst.Timestamps = append(dst.Timestamps[:0], a.Timestamps...)
-	dst.Values = append(dst.Values[:0], a.Values...)
-}
-
-type BooleanValues interface {
-	Copy(*tsdb.BooleanArray)
-}
-
 type booleanArray struct {
 	tsdb.BooleanArray
 }
@@ -134,9 +94,4 @@ func newBooleanArrayLen(sz int) *booleanArray {
 
 func (a *booleanArray) Encode(b []byte) ([]byte, error) {
 	return tsm1.EncodeBooleanArrayBlock(&a.BooleanArray, b)
-}
-
-func (a *booleanArray) Copy(dst *tsdb.BooleanArray) {
-	dst.Timestamps = append(dst.Timestamps[:0], a.Timestamps...)
-	dst.Values = append(dst.Values[:0], a.Values...)
 }
