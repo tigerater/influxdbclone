@@ -17,7 +17,6 @@ import (
 
 // APIHandler is a collection of all the service handlers.
 type APIHandler struct {
-	influxdb.HTTPErrorHandler
 	BucketHandler        *BucketHandler
 	UserHandler          *UserHandler
 	OrgHandler           *OrgHandler
@@ -42,9 +41,8 @@ type APIHandler struct {
 // APIBackend is all services and associated parameters required to construct
 // an APIHandler.
 type APIBackend struct {
-	AssetsPath string // if empty then assets are served from bindata.
-	Logger     *zap.Logger
-	influxdb.HTTPErrorHandler
+	AssetsPath           string // if empty then assets are served from bindata.
+	Logger               *zap.Logger
 	SessionRenewDisabled bool
 
 	NewBucketService func(*influxdb.Source) (influxdb.BucketService, error)
@@ -99,9 +97,7 @@ func (b *APIBackend) PrometheusCollectors() []prometheus.Collector {
 
 // NewAPIHandler constructs all api handlers beneath it and returns an APIHandler
 func NewAPIHandler(b *APIBackend) *APIHandler {
-	h := &APIHandler{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-	}
+	h := &APIHandler{}
 
 	internalURM := b.UserResourceMappingService
 	b.UserResourceMappingService = authorizer.NewURMService(b.OrgLookupService, b.UserResourceMappingService)
@@ -164,9 +160,9 @@ func NewAPIHandler(b *APIBackend) *APIHandler {
 	fluxBackend := NewFluxBackend(b)
 	h.QueryHandler = NewFluxHandler(fluxBackend)
 
-	h.ChronografHandler = NewChronografHandler(b.ChronografService, b.HTTPErrorHandler)
-	h.SwaggerHandler = newSwaggerLoader(b.Logger.With(zap.String("service", "swagger-loader")), b.HTTPErrorHandler)
-	h.LabelHandler = NewLabelHandler(authorizer.NewLabelService(b.LabelService), b.HTTPErrorHandler)
+	h.ChronografHandler = NewChronografHandler(b.ChronografService)
+	h.SwaggerHandler = newSwaggerLoader(b.Logger.With(zap.String("service", "swagger-loader")))
+	h.LabelHandler = NewLabelHandler(authorizer.NewLabelService(b.LabelService))
 
 	return h
 }
@@ -210,7 +206,8 @@ var apiLinks = map[string]interface{}{
 func (h *APIHandler) serveLinks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if err := encodeResponse(ctx, w, http.StatusOK, apiLinks); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
+		return
 	}
 }
 
@@ -322,5 +319,5 @@ func (h *APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	baseHandler{HTTPErrorHandler: h.HTTPErrorHandler}.notFound(w, r)
+	notFoundHandler(w, r)
 }

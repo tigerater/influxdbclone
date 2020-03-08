@@ -317,7 +317,6 @@ func TestService_handleGetBucket(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			bucketBackend := NewMockBucketBackend()
-			bucketBackend.HTTPErrorHandler = ErrorHandler(0)
 			bucketBackend.BucketService = tt.fields.BucketService
 			h := NewBucketHandler(bucketBackend)
 
@@ -528,7 +527,6 @@ func TestService_handleDeleteBucket(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			bucketBackend := NewMockBucketBackend()
-			bucketBackend.HTTPErrorHandler = ErrorHandler(0)
 			bucketBackend.BucketService = tt.fields.BucketService
 			h := NewBucketHandler(bucketBackend)
 
@@ -828,7 +826,6 @@ func TestService_handlePatchBucket(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			bucketBackend := NewMockBucketBackend()
-			bucketBackend.HTTPErrorHandler = ErrorHandler(0)
 			bucketBackend.BucketService = tt.fields.BucketService
 			h := NewBucketHandler(bucketBackend)
 
@@ -1088,7 +1085,6 @@ func initBucketService(f platformtesting.BucketFields, t *testing.T) (platform.B
 	}
 
 	bucketBackend := NewMockBucketBackend()
-	bucketBackend.HTTPErrorHandler = ErrorHandler(0)
 	bucketBackend.BucketService = svc
 	bucketBackend.OrganizationService = svc
 	handler := NewBucketHandler(bucketBackend)

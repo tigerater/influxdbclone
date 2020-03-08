@@ -28,10 +28,9 @@ func TestTaskService(t *testing.T) {
 				t.Fatalf("error initializing urm service: %v", err)
 			}
 
-			h := http.NewAuthenticationHandler(http.ErrorHandler(0))
+			h := http.NewAuthenticationHandler()
 			h.AuthorizationService = service
 			th := http.NewTaskHandler(&http.TaskBackend{
-				HTTPErrorHandler:           http.ErrorHandler(0),
 				Logger:                     zaptest.NewLogger(t).With(zap.String("handler", "task")),
 				TaskService:                service,
 				AuthorizationService:       service,

@@ -5,12 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"net/http"
-	"path"
-
 	platform "github.com/influxdata/influxdb"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
+	"net/http"
+	"path"
 )
 
 const (
@@ -20,7 +19,6 @@ const (
 // VariableBackend is all services and associated parameters required to construct
 // the VariableHandler.
 type VariableBackend struct {
-	platform.HTTPErrorHandler
 	Logger          *zap.Logger
 	VariableService platform.VariableService
 	LabelService    platform.LabelService
@@ -29,10 +27,9 @@ type VariableBackend struct {
 // NewVariableBackend creates a backend used by the variable handler.
 func NewVariableBackend(b *APIBackend) *VariableBackend {
 	return &VariableBackend{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger.With(zap.String("handler", "variable")),
-		VariableService:  b.VariableService,
-		LabelService:     b.LabelService,
+		Logger:          b.Logger.With(zap.String("handler", "variable")),
+		VariableService: b.VariableService,
+		LabelService:    b.LabelService,
 	}
 }
 
@@ -40,7 +37,6 @@ func NewVariableBackend(b *APIBackend) *VariableBackend {
 type VariableHandler struct {
 	*httprouter.Router
 
-	platform.HTTPErrorHandler
 	Logger *zap.Logger
 
 	VariableService platform.VariableService
@@ -50,9 +46,8 @@ type VariableHandler struct {
 // NewVariableHandler creates a new VariableHandler
 func NewVariableHandler(b *VariableBackend) *VariableHandler {
 	h := &VariableHandler{
-		Router:           NewRouter(b.HTTPErrorHandler),
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger,
+		Router: NewRouter(),
+		Logger: b.Logger,
 
 		VariableService: b.VariableService,
 		LabelService:    b.LabelService,
@@ -70,10 +65,9 @@ func NewVariableHandler(b *VariableBackend) *VariableHandler {
 	h.HandlerFunc("DELETE", entityPath, h.handleDeleteVariable)
 
 	labelBackend := &LabelBackend{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger.With(zap.String("handler", "label")),
-		LabelService:     b.LabelService,
-		ResourceType:     platform.DashboardsResourceType,
+		Logger:       b.Logger.With(zap.String("handler", "label")),
+		LabelService: b.LabelService,
+		ResourceType: platform.DashboardsResourceType,
 	}
 	h.HandlerFunc("GET", entityLabelsPath, newGetLabelsHandler(labelBackend))
 	h.HandlerFunc("POST", entityLabelsPath, newPostLabelHandler(labelBackend))
@@ -146,13 +140,13 @@ func (h *VariableHandler) handleGetVariables(w http.ResponseWriter, r *http.Requ
 
 	req, err := decodeGetVariablesRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	variables, err := h.VariableService.FindVariables(ctx, req.filter, req.opts)
 	if err != nil {
-		h.HandleHTTPError(ctx, &platform.Error{
+		EncodeError(ctx, &platform.Error{
 			Code: platform.EInternal,
 			Msg:  "could not read variables",
 			Err:  err,
@@ -190,19 +184,19 @@ func (h *VariableHandler) handleGetVariable(w http.ResponseWriter, r *http.Reque
 
 	id, err := requestVariableID(ctx)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	variable, err := h.VariableService.FindVariableByID(ctx, id)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	labels, err := h.LabelService.FindResourceLabels(ctx, platform.LabelMappingFilter{ResourceID: variable.ID})
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -246,13 +240,13 @@ func (h *VariableHandler) handlePostVariable(w http.ResponseWriter, r *http.Requ
 	ctx := r.Context()
 	req, err := decodePostVariableRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	err = h.VariableService.CreateVariable(ctx, req.variable)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	if err := encodeResponse(ctx, w, http.StatusCreated, newVariableResponse(req.variable, []*platform.Label{})); err != nil {
@@ -299,19 +293,19 @@ func (h *VariableHandler) handlePatchVariable(w http.ResponseWriter, r *http.Req
 
 	req, err := decodePatchVariableRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	variable, err := h.VariableService.UpdateVariable(ctx, req.id, req.variableUpdate)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	labels, err := h.LabelService.FindResourceLabels(ctx, platform.LabelMappingFilter{ResourceID: variable.ID})
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -367,19 +361,19 @@ func (h *VariableHandler) handlePutVariable(w http.ResponseWriter, r *http.Reque
 
 	req, err := decodePutVariableRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	err = h.VariableService.ReplaceVariable(ctx, req.variable)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	labels, err := h.LabelService.FindResourceLabels(ctx, platform.LabelMappingFilter{ResourceID: req.variable.ID})
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -428,13 +422,13 @@ func (h *VariableHandler) handleDeleteVariable(w http.ResponseWriter, r *http.Re
 
 	id, err := requestVariableID(ctx)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	err = h.VariableService.DeleteVariable(ctx, id)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 

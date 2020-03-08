@@ -291,7 +291,6 @@ func TestService_handleDeleteDocumentLabel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			documentBackend := NewMockDocumentBackend()
-			documentBackend.HTTPErrorHandler = ErrorHandler(0)
 			documentBackend.DocumentService = tt.fields.DocumentService
 			documentBackend.LabelService = tt.fields.LabelService
 			h := NewDocumentHandler(documentBackend)
@@ -477,7 +476,6 @@ func TestService_handlePostDocumentLabel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			documentBackend := NewMockDocumentBackend()
-			documentBackend.HTTPErrorHandler = ErrorHandler(0)
 			documentBackend.DocumentService = tt.fields.DocumentService
 			documentBackend.LabelService = tt.fields.LabelService
 			h := NewDocumentHandler(documentBackend)
@@ -582,7 +580,6 @@ func TestService_handleGetDocumentLabels(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			documentBackend := NewMockDocumentBackend()
-			documentBackend.HTTPErrorHandler = ErrorHandler(0)
 			documentBackend.DocumentService = tt.fields.DocumentService
 			documentBackend.LabelService = tt.fields.LabelService
 			h := NewDocumentHandler(documentBackend)
@@ -706,7 +703,6 @@ func TestService_handleGetDocuments(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			documentBackend := NewMockDocumentBackend()
-			documentBackend.HTTPErrorHandler = ErrorHandler(0)
 			documentBackend.DocumentService = tt.fields.DocumentService
 			h := NewDocumentHandler(documentBackend)
 			r := httptest.NewRequest("GET", "http://any.url", nil)
@@ -906,7 +902,6 @@ func TestService_handlePostDocuments(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			documentBackend := NewMockDocumentBackend()
-			documentBackend.HTTPErrorHandler = ErrorHandler(0)
 			documentBackend.DocumentService = tt.fields.DocumentService
 			documentBackend.LabelService = tt.fields.LabelService
 			h := NewDocumentHandler(documentBackend)

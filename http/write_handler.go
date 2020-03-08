@@ -24,7 +24,6 @@ import (
 // WriteBackend is all services and associated parameters required to construct
 // the WriteHandler.
 type WriteBackend struct {
-	platform.HTTPErrorHandler
 	Logger             *zap.Logger
 	WriteEventRecorder metric.EventRecorder
 
@@ -36,7 +35,6 @@ type WriteBackend struct {
 // NewWriteBackend returns a new instance of WriteBackend.
 func NewWriteBackend(b *APIBackend) *WriteBackend {
 	return &WriteBackend{
-		HTTPErrorHandler:   b.HTTPErrorHandler,
 		Logger:             b.Logger.With(zap.String("handler", "write")),
 		WriteEventRecorder: b.WriteEventRecorder,
 
@@ -49,7 +47,7 @@ func NewWriteBackend(b *APIBackend) *WriteBackend {
 // WriteHandler receives line protocol and sends to a publish function.
 type WriteHandler struct {
 	*httprouter.Router
-	platform.HTTPErrorHandler
+
 	Logger *zap.Logger
 
 	BucketService       platform.BucketService
@@ -69,9 +67,8 @@ const (
 // NewWriteHandler creates a new handler at /api/v2/write to receive line protocol.
 func NewWriteHandler(b *WriteBackend) *WriteHandler {
 	h := &WriteHandler{
-		Router:           NewRouter(b.HTTPErrorHandler),
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger,
+		Router: NewRouter(),
+		Logger: b.Logger,
 
 		PointsWriter:        b.PointsWriter,
 		BucketService:       b.BucketService,
@@ -111,7 +108,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 		var err error
 		in, err = gzip.NewReader(r.Body)
 		if err != nil {
-			h.HandleHTTPError(ctx, &platform.Error{
+			EncodeError(ctx, &platform.Error{
 				Code: platform.EInvalid,
 				Op:   "http/handleWrite",
 				Msg:  errInvalidGzipHeader,
@@ -124,13 +121,13 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 
 	a, err := pcontext.GetAuthorizer(ctx)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	req, err := decodeWriteRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -143,7 +140,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			org = o
 		} else if platform.ErrorCode(err) != platform.ENotFound {
-			h.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 	}
@@ -151,7 +148,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 		o, err := h.OrganizationService.FindOrganization(ctx, platform.OrganizationFilter{Name: &req.Org})
 		if err != nil {
 			logger.Info("Failed to find organization", zap.Error(err))
-			h.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -169,7 +166,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 		if err == nil {
 			bucket = b
 		} else if platform.ErrorCode(err) != platform.ENotFound {
-			h.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 	}
@@ -180,7 +177,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 			Name:           &req.Bucket,
 		})
 		if err != nil {
-			h.HandleHTTPError(ctx, &platform.Error{
+			EncodeError(ctx, &platform.Error{
 				Op:  "http/handleWrite",
 				Err: err,
 			}, w)
@@ -192,7 +189,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 
 	p, err := platform.NewPermissionAtID(bucket.ID, platform.WriteAction, platform.BucketsResourceType, org.ID)
 	if err != nil {
-		h.HandleHTTPError(ctx, &platform.Error{
+		EncodeError(ctx, &platform.Error{
 			Code: platform.EInternal,
 			Op:   "http/handleWrite",
 			Msg:  fmt.Sprintf("unable to create permission for bucket: %v", err),
@@ -202,7 +199,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if !a.Allowed(*p) {
-		h.HandleHTTPError(ctx, &platform.Error{
+		EncodeError(ctx, &platform.Error{
 			Code: platform.EForbidden,
 			Op:   "http/handleWrite",
 			Msg:  "insufficient permissions for write",
@@ -216,7 +213,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 	data, err := ioutil.ReadAll(in)
 	if err != nil {
 		logger.Error("Error reading body", zap.Error(err))
-		h.HandleHTTPError(ctx, &platform.Error{
+		EncodeError(ctx, &platform.Error{
 			Code: platform.EInternal,
 			Op:   "http/handleWrite",
 			Msg:  fmt.Sprintf("unable to read data: %v", err),
@@ -231,7 +228,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 	points, err := models.ParsePointsWithPrecision(data, mm, time.Now(), req.Precision)
 	if err != nil {
 		logger.Error("Error parsing points", zap.Error(err))
-		h.HandleHTTPError(ctx, &platform.Error{
+		EncodeError(ctx, &platform.Error{
 			Code: platform.EInvalid,
 			Op:   "http/handleWrite",
 			Msg:  fmt.Sprintf("unable to parse points: %v", err),
@@ -242,7 +239,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.PointsWriter.WritePoints(ctx, points); err != nil {
 		logger.Error("Error writing points", zap.Error(err))
-		h.HandleHTTPError(ctx, &platform.Error{
+		EncodeError(ctx, &platform.Error{
 			Code: platform.EInternal,
 			Op:   "http/handleWrite",
 			Msg:  fmt.Sprintf("unable to write points to database: %v", err),

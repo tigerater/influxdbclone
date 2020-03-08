@@ -596,7 +596,6 @@ func (m *Launcher) run(ctx context.Context) (err error) {
 
 	m.apibackend = &http.APIBackend{
 		AssetsPath:           m.assetsPath,
-		HTTPErrorHandler:     http.ErrorHandler(0),
 		Logger:               m.logger,
 		SessionRenewDisabled: m.sessionRenewDisabled,
 		NewBucketService:     source.NewBucketService,

@@ -49,7 +49,6 @@ func initOrganizationService(f platformtesting.OrganizationFields, t *testing.T)
 	}
 
 	orgBackend := NewMockOrgBackend()
-	orgBackend.HTTPErrorHandler = ErrorHandler(0)
 	orgBackend.OrganizationService = svc
 	handler := NewOrgHandler(orgBackend)
 	server := httptest.NewServer(handler)
@@ -145,7 +144,6 @@ func TestSecretService_handleGetSecrets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			orgBackend := NewMockOrgBackend()
-			orgBackend.HTTPErrorHandler = ErrorHandler(0)
 			orgBackend.SecretService = tt.fields.SecretService
 			h := NewOrgHandler(orgBackend)
 
@@ -221,7 +219,6 @@ func TestSecretService_handlePatchSecrets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			orgBackend := NewMockOrgBackend()
-			orgBackend.HTTPErrorHandler = ErrorHandler(0)
 			orgBackend.SecretService = tt.fields.SecretService
 			h := NewOrgHandler(orgBackend)
 
@@ -303,7 +300,6 @@ func TestSecretService_handleDeleteSecrets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			orgBackend := NewMockOrgBackend()
-			orgBackend.HTTPErrorHandler = ErrorHandler(0)
 			orgBackend.SecretService = tt.fields.SecretService
 			h := NewOrgHandler(orgBackend)
 

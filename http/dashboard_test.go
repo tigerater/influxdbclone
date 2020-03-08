@@ -332,7 +332,6 @@ func TestService_handleGetDashboards(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dashboardBackend := NewMockDashboardBackend()
-			dashboardBackend.HTTPErrorHandler = ErrorHandler(0)
 			dashboardBackend.LabelService = tt.fields.LabelService
 			dashboardBackend.DashboardService = tt.fields.DashboardService
 			h := NewDashboardHandler(dashboardBackend)
@@ -488,7 +487,6 @@ func TestService_handleGetDashboard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dashboardBackend := NewMockDashboardBackend()
-			dashboardBackend.HTTPErrorHandler = ErrorHandler(0)
 			dashboardBackend.DashboardService = tt.fields.DashboardService
 			h := NewDashboardHandler(dashboardBackend)
 
@@ -624,7 +622,6 @@ func TestService_handlePostDashboard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dashboardBackend := NewMockDashboardBackend()
-			dashboardBackend.HTTPErrorHandler = ErrorHandler(0)
 			dashboardBackend.DashboardService = tt.fields.DashboardService
 			h := NewDashboardHandler(dashboardBackend)
 
@@ -720,7 +717,6 @@ func TestService_handleDeleteDashboard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dashboardBackend := NewMockDashboardBackend()
-			dashboardBackend.HTTPErrorHandler = ErrorHandler(0)
 			dashboardBackend.DashboardService = tt.fields.DashboardService
 			h := NewDashboardHandler(dashboardBackend)
 
@@ -904,7 +900,6 @@ func TestService_handlePatchDashboard(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dashboardBackend := NewMockDashboardBackend()
-			dashboardBackend.HTTPErrorHandler = ErrorHandler(0)
 			dashboardBackend.DashboardService = tt.fields.DashboardService
 			h := NewDashboardHandler(dashboardBackend)
 
@@ -1085,7 +1080,6 @@ func TestService_handlePostDashboardCell(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dashboardBackend := NewMockDashboardBackend()
-			dashboardBackend.HTTPErrorHandler = ErrorHandler(0)
 			dashboardBackend.DashboardService = tt.fields.DashboardService
 			h := NewDashboardHandler(dashboardBackend)
 			buf := new(bytes.Buffer)
@@ -1169,7 +1163,6 @@ func TestService_handleDeleteDashboardCell(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dashboardBackend := NewMockDashboardBackend()
-			dashboardBackend.HTTPErrorHandler = ErrorHandler(0)
 			dashboardBackend.DashboardService = tt.fields.DashboardService
 			h := NewDashboardHandler(dashboardBackend)
 
@@ -1284,7 +1277,6 @@ func TestService_handlePatchDashboardCell(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dashboardBackend := NewMockDashboardBackend()
-			dashboardBackend.HTTPErrorHandler = ErrorHandler(0)
 			dashboardBackend.DashboardService = tt.fields.DashboardService
 			h := NewDashboardHandler(dashboardBackend)
 
@@ -1379,7 +1371,6 @@ func initDashboardService(f platformtesting.DashboardFields, t *testing.T) (plat
 	}
 
 	dashboardBackend := NewMockDashboardBackend()
-	dashboardBackend.HTTPErrorHandler = ErrorHandler(0)
 	dashboardBackend.DashboardService = svc
 	h := NewDashboardHandler(dashboardBackend)
 	server := httptest.NewServer(h)
@@ -1464,7 +1455,6 @@ func TestService_handlePostDashboardLabel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			dashboardBackend := NewMockDashboardBackend()
-			dashboardBackend.HTTPErrorHandler = ErrorHandler(0)
 			dashboardBackend.LabelService = tt.fields.LabelService
 			h := NewDashboardHandler(dashboardBackend)
 

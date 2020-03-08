@@ -229,9 +229,7 @@ func TestFluxHandler_postFluxAST(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := &FluxHandler{
-				HTTPErrorHandler: ErrorHandler(0),
-			}
+			h := &FluxHandler{}
 			h.postFluxAST(tt.w, tt.r)
 			if got := tt.w.Body.String(); got != tt.want {
 				t.Errorf("http.postFluxAST = got\n%vwant\n%v", got, tt.want)
@@ -295,7 +293,6 @@ var _ metric.EventRecorder = noopEventRecorder{}
 func TestFluxHandler_PostQuery_Errors(t *testing.T) {
 	i := inmem.NewService()
 	b := &FluxBackend{
-		HTTPErrorHandler:    ErrorHandler(0),
 		Logger:              zaptest.NewLogger(t),
 		QueryEventRecorder:  noopEventRecorder{},
 		OrganizationService: i,

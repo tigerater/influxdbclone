@@ -78,7 +78,6 @@ func newSourcesResponse(srcs []*platform.Source) *sourcesResponse {
 // SourceBackend is all services and associated parameters required to construct
 // the SourceHandler.
 type SourceBackend struct {
-	platform.HTTPErrorHandler
 	Logger *zap.Logger
 
 	SourceService   platform.SourceService
@@ -90,8 +89,7 @@ type SourceBackend struct {
 // NewSourceBackend returns a new instance of SourceBackend.
 func NewSourceBackend(b *APIBackend) *SourceBackend {
 	return &SourceBackend{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger.With(zap.String("handler", "source")),
+		Logger: b.Logger.With(zap.String("handler", "source")),
 
 		SourceService:   b.SourceService,
 		LabelService:    b.LabelService,
@@ -103,7 +101,6 @@ func NewSourceBackend(b *APIBackend) *SourceBackend {
 // SourceHandler is a handler for sources
 type SourceHandler struct {
 	*httprouter.Router
-	platform.HTTPErrorHandler
 	Logger        *zap.Logger
 	SourceService platform.SourceService
 	LabelService  platform.LabelService
@@ -117,9 +114,8 @@ type SourceHandler struct {
 // NewSourceHandler returns a new instance of SourceHandler.
 func NewSourceHandler(b *SourceBackend) *SourceHandler {
 	h := &SourceHandler{
-		Router:           NewRouter(b.HTTPErrorHandler),
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger,
+		Router: NewRouter(),
+		Logger: b.Logger,
 
 		SourceService:   b.SourceService,
 		LabelService:    b.LabelService,
@@ -192,31 +188,31 @@ func (h *SourceHandler) handlePostSourceQuery(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 	gsr, err := decodeGetSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	req, err := decodeSourceQueryRequest(r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	s, err := h.SourceService.FindSourceByID(ctx, gsr.SourceID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	querySvc, err := h.NewQueryService(s)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	_, err = querySvc.Query(ctx, w, req)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 }
@@ -227,19 +223,19 @@ func (h *SourceHandler) handleGetSourcesBuckets(w http.ResponseWriter, r *http.R
 
 	req, err := decodeGetSourceBucketsRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	_, err = h.SourceService.FindSourceByID(ctx, req.getSourceRequest.SourceID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	bs, _, err := h.BucketService.FindBuckets(ctx, req.getBucketsRequest.filter)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -275,12 +271,12 @@ func (h *SourceHandler) handlePostSource(w http.ResponseWriter, r *http.Request)
 
 	req, err := decodePostSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.SourceService.CreateSource(ctx, req.Source); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -313,13 +309,13 @@ func (h *SourceHandler) handleGetSource(w http.ResponseWriter, r *http.Request) 
 
 	req, err := decodeGetSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	s, err := h.SourceService.FindSourceByID(ctx, req.SourceID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -340,11 +336,11 @@ func (h *SourceHandler) handleGetSourceHealth(w http.ResponseWriter, r *http.Req
 
 	req, err := decodeGetSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	if _, err := h.SourceService.FindSourceByID(ctx, req.SourceID); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	// todo(leodido) > check source is actually healthy and reply with 503 if not
@@ -386,12 +382,12 @@ func (h *SourceHandler) handleDeleteSource(w http.ResponseWriter, r *http.Reques
 
 	req, err := decodeDeleteSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.SourceService.DeleteSource(ctx, req.SourceID); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -429,13 +425,13 @@ func (h *SourceHandler) handleGetSources(w http.ResponseWriter, r *http.Request)
 
 	req, err := decodeGetSourcesRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	srcs, _, err := h.SourceService.FindSources(ctx, req.findOptions)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -462,13 +458,13 @@ func (h *SourceHandler) handlePatchSource(w http.ResponseWriter, r *http.Request
 
 	req, err := decodePatchSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	b, err := h.SourceService.UpdateSource(ctx, req.SourceID, req.Update)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
