@@ -1,0 +1,95 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`TaskForm rendering renders 1`] = `
+<t
+  testID="form-container"
+>
+  <t
+    testID="grid"
+  >
+    <t
+      testID="grid--row"
+    >
+      <t
+        testID="grid--column"
+        widthXS={12}
+      >
+        <t
+          label="Name"
+          testID="form--element"
+        >
+          <t
+            autoFocus={false}
+            autocomplete="off"
+            disabledTitleText="This input is disabled"
+            name="name"
+            onChange={[MockFunction]}
+            placeholder="Name your task"
+            size="sm"
+            spellCheck={false}
+            status="default"
+            testID="input-field"
+            titleText=""
+            type="text"
+            value=""
+          />
+        </t>
+      </t>
+      <t
+        testID="grid--column"
+        widthXS={12}
+      >
+        <t
+          label="Schedule Task"
+          testID="form--element"
+        >
+          <t
+            alignItems="flex-start"
+            direction="column"
+            justifyContent="flex-start"
+            margin="sm"
+            stretchToFitHeight={false}
+            stretchToFitWidth={false}
+            testID="component-spacer"
+          >
+            <t
+              color="primary"
+              shape="stretch"
+              size="sm"
+              testID="radio-button"
+            >
+              <t
+                active={false}
+                disabled={false}
+                disabledTitleText="This option is disabled"
+                id="every"
+                onClick={[Function]}
+                testID="radio--button"
+                titleText="Run task at regular intervals"
+                value="interval"
+              >
+                Every
+              </t>
+              <t
+                active={false}
+                disabled={false}
+                disabledTitleText="This option is disabled"
+                id="cron"
+                onClick={[Function]}
+                testID="radio--button"
+                titleText="Use cron syntax for more control over scheduling"
+                value="cron"
+              >
+                Cron
+              </t>
+            </t>
+          </t>
+        </t>
+      </t>
+      <TaskScheduleFormFields
+        onChangeInput={[MockFunction]}
+      />
+    </t>
+  </t>
+</t>
+`;
