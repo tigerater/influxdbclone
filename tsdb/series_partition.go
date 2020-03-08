@@ -14,7 +14,6 @@ import (
 	"github.com/influxdata/influxdb/kit/tracing"
 	"github.com/influxdata/influxdb/logger"
 	"github.com/influxdata/influxdb/models"
-	"github.com/influxdata/influxdb/pkg/fs"
 	"github.com/influxdata/influxdb/pkg/rhh"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
@@ -224,6 +223,7 @@ func (p *SeriesPartition) CreateSeriesListIfNotExists(collection *SeriesCollecti
 	}
 
 	type keyRange struct {
+		key    []byte
 		id     SeriesIDTyped
 		offset int64
 	}
@@ -288,7 +288,7 @@ func (p *SeriesPartition) CreateSeriesListIfNotExists(collection *SeriesCollecti
 		// Append new key to be added to hash map after flush.
 		collection.SeriesIDs[index] = id.SeriesID()
 		newIDs[string(key)] = id
-		newKeyRanges = append(newKeyRanges, keyRange{id, offset})
+		newKeyRanges = append(newKeyRanges, keyRange{key, id, offset})
 	}
 
 	// Flush active segment writes so we can access data in mmap.
@@ -300,7 +300,7 @@ func (p *SeriesPartition) CreateSeriesListIfNotExists(collection *SeriesCollecti
 
 	// Add keys to hash map(s).
 	for _, keyRange := range newKeyRanges {
-		p.index.Insert(p.seriesKeyByOffset(keyRange.offset), keyRange.id, keyRange.offset)
+		p.index.Insert(keyRange.key, keyRange.id, keyRange.offset)
 	}
 	p.tracker.AddSeriesCreated(uint64(len(newKeyRanges))) // Track new series in metric.
 	p.tracker.AddSeries(uint64(len(newKeyRanges)))
@@ -740,7 +740,7 @@ func (c *SeriesPartitionCompactor) Compact(p *SeriesPartition) (time.Duration, e
 		// Reopen index with new file.
 		if err := p.index.Close(); err != nil {
 			return err
-		} else if err := fs.RenameFileWithReplacement(indexPath, index.path); err != nil {
+		} else if err := os.Rename(indexPath, index.path); err != nil {
 			return err
 		} else if err := p.index.Open(); err != nil {
 			return err
@@ -817,7 +817,7 @@ func (c *SeriesPartitionCompactor) compactIndexTo(index *SeriesIndex, seriesN ui
 	}
 
 	// Open file handler.
-	f, err := fs.CreateFile(path)
+	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}

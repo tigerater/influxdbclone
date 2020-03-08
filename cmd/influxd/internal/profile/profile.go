@@ -5,8 +5,6 @@ import (
 	"os"
 	"runtime"
 	"runtime/pprof"
-
-	"github.com/influxdata/influxdb/pkg/fs"
 )
 
 type Config struct {
@@ -34,7 +32,7 @@ func (c *Config) Start() func() {
 	}
 
 	if c.CPU != "" {
-		f, err := fs.CreateFile(c.CPU)
+		f, err := os.Create(c.CPU)
 		if err != nil {
 			log.Fatalf("cpuprofile: %v", err)
 		}
@@ -43,7 +41,7 @@ func (c *Config) Start() func() {
 	}
 
 	if c.Memory != "" {
-		f, err := fs.CreateFile(c.Memory)
+		f, err := os.Create(c.Memory)
 		if err != nil {
 			log.Fatalf("memprofile: %v", err)
 		}
