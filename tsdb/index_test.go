@@ -150,7 +150,8 @@ func (i *Index) Close() error {
 	if err := i.sfile.Close(); err != nil {
 		return err
 	}
-	return os.RemoveAll(i.rootPath)
+	//return os.RemoveAll(i.rootPath)
+	return nil
 }
 
 // This benchmark compares the TagSets implementation across index types.
