@@ -36,21 +36,21 @@ export const DEFAULT_DEADMAN_CHECK: Partial<DeadmanCheck> = {
   reportZero: DEFAULT_CHECK_REPORT_ZERO,
 }
 
-export const query: DashboardQuery = {
+export const CHECK_QUERY_FIXTURE: DashboardQuery = {
   text: 'this is query',
   editMode: 'advanced',
   builderConfig: null,
   name: 'great q',
 }
 
-export const check1: Check = {
+export const CHECK_FIXTURE_1: Check = {
   id: '1',
   type: 'threshold',
   name: 'Amoozing check',
   orgID: 'lala',
   createdAt: '2019-12-17T00:00',
   updatedAt: '2019-05-17T00:00',
-  query: query,
+  query: CHECK_QUERY_FIXTURE,
   status: 'active',
   every: '2d',
   offset: '1m',
@@ -65,14 +65,14 @@ export const check1: Check = {
   ],
 }
 
-export const check2: Check = {
+export const CHECK_FIXTURE_2: Check = {
   id: '2',
   type: 'threshold',
   name: 'Another check',
   orgID: 'lala',
   createdAt: '2019-12-17T00:00',
   updatedAt: '2019-05-17T00:00',
-  query: query,
+  query: CHECK_QUERY_FIXTURE,
   status: 'active',
   every: '2d',
   offset: '1m',
@@ -87,10 +87,10 @@ export const check2: Check = {
   ],
 }
 
-export const checks: Array<Check> = [check1, check2]
+export const CHECK_FIXTURES: Array<Check> = [CHECK_FIXTURE_1, CHECK_FIXTURE_2]
 
-export const newStatusRule: StatusRuleDraft = {
-  id: '',
+export const NEW_STATUS_RULE_DRAFT: StatusRuleDraft = {
+  cid: '',
   value: {
     currentLevel: {
       operation: 'equal',
@@ -105,8 +105,8 @@ export const newStatusRule: StatusRuleDraft = {
   },
 }
 
-export const newTagRule: TagRuleDraft = {
-  id: '',
+export const NEW_TAG_RULE_DRAFT: TagRuleDraft = {
+  cid: '',
   value: {
     key: '',
     value: '',
@@ -114,7 +114,7 @@ export const newTagRule: TagRuleDraft = {
   },
 }
 
-export const newRule: NotificationRuleDraft = {
+export const NEW_RULE_DRAFT: NotificationRuleDraft = {
   id: '',
   notifyEndpointID: '1',
   type: 'slack',
@@ -123,18 +123,18 @@ export const newRule: NotificationRuleDraft = {
   name: '',
   status: 'active',
   messageTemplate: '',
-  tagRules: [newTagRule],
-  statusRules: [newStatusRule],
+  tagRules: [NEW_TAG_RULE_DRAFT],
+  statusRules: [NEW_STATUS_RULE_DRAFT],
   description: '',
 }
 
-export const endpoints: NotificationEndpoint[] = [
+export const NEW_ENDPOINT_FIXTURES: NotificationEndpoint[] = [
   {
     id: '1',
     orgID: '1',
     userID: '1',
     description: 'interrupt everyone at work',
-    name: 'slack endpoint',
+    name: 'Slack',
     status: 'active',
     type: 'slack',
   },
@@ -143,7 +143,7 @@ export const endpoints: NotificationEndpoint[] = [
     orgID: '1',
     userID: '1',
     description: 'interrupt someone by email',
-    name: 'smtp endpoint',
+    name: 'SMTP',
     status: 'active',
     type: 'smtp',
   },
@@ -152,13 +152,13 @@ export const endpoints: NotificationEndpoint[] = [
     orgID: '1',
     userID: '1',
     description: 'interrupt someone by all means known to man',
-    name: 'pagerditty endpoint',
+    name: 'PagerDuty',
     status: 'active',
     type: 'pagerduty',
   },
 ]
 
-export const rule: NotificationRuleDraft = {
+export const RULE_DRAFT_FIXTURE: NotificationRuleDraft = {
   id: '3',
   notifyEndpointID: '2',
   orgID: 'lala',
@@ -173,7 +173,7 @@ export const rule: NotificationRuleDraft = {
   limitEvery: 1,
   limit: 5,
   tagRules: [],
-  statusRules: [newStatusRule],
+  statusRules: [NEW_STATUS_RULE_DRAFT],
   channel: '#monitoring-team',
   messageTemplate: 'hello, this is a NotificationRule fixture speaking :)',
 }

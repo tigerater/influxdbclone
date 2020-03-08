@@ -12,11 +12,11 @@ import LevelsDropdown from 'src/alerting/components/notifications/LevelsDropdown
 import StatusChangeDropdown from 'src/alerting/components/notifications/StatusChangeDropdown'
 import {LevelType} from 'src/alerting/components/notifications/RuleOverlay.reducer'
 
+// Utils
+import {useRuleDispatch} from './RuleOverlay.reducer'
+
 // Types
 import {StatusRuleDraft, CheckStatusLevel} from 'src/types'
-
-// Hooks
-import {useRuleDispatch} from 'src/shared/hooks'
 
 interface Props {
   status: StatusRuleDraft
@@ -29,7 +29,7 @@ const StatusLevels: FC<Props> = ({status}) => {
   const onClickLevel = (levelType: LevelType, level: CheckStatusLevel) => {
     dispatch({
       type: 'UPDATE_STATUS_LEVEL',
-      statusID: status.id,
+      statusID: status.cid,
       levelType,
       level,
     })

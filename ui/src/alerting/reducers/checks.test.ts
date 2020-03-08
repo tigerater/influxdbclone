@@ -1,12 +1,7 @@
 import checksReducer, {defaultChecksState} from 'src/alerting/reducers/checks'
-import {
-  setAllChecks,
-  setCheck,
-  setCurrentCheck,
-  removeCheck,
-} from 'src/alerting/actions/checks'
+import {setAllChecks, setCheck, removeCheck} from 'src/alerting/actions/checks'
 import {RemoteDataState} from 'src/types'
-import {check1, check2} from 'src/alerting/constants'
+import {CHECK_FIXTURE_1, CHECK_FIXTURE_2} from 'src/alerting/constants'
 
 describe('checksReducer', () => {
   describe('setAllChecks', () => {
@@ -15,12 +10,12 @@ describe('checksReducer', () => {
 
       const actual = checksReducer(
         initialState,
-        setAllChecks(RemoteDataState.Done, [check1, check2])
+        setAllChecks(RemoteDataState.Done, [CHECK_FIXTURE_1, CHECK_FIXTURE_2])
       )
 
       const expected = {
         ...defaultChecksState,
-        list: [check1, check2],
+        list: [CHECK_FIXTURE_1, CHECK_FIXTURE_2],
         status: RemoteDataState.Done,
       }
 
@@ -31,26 +26,26 @@ describe('checksReducer', () => {
     it('adds check to list if it is new', () => {
       const initialState = defaultChecksState
 
-      const actual = checksReducer(initialState, setCheck(check2))
+      const actual = checksReducer(initialState, setCheck(CHECK_FIXTURE_2))
 
       const expected = {
         ...defaultChecksState,
-        list: [check2],
+        list: [CHECK_FIXTURE_2],
       }
 
       expect(actual).toEqual(expected)
     })
     it('updates check in list if it exists', () => {
       let initialState = defaultChecksState
-      initialState.list = [check1]
+      initialState.list = [CHECK_FIXTURE_1]
       const actual = checksReducer(
         initialState,
-        setCheck({...check1, name: check2.name})
+        setCheck({...CHECK_FIXTURE_1, name: CHECK_FIXTURE_2.name})
       )
 
       const expected = {
         ...defaultChecksState,
-        list: [{...check1, name: check2.name}],
+        list: [{...CHECK_FIXTURE_1, name: CHECK_FIXTURE_2.name}],
       }
 
       expect(actual).toEqual(expected)
@@ -59,29 +54,15 @@ describe('checksReducer', () => {
   describe('removeCheck', () => {
     it('removes check from list', () => {
       const initialState = defaultChecksState
-      initialState.list = [check1]
-      const actual = checksReducer(initialState, removeCheck(check1.id))
-
-      const expected = {
-        ...defaultChecksState,
-        list: [],
-      }
-
-      expect(actual).toEqual(expected)
-    })
-  })
-  describe('setCurrentCheck', () => {
-    it('sets current check and status.', () => {
-      const initialState = defaultChecksState
-
+      initialState.list = [CHECK_FIXTURE_1]
       const actual = checksReducer(
         initialState,
-        setCurrentCheck(RemoteDataState.Done, check1)
+        removeCheck(CHECK_FIXTURE_1.id)
       )
 
       const expected = {
         ...defaultChecksState,
-        current: {status: RemoteDataState.Done, check: check1},
+        list: [],
       }
 
       expect(actual).toEqual(expected)

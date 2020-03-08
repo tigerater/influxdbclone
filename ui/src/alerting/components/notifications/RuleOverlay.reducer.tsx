@@ -1,5 +1,12 @@
 // Libraries
-import {useCallback, useReducer} from 'react'
+import React, {
+  createContext,
+  useContext,
+  useReducer,
+  useRef,
+  Dispatch,
+  FC,
+} from 'react'
 import {v4} from 'uuid'
 import {omit} from 'lodash'
 
@@ -11,13 +18,11 @@ import {
   CheckStatusLevel,
 } from 'src/types'
 
-// Hooks
-import {RuleMode} from 'src/shared/hooks'
-
 export type LevelType = 'currentLevel' | 'previousLevel'
+
 export type RuleState = NotificationRuleDraft
-export type ActionMode = {mode: RuleMode}
-export type ActionPayload =
+
+export type Action =
   | {type: 'UPDATE_RULE'; rule: NotificationRuleDraft}
   | {
       type: 'UPDATE_STATUS_LEVEL'
@@ -37,16 +42,7 @@ export type ActionPayload =
       operator: TagRuleDraft['value']['operator']
     }
 
-export type Action = ActionPayload & ActionMode
-
-export const reducer = (mode: RuleMode) => (
-  state: RuleState,
-  action: Action
-) => {
-  if (mode !== action.mode) {
-    return state
-  }
-
+const reducer = (state: RuleState, action: Action) => {
   switch (action.type) {
     case 'UPDATE_RULE': {
       const {rule} = action
@@ -71,7 +67,7 @@ export const reducer = (mode: RuleMode) => (
     case 'UPDATE_STATUS_RULES': {
       const {statusRule} = action
       const statusRules = state.statusRules.map(s => {
-        if (s.id !== statusRule.id) {
+        if (s.cid !== statusRule.cid) {
           return s
         }
 
@@ -92,7 +88,7 @@ export const reducer = (mode: RuleMode) => (
     case 'UPDATE_TAG_RULES': {
       const {tagRule} = action
       const tagRules = state.tagRules.map(t => {
-        if (t.id !== tagRule.id) {
+        if (t.cid !== tagRule.cid) {
           return t
         }
 
@@ -105,7 +101,7 @@ export const reducer = (mode: RuleMode) => (
     case 'DELETE_STATUS_RULE': {
       const {statusRuleID} = action
       const statusRules = state.statusRules.filter(s => {
-        return s.id !== statusRuleID
+        return s.cid !== statusRuleID
       })
 
       return {
@@ -118,7 +114,7 @@ export const reducer = (mode: RuleMode) => (
       const {tagRuleID} = action
 
       const tagRules = state.tagRules.filter(tr => {
-        return tr.id !== tagRuleID
+        return tr.cid !== tagRuleID
       })
 
       return {...state, tagRules}
@@ -128,7 +124,7 @@ export const reducer = (mode: RuleMode) => (
       const {levelType, level, statusID} = action
 
       const statusRules = state.statusRules.map(status => {
-        if (status.id !== statusID) {
+        if (status.cid !== statusID) {
           return status
         }
 
@@ -149,7 +145,7 @@ export const reducer = (mode: RuleMode) => (
     case 'SET_TAG_RULE_OPERATOR': {
       const {tagRuleID, operator} = action
       const tagRules = state.tagRules.map(tagRule => {
-        if (tagRule.id !== tagRuleID) {
+        if (tagRule.cid !== tagRuleID) {
           return tagRule
         }
 
@@ -167,13 +163,47 @@ export const reducer = (mode: RuleMode) => (
 
     default:
       const neverAction: never = action
+
       throw new Error(
-        `Unhandled action: "${neverAction}" in RuleOverlay.reducer.ts`
+        `Unhandled action "${
+          (neverAction as any).type
+        }" in RuleOverlay.reducer.ts`
       )
   }
 }
 
-export const memoizedReducer = (mode: RuleMode, state) => {
-  const memo = useCallback(reducer(mode), [mode])
-  return useReducer(memo, state)
+const RuleStateContext = createContext<RuleState>(null)
+const RuleDispatchContext = createContext<Dispatch<Action>>(null)
+
+export const RuleOverlayProvider: FC<{initialState: RuleState}> = ({
+  initialState,
+  children,
+}) => {
+  const prevInitialStateRef = useRef(initialState)
+
+  const [state, dispatch] = useReducer((state: RuleState, action: Action) => {
+    if (prevInitialStateRef.current !== initialState) {
+      prevInitialStateRef.current = initialState
+
+      return initialState
+    }
+
+    return reducer(state, action)
+  }, initialState)
+
+  return (
+    <RuleStateContext.Provider value={state}>
+      <RuleDispatchContext.Provider value={dispatch}>
+        {children}
+      </RuleDispatchContext.Provider>
+    </RuleStateContext.Provider>
+  )
+}
+
+export const useRuleState = (): RuleState => {
+  return useContext(RuleStateContext)
+}
+
+export const useRuleDispatch = (): Dispatch<Action> => {
+  return useContext(RuleDispatchContext)
 }
