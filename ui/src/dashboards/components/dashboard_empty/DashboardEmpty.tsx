@@ -2,12 +2,14 @@
 import React, {Component} from 'react'
 
 // Components
-import {Button, EmptyState} from '@influxdata/clockface'
+import {
+  Button,
+  IconFont,
+  ComponentColor,
+  EmptyState,
+  ComponentSize,
+} from 'src/clockface'
 
-// Types
-import {IconFont, ComponentSize, ComponentColor} from '@influxdata/clockface'
-
-// Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
@@ -33,7 +35,6 @@ class DashboardEmpty extends Component<Props> {
             icon={IconFont.AddCell}
             color={ComponentColor.Primary}
             onClick={onAddCell}
-            testID="add-cell--button"
           />
         </EmptyState>
       </div>

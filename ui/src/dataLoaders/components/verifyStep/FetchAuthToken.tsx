@@ -3,7 +3,7 @@ import React, {PureComponent} from 'react'
 import _ from 'lodash'
 
 // Components
-import {SpinnerContainer, TechnoSpinner} from '@influxdata/clockface'
+import {SpinnerContainer, TechnoSpinner} from 'src/clockface'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 // Apis
@@ -38,6 +38,7 @@ class FetchAuthToken extends PureComponent<Props, State> {
     const authToken = await client.authorizations.getAuthorizationToken(
       username
     )
+
     this.setState({authToken, loading: RemoteDataState.Done})
   }
 

@@ -26,10 +26,6 @@ func initOnboardingService(f platformtesting.OnboardingFields, t *testing.T) (pl
 	svc := inmem.NewService()
 	svc.IDGenerator = f.IDGenerator
 	svc.TokenGenerator = f.TokenGenerator
-	if f.TimeGenerator == nil {
-		svc.TimeGenerator = platform.RealTimeGenerator{}
-	}
-	svc.TimeGenerator = f.TimeGenerator
 
 	ctx := context.Background()
 	if err := svc.PutOnboardingStatus(ctx, !f.IsOnboarding); err != nil {
@@ -37,14 +33,13 @@ func initOnboardingService(f platformtesting.OnboardingFields, t *testing.T) (pl
 	}
 
 	setupBackend := NewMockSetupBackend()
-	setupBackend.HTTPErrorHandler = ErrorHandler(0)
 	setupBackend.OnboardingService = svc
 	handler := NewSetupHandler(setupBackend)
 	server := httptest.NewServer(handler)
 	client := struct {
 		*SetupService
 		*Service
-		platform.PasswordsService
+		platform.BasicAuthService
 	}{
 		SetupService: &SetupService{
 			Addr: server.URL,
@@ -52,7 +47,7 @@ func initOnboardingService(f platformtesting.OnboardingFields, t *testing.T) (pl
 		Service: &Service{
 			Addr: server.URL,
 		},
-		PasswordsService: svc,
+		BasicAuthService: svc,
 	}
 
 	done := server.Close

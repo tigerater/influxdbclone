@@ -1,15 +1,10 @@
-// Libraries
-import _ from 'lodash'
-
 // Constants
 import {StepStatus} from 'src/clockface/constants/wizard'
 import {SetupSuccess, SetupError} from 'src/shared/copy/notifications'
-import {defaultTemplates} from 'src/templates/constants/'
 
 // Actions
 import {notify} from 'src/shared/actions/notifications'
 
-// APIs
 import {client} from 'src/utils/api'
 
 // Types
@@ -67,9 +62,7 @@ export const setBucketID = (bucketID: string): SetBucketID => ({
   payload: {bucketID},
 })
 
-export const setupAdmin = (params: ISetupParams) => async (
-  dispatch
-): Promise<boolean> => {
+export const setupAdmin = (params: ISetupParams) => async dispatch => {
   try {
     dispatch(setSetupParams(params))
     const response = await client.setup.create(params)
@@ -83,24 +76,9 @@ export const setupAdmin = (params: ISetupParams) => async (
     const {username, password} = params
 
     await client.auth.signin(username, password)
-
-    await client.templates.create({...defaultTemplates.systemTemplate(), orgID})
-    await client.templates.create({
-      ...defaultTemplates.gettingStartedWithFluxTemplate(),
-      orgID,
-    })
-    await client.templates.create({
-      ...defaultTemplates.localMetricsTemplate(),
-      orgID,
-    })
-
     dispatch(notify(SetupSuccess))
-    dispatch(setStepStatus(1, StepStatus.Complete))
-    return true
   } catch (err) {
     console.error(err)
-    let message = _.get(err, 'response.data.message', '')
-    dispatch(notify(SetupError(message)))
-    dispatch(setStepStatus(1, StepStatus.Error))
+    dispatch(notify(SetupError))
   }
 }

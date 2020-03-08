@@ -19,7 +19,7 @@ type Encoder interface {
 	Encode(mfs []*dto.MetricFamily) ([]byte, error)
 }
 
-// Expfmt encodes metric families into prometheus exposition format.
+// Expfmt is encodes metric familes into promtheus exposition format.
 type Expfmt struct {
 	Format expfmt.Format
 }
@@ -64,7 +64,7 @@ func EncodeExpfmt(mfs []*dto.MetricFamily, opts ...expfmt.Format) ([]byte, error
 	return buf.Bytes(), nil
 }
 
-// JSON encodes metric families into JSON.
+// JSON is encodes metric familes into JSON.
 type JSON struct{}
 
 // Encode encodes metrics JSON bytes. This not always works
@@ -100,7 +100,7 @@ const (
 	nsPerMilliseconds = int64(time.Millisecond / time.Nanosecond)
 )
 
-// LineProtocol encodes metric families into influxdb line protocol.
+// LineProtocol is encodes metric familes into influxdb lineprotocl.
 type LineProtocol struct{}
 
 // Encode encodes metrics into line protocol format bytes.

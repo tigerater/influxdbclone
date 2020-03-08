@@ -12,7 +12,6 @@ import {IconFont} from 'src/clockface'
 interface Props {
   mode?: PermissionsWidgetMode
   id: string
-  testID?: string
   label: string
   selected: PermissionsWidgetSelection
   onToggle?: (
@@ -23,14 +22,10 @@ interface Props {
 
 class PermissionsWidgetItem extends Component<Props> {
   public render() {
-    const {label, testID} = this.props
+    const {label} = this.props
 
     return (
-      <li
-        className={this.className}
-        onClick={this.handleClick}
-        data-testid={testID || 'permissions--item'}
-      >
+      <li className={this.className} onClick={this.handleClick}>
         {this.checkbox}
         <label className="permissions-widget--item-label">{label}</label>
       </li>

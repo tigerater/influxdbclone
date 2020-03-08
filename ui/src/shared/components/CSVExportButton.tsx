@@ -1,23 +1,18 @@
 // Libraries
 import React, {PureComponent} from 'react'
-import {connect} from 'react-redux'
 import moment from 'moment'
 
 // Components
-import {Button, ComponentStatus, IconFont} from '@influxdata/clockface'
+import {Button, ComponentStatus, IconFont} from 'src/clockface'
 
 // Utils
 import {downloadTextFile} from 'src/shared/utils/download'
-import {getActiveTimeMachine} from 'src/timeMachine/selectors'
 
-// Types
-import {AppState} from 'src/types'
-
-interface StateProps {
+interface Props {
   files: string[] | null
 }
 
-class CSVExportButton extends PureComponent<StateProps, {}> {
+class CSVExportButton extends PureComponent<Props, {}> {
   public render() {
     return (
       <Button
@@ -54,18 +49,10 @@ class CSVExportButton extends PureComponent<StateProps, {}> {
     const {files} = this.props
     const csv = files.join('\n\n')
     const now = moment().format('YYYY-MM-DD-HH-mm')
-    const filename = `${now} Chronograf Data`
+    const filename = `${now} Chronograf Data.csv`
 
-    downloadTextFile(csv, filename, '.csv', 'text/csv')
+    downloadTextFile(csv, filename, 'text/csv')
   }
 }
 
-const mstp = (state: AppState) => {
-  const {
-    queryResults: {files},
-  } = getActiveTimeMachine(state)
-
-  return {files}
-}
-
-export default connect<StateProps>(mstp)(CSVExportButton)
+export default CSVExportButton

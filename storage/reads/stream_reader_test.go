@@ -218,91 +218,17 @@ series: _m=cpu,tag0=unsigned
 		},
 
 		{
-			name: "some empty frames",
+			name: "invalid series key order",
 			stream: newStreamReader(
-				response(
-					seriesF(Float, "cpu,tag0=val0"),
-				),
-				response(
-					floatF(floatS{
-						0: 1.0,
-						1: 2.0,
-						2: 3.0,
-					}),
-				),
-				response(),
 				response(
 					seriesF(Float, "cpu,tag0=val1"),
-				),
-				response(),
-				response(
-					floatF(floatS{
-						10: 11.0,
-						11: 12.0,
-						12: 13.0,
-					}),
-				),
-				response(),
-			),
-			exp: `series: _m=cpu,tag0=val0
-  cursor:Float
-                     0 |               1.00
-                     1 |               2.00
-                     2 |               3.00
-series: _m=cpu,tag0=val1
-  cursor:Float
-                    10 |              11.00
-                    11 |              12.00
-                    12 |              13.00
-`,
-		},
-
-		{
-			name: "last frame empty",
-			stream: newStreamReader(
-				response(
-					seriesF(Float, "cpu,tag0=val0"),
-					floatF(floatS{
-						0: 1.0,
-						1: 2.0,
-						2: 3.0,
-					}),
-				),
-				response(),
-			),
-			exp: `series: _m=cpu,tag0=val0
-  cursor:Float
-                     0 |               1.00
-                     1 |               2.00
-                     2 |               3.00
-`,
-		},
-
-		{
-			name: "ErrUnexpectedEOF",
-			stream: newStreamReader(
-				response(
 					seriesF(Float, "cpu,tag0=val0"),
 				),
-				response(
-					floatF(floatS{
-						0: 1.0,
-						1: 2.0,
-						2: 3.0,
-					}),
-				),
-				response(),
-				response(),
-				response(),
 			),
-			exp: `series: _m=cpu,tag0=val0
+			exp: `series: _m=cpu,tag0=val1
   cursor:Float
-                     0 |               1.00
-                     1 |               2.00
-                     2 |               3.00
-  cursor err: peekFrame: no data
 `,
-			expErr: reads.ErrStreamNoData,
+			expErr: reads.ErrSeriesKeyOrder,
 		},
 	}
 	for _, tt := range tests {

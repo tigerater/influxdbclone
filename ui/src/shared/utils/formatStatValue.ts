@@ -1,6 +1,6 @@
 import {MAX_DECIMAL_PLACES} from 'src/dashboards/constants'
 
-import {DecimalPlaces} from 'src/types/dashboards'
+import {DecimalPlaces} from 'src/types/v2/dashboards'
 
 interface FormatStatValueOptions {
   decimalPlaces?: DecimalPlaces

@@ -1,95 +1,68 @@
 // Libraries
 import React, {SFC} from 'react'
 import {connect} from 'react-redux'
-import {FromFluxResult} from '@influxdata/giraffe'
+import {get} from 'lodash'
 import {AutoSizer} from 'react-virtualized'
 
 // Components
-import EmptyQueryView, {ErrorFormat} from 'src/shared/components/EmptyQueryView'
-import ViewSwitcher from 'src/shared/components/ViewSwitcher'
+import EmptyQueryView from 'src/shared/components/EmptyQueryView'
+import QueryViewSwitcher from 'src/shared/components/QueryViewSwitcher'
 import RawFluxDataTable from 'src/timeMachine/components/RawFluxDataTable'
+
+// Actions
+import {setType} from 'src/timeMachine/actions'
 
 // Utils
 import {getActiveTimeMachine} from 'src/timeMachine/selectors'
-import {checkResultsLength} from 'src/shared/utils/vis'
-import {
-  getVisTable,
-  getXColumnSelection,
-  getYColumnSelection,
-  getFillColumnsSelection,
-  getSymbolColumnsSelection,
-} from 'src/timeMachine/selectors'
 
 // Types
-import {RemoteDataState, AppState, QueryViewProperties} from 'src/types'
+import {View, NewView, TimeRange, DashboardQuery, AppState} from 'src/types/v2'
+import {QueryViewProperties} from 'src/types/v2/dashboards'
+import {QueriesState} from 'src/shared/components/TimeSeries'
 
 interface StateProps {
-  loading: RemoteDataState
-  errorMessage: string
-  files: string[]
-  viewProperties: QueryViewProperties
-  isInitialFetch: boolean
+  view: View | NewView
+  timeRange: TimeRange
+  queries: DashboardQuery[]
   isViewingRawData: boolean
-  giraffeResult: FromFluxResult
-  xColumn: string
-  yColumn: string
-  fillColumns: string[]
-  symbolColumns: string[]
 }
 
-type Props = StateProps
+interface DispatchProps {
+  onUpdateType: typeof setType
+}
 
-const TimeMachineVis: SFC<Props> = ({
-  loading,
-  errorMessage,
-  isInitialFetch,
-  isViewingRawData,
-  files,
-  viewProperties,
-  giraffeResult,
-  xColumn,
-  yColumn,
-  fillColumns,
-  symbolColumns,
-}) => {
-  // If the current selections for `xColumn`/`yColumn`/ etc. are invalid given
-  // the current Flux response, attempt to make a valid selection instead. This
-  // fallback logic is contained within the selectors that supply each of these
-  // props. Note that in a dashboard context, we display an error instead of
-  // attempting to fall back to an valid selection.
-  const resolvedViewProperties = {
-    ...viewProperties,
-    xColumn,
-    yColumn,
-    fillColumns,
-    symbolColumns,
-  }
+interface OwnProps {
+  queriesState: QueriesState
+}
+
+type Props = StateProps & DispatchProps & OwnProps
+
+const TimeMachineVis: SFC<Props> = props => {
+  const {view, timeRange, queries, isViewingRawData} = props
+  const {tables, loading, error, isInitialFetch, files} = props.queriesState
 
   return (
     <div className="time-machine--view">
       <EmptyQueryView
+        error={error}
+        tables={tables}
         loading={loading}
-        errorFormat={ErrorFormat.Scroll}
-        errorMessage={errorMessage}
         isInitialFetch={isInitialFetch}
-        queries={viewProperties.queries}
-        hasResults={checkResultsLength(giraffeResult)}
+        queries={queries}
       >
         {isViewingRawData ? (
           <AutoSizer>
-            {({width, height}) =>
-              width &&
-              height && (
-                <RawFluxDataTable files={files} width={width} height={height} />
-              )
-            }
+            {({width, height}) => (
+              <RawFluxDataTable files={files} width={width} height={height} />
+            )}
           </AutoSizer>
         ) : (
-          <ViewSwitcher
-            giraffeResult={giraffeResult}
-            files={files}
+          <QueryViewSwitcher
+            tables={tables}
+            viewID="time-machine-view"
             loading={loading}
-            properties={resolvedViewProperties}
+            timeRange={timeRange}
+            properties={view.properties as QueryViewProperties}
           />
         )}
       </EmptyQueryView>
@@ -97,32 +70,23 @@ const TimeMachineVis: SFC<Props> = ({
   )
 }
 
-const mstp = (state: AppState): StateProps => {
-  const {
-    isViewingRawData,
-    view: {properties: viewProperties},
-    queryResults: {status: loading, errorMessage, isInitialFetch, files},
-  } = getActiveTimeMachine(state)
-
-  const giraffeResult = getVisTable(state)
-  const xColumn = getXColumnSelection(state)
-  const yColumn = getYColumnSelection(state)
-  const fillColumns = getFillColumnsSelection(state)
-  const symbolColumns = getSymbolColumnsSelection(state)
+const mstp = (state: AppState) => {
+  const timeMachine = getActiveTimeMachine(state)
+  const queries = get(timeMachine, 'view.properties.queries', [])
 
   return {
-    loading,
-    errorMessage,
-    isInitialFetch,
-    files,
-    viewProperties,
-    isViewingRawData,
-    giraffeResult,
-    xColumn,
-    yColumn,
-    fillColumns,
-    symbolColumns,
+    view: timeMachine.view,
+    timeRange: timeMachine.timeRange,
+    isViewingRawData: timeMachine.isViewingRawData,
+    queries,
   }
 }
 
-export default connect<StateProps>(mstp)(TimeMachineVis)
+const mdtp = {
+  onUpdateType: setType,
+}
+
+export default connect<StateProps, DispatchProps, OwnProps>(
+  mstp,
+  mdtp
+)(TimeMachineVis)

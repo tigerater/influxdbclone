@@ -11,7 +11,7 @@ exports[`Account rendering renders! 1`] = `
     <PageHeaderLeft
       offsetPixels={0}
     >
-      <Connect(PageTitleWithOrg)
+      <PageTitle
         title="Account"
       />
     </PageHeaderLeft>
@@ -34,6 +34,13 @@ exports[`Account rendering renders! 1`] = `
         url="settings"
       >
         <Connect(Settings) />
+      </TabbedPageSection>
+      <TabbedPageSection
+        id="tokens"
+        title="My Tokens"
+        url="tokens"
+      >
+        <Connect(Tokens) />
       </TabbedPageSection>
     </withRouter(TabbedPage)>
   </PageContents>

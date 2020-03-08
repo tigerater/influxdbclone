@@ -2,12 +2,11 @@ import React, {SFC} from 'react'
 
 interface Props {
   message: string
-  testID?: string
 }
 
-const EmptyGraphMessage: SFC<Props> = ({message, testID}) => {
+const EmptyGraphMessage: SFC<Props> = ({message}) => {
   return (
-    <div className="cell--view-empty" data-testid={testID}>
+    <div className="cell--view-empty">
       <h4>{message}</h4>
     </div>
   )

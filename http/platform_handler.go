@@ -24,11 +24,10 @@ func setCORSResponseHeaders(w http.ResponseWriter, r *http.Request) {
 
 // NewPlatformHandler returns a platform handler that serves the API and associated assets.
 func NewPlatformHandler(b *APIBackend) *PlatformHandler {
-	h := NewAuthenticationHandler(b.HTTPErrorHandler)
+	h := NewAuthenticationHandler()
 	h.Handler = NewAPIHandler(b)
 	h.AuthorizationService = b.AuthorizationService
 	h.SessionService = b.SessionService
-	h.SessionRenewDisabled = b.SessionRenewDisabled
 
 	h.RegisterNoAuthRoute("GET", "/api/v2")
 	h.RegisterNoAuthRoute("POST", "/api/v2/signin")
@@ -38,7 +37,7 @@ func NewPlatformHandler(b *APIBackend) *PlatformHandler {
 	h.RegisterNoAuthRoute("GET", "/api/v2/swagger.json")
 
 	assetHandler := NewAssetHandler()
-	assetHandler.Path = b.AssetsPath
+	assetHandler.DeveloperMode = b.DeveloperMode
 
 	return &PlatformHandler{
 		AssetHandler: assetHandler,

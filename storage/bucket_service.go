@@ -5,7 +5,6 @@ import (
 	"errors"
 
 	platform "github.com/influxdata/influxdb"
-	"github.com/influxdata/influxdb/kit/tracing"
 )
 
 // BucketDeleter defines the behaviour of deleting a bucket.
@@ -34,9 +33,6 @@ func NewBucketService(s platform.BucketService, engine BucketDeleter) *BucketSer
 
 // FindBucketByID returns a single bucket by ID.
 func (s *BucketService) FindBucketByID(ctx context.Context, id platform.ID) (*platform.Bucket, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx)
-	defer span.Finish()
-
 	if s.inner == nil || s.engine == nil {
 		return nil, errors.New("nil inner BucketService or Engine")
 	}
@@ -45,9 +41,6 @@ func (s *BucketService) FindBucketByID(ctx context.Context, id platform.ID) (*pl
 
 // FindBucket returns the first bucket that matches filter.
 func (s *BucketService) FindBucket(ctx context.Context, filter platform.BucketFilter) (*platform.Bucket, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx)
-	defer span.Finish()
-
 	if s.inner == nil || s.engine == nil {
 		return nil, errors.New("nil inner BucketService or Engine")
 	}
@@ -57,9 +50,6 @@ func (s *BucketService) FindBucket(ctx context.Context, filter platform.BucketFi
 // FindBuckets returns a list of buckets that match filter and the total count of matching buckets.
 // Additional options provide pagination & sorting.
 func (s *BucketService) FindBuckets(ctx context.Context, filter platform.BucketFilter, opt ...platform.FindOptions) ([]*platform.Bucket, int, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx)
-	defer span.Finish()
-
 	if s.inner == nil || s.engine == nil {
 		return nil, 0, errors.New("nil inner BucketService or Engine")
 	}
@@ -68,9 +58,6 @@ func (s *BucketService) FindBuckets(ctx context.Context, filter platform.BucketF
 
 // CreateBucket creates a new bucket and sets b.ID with the new identifier.
 func (s *BucketService) CreateBucket(ctx context.Context, b *platform.Bucket) error {
-	span, ctx := tracing.StartSpanFromContext(ctx)
-	defer span.Finish()
-
 	if s.inner == nil || s.engine == nil {
 		return errors.New("nil inner BucketService or Engine")
 	}
@@ -80,9 +67,6 @@ func (s *BucketService) CreateBucket(ctx context.Context, b *platform.Bucket) er
 // UpdateBucket updates a single bucket with changeset.
 // Returns the new bucket state after update.
 func (s *BucketService) UpdateBucket(ctx context.Context, id platform.ID, upd platform.BucketUpdate) (*platform.Bucket, error) {
-	span, ctx := tracing.StartSpanFromContext(ctx)
-	defer span.Finish()
-
 	if s.inner == nil || s.engine == nil {
 		return nil, errors.New("nil inner BucketService or Engine")
 	}
@@ -91,9 +75,6 @@ func (s *BucketService) UpdateBucket(ctx context.Context, id platform.ID, upd pl
 
 // DeleteBucket removes a bucket by ID.
 func (s *BucketService) DeleteBucket(ctx context.Context, bucketID platform.ID) error {
-	span, ctx := tracing.StartSpanFromContext(ctx)
-	defer span.Finish()
-
 	bucket, err := s.FindBucketByID(ctx, bucketID)
 	if err != nil {
 		return err
@@ -102,7 +83,7 @@ func (s *BucketService) DeleteBucket(ctx context.Context, bucketID platform.ID) 
 	// The data is dropped first from the storage engine. If this fails for any
 	// reason, then the bucket will still be available in the future to retrieve
 	// the orgID, which is needed for the engine.
-	if err := s.engine.DeleteBucket(bucket.OrgID, bucketID); err != nil {
+	if err := s.engine.DeleteBucket(bucket.OrganizationID, bucketID); err != nil {
 		return err
 	}
 	return s.inner.DeleteBucket(ctx, bucketID)

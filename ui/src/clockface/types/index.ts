@@ -30,11 +30,6 @@ export enum DropdownMenuColors {
   Onyx = 'onyx',
 }
 
-export enum DropdownMenuPosition {
-  Above = 'above',
-  Below = 'below',
-}
-
 export type DropdownChild =
   | Array<string | JSX.Element | Element>
   | string
@@ -188,10 +183,4 @@ export enum Sort {
 export enum Stack {
   Rows = 'rows',
   Columns = 'columns',
-}
-
-export enum NavMenuType {
-  RouterLink = 'router',
-  HTTPLink = 'http',
-  ShowDropdown = 'showDropdown',
 }

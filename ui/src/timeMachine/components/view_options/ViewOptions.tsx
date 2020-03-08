@@ -8,13 +8,16 @@ import {setType} from 'src/timeMachine/actions'
 // Components
 import OptionsSwitcher from 'src/timeMachine/components/view_options/OptionsSwitcher'
 import FancyScrollbar from 'src/shared/components/fancy_scrollbar/FancyScrollbar'
-import {Grid} from '@influxdata/clockface'
+import {Grid} from 'src/clockface'
 
 // Utils
 import {getActiveTimeMachine} from 'src/timeMachine/selectors'
 
 // Types
-import {View, NewView, AppState} from 'src/types'
+import {View, NewView, AppState} from 'src/types/v2'
+
+// Styles
+import './ViewOptions.scss'
 
 interface DispatchProps {
   onUpdateType: typeof setType

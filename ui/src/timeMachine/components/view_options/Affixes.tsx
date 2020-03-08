@@ -2,10 +2,8 @@
 import React, {PureComponent, ChangeEvent} from 'react'
 
 // Components
-import {Form, Input, Grid} from '@influxdata/clockface'
-
-// Types
-import {Columns} from '@influxdata/clockface'
+import {Form, Grid, Columns} from 'src/clockface'
+import {Input} from 'src/clockface'
 
 interface Props {
   prefix: string

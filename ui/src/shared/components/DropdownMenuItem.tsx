@@ -52,26 +52,27 @@ const DropdownMenuItem: SFC<ItemProps> = ({
         highlight: index === highlightedItemIndex,
         active: item.text === selected,
       })}
-      data-testid="dropdown-item"
+      data-test="dropdown-item"
     >
       <a href="#" onClick={onSelection(item)} onMouseOver={onHighlight(index)}>
         {item.text}
       </a>
-      {actions && !!actions.length && (
-        <div className="dropdown-actions">
-          {actions.map(action => {
-            return (
-              <button
-                key={action.text}
-                className="dropdown-action"
-                onClick={onAction(action, item)}
-              >
-                <span title={action.text} className={`icon ${action.icon}`} />
-              </button>
-            )
-          })}
-        </div>
-      )}
+      {actions &&
+        !!actions.length && (
+          <div className="dropdown-actions">
+            {actions.map(action => {
+              return (
+                <button
+                  key={action.text}
+                  className="dropdown-action"
+                  onClick={onAction(action, item)}
+                >
+                  <span title={action.text} className={`icon ${action.icon}`} />
+                </button>
+              )
+            })}
+          </div>
+        )}
     </li>
   )
 }

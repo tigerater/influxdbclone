@@ -1,27 +1,22 @@
 // Libraries
-import React, {
-  PureComponent,
-  KeyboardEvent,
-  ChangeEvent,
-  MouseEvent,
-} from 'react'
+import React, {Component, KeyboardEvent, ChangeEvent} from 'react'
 import classnames from 'classnames'
 
 // Components
-import {Input, PageTitle, Icon} from '@influxdata/clockface'
+import {Input} from 'src/clockface'
 import {ClickOutside} from 'src/shared/components/ClickOutside'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
-import {IconFont} from 'src/clockface'
+
+// Styles
+import 'src/pageLayout/components/RenamablePageTitle.scss'
 
 interface Props {
   onRename: (name: string) => void
-  onClickOutside?: (e: MouseEvent<HTMLElement>) => void
   name: string
   placeholder: string
   maxLength: number
-  prefix: string
 }
 
 interface State {
@@ -30,11 +25,7 @@ interface State {
 }
 
 @ErrorHandling
-class RenamablePageTitle extends PureComponent<Props, State> {
-  public static defaultProps = {
-    prefix: '',
-  }
-
+class RenamablePageTitle extends Component<Props, State> {
   constructor(props: Props) {
     super(props)
 
@@ -45,13 +36,12 @@ class RenamablePageTitle extends PureComponent<Props, State> {
   }
 
   public render() {
-    const {name, placeholder} = this.props
     const {isEditing} = this.state
+    const {name, placeholder} = this.props
 
     if (isEditing) {
       return (
         <div className="renamable-page-title">
-          {this.prefix}
           <ClickOutside onClickOutside={this.handleStopEditing}>
             {this.input}
           </ClickOutside>
@@ -61,22 +51,12 @@ class RenamablePageTitle extends PureComponent<Props, State> {
 
     return (
       <div className="renamable-page-title">
-        {this.prefix}
         <div className={this.titleClassName} onClick={this.handleStartEditing}>
-          <PageTitle title={name || placeholder} />
-          <Icon glyph={IconFont.Pencil} />
+          {name || placeholder}
+          <span className="icon pencil" />
         </div>
       </div>
     )
-  }
-
-  private get prefix(): JSX.Element {
-    const {prefix} = this.props
-    if (prefix) {
-      return (
-        <div className="renamable-page-title--input-prefix">{`${prefix} /`}</div>
-      )
-    }
   }
 
   private get input(): JSX.Element {
@@ -92,7 +72,7 @@ class RenamablePageTitle extends PureComponent<Props, State> {
         onFocus={this.handleInputFocus}
         onChange={this.handleInputChange}
         onKeyDown={this.handleKeyDown}
-        className="renamable-page-title--input"
+        customClass="renamable-page-title--input"
         value={workingName}
       />
     )
@@ -102,15 +82,11 @@ class RenamablePageTitle extends PureComponent<Props, State> {
     this.setState({isEditing: true})
   }
 
-  private handleStopEditing = async (e): Promise<void> => {
+  private handleStopEditing = async (): Promise<void> => {
     const {workingName} = this.state
-    const {onRename, onClickOutside} = this.props
+    const {onRename} = this.props
 
     await onRename(workingName)
-
-    if (onClickOutside) {
-      onClickOutside(e)
-    }
 
     this.setState({isEditing: false})
   }

@@ -3,16 +3,14 @@ import React, {PureComponent} from 'react'
 import _ from 'lodash'
 
 // Components
-import {Form} from '@influxdata/clockface'
+import {ErrorHandling} from 'src/shared/decorators/errors'
 import StatusIndicator from 'src/dataLoaders/components/lineProtocolWizard/verify/StatusIndicator'
 import OnboardingButtons from 'src/onboarding/components/OnboardingButtons'
 import FancyScrollbar from 'src/shared/components/fancy_scrollbar/FancyScrollbar'
 
 // Types
+import {Form} from 'src/clockface'
 import {LineProtocolStepProps} from 'src/dataLoaders/components/lineProtocolWizard/LineProtocolWizard'
-
-// Decorators
-import {ErrorHandling} from 'src/shared/decorators/errors'
 
 type Props = LineProtocolStepProps
 
@@ -33,7 +31,7 @@ export class VerifyLineProtocolStep extends PureComponent<Props> {
           </div>
           <OnboardingButtons
             onClickBack={onDecrementCurrentStepIndex}
-            nextButtonText="Finish"
+            nextButtonText={'Finish'}
           />
         </Form>
       </div>

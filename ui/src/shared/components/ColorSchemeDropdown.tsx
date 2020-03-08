@@ -1,9 +1,8 @@
 // Libraries
-import React, {SFC} from 'react'
+import React, {SFC, CSSProperties} from 'react'
 
 // Components
 import {Dropdown, DropdownMenuColors} from 'src/clockface'
-import ColorSchemeDropdownItem from 'src/shared/components/ColorSchemeDropdownItem'
 
 // Constants
 import {
@@ -11,12 +10,23 @@ import {
   DEFAULT_LINE_COLORS,
 } from 'src/shared/constants/graphColorPalettes'
 
+// Styles
+import 'src/shared/components/ColorSchemeDropdown.scss'
+
 // Types
 import {Color} from 'src/types/colors'
 
 interface Props {
   value: Color[]
   onChange: (colors: Color[]) => void
+}
+
+const generateGradientStyle = (colors: Color[]): CSSProperties => {
+  const [start, mid, stop] = colors.map(color => color.hex)
+
+  return {
+    background: `linear-gradient(to right, ${start} 0%, ${mid} 50%, ${stop} 100%)`,
+  }
 }
 
 const findSelectedScaleID = (colors: Color[]) => {
@@ -37,13 +47,17 @@ const ColorSchemeDropdown: SFC<Props> = ({value, onChange}) => {
       selectedID={findSelectedScaleID(value)}
       onChange={onChange}
       menuColor={DropdownMenuColors.Onyx}
+      customClass="color-scheme-dropdown"
     >
       {LINE_COLOR_SCALES.map(({id, name, colors}) => (
         <Dropdown.Item key={id} id={id} value={colors}>
-          <ColorSchemeDropdownItem
-            name={name}
-            colors={colors.map(c => c.hex)}
-          />
+          <div className="color-scheme-dropdown--item">
+            <div
+              className="color-scheme-dropdown--swatches"
+              style={generateGradientStyle(colors)}
+            />
+            <div className="color-scheme-dropdown--name">{name}</div>
+          </div>
         </Dropdown.Item>
       ))}
     </Dropdown>

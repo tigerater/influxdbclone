@@ -2,13 +2,10 @@
 import React, {PureComponent} from 'react'
 
 // Components
-import {Form, Radio, Grid} from '@influxdata/clockface'
+import {Form, Grid, Columns, Radio, ButtonShape} from 'src/clockface'
 
 // Constants
 import {AXES_SCALE_OPTIONS} from 'src/dashboards/constants/cellEditor'
-
-// Types
-import {Columns, ButtonShape} from '@influxdata/clockface'
 
 interface Props {
   scale: string

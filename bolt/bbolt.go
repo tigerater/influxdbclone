@@ -29,7 +29,7 @@ type Client struct {
 
 	IDGenerator    platform.IDGenerator
 	TokenGenerator platform.TokenGenerator
-	platform.TimeGenerator
+	time           func() time.Time
 }
 
 // NewClient returns an instance of a Client.
@@ -38,7 +38,7 @@ func NewClient() *Client {
 		Logger:         zap.NewNop(),
 		IDGenerator:    snowflake.NewIDGenerator(),
 		TokenGenerator: rand.NewTokenGenerator(64),
-		TimeGenerator:  platform.RealTimeGenerator{},
+		time:           time.Now,
 	}
 }
 
@@ -51,6 +51,12 @@ func (c *Client) DB() *bolt.DB {
 // the client has been open.
 func (c *Client) WithLogger(l *zap.Logger) {
 	c.Logger = l
+}
+
+// WithTime sets the function for computing the current time. Used for updating meta data
+// about objects stored. Should only be used in tests for mocking.
+func (c *Client) WithTime(fn func() time.Time) {
+	c.time = fn
 }
 
 // Open / create boltDB file.
@@ -127,8 +133,13 @@ func (c *Client) initialize(ctx context.Context) error {
 			return err
 		}
 
-		// Always create Variables bucket.
-		if err := c.initializeVariables(ctx, tx); err != nil {
+		// Always create Views bucket.
+		if err := c.initializeViews(ctx, tx); err != nil {
+			return err
+		}
+
+		// Always create Macros bucket.
+		if err := c.initializeMacros(ctx, tx); err != nil {
 			return err
 		}
 

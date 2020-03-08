@@ -3,19 +3,15 @@ import React, {Component, ChangeEvent} from 'react'
 import _ from 'lodash'
 
 // Components
-import {Input} from '@influxdata/clockface'
-
-// Types
-import {IconFont} from '@influxdata/clockface'
+import {IconFont, Input} from 'src/clockface'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
   onSearch: (searchTerm: string) => void
-  widthPixels: number
-  placeholderText: string
-  searchTerm: string
+  widthPixels?: number
+  placeholderText?: string
 }
 
 interface State {
@@ -24,22 +20,15 @@ interface State {
 
 @ErrorHandling
 class SearchWidget extends Component<Props, State> {
-  public static defaultProps = {
-    widthPixels: 440,
+  public static defaultProps: Partial<Props> = {
+    widthPixels: 210,
     placeholderText: 'Search...',
-    searchTerm: '',
-  }
-
-  public componentDidUpdate(prevProps: Props) {
-    if (this.props.searchTerm !== prevProps.searchTerm) {
-      this.setState({searchTerm: this.props.searchTerm})
-    }
   }
 
   constructor(props: Props) {
     super(props)
     this.state = {
-      searchTerm: this.props.searchTerm,
+      searchTerm: '',
     }
   }
 
@@ -59,7 +48,6 @@ class SearchWidget extends Component<Props, State> {
         value={searchTerm}
         onChange={this.handleChange}
         onBlur={this.handleBlur}
-        testID="search-widget"
       />
     )
   }

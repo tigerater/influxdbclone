@@ -7,7 +7,6 @@ exports[`ConfirmationButton interaction shows the tooltip when clicked 1`] = `
   shape="none"
   size="sm"
   status="default"
-  testID="confirmation-button"
   text="I am a dangerous button!"
 >
   <ClickOutside
@@ -16,53 +15,33 @@ exports[`ConfirmationButton interaction shows the tooltip when clicked 1`] = `
     <div
       className="confirmation-button"
     >
-      <t
+      <Button
         active={true}
         color="danger"
         onClick={[Function]}
-        placeIconAfterText={false}
         shape="none"
         size="sm"
         status="default"
-        testID="delete-button"
         text="I am a dangerous button!"
         type="button"
       >
-        <t
-          active={true}
-          color="danger"
+        <button
+          className="button button-sm button-danger active"
+          disabled={false}
           onClick={[Function]}
-          shape="none"
-          size="sm"
-          status="default"
           tabIndex={0}
-          testID="delete-button"
-          titleText="I am a dangerous button!"
+          title="I am a dangerous button!"
           type="button"
         >
-          <button
-            className="button button-sm button-danger active"
-            data-testid="delete-button"
-            disabled={false}
-            onClick={[Function]}
-            tabIndex={0}
-            title="I am a dangerous button!"
-            type="button"
-          >
-            <span
-              className="button--label"
-            >
-              I am a dangerous button!
-            </span>
-          </button>
-        </t>
-      </t>
+          I am a dangerous button!
+        </button>
+      </Button>
       <div
         className="confirmation-button--tooltip visible"
       >
         <div
           className="confirmation-button--tooltip-body"
-          data-testid="confirmation-button"
+          data-test="confirmation-button--click-target"
           onClick={[Function]}
         >
           Click me if you dare

@@ -4,7 +4,7 @@ import {connect} from 'react-redux'
 import _ from 'lodash'
 
 // Components
-import {Form} from '@influxdata/clockface'
+import {Form} from 'src/clockface'
 import ConfigFieldHandler from 'src/dataLoaders/components/collectorsWizard/configure/ConfigFieldHandler'
 import FancyScrollbar from 'src/shared/components/fancy_scrollbar/FancyScrollbar'
 
@@ -15,9 +15,9 @@ import {
 } from 'src/dataLoaders/actions/dataLoaders'
 
 // Types
-import {TelegrafPlugin, ConfigFields} from 'src/types/dataLoaders'
+import {TelegrafPlugin, ConfigFields} from 'src/types/v2/dataLoaders'
 import OnboardingButtons from 'src/onboarding/components/OnboardingButtons'
-import {AppState} from 'src/types'
+import {AppState} from 'src/types/v2'
 
 interface OwnProps {
   telegrafPlugin: TelegrafPlugin
@@ -39,37 +39,35 @@ export class PluginConfigForm extends PureComponent<Props> {
   public render() {
     const {configFields, telegrafPlugin} = this.props
     return (
-      <Form onSubmit={this.handleSubmitForm} className="data-loading--form">
-        <FancyScrollbar
-          autoHide={false}
-          className="data-loading--scroll-content"
-        >
-          <div>
-            <h3 className="wizard-step--title">
-              {_.startCase(telegrafPlugin.name)}
-            </h3>
-            <h5 className="wizard-step--sub-title">
-              For more information about this plugin, see{' '}
-              <a
-                target="_blank"
-                data-testid="docs-link"
-                href={`https://github.com/influxdata/telegraf/tree/master/plugins/inputs/${
-                  telegrafPlugin.name
-                }`}
-              >
-                Documentation
-              </a>
-            </h5>
-          </div>
-          <ConfigFieldHandler
-            configFields={configFields}
-            telegrafPlugin={telegrafPlugin}
-          />
-        </FancyScrollbar>
+      <Form onSubmit={this.handleSubmitForm}>
+        <div className="wizard-step--scroll-area">
+          <FancyScrollbar autoHide={false}>
+            <div className="wizard-step--scroll-content">
+              <h3 className="wizard-step--title">
+                {_.startCase(telegrafPlugin.name)}
+              </h3>
+              <h5 className="wizard-step--sub-title">
+                For more information about this plugin, see{' '}
+                <a
+                  target="_blank"
+                  data-test="docs-link"
+                  href={`https://github.com/influxdata/telegraf/tree/master/plugins/inputs/${
+                    telegrafPlugin.name
+                  }`}
+                >
+                  Documentation
+                </a>
+              </h5>
+              <ConfigFieldHandler
+                configFields={configFields}
+                telegrafPlugin={telegrafPlugin}
+              />
+            </div>
+          </FancyScrollbar>
+        </div>
         <OnboardingButtons
           autoFocusNext={this.autoFocus}
-          nextButtonText="Done"
-          className="data-loading--button-container"
+          nextButtonText={'Done'}
         />
       </Form>
     )

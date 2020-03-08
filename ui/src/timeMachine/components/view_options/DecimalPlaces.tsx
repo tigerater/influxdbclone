@@ -2,14 +2,13 @@
 import React, {PureComponent} from 'react'
 
 // Components
-import {Form, Grid} from '@influxdata/clockface'
-import {AutoInput} from 'src/clockface'
+import {Form, Grid, Columns, AutoInput} from 'src/clockface'
 
 // Constants
 import {MIN_DECIMAL_PLACES, MAX_DECIMAL_PLACES} from 'src/dashboards/constants'
 
 // Types
-import {DecimalPlaces} from 'src/types'
+import {DecimalPlaces} from 'src/types/v2/dashboards'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -26,7 +25,7 @@ class DecimalPlacesOption extends PureComponent<Props> {
 
   public render() {
     return (
-      <Grid.Column>
+      <Grid.Column widthXS={Columns.Six}>
         <Form.Element label="Decimal Places">
           <AutoInput
             name="decimal-places"

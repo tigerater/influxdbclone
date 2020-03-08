@@ -108,7 +108,7 @@ func fluxWriteF(cmd *cobra.Command, args []string) error {
 		}
 	}
 	if writeFlags.Org != "" {
-		filter.Org = &writeFlags.Org
+		filter.Organization = &writeFlags.Org
 	}
 
 	buckets, n, err := bs.FindBuckets(ctx, filter)
@@ -126,7 +126,7 @@ func fluxWriteF(cmd *cobra.Command, args []string) error {
 		}
 	}
 
-	bucketID, orgID := buckets[0].ID, buckets[0].OrgID
+	bucketID, orgID := buckets[0].ID, buckets[0].OrganizationID
 
 	var r io.Reader
 	if args[0] == "-" {

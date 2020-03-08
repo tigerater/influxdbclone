@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/influxdata/flux"
-	"github.com/influxdata/flux/lang"
-	"github.com/influxdata/flux/plan"
 	platform "github.com/influxdata/influxdb"
 )
 
@@ -27,12 +25,8 @@ type Compiler struct {
 	Query   string     `json:"query"`
 	Now     *time.Time `json:"now,omitempty"`
 
-	logicalPlannerOptions []plan.LogicalOption
-
 	dbrpMappingSvc platform.DBRPMappingService
 }
-
-var _ flux.Compiler = &Compiler{}
 
 func NewCompiler(dbrpMappingSvc platform.DBRPMappingService) *Compiler {
 	return &Compiler{
@@ -40,8 +34,8 @@ func NewCompiler(dbrpMappingSvc platform.DBRPMappingService) *Compiler {
 	}
 }
 
-// Compile transpiles the query into a Program.
-func (c *Compiler) Compile(ctx context.Context) (flux.Program, error) {
+// Compile tranpiles the query into a specification.
+func (c *Compiler) Compile(ctx context.Context) (*flux.Spec, error) {
 	var now time.Time
 	if c.Now != nil {
 		now = *c.Now
@@ -61,14 +55,8 @@ func (c *Compiler) Compile(ctx context.Context) (flux.Program, error) {
 	if err != nil {
 		return nil, err
 	}
-	compileOptions := lang.WithLogPlanOpts(c.logicalPlannerOptions...)
-	return lang.CompileAST(astPkg, now, compileOptions), nil
+	return flux.CompileAST(ctx, astPkg, now)
 }
-
 func (c *Compiler) CompilerType() flux.CompilerType {
 	return CompilerType
-}
-
-func (c *Compiler) WithLogicalPlannerOptions(opts ...plan.LogicalOption) {
-	c.logicalPlannerOptions = opts
 }

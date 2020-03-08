@@ -16,7 +16,6 @@ interface Props {
   style?: React.CSSProperties
   className?: string
   onSubmit?: (e: React.FormEvent) => void
-  testID: string
 }
 
 interface BoxProps {
@@ -32,23 +31,18 @@ class Form extends Component<Props> {
   public static Divider = FormDivider
   public static Footer = FormFooter
 
-  public static defaultProps = {
-    testID: 'form-container',
-  }
-
   public static Box: SFC<BoxProps> = ({children, className = ''}) => (
     <div className={`form--box ${className}`}>{children}</div>
   )
 
   public render() {
-    const {children, style, testID} = this.props
+    const {children, style} = this.props
 
     return (
       <form
         style={style}
         className={this.formWrapperClass}
         onSubmit={this.handleSubmit}
-        data-testid={testID}
       >
         {children}
       </form>

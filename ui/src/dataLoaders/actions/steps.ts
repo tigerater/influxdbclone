@@ -1,5 +1,5 @@
 // Types
-import {Substep} from 'src/types/dataLoaders'
+import {Substep} from 'src/types/v2/dataLoaders'
 
 export type Action =
   | SetBucketInfo
@@ -58,6 +58,7 @@ export const setSubstepIndex = (
 interface SetBucketInfo {
   type: 'SET_BUCKET_INFO'
   payload: {
+    org: string
     orgID: string
     bucket: string
     bucketID: string
@@ -65,12 +66,13 @@ interface SetBucketInfo {
 }
 
 export const setBucketInfo = (
+  org: string,
   orgID: string,
   bucket: string,
   bucketID: string
 ): SetBucketInfo => ({
   type: 'SET_BUCKET_INFO',
-  payload: {orgID, bucket, bucketID},
+  payload: {org, orgID, bucket, bucketID},
 })
 
 interface SetBucketID {

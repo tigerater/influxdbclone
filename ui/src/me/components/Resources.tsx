@@ -1,47 +1,79 @@
 // Libraries
 import React, {PureComponent} from 'react'
+import {Link} from 'react-router'
 
 // Components
 import Support from 'src/me/components/Support'
 import LogoutButton from 'src/me/components/LogoutButton'
+import OrgsList from 'src/me/components/OrgsList'
 import DashboardsList from 'src/me/components/DashboardsList'
-import {
-  Panel,
-  ComponentSpacer,
-  FlexDirection,
-  ComponentSize,
-  AlignItems,
-} from '@influxdata/clockface'
-import VersionInfo from 'src/shared/components/VersionInfo'
+import ResourceFetcher from 'src/shared/components/resource_fetcher'
+import {Panel, SpinnerContainer, TechnoSpinner} from 'src/clockface'
+
+// Constants
+import {VERSION, GIT_SHA} from 'src/shared/constants'
+
+// APIs
+import {getDashboards} from 'src/organizations/apis'
+import {client} from 'src/utils/api'
 
 // Types
-import {AppState} from 'src/types'
-import GetResources, {ResourceTypes} from 'src/shared/components/GetResources'
+import {Dashboard, MeState} from 'src/types/v2'
+import {Organization} from '@influxdata/influx'
 
 interface Props {
-  me: AppState['me']
+  me: MeState
 }
+
+const getOrganizations = () => client.organizations.getAll()
 
 class ResourceLists extends PureComponent<Props> {
   public render() {
     return (
-      <ComponentSpacer
-        direction={FlexDirection.Column}
-        alignItems={AlignItems.Stretch}
-        stretchToFitWidth={true}
-        margin={ComponentSize.Small}
-      >
+      <>
         <Panel>
           <Panel.Header title="Account">
             <LogoutButton />
           </Panel.Header>
+          <Panel.Body>
+            <ul className="link-list">
+              <li>
+                <Link to={`/configuration/settings_tab`}>Profile</Link>
+              </li>
+              <li>
+                <Link to={`/configuration/tokens_tab`}>Tokens</Link>
+              </li>
+            </ul>
+          </Panel.Body>
+        </Panel>
+        <Panel>
+          <Panel.Header title="Organizations" />
+          <Panel.Body>
+            <ResourceFetcher<Organization[]> fetcher={getOrganizations}>
+              {(orgs, loading) => (
+                <SpinnerContainer
+                  loading={loading}
+                  spinnerComponent={<TechnoSpinner diameterPixels={50} />}
+                >
+                  <OrgsList orgs={orgs} />
+                </SpinnerContainer>
+              )}
+            </ResourceFetcher>
+          </Panel.Body>
         </Panel>
         <Panel>
           <Panel.Header title="Dashboards" />
           <Panel.Body>
-            <GetResources resource={ResourceTypes.Dashboards}>
-              <DashboardsList />
-            </GetResources>
+            <ResourceFetcher<Dashboard[]> fetcher={getDashboards}>
+              {(dashboards, loading) => (
+                <SpinnerContainer
+                  loading={loading}
+                  spinnerComponent={<TechnoSpinner diameterPixels={50} />}
+                >
+                  <DashboardsList dashboards={dashboards} />
+                </SpinnerContainer>
+              )}
+            </ResourceFetcher>
           </Panel.Body>
         </Panel>
         <Panel>
@@ -50,10 +82,13 @@ class ResourceLists extends PureComponent<Props> {
             <Support />
           </Panel.Body>
           <Panel.Footer>
-            <VersionInfo />
+            <p>
+              Version {VERSION}{' '}
+              {GIT_SHA && <code>({GIT_SHA.slice(0, 7)})</code>}
+            </p>
           </Panel.Footer>
         </Panel>
-      </ComponentSpacer>
+      </>
     )
   }
 }

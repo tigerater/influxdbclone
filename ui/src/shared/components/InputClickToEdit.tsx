@@ -1,14 +1,15 @@
 import React, {ChangeEvent, KeyboardEvent, PureComponent} from 'react'
 import {ErrorHandling} from 'src/shared/decorators/errors'
+import './InputClickToEdit.scss'
 
 interface Props {
   wrapperClass: string
-  tabIndex: number
   value?: string
   onChange?: (value: string) => void
   onKeyDown?: (value: string) => void
   onBlur: (value: string) => void
   disabled?: boolean
+  tabIndex?: number
   placeholder?: string
   appearAsNormalInput?: boolean
 }
@@ -20,7 +21,7 @@ interface State {
 
 @ErrorHandling
 class InputClickToEdit extends PureComponent<Props, State> {
-  public static defaultProps = {
+  public static defaultProps: Partial<Props> = {
     tabIndex: 0,
   }
 
@@ -115,7 +116,7 @@ class InputClickToEdit extends PureComponent<Props, State> {
 
     return disabled ? (
       <div className={wrapperClass}>
-        <div data-testid="disabled" className="input-cte__disabled">
+        <div data-test="disabled" className="input-cte__disabled">
           {value}
         </div>
       </div>
@@ -143,7 +144,7 @@ class InputClickToEdit extends PureComponent<Props, State> {
           >
             <span className="input-cte-span">{value || placeholder}</span>
             {appearAsNormalInput || (
-              <span data-testid="icon" className="icon pencil" />
+              <span data-test="icon" className="icon pencil" />
             )}
           </div>
         )}

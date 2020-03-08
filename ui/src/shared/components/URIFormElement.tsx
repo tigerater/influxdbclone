@@ -3,13 +3,17 @@ import React, {PureComponent, ChangeEvent} from 'react'
 import _ from 'lodash'
 
 // Components
-import {Input, FormElement, Grid} from '@influxdata/clockface'
+import {
+  Input,
+  ComponentStatus,
+  ComponentSize,
+  FormElement,
+  Grid,
+  Columns,
+} from 'src/clockface'
 
 // Utils
 import {validateURI} from 'src/shared/utils/validateURI'
-
-// Type
-import {Columns, ComponentStatus, ComponentSize} from '@influxdata/clockface'
 
 const VALIDATE_DEBOUNCE_MS = 350
 

@@ -1,7 +1,6 @@
 // Libraries
 import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
-import {isEqual} from 'lodash'
 
 // Components
 import AutoRefreshDropdown from 'src/shared/components/dropdown_auto_refresh/AutoRefreshDropdown'
@@ -9,101 +8,69 @@ import AutoRefreshDropdown from 'src/shared/components/dropdown_auto_refresh/Aut
 // Utils
 import {AutoRefresher} from 'src/utils/AutoRefresher'
 
-// Actions
-import {executeQueries} from 'src/timeMachine/actions/queries'
-import {AutoRefreshStatus, AutoRefresh, AppState} from 'src/types'
-import {setAutoRefresh} from 'src/timeMachine/actions'
-import {getActiveTimeMachine} from 'src/timeMachine/selectors'
+// Types
+import {incrementSubmitToken} from 'src/timeMachine/actions'
 
 interface DispatchProps {
-  onExecuteQueries: typeof executeQueries
-  onSetAutoRefresh: typeof setAutoRefresh
+  onIncrementSubmitToken: typeof incrementSubmitToken
 }
 
-interface StateProps {
-  autoRefresh: AutoRefresh
+interface State {
+  autoRefreshInterval: number
 }
 
-type Props = StateProps & DispatchProps
-
-class TimeMachineRefreshDropdown extends PureComponent<Props> {
+class TimeMachineRefreshDropdown extends PureComponent<DispatchProps, State> {
+  public state: State = {autoRefreshInterval: 0}
   private autoRefresher = new AutoRefresher()
 
   public componentDidMount() {
-    const {autoRefresh} = this.props
-    if (autoRefresh.status === AutoRefreshStatus.Active) {
-      this.autoRefresher.poll(autoRefresh.interval)
-    }
+    const {autoRefreshInterval} = this.state
 
-    this.autoRefresher.subscribe(this.executeQueries)
+    this.autoRefresher.poll(autoRefreshInterval)
+    this.autoRefresher.subscribe(this.incrementSubmitToken)
   }
 
-  public componentDidUpdate(prevProps) {
-    const {autoRefresh} = this.props
+  public componentDidUpdate(__, prevState) {
+    const {autoRefreshInterval} = this.state
 
-    if (!isEqual(autoRefresh, prevProps.autoRefresh)) {
-      if (autoRefresh.status === AutoRefreshStatus.Active) {
-        this.autoRefresher.poll(autoRefresh.interval)
-        return
-      }
-
-      this.autoRefresher.stopPolling()
+    if (autoRefreshInterval !== prevState.autoRefreshInterval) {
+      this.autoRefresher.poll(autoRefreshInterval)
     }
   }
 
   public componentWillUnmount() {
-    this.autoRefresher.unsubscribe(this.executeQueries)
+    this.autoRefresher.unsubscribe(this.incrementSubmitToken)
     this.autoRefresher.stopPolling()
   }
 
   public render() {
-    const {autoRefresh} = this.props
+    const {autoRefreshInterval} = this.state
 
     return (
       <AutoRefreshDropdown
-        selected={autoRefresh}
-        onChoose={this.handleChooseAutoRefresh}
-        onManualRefresh={this.executeQueries}
+        selected={autoRefreshInterval}
+        onChoose={this.handleChooseInterval}
+        onManualRefresh={this.incrementSubmitToken}
       />
     )
   }
 
-  private handleChooseAutoRefresh = (interval: number) => {
-    const {onSetAutoRefresh, autoRefresh} = this.props
-
-    if (interval === 0) {
-      onSetAutoRefresh({
-        ...autoRefresh,
-        status: AutoRefreshStatus.Paused,
-        interval,
-      })
-      return
-    }
-
-    onSetAutoRefresh({
-      ...autoRefresh,
-      interval,
-      status: AutoRefreshStatus.Active,
-    })
+  private handleChooseInterval = (autoRefreshInterval: number) => {
+    this.setState({autoRefreshInterval})
   }
 
-  private executeQueries = () => {
-    this.props.onExecuteQueries()
+  private incrementSubmitToken = () => {
+    const {onIncrementSubmitToken} = this.props
+
+    onIncrementSubmitToken()
   }
-}
-
-const mstp = (state: AppState): StateProps => {
-  const {autoRefresh} = getActiveTimeMachine(state)
-
-  return {autoRefresh}
 }
 
 const mdtp: DispatchProps = {
-  onExecuteQueries: executeQueries,
-  onSetAutoRefresh: setAutoRefresh,
+  onIncrementSubmitToken: incrementSubmitToken,
 }
 
-export default connect<StateProps, DispatchProps>(
-  mstp,
+export default connect<{}, DispatchProps>(
+  null,
   mdtp
 )(TimeMachineRefreshDropdown)

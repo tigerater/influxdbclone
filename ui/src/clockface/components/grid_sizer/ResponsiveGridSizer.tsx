@@ -5,15 +5,23 @@ import _ from 'lodash'
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
-interface Props {
+// Styles
+import 'src/clockface/components/grid_sizer/ResponsiveGridSizer.scss'
+
+interface PassedProps {
   children: JSX.Element[]
   columns: number
-  gutter: number
 }
+
+interface DefaultProps {
+  gutter?: number
+}
+
+type Props = PassedProps & DefaultProps
 
 @ErrorHandling
 class ResponsiveGridSizer extends PureComponent<Props> {
-  public static defaultProps = {
+  public static defaultProps: DefaultProps = {
     gutter: 4,
   }
 

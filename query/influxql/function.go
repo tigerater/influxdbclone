@@ -131,11 +131,19 @@ func createFunctionCursor(t *transpilerState, call *influxql.Call, in cursor, no
 			Argument: in.Expr(),
 			Call: &ast.CallExpression{
 				Callee: &ast.Identifier{
-					Name: "median",
+					Name: "percentile",
 				},
 				Arguments: []ast.Expression{
 					&ast.ObjectExpression{
 						Properties: []*ast.Property{
+							{
+								Key: &ast.Identifier{
+									Name: "percentile",
+								},
+								Value: &ast.FloatLiteral{
+									Value: 0.5,
+								},
+							},
 							{
 								Key: &ast.Identifier{
 									Name: "method",
@@ -178,7 +186,7 @@ func createFunctionCursor(t *transpilerState, call *influxql.Call, in cursor, no
 		args := []*ast.Property{
 			{
 				Key: &ast.Identifier{
-					Name: "q",
+					Name: "percentile",
 				},
 				Value: &ast.FloatLiteral{
 					Value: percentile,
@@ -209,7 +217,7 @@ func createFunctionCursor(t *transpilerState, call *influxql.Call, in cursor, no
 			Argument: in.Expr(),
 			Call: &ast.CallExpression{
 				Callee: &ast.Identifier{
-					Name: "quantile",
+					Name: "percentile",
 				},
 				Arguments: []ast.Expression{
 					&ast.ObjectExpression{

@@ -3,13 +3,11 @@ import {
   findBuckets,
   findKeys,
   findValues,
-  FindBucketsOptions,
-  FindKeysOptions,
-  FindValuesOptions,
 } from 'src/timeMachine/apis/queryBuilder'
 
 // Types
-import {WrappedCancelablePromise} from 'src/types'
+import {BuilderConfig} from 'src/types/v2'
+import {WrappedCancelablePromise} from 'src/types/promises'
 
 type CancelableQuery = WrappedCancelablePromise<string[]>
 
@@ -21,17 +19,17 @@ class QueryBuilderFetcher {
   private findValuesCache: {[key: string]: string[]} = {}
   private findBucketsCache: {[key: string]: string[]} = {}
 
-  public async findBuckets(options: FindBucketsOptions): Promise<string[]> {
+  public async findBuckets(url: string): Promise<string[]> {
     this.cancelFindBuckets()
 
-    const cacheKey = JSON.stringify(options)
+    const cacheKey = JSON.stringify([...arguments])
     const cachedResult = this.findBucketsCache[cacheKey]
 
     if (cachedResult) {
       return Promise.resolve(cachedResult)
     }
 
-    const pendingResult = findBuckets(options)
+    const pendingResult = findBuckets(url)
 
     pendingResult.promise.then(result => {
       this.findBucketsCache[cacheKey] = result
@@ -48,18 +46,21 @@ class QueryBuilderFetcher {
 
   public async findKeys(
     index: number,
-    options: FindKeysOptions
+    url: string,
+    bucket: string,
+    tagsSelections: BuilderConfig['tags'],
+    searchTerm: string = ''
   ): Promise<string[]> {
     this.cancelFindKeys(index)
 
-    const cacheKey = JSON.stringify(options)
+    const cacheKey = JSON.stringify([...arguments].slice(1))
     const cachedResult = this.findKeysCache[cacheKey]
 
     if (cachedResult) {
       return Promise.resolve(cachedResult)
     }
 
-    const pendingResult = findKeys(options)
+    const pendingResult = findKeys(url, bucket, tagsSelections, searchTerm)
 
     this.findKeysQueries[index] = pendingResult
 
@@ -78,18 +79,28 @@ class QueryBuilderFetcher {
 
   public async findValues(
     index: number,
-    options: FindValuesOptions
+    url: string,
+    bucket: string,
+    tagsSelections: BuilderConfig['tags'],
+    key: string,
+    searchTerm: string = ''
   ): Promise<string[]> {
     this.cancelFindValues(index)
 
-    const cacheKey = JSON.stringify(options)
+    const cacheKey = JSON.stringify([...arguments].slice(1))
     const cachedResult = this.findValuesCache[cacheKey]
 
     if (cachedResult) {
       return Promise.resolve(cachedResult)
     }
 
-    const pendingResult = findValues(options)
+    const pendingResult = findValues(
+      url,
+      bucket,
+      tagsSelections,
+      key,
+      searchTerm
+    )
 
     this.findValuesQueries[index] = pendingResult
 

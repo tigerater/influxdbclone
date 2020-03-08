@@ -15,10 +15,7 @@ func encodeUserResourceMappingKey(resourceID, userID platform.ID) string {
 func (s *Service) loadUserResourceMapping(ctx context.Context, resourceID, userID platform.ID) (*platform.UserResourceMapping, error) {
 	i, ok := s.userResourceMappingKV.Load(encodeUserResourceMappingKey(resourceID, userID))
 	if !ok {
-		return nil, &platform.Error{
-			Msg:  "user to resource mapping not found",
-			Code: platform.ENotFound,
-		}
+		return nil, fmt.Errorf("userResource mapping not found")
 	}
 
 	m, ok := i.(platform.UserResourceMapping)
@@ -90,10 +87,7 @@ func (s *Service) FindUserResourceMappings(ctx context.Context, filter platform.
 func (s *Service) CreateUserResourceMapping(ctx context.Context, m *platform.UserResourceMapping) error {
 	mapping, _ := s.FindUserResourceBy(ctx, m.ResourceID, m.UserID)
 	if mapping != nil {
-		return &platform.Error{
-			Code: platform.EInternal,
-			Msg:  fmt.Sprintf("Unexpected error when assigning user to a resource: mapping for user %s already exists", m.UserID),
-		}
+		return fmt.Errorf("mapping for user %s already exists", m.UserID)
 	}
 
 	s.userResourceMappingKV.Store(encodeUserResourceMappingKey(m.ResourceID, m.UserID), *m)

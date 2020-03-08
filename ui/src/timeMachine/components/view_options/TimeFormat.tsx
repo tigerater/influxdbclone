@@ -1,8 +1,17 @@
 import React, {PureComponent} from 'react'
 
 // Components
-import {Form, Input, ComponentSpacer, Grid} from '@influxdata/clockface'
-import {Dropdown} from 'src/clockface'
+import {
+  ComponentSpacer,
+  Stack,
+  Alignment,
+  Form,
+  Grid,
+  Input,
+  InputType,
+  Dropdown,
+  Columns,
+} from 'src/clockface'
 
 // Constants
 import {DEFAULT_TIME_FORMAT} from 'src/shared/constants'
@@ -12,13 +21,8 @@ import {
   TIME_FORMAT_TOOLTIP_LINK,
 } from 'src/dashboards/constants'
 
-// Types
-import {
-  Columns,
-  InputType,
-  FlexDirection,
-  AlignItems,
-} from '@influxdata/clockface'
+// Styles
+import 'src/timeMachine/components/view_options/TimeFormat.scss'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -46,10 +50,7 @@ class TimeFormat extends PureComponent<Props, State> {
     return (
       <Grid.Column widthSM={Columns.Twelve}>
         <Form.Element label="Time Format">
-          <ComponentSpacer
-            direction={FlexDirection.Column}
-            alignItems={AlignItems.FlexStart}
-          >
+          <ComponentSpacer stackChildren={Stack.Rows} align={Alignment.Left}>
             <Dropdown
               selectedID={this.showCustom ? TIME_FORMAT_CUSTOM : format}
               onChange={this.handleChooseFormat}
@@ -105,8 +106,8 @@ class TimeFormat extends PureComponent<Props, State> {
           spellCheck={false}
           placeholder="Enter custom format..."
           value={format}
-          data-testid="custom-time-format"
-          className="custom-time-format"
+          data-test="custom-time-format"
+          customClass="custom-time-format"
           onChange={this.handleChangeFormat}
         />
       )

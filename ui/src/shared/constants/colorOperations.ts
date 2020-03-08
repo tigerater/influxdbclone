@@ -3,11 +3,11 @@ import chroma from 'chroma-js'
 
 import {
   THRESHOLD_COLORS,
-  BASE_THRESHOLD_ID,
+  THRESHOLD_TYPE_BASE,
   THRESHOLD_TYPE_TEXT,
 } from 'src/shared/constants/thresholds'
 
-import {ViewType} from 'src/types/dashboards'
+import {ViewType} from 'src/types/v2/dashboards'
 import {Color} from 'src/types/colors'
 
 const getLegibleTextColor = bgColorHex => {
@@ -28,6 +28,10 @@ const findNearestCrossedThreshold = (colors, lastValue) => {
     .pop()
 
   return nearestCrossedThreshold
+}
+
+export const stringifyColorValues = colors => {
+  return colors.map(color => ({...color, value: `${color.value}`}))
 }
 
 export const generateThresholdsListHexs = ({
@@ -52,7 +56,7 @@ export const generateThresholdsListHexs = ({
   }
 
   // baseColor is expected in all cases
-  const baseColor = colors.find(color => color.id === BASE_THRESHOLD_ID) || {
+  const baseColor = colors.find(color => color.id === THRESHOLD_TYPE_BASE) || {
     hex: defaultColoring.textColor,
   }
 

@@ -1,20 +1,10 @@
-import {Action} from 'src/shared/actions/notifications'
-
-export type NotificationAction = Action
-
 export interface Notification {
   id?: string
-  style: NotificationStyle
+  type: string
   icon: string
   duration: number
   message: string
-  type?: string
 }
 
-export enum NotificationStyle {
-  Error = 'error',
-  Success = 'success',
-  Info = 'info',
-  Primary = 'primary',
-  Warning = 'warning',
-}
+export type NotificationFunc = (message: string) => Notification
+export type NotificationAction = (message: Notification) => void

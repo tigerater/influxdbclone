@@ -2,12 +2,10 @@
 import React, {Component} from 'react'
 
 // Components
-import {
-  Button,
-  ComponentColor,
-  ComponentSize,
-  IconFont,
-} from '@influxdata/clockface'
+import {Button, ComponentColor, ComponentSize} from 'src/clockface'
+
+// Types
+import {IconFont} from 'src/clockface'
 
 interface Props {
   text: string
@@ -23,7 +21,7 @@ class SideBarButton extends Component<Props> {
 
     return (
       <Button
-        className="side-bar--button"
+        customClass="side-bar--button"
         text={text}
         titleText={titleText}
         onClick={onClick}

@@ -1,25 +1,20 @@
 // Libraries
 import React, {PureComponent} from 'react'
 import {Link} from 'react-router'
-import {connect} from 'react-redux'
 
 // Components
-import {EmptyState} from '@influxdata/clockface'
+import {EmptyState, ComponentSize} from 'src/clockface'
 
 // Types
-import {Dashboard, Organization, AppState} from 'src/types'
-import {ComponentSize} from '@influxdata/clockface'
+import {Dashboard} from 'src/types/v2'
 
-interface StateProps {
+interface Props {
   dashboards: Dashboard[]
-  org: Organization
 }
 
-type Props = StateProps
-
-class DashboardList extends PureComponent<Props> {
+export default class UserDashboardList extends PureComponent<Props> {
   public render() {
-    const {dashboards, org} = this.props
+    const {dashboards} = this.props
 
     if (this.isEmpty) {
       return (
@@ -34,25 +29,14 @@ class DashboardList extends PureComponent<Props> {
         <ul className="link-list">
           {dashboards.map(({id, name}) => (
             <li key={id}>
-              <Link to={`/orgs/${org.id}/dashboards/${id}`}>{name}</Link>
+              <Link to={`/dashboards/${id}`}>{name}</Link>
             </li>
           ))}
         </ul>
       </>
     )
   }
-
   private get isEmpty(): boolean {
     return !this.props.dashboards.length
   }
 }
-
-const mstp = ({dashboards, orgs: {org}}: AppState): StateProps => ({
-  dashboards: dashboards.list,
-  org,
-})
-
-export default connect<StateProps, {}, {}>(
-  mstp,
-  null
-)(DashboardList)

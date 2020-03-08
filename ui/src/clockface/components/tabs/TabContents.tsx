@@ -1,7 +1,11 @@
 // Libraries
 import React, {SFC} from 'react'
 
-const TabContents: SFC = ({children}) => (
+interface Props {
+  children: JSX.Element[]
+}
+
+const TabContents: SFC<Props> = ({children}) => (
   <div className="tabs--contents">{children}</div>
 )
 

@@ -1,16 +1,12 @@
-import {
-  SourceLinks,
-  Cell,
-  Dashboard,
-  Task,
-  Links,
-  ConfigurationState,
-} from 'src/types'
+import {Template, SourceLinks, TemplateType, TemplateValueType} from 'src/types'
+import {Source} from '@influxdata/influx'
+import {Cell, Dashboard, Label} from 'src/types/v2'
+import {Links} from 'src/types/v2/links'
+import {Task} from 'src/types/v2/tasks'
 import {OnboardingStepProps} from 'src/onboarding/containers/OnboardingWizard'
 import {WithRouterProps} from 'react-router'
+import {ConfigurationState} from 'src/types/v2/dataLoaders'
 import {
-  Source,
-  ILabel,
   TelegrafPluginInputCpu,
   TelegrafPluginInputRedis,
   TelegrafPluginInputDisk,
@@ -24,11 +20,6 @@ import {
   TelegrafPluginInputSwap,
   Task as TaskApi,
   Organization,
-  Variable,
-  Authorization,
-  AuthorizationUpdateRequest,
-  Permission,
-  PermissionResource,
 } from '@influxdata/influx'
 
 export const links: Links = {
@@ -38,12 +29,13 @@ export const links: Links = {
   external: {
     statusFeed: 'https://www.influxdata.com/feed/json',
   },
-  variables: '/api/v2/variables',
+  macros: '/api/v2/macros',
   me: '/api/v2/me',
   orgs: '/api/v2/orgs',
   query: {
     ast: '/api/v2/query/ast',
     self: '/api/v2/query',
+    spec: '/api/v2/query/spec',
     suggestions: '/api/v2/query/suggestions',
   },
   setup: '/api/v2/setup',
@@ -167,6 +159,41 @@ export const query = {
 }
 
 // Dashboards
+export const template: Template = {
+  id: '1',
+  type: TemplateType.TagKeys,
+  label: 'test query',
+  tempVar: ':region:',
+  query: {
+    db: 'db1',
+    rp: 'rp1',
+    tagKey: 'tk1',
+    fieldKey: 'fk1',
+    measurement: 'm1',
+    influxql: 'SHOW TAGS WHERE CHRONOGIRAFFE = "friend"',
+  },
+  values: [
+    {
+      value: 'us-west',
+      type: TemplateValueType.TagKey,
+      selected: false,
+      localSelected: false,
+    },
+    {
+      value: 'us-east',
+      type: TemplateValueType.TagKey,
+      selected: true,
+      localSelected: true,
+    },
+    {
+      value: 'us-mount',
+      type: TemplateValueType.TagKey,
+      selected: false,
+      localSelected: false,
+    },
+  ],
+}
+
 export const dashboard: Dashboard = {
   id: '1',
   orgID: '02ee9e2a29d73000',
@@ -183,7 +210,7 @@ export const dashboard: Dashboard = {
   labels: [],
 }
 
-export const labels: ILabel[] = [
+export const labels: Label[] = [
   {
     id: '0001',
     name: 'Trogdor',
@@ -250,10 +277,11 @@ export const tasks: Task[] = [
     orgID: '02ee9e2a29d73000',
     name: 'pasdlak',
     status: TaskApi.StatusEnum.Active,
+    owner: {id: '02ee9e2a19d73000', name: ''},
     flux:
       'option task = {\n  name: "pasdlak",\n  cron: "2 0 * * *"\n}\nfrom(bucket: "inbucket") \n|> range(start: -1h)',
     cron: '2 0 * * *',
-    org: 'default',
+    organization: orgs[0],
     labels: [],
   },
   {
@@ -261,22 +289,21 @@ export const tasks: Task[] = [
     orgID: '02ee9e2a29d73000',
     name: 'somename',
     status: TaskApi.StatusEnum.Active,
+    owner: {id: '02ee9e2a19d73000', name: ''},
     flux:
       'option task = {\n  name: "somename",\n  every: 1m,\n}\nfrom(bucket: "inbucket") \n|> range(start: -task.every)',
     every: '1m0s',
-    org: 'default',
-    labels,
-  },
-]
-
-export const variables: Variable[] = [
-  {
-    name: 'a little variable',
-    orgID: '0',
-    arguments: {
-      type: 'query',
-      values: {query: '1 + 1 ', language: 'flux'},
+    organization: {
+      links: {
+        buckets: '/api/v2/buckets?org=RadicalOrganization',
+        dashboards: '/api/v2/dashboards?org=RadicalOrganization',
+        self: '/api/v2/orgs/02ee9e2a29d73000',
+        tasks: '/api/v2/tasks?org=RadicalOrganization',
+      },
+      id: '02ee9e2a29d73000',
+      name: 'RadicalOrganization',
     },
+    labels,
   },
 ]
 
@@ -289,7 +316,6 @@ export const defaultOnboardingStepProps: OnboardingStepProps = {
   onSetStepStatus: jest.fn(),
   stepStatuses: [],
   stepTitles: [],
-  stepTestIds: [],
   setupParams: {username: '', password: '', org: '', bucket: ''},
   handleSetSetupParams: jest.fn(),
   notify: jest.fn(),
@@ -410,7 +436,7 @@ export const influxDB2Plugin = {
 
 export const telegrafConfig = {
   id: telegrafConfigID,
-  orgID: '1',
+  organizationID: '1',
   name: 'in n out',
   created: '2018-11-28T18:56:48.854337-08:00',
   lastModified: '2018-11-28T18:56:48.854337-08:00',
@@ -500,7 +526,8 @@ export const bucket = {
     self: '/api/v2/buckets/034a10d6f7a6b000',
   },
   id: '034a10d6f7a6b000',
-  orgID: '034a0adc49a6b000',
+  organizationID: '034a0adc49a6b000',
+  organization: 'default',
   name: 'newbuck',
   retentionRules: [],
   labels: [],
@@ -515,7 +542,8 @@ export const buckets = [
       self: '/api/v2/buckets/034a10d6f7a6b000',
     },
     id: '034a10d6f7a6b000',
-    orgID: '034a0adc49a6b000',
+    organizationID: '034a0adc49a6b000',
+    organization: 'default',
     name: 'newbuck',
     retentionRules: [],
     labels: [],
@@ -528,7 +556,8 @@ export const buckets = [
       self: '/api/v2/buckets/034a10d6f7a6b000',
     },
     id: '034a10d6f7a6b001',
-    orgID: '034a0adc49a6b000',
+    organizationID: '034a0adc49a6b000',
+    organization: 'default',
     name: 'newbuck1',
     retentionRules: [],
     labels: [],
@@ -554,6 +583,7 @@ export const setSetupParamsResponse = {
       },
       id: '033bc62534fe3000',
       orgID: '033bc62534be3000',
+      organization: 'default',
       name: 'defbuck',
       retentionRules: [],
       labels: [],
@@ -648,12 +678,12 @@ export const telegraf = [
   {
     id: '03636a150fb51000',
     name: 'Name this Configuration',
-    orgID: '03636a0aabb51000',
+    organizationID: '03636a0aabb51000',
   },
   {
     id: '03636a150fb51001',
     name: 'Name this Configuration',
-    orgID: '03636a0aabb51000',
+    organizationID: '03636a0aabb51000',
   },
 ]
 
@@ -679,237 +709,3 @@ export const scraperTargets = [
     url: 'http://localhost:9999/metrics',
   },
 ]
-
-export const auth: Authorization = {
-  id: '03c03a8a64728000',
-  token:
-    'RcW2uWiD-vfxujKyJCirK8un3lJsWPfiA6ulmWY_SlSITUal7Z180OwExiKKfrO98X8W6qGrd5hSGdag-hEpWw==',
-  status: AuthorizationUpdateRequest.StatusEnum.Active,
-  description: 'My token',
-  orgID: '039edab314789000',
-  org: 'a',
-  userID: '039edab303789000',
-  user: 'adminuser',
-  permissions: [
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Orgs,
-        id: '039edab314789000',
-        name: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Authorizations,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Authorizations,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Buckets,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Buckets,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Dashboards,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Dashboards,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Sources,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Sources,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Tasks,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Tasks,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Telegrafs,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Telegrafs,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Users,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Users,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Variables,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Variables,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Scrapers,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Scrapers,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Secrets,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Secrets,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Labels,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Labels,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Views,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Views,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Read,
-      resource: {
-        type: PermissionResource.TypeEnum.Documents,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-    {
-      action: Permission.ActionEnum.Write,
-      resource: {
-        type: PermissionResource.TypeEnum.Documents,
-        orgID: '039edab314789000',
-        org: 'a',
-      },
-    },
-  ],
-  links: {
-    self: '/api/v2/authorizations/03c03a8a64728000',
-    user: '/api/v2/users/039edab303789000',
-  },
-}

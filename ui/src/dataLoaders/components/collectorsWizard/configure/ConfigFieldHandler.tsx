@@ -19,7 +19,7 @@ import {
   TelegrafPlugin,
   ConfigFields,
   ConfigFieldType,
-} from 'src/types/dataLoaders'
+} from 'src/types/v2/dataLoaders'
 
 interface OwnProps {
   configFields: ConfigFields
@@ -37,14 +37,14 @@ type Props = OwnProps & DispatchProps
 
 export class ConfigFieldHandler extends PureComponent<Props> {
   public render() {
-    return <div>{this.formFields}</div>
+    return <>{this.formFields}</>
   }
 
   private get formFields(): JSX.Element[] | JSX.Element {
     const {configFields, telegrafPlugin, onSetConfigArrayValue} = this.props
 
     if (!configFields) {
-      return <p data-testid="no-config">No configuration required.</p>
+      return <p data-test={'no-config'}>No configuration required.</p>
     }
 
     return Object.entries(configFields).map(

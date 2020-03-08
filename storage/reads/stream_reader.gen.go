@@ -56,9 +56,7 @@ func (c *floatCursorStreamReader) readFrame() {
 	}
 }
 
-func (c *floatCursorStreamReader) Stats() cursors.CursorStats {
-	return c.fr.stats.Stats()
-}
+func (c *floatCursorStreamReader) Stats() cursors.CursorStats { return cursors.CursorStats{} }
 
 type integerCursorStreamReader struct {
 	fr *frameReader
@@ -103,9 +101,7 @@ func (c *integerCursorStreamReader) readFrame() {
 	}
 }
 
-func (c *integerCursorStreamReader) Stats() cursors.CursorStats {
-	return c.fr.stats.Stats()
-}
+func (c *integerCursorStreamReader) Stats() cursors.CursorStats { return cursors.CursorStats{} }
 
 type unsignedCursorStreamReader struct {
 	fr *frameReader
@@ -150,9 +146,7 @@ func (c *unsignedCursorStreamReader) readFrame() {
 	}
 }
 
-func (c *unsignedCursorStreamReader) Stats() cursors.CursorStats {
-	return c.fr.stats.Stats()
-}
+func (c *unsignedCursorStreamReader) Stats() cursors.CursorStats { return cursors.CursorStats{} }
 
 type stringCursorStreamReader struct {
 	fr *frameReader
@@ -197,9 +191,7 @@ func (c *stringCursorStreamReader) readFrame() {
 	}
 }
 
-func (c *stringCursorStreamReader) Stats() cursors.CursorStats {
-	return c.fr.stats.Stats()
-}
+func (c *stringCursorStreamReader) Stats() cursors.CursorStats { return cursors.CursorStats{} }
 
 type booleanCursorStreamReader struct {
 	fr *frameReader
@@ -244,6 +236,4 @@ func (c *booleanCursorStreamReader) readFrame() {
 	}
 }
 
-func (c *booleanCursorStreamReader) Stats() cursors.CursorStats {
-	return c.fr.stats.Stats()
-}
+func (c *booleanCursorStreamReader) Stats() cursors.CursorStats { return cursors.CursorStats{} }

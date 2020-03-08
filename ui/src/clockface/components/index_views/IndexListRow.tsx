@@ -6,27 +6,21 @@ import classnames from 'classnames'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
-  disabled: boolean
+  disabled?: boolean
   children: JSX.Element[] | JSX.Element
   customClass?: string
-  testID: string
 }
 
 @ErrorHandling
 class IndexListRow extends Component<Props> {
-  public static defaultProps = {
+  public static defaultProps: Partial<Props> = {
     disabled: false,
-    testID: 'table-row',
   }
 
   public render() {
-    const {children, testID} = this.props
+    const {children} = this.props
 
-    return (
-      <tr data-testid={testID} className={this.className}>
-        {children}
-      </tr>
-    )
+    return <tr className={this.className}>{children}</tr>
   }
 
   private get className(): string {

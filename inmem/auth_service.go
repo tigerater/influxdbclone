@@ -86,19 +86,6 @@ func filterAuthorizationsFn(filter platform.AuthorizationFilter) func(a *platfor
 		}
 	}
 
-	// Filter by org and user
-	if filter.OrgID != nil && filter.UserID != nil {
-		return func(a *platform.Authorization) bool {
-			return a.OrgID == *filter.OrgID && a.UserID == *filter.UserID
-		}
-	}
-
-	if filter.OrgID != nil {
-		return func(a *platform.Authorization) bool {
-			return a.OrgID == *filter.OrgID
-		}
-	}
-
 	if filter.UserID != nil {
 		return func(a *platform.Authorization) bool {
 			return a.UserID == *filter.UserID
@@ -134,18 +121,6 @@ func (s *Service) FindAuthorizations(ctx context.Context, filter platform.Author
 		}
 		filter.UserID = &u.ID
 	}
-
-	if filter.Org != nil {
-		o, err := s.findOrganizationByName(ctx, *filter.Org)
-		if err != nil {
-			return nil, 0, &platform.Error{
-				Op:  op,
-				Err: err,
-			}
-		}
-		filter.OrgID = &o.ID
-	}
-
 	var err error
 	filterF := filterAuthorizationsFn(filter)
 	s.authorizationKV.Range(func(k, v interface{}) bool {
@@ -217,34 +192,31 @@ func (s *Service) DeleteAuthorization(ctx context.Context, id platform.ID) error
 	return nil
 }
 
-// UpdateAuthorization updates the status and description if available.
-func (s *Service) UpdateAuthorization(ctx context.Context, id platform.ID, upd *platform.AuthorizationUpdate) (*platform.Authorization, error) {
-	op := OpPrefix + platform.OpUpdateAuthorization
+// SetAuthorizationStatus updates the status of an authorization associated with id.
+func (s *Service) SetAuthorizationStatus(ctx context.Context, id platform.ID, status platform.Status) error {
+	op := OpPrefix + platform.OpSetAuthorizationStatus
 	a, err := s.FindAuthorizationByID(ctx, id)
 	if err != nil {
-		return nil, &platform.Error{
+		return &platform.Error{
 			Err: err,
 			Op:  op,
 		}
 	}
 
-	if upd.Status != nil {
-		status := *upd.Status
-		switch status {
-		case platform.Active, platform.Inactive:
-		default:
-			return nil, &platform.Error{
-				Code: platform.EInvalid,
-				Msg:  "unknown authorization status",
-				Op:   op,
-			}
+	switch status {
+	case platform.Active, platform.Inactive:
+	default:
+		return &platform.Error{
+			Code: platform.EInvalid,
+			Msg:  "unknown authorization status",
+			Op:   op,
 		}
-		a.Status = status
 	}
 
-	if upd.Description != nil {
-		a.Description = *upd.Description
+	if a.Status == status {
+		return nil
 	}
 
-	return a, s.PutAuthorization(ctx, a)
+	a.Status = status
+	return s.PutAuthorization(ctx, a)
 }

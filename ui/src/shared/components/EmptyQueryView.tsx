@@ -3,28 +3,20 @@ import React, {PureComponent} from 'react'
 
 // Components
 import EmptyGraphMessage from 'src/shared/components/EmptyGraphMessage'
-import EmptyGraphErrorTooltip from 'src/shared/components/EmptyGraphErrorTooltip'
-import EmptyGraphError from 'src/shared/components/EmptyGraphError'
 import Markdown from 'src/shared/components/views/Markdown'
 
 // Constants
 import {emptyGraphCopy} from 'src/shared/copy/cell'
 
 // Types
-import {RemoteDataState} from 'src/types'
-import {DashboardQuery} from 'src/types'
-
-export enum ErrorFormat {
-  Tooltip = 'tooltip',
-  Scroll = 'scroll',
-}
+import {RemoteDataState, FluxTable} from 'src/types'
+import {DashboardQuery} from 'src/types/v2'
 
 interface Props {
-  errorMessage: string
-  errorFormat: ErrorFormat
+  error: Error
   isInitialFetch: boolean
   loading: RemoteDataState
-  hasResults: boolean
+  tables: FluxTable[]
   queries: DashboardQuery[]
   fallbackNote?: string
 }
@@ -32,57 +24,41 @@ interface Props {
 export default class EmptyQueryView extends PureComponent<Props> {
   public render() {
     const {
-      errorMessage,
+      error,
       isInitialFetch,
       loading,
+      tables,
       queries,
       fallbackNote,
-      hasResults,
-      errorFormat,
     } = this.props
 
-    if (loading === RemoteDataState.NotStarted || !queries.length) {
-      return (
-        <EmptyGraphMessage
-          message={emptyGraphCopy}
-          testID="empty-graph--no-queries"
-        />
-      )
+    if (loading === RemoteDataState.NotStarted) {
+      return <EmptyGraphMessage message={emptyGraphCopy} />
     }
 
-    if (errorMessage) {
-      if (errorFormat === ErrorFormat.Tooltip)
-        return (
-          <EmptyGraphErrorTooltip
-            message={errorMessage}
-            testID="empty-graph--error"
-          />
-        )
-
-      if (errorFormat === ErrorFormat.Scroll)
-        return (
-          <EmptyGraphError message={errorMessage} testID="empty-graph--error" />
-        )
+    if (!queries.length) {
+      return <EmptyGraphMessage message={emptyGraphCopy} />
     }
+
+    if (error) {
+      return <EmptyGraphMessage message={`Error: ${error.message}`} />
+    }
+
+    const hasNoResults = tables.every(d => !d.data.length)
 
     if (
-      (isInitialFetch || !hasResults) &&
+      (isInitialFetch || hasNoResults) &&
       loading === RemoteDataState.Loading
     ) {
       return <EmptyGraphMessage message="Loading..." />
     }
 
-    if (!hasResults && fallbackNote) {
+    if (hasNoResults && fallbackNote) {
       return <Markdown text={fallbackNote} />
     }
 
-    if (!hasResults) {
-      return (
-        <EmptyGraphMessage
-          message="No Results"
-          testID="empty-graph--no-results"
-        />
-      )
+    if (hasNoResults) {
+      return <EmptyGraphMessage message="No Results" />
     }
 
     return this.props.children

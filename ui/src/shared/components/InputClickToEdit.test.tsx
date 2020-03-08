@@ -37,7 +37,7 @@ describe('Components.Shared.InputClickToEdit', () => {
       const inputField = inputClickToEdit.children().find('input')
       const disabledDiv = inputClickToEdit
         .children()
-        .find({'data-testid': 'disabled'})
+        .find({'data-test': 'disabled'})
 
       expect(initialDiv.exists()).toBe(true)
       expect(inputField.exists()).toBe(false)
@@ -51,7 +51,7 @@ describe('Components.Shared.InputClickToEdit', () => {
         const inputField = inputClickToEdit.children().find('input')
         const disabledDiv = inputClickToEdit
           .children()
-          .find({'data-testid': 'disabled'})
+          .find({'data-test': 'disabled'})
 
         expect(inputField.exists()).toBe(false)
         expect(disabledDiv.exists()).toBe(true)
@@ -62,9 +62,9 @@ describe('Components.Shared.InputClickToEdit', () => {
         const {inputClickToEdit} = setup({disabled})
         const disabledDiv = inputClickToEdit
           .children()
-          .find({'data-testid': 'disabled'})
+          .find({'data-test': 'disabled'})
         const icon = disabledDiv.children().find({
-          'data-testid': 'icon',
+          'data-test': 'icon',
         })
 
         expect(icon.exists()).toBe(false)

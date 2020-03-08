@@ -11,7 +11,7 @@ import {bucket} from 'mocks/dummyData'
 
 const setup = (override = {}) => {
   const props = {
-    selectedBucketID: '',
+    selected: '',
     buckets: [],
     onSelectBucket: jest.fn(),
     ...override,

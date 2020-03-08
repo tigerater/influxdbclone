@@ -1,5 +1,7 @@
 import React, {SFC} from 'react'
 
+import 'src/shared/components/WaitingText.scss'
+
 interface Props {
   text: string
   className?: string

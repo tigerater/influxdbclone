@@ -11,15 +11,15 @@ interface Props {
   id: string
   children: DropdownChild
   value: any
-  selected: boolean
-  checkbox: boolean
+  selected?: boolean
+  checkbox?: boolean
   onClick?: (value: any) => void
-  testID?: string
+  testid?: string
 }
 
 @ErrorHandling
 class DropdownItem extends Component<Props> {
-  public static defaultProps = {
+  public static defaultProps: Partial<Props> = {
     checkbox: false,
     selected: false,
   }

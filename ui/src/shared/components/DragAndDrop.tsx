@@ -1,25 +1,21 @@
 import React, {PureComponent} from 'react'
 import classnames from 'classnames'
-import {
-  Button,
-  ComponentColor,
-  ComponentSize,
-  ButtonType,
-} from '@influxdata/clockface'
+import {Button, ComponentColor, ComponentSize, ButtonType} from 'src/clockface'
+
+import './DragAndDrop.scss'
 
 interface Props {
   fileTypesToAccept?: string
   containerClass?: string
   handleSubmit: (uploadContent: string | ArrayBuffer, fileName: string) => void
-  submitText: string
-  submitOnDrop: boolean
-  submitOnUpload: boolean
-  compact: boolean
-  onCancel?: () => void
+  submitText?: string
+  submitOnDrop?: boolean
+  submitOnUpload?: boolean
+  compact?: boolean
 }
 
 interface State {
-  inputContent: string
+  inputContent: string | null
   uploadContent: string | ArrayBuffer
   fileName: string
   dragClass: string
@@ -27,7 +23,7 @@ interface State {
 
 let dragCounter = 0
 class DragAndDrop extends PureComponent<Props, State> {
-  public static defaultProps = {
+  public static defaultProps: Partial<Props> = {
     submitText: 'Write this File',
     submitOnDrop: false,
     submitOnUpload: false,
@@ -247,12 +243,8 @@ class DragAndDrop extends PureComponent<Props, State> {
   }
 
   private handleCancelFile = (): void => {
-    const {onCancel} = this.props
     this.setState({uploadContent: ''})
     this.fileInput.value = ''
-    if (onCancel) {
-      onCancel()
-    }
   }
 
   private handleDragEnter = (e: DragEvent): void => {

@@ -3,31 +3,33 @@ import React, {Component, RefObject} from 'react'
 import classnames from 'classnames'
 
 // Components
-import {Button} from '@influxdata/clockface'
+import Button from 'src/clockface/components/Button/index'
 import {ClickOutside} from 'src/shared/components/ClickOutside'
 
 // Types
 import {
-  ComponentColor,
   ComponentStatus,
+  ComponentColor,
   ComponentSize,
   ButtonShape,
   IconFont,
   ButtonType,
-} from '@influxdata/clockface'
+} from 'src/clockface/types'
+
+// Styles
+import 'src/clockface/components/confirmation_button/ConfirmationButton.scss'
 
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
   confirmText: string
   onConfirm: (returnValue?: any) => void
-  size: ComponentSize
-  shape: ButtonShape
-  testID: string
-  status: ComponentStatus
   returnValue?: any
   text?: string
+  size?: ComponentSize
+  shape?: ButtonShape
   icon?: IconFont
+  status?: ComponentStatus
   titleText?: string
   tabIndex?: number
   className?: string
@@ -39,11 +41,10 @@ interface State {
 
 @ErrorHandling
 class ConfirmationButton extends Component<Props, State> {
-  public static defaultProps = {
+  public static defaultProps: Partial<Props> = {
     size: ComponentSize.Small,
     shape: ButtonShape.Default,
     status: ComponentStatus.Default,
-    testID: 'confirmation-button',
   }
 
   public ref: RefObject<HTMLButtonElement> = React.createRef()
@@ -66,7 +67,6 @@ class ConfirmationButton extends Component<Props, State> {
       status,
       confirmText,
       icon,
-      testID,
     } = this.props
     const {isTooltipVisible} = this.state
 
@@ -85,11 +85,10 @@ class ConfirmationButton extends Component<Props, State> {
             onClick={this.handleButtonClick}
             icon={icon}
             type={ButtonType.Button}
-            testID="delete-button"
           />
           <div className={this.tooltipClassName}>
             <div
-              data-testid={testID}
+              data-test="confirmation-button--click-target"
               className="confirmation-button--tooltip-body"
               onClick={this.handleTooltipClick}
             >

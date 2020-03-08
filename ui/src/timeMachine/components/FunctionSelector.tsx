@@ -3,39 +3,32 @@ import React, {PureComponent, ChangeEvent} from 'react'
 import {connect} from 'react-redux'
 
 // Components
-import {Input} from '@influxdata/clockface'
+import {Input} from 'src/clockface'
 import SelectorList from 'src/timeMachine/components/SelectorList'
-import BuilderCard from 'src/timeMachine/components/builderCard/BuilderCard'
-import WindowSelector from 'src/timeMachine/components/WindowSelector'
 
 // Actions
-import {
-  selectFunction,
-  selectAggregateWindow,
-} from 'src/timeMachine/actions/queryBuilder'
+import {selectFunction} from 'src/timeMachine/actions/queryBuilder'
 
 // Utils
 import {getActiveQuery} from 'src/timeMachine/selectors'
 
 // Constants
-import {
-  FUNCTIONS,
-  AGG_WINDOW_AUTO,
-} from 'src/timeMachine/constants/queryBuilder'
+import {FUNCTIONS} from 'src/timeMachine/constants/queryBuilder'
+
+// Styles
+import 'src/timeMachine/components/FunctionSelector.scss'
 
 // Types
-import {AppState, BuilderConfig} from 'src/types'
+import {AppState, BuilderConfig} from 'src/types/v2'
 
 const FUNCTION_NAMES = FUNCTIONS.map(f => f.name)
 
 interface StateProps {
-  aggregateWindow: BuilderConfig['aggregateWindow']
   selectedFunctions: BuilderConfig['functions']
 }
 
 interface DispatchProps {
-  onSelectFunction: typeof selectFunction
-  onSelectAggregateWindow: typeof selectAggregateWindow
+  onSelectFunction: (fnName: string) => void
 }
 
 type Props = StateProps & DispatchProps
@@ -48,43 +41,25 @@ class FunctionSelector extends PureComponent<Props, State> {
   public state: State = {searchTerm: ''}
 
   public render() {
-    const {
-      onSelectFunction,
-      selectedFunctions,
-      onSelectAggregateWindow,
-    } = this.props
-
+    const {onSelectFunction} = this.props
     const {searchTerm} = this.state
 
     return (
-      <BuilderCard className="function-selector" testID="function-selector">
-        <BuilderCard.Header title="Aggregate Functions" />
-        <BuilderCard.Menu>
-          <WindowSelector
-            onSelect={onSelectAggregateWindow}
-            period={this.period}
-            disabled={!selectedFunctions.length}
-          />
-          <Input
-            className="tag-selector--search"
-            value={searchTerm}
-            onChange={this.handleSetSearchTerm}
-            placeholder="Search functions..."
-          />
-        </BuilderCard.Menu>
+      <div className="function-selector">
+        <h3>Aggregate Functions</h3>
+        <Input
+          customClass={'function-selector--search'}
+          value={searchTerm}
+          onChange={this.handleSetSearchTerm}
+          placeholder="Search functions..."
+        />
         <SelectorList
           items={this.functions}
           selectedItems={this.selectedFunctions}
           onSelectItem={onSelectFunction}
-          multiSelect={true}
         />
-      </BuilderCard>
+      </div>
     )
-  }
-
-  private get period(): string {
-    const {aggregateWindow} = this.props
-    return aggregateWindow.period || AGG_WINDOW_AUTO
   }
 
   private get functions(): string[] {
@@ -101,16 +76,13 @@ class FunctionSelector extends PureComponent<Props, State> {
 }
 
 const mstp = (state: AppState) => {
-  const {functions: selectedFunctions, aggregateWindow} = getActiveQuery(
-    state
-  ).builderConfig
+  const selectedFunctions = getActiveQuery(state).builderConfig.functions
 
-  return {selectedFunctions, aggregateWindow}
+  return {selectedFunctions}
 }
 
 const mdtp = {
   onSelectFunction: selectFunction,
-  onSelectAggregateWindow: selectAggregateWindow,
 }
 
 export default connect<StateProps, DispatchProps>(

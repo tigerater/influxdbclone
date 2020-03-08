@@ -2,10 +2,7 @@
 import React, {PureComponent, KeyboardEvent, ChangeEvent} from 'react'
 
 // Components
-import {Input} from '@influxdata/clockface'
-
-// Types
-import {InputType, ComponentSize} from '@influxdata/clockface'
+import {Input, InputType, ComponentSize} from 'src/clockface'
 
 interface Props {
   isActive: boolean

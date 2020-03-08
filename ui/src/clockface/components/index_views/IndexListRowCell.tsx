@@ -10,27 +10,23 @@ import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
   children: any
-  alignment: Alignment
-  revealOnHover: boolean
-  testID: string
+  alignment?: Alignment
+  revealOnHover?: boolean
 }
 
 @ErrorHandling
 class IndexListRowCell extends Component<Props> {
-  public static defaultProps = {
+  public static defaultProps: Partial<Props> = {
     alignment: Alignment.Left,
     revealOnHover: false,
-    testID: 'table-cell',
   }
 
   public render() {
-    const {children, testID} = this.props
+    const {children} = this.props
 
     return (
       <td className={this.className}>
-        <div className="index-list--cell" data-testid={testID}>
-          {children}
-        </div>
+        <div className="index-list--cell">{children}</div>
       </td>
     )
   }

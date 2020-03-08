@@ -21,9 +21,10 @@ import {setSetupParams, setStepStatus, setupAdmin} from 'src/onboarding/actions'
 import {StepStatus} from 'src/clockface/constants/wizard'
 
 // Types
-import {Links} from 'src/types/links'
+import {Links} from 'src/types/v2/links'
 import {ISetupParams} from '@influxdata/influx'
-import {AppState} from 'src/types'
+import {Notification, NotificationFunc} from 'src/types'
+import {AppState} from 'src/types/v2'
 
 export interface OnboardingStepProps {
   links: Links
@@ -35,10 +36,9 @@ export interface OnboardingStepProps {
   onSetSubstepIndex: (index: number, subStep: number | 'streaming') => void
   stepStatuses: StepStatus[]
   stepTitles: string[]
-  stepTestIds: string[]
   setupParams: ISetupParams
   handleSetSetupParams: (setupParams: ISetupParams) => void
-  notify: typeof notifyAction
+  notify: (message: Notification | NotificationFunc) => void
   onCompleteSetup: () => void
   onExit: () => void
 }
@@ -55,7 +55,7 @@ interface OwnProps {
 }
 
 interface DispatchProps {
-  notify: typeof notifyAction
+  notify: (message: Notification | NotificationFunc) => void
   onSetSetupParams: typeof setSetupParams
   onSetStepStatus: typeof setStepStatus
   onSetupAdmin: typeof setupAdmin
@@ -74,11 +74,6 @@ type Props = OwnProps & StateProps & DispatchProps & WithRouterProps
 @ErrorHandling
 class OnboardingWizard extends PureComponent<Props> {
   public stepTitles = ['Welcome', 'Initial User Setup', 'Complete']
-  public stepTestIds = [
-    'nav-step--welcome',
-    'nav-step--setup',
-    'nav-step--complete',
-  ]
 
   public stepSkippable = [true, false, false]
 
@@ -128,7 +123,6 @@ class OnboardingWizard extends PureComponent<Props> {
           handleSetCurrentStep={onSetCurrentStepIndex}
           stepStatuses={stepStatuses}
           stepTitles={this.stepTitles}
-          stepTestIds={this.stepTestIds}
           stepSkippable={this.stepSkippable}
         />
       </WizardProgressHeader>
@@ -138,7 +132,7 @@ class OnboardingWizard extends PureComponent<Props> {
   private handleExit = () => {
     const {router, onCompleteSetup} = this.props
     onCompleteSetup()
-    router.push(`/`)
+    router.push(`/me`)
   }
 
   private get onboardingStepProps(): OnboardingStepProps {
@@ -160,7 +154,6 @@ class OnboardingWizard extends PureComponent<Props> {
     return {
       stepStatuses,
       stepTitles: this.stepTitles,
-      stepTestIds: this.stepTestIds,
       currentStepIndex,
       onSetCurrentStepIndex,
       onSetSubstepIndex,

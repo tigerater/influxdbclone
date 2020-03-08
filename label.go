@@ -5,7 +5,7 @@ import (
 )
 
 // ErrLabelNotFound is the error for a missing Label.
-const ErrLabelNotFound = "label not found"
+const ErrLabelNotFound = ChronografError("label not found")
 
 const (
 	OpFindLabels         = "FindLabels"
@@ -48,7 +48,6 @@ type LabelService interface {
 // Label is a tag set on a resource, typically used for filtering on a UI.
 type Label struct {
 	ID         ID                `json:"id,omitempty"`
-	OrgID      ID                `json:"orgID,omitempty"`
 	Name       string            `json:"name"`
 	Properties map[string]string `json:"properties,omitempty"`
 }
@@ -62,13 +61,6 @@ func (l *Label) Validate() error {
 		}
 	}
 
-	if !l.OrgID.Valid() {
-		return &Error{
-			Code: EInvalid,
-			Msg:  "orgID is required",
-		}
-	}
-
 	return nil
 }
 
@@ -76,7 +68,7 @@ func (l *Label) Validate() error {
 // It should not be shared directly over the HTTP API.
 type LabelMapping struct {
 	LabelID      ID `json:"labelID"`
-	ResourceID   ID `json:"resourceID,omitempty"`
+	ResourceID   ID `json:"resourceID"`
 	ResourceType `json:"resourceType"`
 }
 
@@ -105,16 +97,15 @@ func (l *LabelMapping) Validate() error {
 }
 
 // LabelUpdate represents a changeset for a label.
-// Only the properties specified are updated.
+// Only fields which are set are updated.
 type LabelUpdate struct {
-	Name       string            `json:"name,omitempty"`
 	Properties map[string]string `json:"properties,omitempty"`
 }
 
 // LabelFilter represents a set of filters that restrict the returned results.
 type LabelFilter struct {
-	Name  string
-	OrgID *ID
+	ID   ID
+	Name string
 }
 
 // LabelMappingFilter represents a set of filters that restrict the returned results.

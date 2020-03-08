@@ -4,28 +4,28 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/influxdata/influxdb"
+	platform "github.com/influxdata/influxdb"
 )
 
 const (
 	errScraperTargetNotFound = "scraper target is not found"
 )
 
-var _ influxdb.ScraperTargetStoreService = (*Service)(nil)
+var _ platform.ScraperTargetStoreService = (*Service)(nil)
 
-func (s *Service) loadScraperTarget(id influxdb.ID) (*influxdb.ScraperTarget, *influxdb.Error) {
+func (s *Service) loadScraperTarget(id platform.ID) (*platform.ScraperTarget, *platform.Error) {
 	i, ok := s.scraperTargetKV.Load(id.String())
 	if !ok {
-		return nil, &influxdb.Error{
-			Code: influxdb.ENotFound,
+		return nil, &platform.Error{
+			Code: platform.ENotFound,
 			Msg:  errScraperTargetNotFound,
 		}
 	}
 
-	b, ok := i.(influxdb.ScraperTarget)
+	b, ok := i.(platform.ScraperTarget)
 	if !ok {
-		return nil, &influxdb.Error{
-			Code: influxdb.EInvalid,
+		return nil, &platform.Error{
+			Code: platform.EInvalid,
 			Msg:  fmt.Sprintf("type %T is not a scraper target", i),
 		}
 	}
@@ -33,79 +33,51 @@ func (s *Service) loadScraperTarget(id influxdb.ID) (*influxdb.ScraperTarget, *i
 }
 
 // ListTargets will list all scrape targets.
-func (s *Service) ListTargets(ctx context.Context, filter influxdb.ScraperTargetFilter) (list []influxdb.ScraperTarget, err error) {
-	list = make([]influxdb.ScraperTarget, 0)
+func (s *Service) ListTargets(ctx context.Context) (list []platform.ScraperTarget, err error) {
+	list = make([]platform.ScraperTarget, 0)
 	s.scraperTargetKV.Range(func(_, v interface{}) bool {
-		target, ok := v.(influxdb.ScraperTarget)
+		b, ok := v.(platform.ScraperTarget)
 		if !ok {
-			err = &influxdb.Error{
-				Code: influxdb.EInvalid,
+			err = &platform.Error{
+				Code: platform.EInvalid,
 				Msg:  fmt.Sprintf("type %T is not a scraper target", v),
 			}
 			return false
 		}
-		if filter.IDs != nil {
-			if _, ok := filter.IDs[target.ID]; !ok {
-				return true
-			}
-		}
-		if filter.Name != nil && target.Name != *filter.Name {
-			return true
-		}
-		if filter.Org != nil {
-			o, orgErr := s.findOrganizationByName(ctx, *filter.Org)
-			if orgErr != nil {
-				err = orgErr
-				return false
-			}
-			if target.OrgID != o.ID {
-				return true
-			}
-		}
-		if filter.OrgID != nil {
-			o, orgErr := s.FindOrganizationByID(ctx, *filter.OrgID)
-			if orgErr != nil {
-				err = orgErr
-				return true
-			}
-			if target.OrgID != o.ID {
-				return true
-			}
-		}
-		list = append(list, target)
+		list = append(list, b)
 		return true
 	})
 	return list, err
 }
 
 // AddTarget add a new scraper target into storage.
-func (s *Service) AddTarget(ctx context.Context, target *influxdb.ScraperTarget, userID influxdb.ID) (err error) {
+func (s *Service) AddTarget(ctx context.Context, target *platform.ScraperTarget, userID platform.ID) (err error) {
 	target.ID = s.IDGenerator.ID()
 	if !target.OrgID.Valid() {
-		return &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Msg:  "provided organization ID has invalid format",
-			Op:   OpPrefix + influxdb.OpAddTarget,
+		return &platform.Error{
+			Code: platform.EInvalid,
+			Msg:  "org id is invalid",
+			Op:   OpPrefix + platform.OpAddTarget,
 		}
 	}
 	if !target.BucketID.Valid() {
-		return &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Msg:  "provided bucket ID has invalid format",
-			Op:   OpPrefix + influxdb.OpAddTarget,
+		return &platform.Error{
+			Code: platform.EInvalid,
+			Msg:  "bucket id is invalid",
+			Op:   OpPrefix + platform.OpAddTarget,
 		}
 	}
 	if err := s.PutTarget(ctx, target); err != nil {
-		return &influxdb.Error{
-			Op:  OpPrefix + influxdb.OpAddTarget,
+		return &platform.Error{
+			Op:  OpPrefix + platform.OpAddTarget,
 			Err: err,
 		}
 	}
-	urm := &influxdb.UserResourceMapping{
+	urm := &platform.UserResourceMapping{
 		ResourceID:   target.ID,
 		UserID:       userID,
-		UserType:     influxdb.Owner,
-		ResourceType: influxdb.ScraperResourceType,
+		UserType:     platform.Owner,
+		ResourceType: platform.ScraperResourceType,
 	}
 	if err := s.CreateUserResourceMapping(ctx, urm); err != nil {
 		return err
@@ -114,22 +86,22 @@ func (s *Service) AddTarget(ctx context.Context, target *influxdb.ScraperTarget,
 }
 
 // RemoveTarget removes a scraper target from the bucket.
-func (s *Service) RemoveTarget(ctx context.Context, id influxdb.ID) error {
+func (s *Service) RemoveTarget(ctx context.Context, id platform.ID) error {
 	if _, pe := s.loadScraperTarget(id); pe != nil {
-		return &influxdb.Error{
+		return &platform.Error{
 			Err: pe,
-			Op:  OpPrefix + influxdb.OpRemoveTarget,
+			Op:  OpPrefix + platform.OpRemoveTarget,
 		}
 	}
 	s.scraperTargetKV.Delete(id.String())
-	err := s.deleteUserResourceMapping(ctx, influxdb.UserResourceMappingFilter{
+	err := s.deleteUserResourceMapping(ctx, platform.UserResourceMappingFilter{
 		ResourceID:   id,
-		ResourceType: influxdb.ScraperResourceType,
+		ResourceType: platform.ScraperResourceType,
 	})
 	if err != nil {
-		return &influxdb.Error{
-			Code: influxdb.ErrorCode(err),
-			Op:   OpPrefix + influxdb.OpRemoveTarget,
+		return &platform.Error{
+			Code: platform.ErrorCode(err),
+			Op:   OpPrefix + platform.OpRemoveTarget,
 			Err:  err,
 		}
 	}
@@ -138,18 +110,18 @@ func (s *Service) RemoveTarget(ctx context.Context, id influxdb.ID) error {
 }
 
 // UpdateTarget updates a scraper target.
-func (s *Service) UpdateTarget(ctx context.Context, update *influxdb.ScraperTarget, userID influxdb.ID) (target *influxdb.ScraperTarget, err error) {
-	op := OpPrefix + influxdb.OpUpdateTarget
+func (s *Service) UpdateTarget(ctx context.Context, update *platform.ScraperTarget, userID platform.ID) (target *platform.ScraperTarget, err error) {
+	op := OpPrefix + platform.OpUpdateTarget
 	if !update.ID.Valid() {
-		return nil, &influxdb.Error{
-			Code: influxdb.EInvalid,
+		return nil, &platform.Error{
+			Code: platform.EInvalid,
 			Op:   op,
-			Msg:  "provided scraper target ID has invalid format",
+			Msg:  "id is invalid",
 		}
 	}
 	oldTarget, pe := s.loadScraperTarget(update.ID)
 	if pe != nil {
-		return nil, &influxdb.Error{
+		return nil, &platform.Error{
 			Op:  op,
 			Err: pe,
 		}
@@ -161,7 +133,7 @@ func (s *Service) UpdateTarget(ctx context.Context, update *influxdb.ScraperTarg
 		update.BucketID = oldTarget.BucketID
 	}
 	if err = s.PutTarget(ctx, update); err != nil {
-		return nil, &influxdb.Error{
+		return nil, &platform.Error{
 			Op:  op,
 			Err: pe,
 		}
@@ -171,11 +143,11 @@ func (s *Service) UpdateTarget(ctx context.Context, update *influxdb.ScraperTarg
 }
 
 // GetTargetByID retrieves a scraper target by id.
-func (s *Service) GetTargetByID(ctx context.Context, id influxdb.ID) (target *influxdb.ScraperTarget, err error) {
-	var pe *influxdb.Error
+func (s *Service) GetTargetByID(ctx context.Context, id platform.ID) (target *platform.ScraperTarget, err error) {
+	var pe *platform.Error
 	if target, pe = s.loadScraperTarget(id); pe != nil {
-		return nil, &influxdb.Error{
-			Op:  OpPrefix + influxdb.OpGetTargetByID,
+		return nil, &platform.Error{
+			Op:  OpPrefix + platform.OpGetTargetByID,
 			Err: pe,
 		}
 	}
@@ -183,7 +155,7 @@ func (s *Service) GetTargetByID(ctx context.Context, id influxdb.ID) (target *in
 }
 
 // PutTarget will put a scraper target without setting an ID.
-func (s *Service) PutTarget(ctx context.Context, target *influxdb.ScraperTarget) error {
+func (s *Service) PutTarget(ctx context.Context, target *platform.ScraperTarget) error {
 	s.scraperTargetKV.Store(target.ID.String(), *target)
 	return nil
 }

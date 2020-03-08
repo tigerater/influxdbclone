@@ -2,7 +2,6 @@ package tsi1_test
 
 import (
 	"bytes"
-	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -301,7 +300,7 @@ func NewSeriesFile() *SeriesFile {
 // MustOpenSeriesFile returns a new, open instance of SeriesFile. Panic on error.
 func MustOpenSeriesFile() *SeriesFile {
 	f := NewSeriesFile()
-	if err := f.Open(context.Background()); err != nil {
+	if err := f.Open(); err != nil {
 		panic(err)
 	}
 	return f

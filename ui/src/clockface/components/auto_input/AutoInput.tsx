@@ -2,10 +2,10 @@
 import React, {Component, ChangeEvent, KeyboardEvent} from 'react'
 
 // Components
-import {Input, Radio} from '@influxdata/clockface'
+import {Input, Radio, ButtonShape} from 'src/clockface'
 
-// Types
-import {ButtonShape} from '@influxdata/clockface'
+// Styles
+import './AutoInput.scss'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'

@@ -15,8 +15,6 @@ exports[`SideBar rendering renders with children, and renders its children 1`] =
     <FancyScrollbar
       autoHeight={false}
       autoHide={false}
-      className=""
-      hideTracksWhenNotNeeded={true}
       maxHeight={null}
       setScrollTop={[Function]}
       style={Object {}}
@@ -61,8 +59,6 @@ exports[`SideBar rendering renders with no children 1`] = `
     <FancyScrollbar
       autoHeight={false}
       autoHide={false}
-      className=""
-      hideTracksWhenNotNeeded={true}
       maxHeight={null}
       setScrollTop={[Function]}
       style={Object {}}

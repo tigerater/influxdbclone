@@ -5,26 +5,26 @@ import classnames from 'classnames'
 // Components
 import ContextMenuItem from 'src/clockface/components/context_menu/ContextMenuItem'
 import {ClickOutside} from 'src/shared/components/ClickOutside'
-import {Button} from '@influxdata/clockface'
+import Button from 'src/clockface/components/Button'
 
 // Types
 import {
-  ComponentColor,
   IconFont,
+  ComponentColor,
   ComponentSize,
   ButtonShape,
-} from '@influxdata/clockface'
+} from 'src/clockface/types'
 
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
   children: JSX.Element | JSX.Element[]
   icon: IconFont
+  text?: string
+  title
+  color?: ComponentColor
+  shape?: ButtonShape
   onBoostZIndex?: (boostZIndex: boolean) => void
-  text: string
-  color: ComponentColor
-  shape: ButtonShape
-  testID: string
 }
 
 interface State {
@@ -33,11 +33,10 @@ interface State {
 
 @ErrorHandling
 class ContextMenu extends Component<Props, State> {
-  public static defaultProps = {
+  public static defaultProps: Partial<Props> = {
     color: ComponentColor.Primary,
     shape: ButtonShape.Square,
     text: '',
-    testID: 'context-menu',
   }
 
   constructor(props: Props) {
@@ -49,20 +48,19 @@ class ContextMenu extends Component<Props, State> {
   }
 
   public render() {
-    const {icon, text, shape, color, testID} = this.props
+    const {icon, text, shape, color} = this.props
 
     return (
       <ClickOutside onClickOutside={this.handleCollapseMenu}>
         <div className="context-menu--container">
           <Button
-            className={this.toggleClassName}
+            customClass={this.toggleClassName}
             onClick={this.handleExpandMenu}
             text={text}
             shape={shape}
             icon={icon}
             size={ComponentSize.ExtraSmall}
             color={color}
-            testID={testID}
           />
           {this.menu}
         </div>
@@ -105,7 +103,7 @@ class ContextMenu extends Component<Props, State> {
                 />
               )
             } else {
-              return child
+              throw new Error('Expected children of type <Context.Item />')
             }
           })}
         </div>

@@ -12,16 +12,11 @@ exports[`LineProtocolTabs rendering renders! 1`] = `
       ]
     }
   />
-  <t
-    testID="grid"
-  >
-    <t
-      testID="grid--row"
-    >
-      <t
+  <Grid>
+    <GridRow>
+      <GridColumn
         offsetLG={2}
         offsetMD={1}
-        testID="grid--column"
         widthLG={8}
         widthMD={10}
         widthXS={12}
@@ -32,15 +27,15 @@ exports[`LineProtocolTabs rendering renders! 1`] = `
           <div
             className="wizard-step--lp-body"
           >
-            <PrecisionDropdown />
             <default_1
               onURLChange={[Function]}
               urlInput=""
             />
           </div>
+          <PrecisionDropdown />
         </div>
-      </t>
-    </t>
-  </t>
+      </GridColumn>
+    </GridRow>
+  </Grid>
 </div>
 `;

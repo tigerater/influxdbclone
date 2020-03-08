@@ -3,27 +3,35 @@ import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
 import _ from 'lodash'
 
-// Components
-import {Grid, Columns} from '@influxdata/clockface'
 import PrecisionDropdown from 'src/dataLoaders/components/lineProtocolWizard/configure/PrecisionDropdown'
 import TabSelector from 'src/dataLoaders/components/lineProtocolWizard/configure/TabSelector'
 import TabBody from 'src/dataLoaders/components/lineProtocolWizard/configure/TabBody'
 
 // Types
-import {AppState, LineProtocolTab} from 'src/types'
-import {WritePrecision} from '@influxdata/influx'
+import {LineProtocolTab} from 'src/types/v2/dataLoaders'
+
+// Components
+import {Grid, Columns} from 'src/clockface'
 
 // Actions
 import {
   setLineProtocolBody,
   setActiveLPTab,
+  writeLineProtocolAction,
   setPrecision,
 } from 'src/dataLoaders/actions/dataLoaders'
+
+import {AppState} from 'src/types/v2/index'
+
+// Styles
+import 'src/clockface/components/auto_input/AutoInput.scss'
+import {WritePrecision} from '@influxdata/influx'
 
 interface OwnProps {
   tabs: LineProtocolTab[]
   bucket: string
   org: string
+  handleSubmit?: () => void
 }
 
 type Props = OwnProps & DispatchProps & StateProps
@@ -31,6 +39,7 @@ type Props = OwnProps & DispatchProps & StateProps
 interface DispatchProps {
   setLineProtocolBody: typeof setLineProtocolBody
   setActiveLPTab: typeof setActiveLPTab
+  writeLineProtocolAction: typeof writeLineProtocolAction
   setPrecision: typeof setPrecision
 }
 
@@ -61,6 +70,7 @@ export class LineProtocolTabs extends PureComponent<Props, State> {
       tabs,
       setLineProtocolBody,
       lineProtocolBody,
+      handleSubmit,
     } = this.props
 
     const {urlInput} = this.state
@@ -83,11 +93,7 @@ export class LineProtocolTabs extends PureComponent<Props, State> {
               offsetLG={Columns.Two}
             >
               <div className="onboarding--admin-user-form">
-                <div className="wizard-step--lp-body">
-                  <PrecisionDropdown
-                    setPrecision={setPrecision}
-                    precision={precision}
-                  />
+                <div className={'wizard-step--lp-body'}>
                   <TabBody
                     onURLChange={this.handleURLChange}
                     activeLPTab={activeLPTab}
@@ -95,8 +101,14 @@ export class LineProtocolTabs extends PureComponent<Props, State> {
                     urlInput={urlInput}
                     lineProtocolBody={lineProtocolBody}
                     setLineProtocolBody={setLineProtocolBody}
+                    handleSubmit={handleSubmit}
                   />
                 </div>
+
+                <PrecisionDropdown
+                  setPrecision={setPrecision}
+                  precision={precision}
+                />
               </div>
             </Grid.Column>
           </Grid.Row>
@@ -128,6 +140,7 @@ const mstp = ({
 const mdtp: DispatchProps = {
   setLineProtocolBody,
   setActiveLPTab,
+  writeLineProtocolAction,
   setPrecision,
 }
 

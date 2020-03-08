@@ -6,36 +6,31 @@ import ProtoboardIcon from 'src/clockface/components/card_select/ProtoboardIcon'
 
 interface Props {
   id: string
-  label: string
-  onClick: () => void
   name?: string
+  label: string
   image?: StatelessComponent
-  hideImage?: boolean
-  checked: boolean
-  disabled: boolean
-  testID?: string
+  checked?: boolean
+  disabled?: boolean
+  onClick: () => void
 }
 
 @ErrorHandling
 class CardSelectCard extends PureComponent<Props> {
-  public static defaultProps = {
+  public static defaultProps: Partial<Props> = {
     checked: false,
     disabled: false,
   }
 
   public render() {
-    const {id, label, checked, name, disabled, testID} = this.props
-
+    const {id, label, checked, name, disabled} = this.props
     return (
       <div
         data-toggle="card_toggle"
         onClick={this.handleClick}
-        data-testid={testID}
         className={classnames('card-select--card', {
           'card-select--checked': checked,
           'card-select--disabled': disabled,
           'card-select--active': !disabled,
-          'card-select--no-image': this.props.hideImage,
         })}
       >
         <label className="card-select--container">
@@ -65,11 +60,7 @@ class CardSelectCard extends PureComponent<Props> {
   }
 
   private get cardImage(): JSX.Element {
-    const {image, label, hideImage} = this.props
-
-    if (hideImage) {
-      return
-    }
+    const {image, label} = this.props
 
     if (image) {
       return React.createElement(image)

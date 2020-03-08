@@ -1,103 +1,88 @@
 // Libraries
 import React, {PureComponent} from 'react'
-import {withRouter, WithRouterProps} from 'react-router'
 import {connect} from 'react-redux'
-import _ from 'lodash'
 
 // Components
-import {SpinnerContainer, TechnoSpinner, Overlay} from '@influxdata/clockface'
-import VEOContents from 'src/dashboards/components/VEOContents'
+import VEOHeader from 'src/dashboards/components/VEOHeader'
+import TimeMachine from 'src/timeMachine/components/TimeMachine'
+
+// Actions
+import {setName} from 'src/timeMachine/actions'
 
 // Utils
-import {getView} from 'src/dashboards/selectors'
-import {createView} from 'src/shared/utils/view'
+import {getActiveTimeMachine} from 'src/timeMachine/selectors'
 
 // Types
-import {AppState, ViewType, QueryView, XYView, RemoteDataState} from 'src/types'
-import {setActiveTimeMachine} from 'src/timeMachine/actions'
+import {Source, AppState, DashboardQuery, View, NewView} from 'src/types/v2'
 
-interface OwnProps extends WithRouterProps {
-  params: {
-    dashboardID: string
-    cellID?: string
-    orgID: string
-  }
-}
+// Styles
+import './VEO.scss'
 
 interface StateProps {
-  viewsStatus: RemoteDataState
-  view: QueryView
+  draftView: NewView
+  draftQueries: DashboardQuery[]
 }
 
 interface DispatchProps {
-  onSetActiveTimeMachine: typeof setActiveTimeMachine
+  onSetName: typeof setName
 }
 
-type Props = StateProps & DispatchProps & OwnProps
+interface OwnProps {
+  source: Source
+  onHide: () => void
+  onSave: (v: NewView | View) => Promise<void>
+}
 
-class VEO extends PureComponent<Props> {
+type Props = OwnProps & StateProps & DispatchProps
+
+class VEO extends PureComponent<Props, {}> {
   public render() {
-    const {params} = this.props
+    const {draftView, onSetName, onHide} = this.props
 
     return (
-      <Overlay visible={true} className="veo-overlay">
-        <div className="veo">
-          <SpinnerContainer
-            spinnerComponent={<TechnoSpinner />}
-            loading={this.loading}
-          >
-            <VEOContents
-              dashboardID={params.dashboardID}
-              onClose={this.handleClose}
-            />
-          </SpinnerContainer>
+      <div className="veo">
+        <VEOHeader
+          key={draftView.name}
+          name={draftView.name}
+          onSetName={onSetName}
+          onCancel={onHide}
+          onSave={this.handleSave}
+        />
+        <div className="veo-contents">
+          <TimeMachine />
         </div>
-      </Overlay>
+      </div>
     )
   }
 
-  private get loading(): RemoteDataState {
-    const {viewsStatus, view} = this.props
+  private handleSave = (): void => {
+    const {draftView, draftQueries, onSave} = this.props
 
-    if (viewsStatus === RemoteDataState.Done && view) {
-      return RemoteDataState.Done
-    } else if (viewsStatus === RemoteDataState.Done) {
-      return RemoteDataState.Error
+    // Ensure that the latest queries are saved with the view, even if they
+    // haven't been submitted yet
+    const view = {
+      ...draftView,
+      properties: {
+        ...draftView.properties,
+        queries: draftQueries,
+      },
     }
 
-    return viewsStatus
-  }
-
-  private handleClose = () => {
-    const {
-      router,
-      params: {dashboardID, orgID},
-    } = this.props
-
-    router.push(`/orgs/${orgID}/dashboards/${dashboardID}`)
+    onSave(view)
   }
 }
 
-const mstp = (state: AppState, {params}): StateProps => {
-  const {cellID} = params
-  const {
-    views: {status},
-  } = state
+const mstp = (state: AppState): StateProps => {
+  const {view, draftQueries} = getActiveTimeMachine(state)
 
-  if (cellID) {
-    const view = getView(state, cellID) as QueryView
-    return {view, viewsStatus: status}
-  }
-
-  const view = createView<XYView>(ViewType.XY)
-  return {view, viewsStatus: status}
+  return {draftView: view, draftQueries}
 }
 
 const mdtp: DispatchProps = {
-  onSetActiveTimeMachine: setActiveTimeMachine,
+  onSetName: setName,
 }
 
-export default connect(
+export default connect<StateProps, DispatchProps, OwnProps>(
   mstp,
   mdtp
-)(withRouter<OwnProps, {}>(VEO))
+)(VEO)

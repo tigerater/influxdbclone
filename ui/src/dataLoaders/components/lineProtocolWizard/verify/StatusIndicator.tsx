@@ -3,16 +3,14 @@ import React, {PureComponent} from 'react'
 import classnames from 'classnames'
 import {connect} from 'react-redux'
 
-// Components
-import {SparkleSpinner} from '@influxdata/clockface'
+import {SparkleSpinner} from 'src/clockface'
 
 // Types
 import {RemoteDataState} from 'src/types'
-import {AppState} from 'src/types'
+import {AppState} from 'src/types/v2'
 
 interface StateProps {
   status: RemoteDataState
-  errorMessage: string
 }
 
 type Props = StateProps
@@ -22,16 +20,13 @@ export class StatusIndicator extends PureComponent<Props> {
     const {status} = this.props
     return (
       <>
-        <div className="wizard-step--top-container">
-          <div className="wizard-step--sparkle-container">
+        <div className={'wizard-step--top-container'}>
+          <div className={'wizard-step--sparkle-container'}>
             <SparkleSpinner loading={status} />
           </div>
         </div>
-        <div className="wizard-step--footer">
-          <div className={this.footerClass}>
-            {this.footerText}
-            {this.errorMessage}
-          </div>
+        <div className={'wizard-step--footer'}>
+          <div className={this.footerClass}>{this.footerText}</div>
         </div>
         <br />
       </>
@@ -58,25 +53,14 @@ export class StatusIndicator extends PureComponent<Props> {
         return 'Unable to Write Data'
     }
   }
-
-  private get errorMessage(): JSX.Element {
-    if (this.props.status === RemoteDataState.Error)
-      return (
-        <>
-          <br />
-          Error: {this.props.errorMessage}
-        </>
-      )
-  }
 }
 
 const mstp = ({
   dataLoading: {
-    dataLoaders: {lpStatus, lpError},
+    dataLoaders: {lpStatus},
   },
 }: AppState): StateProps => ({
   status: lpStatus,
-  errorMessage: lpError,
 })
 
 export default connect<StateProps, {}, {}>(

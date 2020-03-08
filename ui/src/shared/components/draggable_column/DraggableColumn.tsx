@@ -14,14 +14,13 @@ import {
 } from 'react-dnd'
 
 // Components
-import {Input} from '@influxdata/clockface'
+import {Input, ComponentStatus} from 'src/clockface'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 // Types
-import {ComponentStatus} from '@influxdata/clockface'
-import {FieldOption} from 'src/types'
+import {LogsTableColumn} from 'src/types/logs'
 
 // Constants
 const columnType = 'column'
@@ -33,7 +32,7 @@ interface Props {
   index: number
   id: string
   key: string
-  onUpdateColumn: (column: FieldOption) => void
+  onUpdateColumn: (column: LogsTableColumn) => void
   isDragging?: boolean
   connectDragSource?: ConnectDragSource
   connectDropTarget?: ConnectDropTarget
@@ -144,7 +143,7 @@ export default class DraggableColumn extends Component<Props> {
             <div className="customizable-field--name">{internalName}</div>
           </div>
           <Input
-            className="customizable-field--input"
+            customClass="customizable-field--input"
             id="internalName"
             value={displayName}
             onChange={this.handleColumnRename}

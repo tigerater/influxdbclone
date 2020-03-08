@@ -1,11 +1,15 @@
-// Libraries
 import React, {SFC} from 'react'
 
-// Components
-import {Form, SlideToggle, ComponentSpacer, Grid} from '@influxdata/clockface'
-
-// Types
-import {Columns, FlexDirection, ComponentSize} from '@influxdata/clockface'
+import {
+  SlideToggle,
+  Grid,
+  Form,
+  Columns,
+  ComponentSize,
+  ComponentSpacer,
+  Stack,
+  Alignment,
+} from 'src/clockface'
 
 interface Props {
   fixed: boolean
@@ -19,10 +23,7 @@ const GraphOptionsFixFirstColumn: SFC<Props> = ({
   <Grid.Column widthXS={Columns.Twelve}>
     <Form.Element label="First Column">
       <Form.Box>
-        <ComponentSpacer
-          direction={FlexDirection.Row}
-          margin={ComponentSize.Small}
-        >
+        <ComponentSpacer stackChildren={Stack.Columns} align={Alignment.Left}>
           <SlideToggle.Label text="Scroll with table" />
           <SlideToggle
             active={fixed}

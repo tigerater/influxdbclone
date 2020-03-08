@@ -4,6 +4,8 @@
    This is a mishmash of styles the package ships with and some custom ones
 */
 
+@import 'src/style/modules';
+
 .react-grid-layout {
   position: relative;
   transition: height 200ms ease;
@@ -12,10 +14,6 @@
   z-index: $z--cell-default;
   transition: all 200ms ease;
   transition-property: left, top;
-
-  &:hover {
-    z-index: $z--cell-context-hover;
-  }
 }
 .react-grid-item.cssTransforms {
   transition-property: transform;
@@ -60,7 +58,7 @@
   bottom: 0;
   right: 0;
   opacity: 0;
-
+  
   &:before,
   &:after {
     content: '';

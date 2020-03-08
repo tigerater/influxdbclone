@@ -6,6 +6,9 @@ import PermissionsWidgetSection from 'src/shared/components/permissionsWidget/Pe
 import PermissionsWidgetItem from 'src/shared/components/permissionsWidget/PermissionsWidgetItem'
 import FancyScrollbar from 'src/shared/components/fancy_scrollbar/FancyScrollbar'
 
+// Styles
+import './PermissionsWidget.scss'
+
 export enum PermissionsWidgetMode {
   Read = 'read',
   Write = 'write',
@@ -19,12 +22,12 @@ export enum PermissionsWidgetSelection {
 interface Props {
   children: JSX.Element[] | JSX.Element
   mode: PermissionsWidgetMode
-  heightPixels: number
+  heightPixels?: number
   className?: string
 }
 
 class PermissionsWidget extends Component<Props> {
-  public static defaultProps = {
+  public static defaultProps: Partial<Props> = {
     heightPixels: 500,
   }
 

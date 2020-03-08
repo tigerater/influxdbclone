@@ -55,8 +55,6 @@ func (m *HashMap) Reset() {
 	m.tracker.SetSize(0)
 }
 
-func (m *HashMap) LoadFactor() int { return m.loadFactor }
-
 // Get returns the value for a key from the Hashmap, or nil if no key exists.
 func (m *HashMap) Get(key []byte) interface{} {
 	var now time.Time
@@ -92,7 +90,7 @@ func (m *HashMap) put(key []byte, val interface{}, instrument bool) {
 	// Grow the map if we've run out of slots.
 	m.n++
 	if m.n > m.threshold {
-		m.Grow(m.capacity * 2)
+		m.grow()
 	}
 
 	// If the key was overwritten then decrement the size.
@@ -183,20 +181,14 @@ func (m *HashMap) alloc() {
 	m.mask = int64(m.capacity - 1)
 }
 
-// Grow increases the capacity and reinserts all existing hashes & elements.
-func (m *HashMap) Grow(sz int64) {
-	// Ensure new capacity is a power of two and greater than current capacity.
-	sz = pow2(sz)
-	if sz <= m.capacity {
-		return
-	}
-
+// grow doubles the capacity and reinserts all existing hashes & elements.
+func (m *HashMap) grow() {
 	// Copy old elements and hashes.
 	elems, hashes := m.elems, m.hashes
 	capacity := m.capacity
 
-	// Increase capacity & reallocate.
-	m.capacity = sz
+	// Double capacity & reallocate.
+	m.capacity *= 2
 	m.alloc()
 
 	// Copy old elements to new hash/elem list.

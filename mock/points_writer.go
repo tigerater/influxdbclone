@@ -1,7 +1,6 @@
 package mock
 
 import (
-	"context"
 	"sync"
 
 	"github.com/influxdata/influxdb/models"
@@ -22,7 +21,7 @@ func (p *PointsWriter) ForceError(err error) {
 }
 
 // WritePoints writes points to the PointsWriter that will be exposed in the Values.
-func (p *PointsWriter) WritePoints(ctx context.Context, points []models.Point) error {
+func (p *PointsWriter) WritePoints(points []models.Point) error {
 	p.mu.Lock()
 	p.Points = append(p.Points, points...)
 	err := p.Err

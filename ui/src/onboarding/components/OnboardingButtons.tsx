@@ -6,7 +6,7 @@ import {
   ComponentSize,
   ButtonType,
   ComponentStatus,
-} from '@influxdata/clockface'
+} from 'src/clockface'
 
 interface Props {
   onClickBack?: () => void
@@ -17,7 +17,6 @@ interface Props {
   nextButtonStatus?: ComponentStatus
   showSkip?: boolean
   autoFocusNext?: boolean
-  className?: string
 }
 
 class OnboardingButtons extends PureComponent<Props> {
@@ -30,22 +29,22 @@ class OnboardingButtons extends PureComponent<Props> {
     nextButtonText: 'Continue',
   }
 
-  private submitRef: RefObject<HTMLButtonElement> = React.createRef()
+  private submitRef: RefObject<Button> = React.createRef()
 
   public componentDidMount() {
     if (this.props.autoFocusNext) {
-      const buttonRef = this.submitRef.current
+      const buttonRef = this.submitRef.current.ref
       if (buttonRef) {
-        buttonRef.focus()
+        buttonRef.current.focus()
       }
     }
   }
 
   public componentDidUpdate() {
     if (this.props.autoFocusNext) {
-      const buttonRef = this.submitRef.current
+      const buttonRef = this.submitRef.current.ref
       if (buttonRef) {
-        buttonRef.focus()
+        buttonRef.current.focus()
       }
     }
   }
@@ -53,7 +52,7 @@ class OnboardingButtons extends PureComponent<Props> {
   public render() {
     const {nextButtonText, nextButtonStatus} = this.props
     return (
-      <div className={this.className}>
+      <div className="wizard--button-container">
         <div className="wizard--button-bar">
           {this.backButton}
           <Button
@@ -61,8 +60,8 @@ class OnboardingButtons extends PureComponent<Props> {
             text={nextButtonText}
             size={ComponentSize.Medium}
             type={ButtonType.Submit}
-            testID="next"
-            refObject={this.submitRef}
+            data-test="next"
+            ref={this.submitRef}
             status={nextButtonStatus}
             tabIndex={0}
           />
@@ -70,10 +69,6 @@ class OnboardingButtons extends PureComponent<Props> {
         {this.skipButton}
       </div>
     )
-  }
-
-  private get className(): string {
-    return this.props.className || ''
   }
 
   private get backButton(): JSX.Element {
@@ -89,7 +84,7 @@ class OnboardingButtons extends PureComponent<Props> {
         text={backButtonText}
         size={ComponentSize.Medium}
         onClick={onClickBack}
-        testID="back"
+        data-test="back"
         tabIndex={1}
       />
     )
@@ -104,12 +99,12 @@ class OnboardingButtons extends PureComponent<Props> {
     return (
       <div className="wizard--skip-container">
         <Button
-          className="wizard--skip-button"
+          customClass="wizard--skip-button"
           size={ComponentSize.Medium}
           color={ComponentColor.Default}
           text={skipButtonText}
           onClick={onClickSkip}
-          testID="skip"
+          data-test="skip"
         />
       </div>
     )

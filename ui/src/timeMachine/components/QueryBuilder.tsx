@@ -4,12 +4,11 @@ import {connect} from 'react-redux'
 import {range} from 'lodash'
 
 // Components
+import {Form, Button, ButtonShape, IconFont} from 'src/clockface'
 import TagSelector from 'src/timeMachine/components/TagSelector'
+import QueryBuilderBucketDropdown from 'src/timeMachine/components/QueryBuilderBucketDropdown'
 import FancyScrollbar from 'src/shared/components/fancy_scrollbar/FancyScrollbar'
 import FunctionSelector from 'src/timeMachine/components/FunctionSelector'
-import AddCardButton from 'src/timeMachine/components/AddCardButton'
-import BuilderCard from 'src/timeMachine/components/builderCard/BuilderCard'
-import BucketsSelector from 'src/timeMachine/components/queryBuilder/BucketsSelector'
 
 // Actions
 import {loadBuckets, addTagSelector} from 'src/timeMachine/actions/queryBuilder'
@@ -17,8 +16,11 @@ import {loadBuckets, addTagSelector} from 'src/timeMachine/actions/queryBuilder'
 // Utils
 import {getActiveQuery, getActiveTimeMachine} from 'src/timeMachine/selectors'
 
+// Styles
+import 'src/timeMachine/components/QueryBuilder.scss'
+
 // Types
-import {AppState} from 'src/types'
+import {AppState} from 'src/types/v2'
 import {RemoteDataState} from 'src/types'
 
 interface StateProps {
@@ -45,13 +47,14 @@ class TimeMachineQueryBuilder extends PureComponent<Props, State> {
 
     return (
       <div className="query-builder" data-testid="query-builder">
+        <div className="query-builder--buttons">
+          <Form.Element label="Bucket">
+            <QueryBuilderBucketDropdown />
+          </Form.Element>
+        </div>
         <div className="query-builder--cards">
           <FancyScrollbar>
-            <div className="builder-card--list">
-              <BuilderCard testID="bucket-selector">
-                <BuilderCard.Header title="From" />
-                <BucketsSelector />
-              </BuilderCard>
+            <div className="query-builder--tag-selectors">
               {range(tagFiltersLength).map(i => (
                 <TagSelector key={i} index={i} />
               ))}
@@ -71,7 +74,14 @@ class TimeMachineQueryBuilder extends PureComponent<Props, State> {
       return null
     }
 
-    return <AddCardButton onClick={onAddTagSelector} collapsible={false} />
+    return (
+      <Button
+        shape={ButtonShape.Square}
+        icon={IconFont.Plus}
+        onClick={onAddTagSelector}
+        customClass="query-builder--add-tag-selector"
+      />
+    )
   }
 }
 

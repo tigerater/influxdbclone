@@ -1,84 +1,76 @@
 // Libraries
 import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
-import _ from 'lodash'
+import {InjectedRouter} from 'react-router'
 
 // Components
 import TasksHeader from 'src/tasks/components/TasksHeader'
 import TasksList from 'src/tasks/components/TasksList'
 import {Page} from 'src/pageLayout'
 import {ErrorHandling} from 'src/shared/decorators/errors'
-import FilterList from 'src/shared/components/Filter'
-import SearchWidget from 'src/shared/components/search_widget/SearchWidget'
-import GetResources, {ResourceTypes} from 'src/shared/components/GetResources'
-import GetAssetLimits from 'src/cloud/components/GetAssetLimits'
-import AssetLimitAlert from 'src/cloud/components/AssetLimitAlert'
+import {OverlayTechnology} from 'src/clockface'
+import ImportTaskOverlay from 'src/tasks/components/ImportTaskOverlay'
 
 // Actions
 import {
+  populateTasks,
   updateTaskStatus,
-  updateTaskName,
   deleteTask,
   selectTask,
   cloneTask,
   setSearchTerm as setSearchTermAction,
   setShowInactive as setShowInactiveAction,
+  setDropdownOrgID as setDropdownOrgIDAction,
+  importScript,
   addTaskLabelsAsync,
   removeTaskLabelsAsync,
-  runTask,
-} from 'src/tasks/actions'
-import {
-  checkTaskLimits as checkTasksLimitsAction,
-  LimitStatus,
-} from 'src/cloud/actions/limits'
+} from 'src/tasks/actions/v2'
+
+// Constants
+import {allOrganizationsID} from 'src/tasks/constants'
 
 // Types
-import {AppState, Task, TaskStatus, RemoteDataState} from 'src/types'
-import {InjectedRouter, WithRouterProps} from 'react-router'
-import {Sort} from '@influxdata/clockface'
-import {SortTypes} from 'src/shared/utils/sort'
-import {extractTaskLimits} from 'src/cloud/utils/limits'
+import {Task as TaskAPI, User, Organization} from '@influxdata/influx'
+import {AppState} from 'src/types/v2'
+
+export interface Task extends TaskAPI {
+  organization: Organization
+  owner?: User
+  offset?: string
+}
 
 interface PassedInProps {
   router: InjectedRouter
 }
 
 interface ConnectedDispatchProps {
+  populateTasks: typeof populateTasks
   updateTaskStatus: typeof updateTaskStatus
-  updateTaskName: typeof updateTaskName
   deleteTask: typeof deleteTask
   cloneTask: typeof cloneTask
   selectTask: typeof selectTask
   setSearchTerm: typeof setSearchTermAction
   setShowInactive: typeof setShowInactiveAction
+  setDropdownOrgID: typeof setDropdownOrgIDAction
+  importScript: typeof importScript
   onAddTaskLabels: typeof addTaskLabelsAsync
   onRemoveTaskLabels: typeof removeTaskLabelsAsync
-  onRunTask: typeof runTask
-  checkTaskLimits: typeof checkTasksLimitsAction
 }
 
 interface ConnectedStateProps {
   tasks: Task[]
   searchTerm: string
   showInactive: boolean
-  status: RemoteDataState
-  limitStatus: LimitStatus
+  orgs: Organization[]
+  dropdownOrgID: string
 }
 
-type Props = ConnectedDispatchProps &
-  PassedInProps &
-  ConnectedStateProps &
-  WithRouterProps
+type Props = ConnectedDispatchProps & PassedInProps & ConnectedStateProps
 
 interface State {
-  isImporting: boolean
+  isImportOverlayVisible: boolean
   taskLabelsEdit: Task
-  sortKey: SortKey
-  sortDirection: Sort
-  sortType: SortTypes
 }
-
-type SortKey = keyof Task
 
 @ErrorHandling
 class TasksPage extends PureComponent<Props, State> {
@@ -89,29 +81,22 @@ class TasksPage extends PureComponent<Props, State> {
     if (!props.showInactive) {
       props.setShowInactive()
     }
+    props.setDropdownOrgID(null)
 
     this.state = {
-      isImporting: false,
+      isImportOverlayVisible: false,
       taskLabelsEdit: null,
-      sortKey: 'name',
-      sortDirection: Sort.Ascending,
-      sortType: SortTypes.String,
     }
   }
 
   public render(): JSX.Element {
-    const {sortKey, sortDirection, sortType} = this.state
     const {
       setSearchTerm,
-      updateTaskName,
       searchTerm,
       setShowInactive,
       showInactive,
       onAddTaskLabels,
       onRemoveTaskLabels,
-      onRunTask,
-      checkTaskLimits,
-      limitStatus,
     } = this.props
 
     return (
@@ -119,76 +104,36 @@ class TasksPage extends PureComponent<Props, State> {
         <Page titleTag="Tasks">
           <TasksHeader
             onCreateTask={this.handleCreateTask}
+            setSearchTerm={setSearchTerm}
             setShowInactive={setShowInactive}
             showInactive={showInactive}
-            filterComponent={() => this.search}
-            onImportTask={this.summonImportOverlay}
-            onImportFromTemplate={this.summonImportFromTemplateOverlay}
-            limitStatus={limitStatus}
+            toggleOverlay={this.handleToggleOverlay}
           />
           <Page.Contents fullWidth={false} scrollable={true}>
             <div className="col-xs-12">
-              <GetResources resource={ResourceTypes.Tasks}>
-                <GetResources resource={ResourceTypes.Labels}>
-                  <GetAssetLimits>
-                    <AssetLimitAlert
-                      resourceName="tasks"
-                      limitStatus={limitStatus}
-                    >
-                      <FilterList<Task>
-                        list={this.filteredTasks}
-                        searchTerm={searchTerm}
-                        searchKeys={['name', 'labels[].name']}
-                      >
-                        {ts => (
-                          <TasksList
-                            searchTerm={searchTerm}
-                            tasks={ts}
-                            totalCount={this.totalTaskCount}
-                            onActivate={this.handleActivate}
-                            onDelete={this.handleDelete}
-                            onCreate={this.handleCreateTask}
-                            onClone={this.handleClone}
-                            onSelect={this.props.selectTask}
-                            onAddTaskLabels={onAddTaskLabels}
-                            onRemoveTaskLabels={onRemoveTaskLabels}
-                            onRunTask={onRunTask}
-                            onFilterChange={setSearchTerm}
-                            filterComponent={() => this.search}
-                            onUpdate={updateTaskName}
-                            onImportTask={this.summonImportOverlay}
-                            onImportFromTemplate={
-                              this.summonImportFromTemplateOverlay
-                            }
-                            sortKey={sortKey}
-                            sortDirection={sortDirection}
-                            sortType={sortType}
-                            onClickColumn={this.handleClickColumn}
-                            checkTaskLimits={checkTaskLimits}
-                          />
-                        )}
-                      </FilterList>
-                      {this.hiddenTaskAlert}
-                    </AssetLimitAlert>
-                  </GetAssetLimits>
-                </GetResources>
-              </GetResources>
+              <TasksList
+                searchTerm={searchTerm}
+                tasks={this.filteredTasks}
+                totalCount={this.totalTaskCount}
+                onActivate={this.handleActivate}
+                onDelete={this.handleDelete}
+                onCreate={this.handleCreateTask}
+                onClone={this.handleClone}
+                onSelect={this.props.selectTask}
+                onAddTaskLabels={onAddTaskLabels}
+                onRemoveTaskLabels={onRemoveTaskLabels}
+              />
+              {this.hiddenTaskAlert}
             </div>
           </Page.Contents>
         </Page>
-        {this.props.children}
+        {this.renderImportOverlay}
       </>
     )
   }
 
-  private handleClickColumn = (nextSort: Sort, sortKey: SortKey) => {
-    let sortType = SortTypes.String
-
-    if (sortKey === 'latestCompleted') {
-      sortType = SortTypes.Date
-    }
-
-    this.setState({sortKey, sortDirection: nextSort, sortType})
+  public componentDidMount() {
+    this.props.populateTasks()
   }
 
   private handleActivate = (task: Task) => {
@@ -205,53 +150,47 @@ class TasksPage extends PureComponent<Props, State> {
   }
 
   private handleCreateTask = () => {
-    const {
-      router,
-      params: {orgID},
-    } = this.props
+    const {router} = this.props
 
-    router.push(`/orgs/${orgID}/tasks/new`)
+    router.push('/tasks/new')
   }
 
-  private summonImportFromTemplateOverlay = () => {
-    const {
-      router,
-      params: {orgID},
-    } = this.props
-
-    router.push(`/orgs/${orgID}/tasks/import/template`)
+  private handleToggleOverlay = () => {
+    this.setState({isImportOverlayVisible: !this.state.isImportOverlayVisible})
   }
 
-  private summonImportOverlay = (): void => {
-    const {
-      router,
-      params: {orgID},
-    } = this.props
-
-    router.push(`/orgs/${orgID}/tasks/import`)
+  private handleSave = (script: string, fileName: string) => {
+    this.props.importScript(script, fileName)
   }
 
-  private get search(): JSX.Element {
-    const {setSearchTerm, searchTerm} = this.props
+  private get renderImportOverlay(): JSX.Element {
+    const {isImportOverlayVisible} = this.state
 
     return (
-      <SearchWidget
-        placeholderText="Filter tasks..."
-        onSearch={setSearchTerm}
-        searchTerm={searchTerm}
-      />
+      <OverlayTechnology visible={isImportOverlayVisible}>
+        <ImportTaskOverlay
+          onDismissOverlay={this.handleToggleOverlay}
+          onSave={this.handleSave}
+        />
+      </OverlayTechnology>
     )
   }
 
   private get filteredTasks(): Task[] {
-    const {tasks, showInactive} = this.props
+    const {tasks, searchTerm, showInactive, dropdownOrgID} = this.props
     const matchingTasks = tasks.filter(t => {
+      const searchTermFilter = t.name
+        .toLowerCase()
+        .includes(searchTerm.toLowerCase())
       let activeFilter = true
       if (!showInactive) {
-        activeFilter = t.status === TaskStatus.Active
+        activeFilter = t.status === TaskAPI.StatusEnum.Active
       }
-
-      return activeFilter
+      let orgIDFilter = true
+      if (dropdownOrgID && dropdownOrgID !== allOrganizationsID) {
+        orgIDFilter = t.orgID === dropdownOrgID
+      }
+      return searchTermFilter && activeFilter && orgIDFilter
     })
 
     return matchingTasks
@@ -264,8 +203,9 @@ class TasksPage extends PureComponent<Props, State> {
   private get hiddenTaskAlert(): JSX.Element {
     const {showInactive, tasks} = this.props
 
-    const hiddenCount = tasks.filter(t => t.status === TaskStatus.Inactive)
-      .length
+    const hiddenCount = tasks.filter(
+      t => t.status === TaskAPI.StatusEnum.Inactive
+    ).length
 
     const allTasksAreHidden = hiddenCount === tasks.length
 
@@ -285,30 +225,30 @@ class TasksPage extends PureComponent<Props, State> {
 }
 
 const mstp = ({
-  tasks: {status, list, searchTerm, showInactive},
-  cloud: {limits},
+  tasks: {tasks, searchTerm, showInactive, dropdownOrgID},
+  orgs,
 }: AppState): ConnectedStateProps => {
   return {
-    tasks: list,
-    status: status,
+    tasks,
     searchTerm,
     showInactive,
-    limitStatus: extractTaskLimits(limits),
+    orgs,
+    dropdownOrgID,
   }
 }
 
 const mdtp: ConnectedDispatchProps = {
+  populateTasks,
   updateTaskStatus,
-  updateTaskName,
   deleteTask,
   selectTask,
   cloneTask,
   setSearchTerm: setSearchTermAction,
   setShowInactive: setShowInactiveAction,
+  setDropdownOrgID: setDropdownOrgIDAction,
+  importScript,
   onRemoveTaskLabels: removeTaskLabelsAsync,
   onAddTaskLabels: addTaskLabelsAsync,
-  onRunTask: runTask,
-  checkTaskLimits: checkTasksLimitsAction,
 }
 
 export default connect<

@@ -4,13 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	bolt "github.com/coreos/bbolt"
-	"github.com/influxdata/influxdb"
+	influxdb "github.com/influxdata/influxdb"
 	influxdbcontext "github.com/influxdata/influxdb/context"
-	"github.com/influxdata/influxdb/kit/tracing"
 )
 
 var (
@@ -54,9 +52,6 @@ func (c *Client) FindOrganizationByID(ctx context.Context, id influxdb.ID) (*inf
 }
 
 func (c *Client) findOrganizationByID(ctx context.Context, tx *bolt.Tx, id influxdb.ID) (*influxdb.Organization, *influxdb.Error) {
-	span, _ := tracing.StartSpanFromContext(ctx)
-	defer span.Finish()
-
 	encodedID, err := id.Encode()
 	if err != nil {
 		return nil, &influxdb.Error{
@@ -100,9 +95,6 @@ func (c *Client) FindOrganizationByName(ctx context.Context, n string) (*influxd
 }
 
 func (c *Client) findOrganizationByName(ctx context.Context, tx *bolt.Tx, n string) (*influxdb.Organization, *influxdb.Error) {
-	span, ctx := tracing.StartSpanFromContext(ctx)
-	defer span.Finish()
-
 	o := tx.Bucket(organizationIndex).Get(organizationIndexKey(n))
 	if o == nil {
 		return nil, &influxdb.Error{
@@ -148,8 +140,35 @@ func (c *Client) FindOrganization(ctx context.Context, filter influxdb.Organizat
 		return o, nil
 	}
 
-	// If name and ID are not set, then, this is an invalid usage of the API.
-	return nil, influxdb.ErrInvalidOrgFilter
+	filterFn := filterOrganizationsFn(filter)
+
+	var o *influxdb.Organization
+	err := c.db.View(func(tx *bolt.Tx) error {
+		return forEachOrganization(ctx, tx, func(org *influxdb.Organization) bool {
+			if filterFn(org) {
+				o = org
+				return false
+			}
+			return true
+		})
+	})
+
+	if err != nil {
+		return nil, &influxdb.Error{
+			Op:  op,
+			Err: err,
+		}
+	}
+
+	if o == nil {
+		return nil, &influxdb.Error{
+			Code: influxdb.ENotFound,
+			Op:   op,
+			Msg:  "organization not found",
+		}
+	}
+
+	return o, nil
 }
 
 func filterOrganizationsFn(filter influxdb.OrganizationFilter) func(o *influxdb.Organization) bool {
@@ -222,16 +241,16 @@ func (c *Client) FindOrganizations(ctx context.Context, filter influxdb.Organiza
 func (c *Client) CreateOrganization(ctx context.Context, o *influxdb.Organization) error {
 	op := getOp(influxdb.OpCreateOrganization)
 	return c.db.Update(func(tx *bolt.Tx) error {
-		if err := c.validOrganizationName(ctx, tx, o); err != nil {
+		unique := c.uniqueOrganizationName(ctx, tx, o)
+		if !unique {
 			return &influxdb.Error{
-				Op:  op,
-				Err: err,
+				Code: influxdb.EConflict,
+				Op:   op,
+				Msg:  fmt.Sprintf("organization with name %s already exists", o.Name),
 			}
 		}
 
 		o.ID = c.IDGenerator.ID()
-		o.CreatedAt = c.Now()
-		o.UpdatedAt = c.Now()
 		if err := c.appendOrganizationEventToLog(ctx, tx, o.ID, organizationCreatedEvent); err != nil {
 			return &influxdb.Error{
 				Err: err,
@@ -307,18 +326,9 @@ func forEachOrganization(ctx context.Context, tx *bolt.Tx, fn func(*influxdb.Org
 	return nil
 }
 
-func (c *Client) validOrganizationName(ctx context.Context, tx *bolt.Tx, o *influxdb.Organization) error {
-	if o.Name = strings.TrimSpace(o.Name); o.Name == "" {
-		return influxdb.ErrOrgNameisEmpty
-	}
+func (c *Client) uniqueOrganizationName(ctx context.Context, tx *bolt.Tx, o *influxdb.Organization) bool {
 	v := tx.Bucket(organizationIndex).Get(organizationIndexKey(o.Name))
-	if len(v) != 0 {
-		return &influxdb.Error{
-			Code: influxdb.EConflict,
-			Msg:  fmt.Sprintf("organization with name %s already exists", o.Name),
-		}
-	}
-	return nil
+	return len(v) == 0
 }
 
 // UpdateOrganization updates a organization according the parameters set on upd.
@@ -354,18 +364,7 @@ func (c *Client) updateOrganization(ctx context.Context, tx *bolt.Tx, id influxd
 			}
 		}
 		o.Name = *upd.Name
-		if err := c.validOrganizationName(ctx, tx, o); err != nil {
-			return nil, &influxdb.Error{
-				Err: err,
-			}
-		}
 	}
-
-	if upd.Description != nil {
-		o.Description = *upd.Description
-	}
-
-	o.UpdatedAt = c.Now()
 
 	if err := c.appendOrganizationEventToLog(ctx, tx, o.ID, organizationUpdatedEvent); err != nil {
 		return nil, &influxdb.Error{
@@ -509,7 +508,7 @@ func (c *Client) appendOrganizationEventToLog(ctx context.Context, tx *bolt.Tx, 
 		return err
 	}
 
-	return c.addLogEntry(ctx, tx, k, v, c.Now())
+	return c.addLogEntry(ctx, tx, k, v, c.time())
 }
 
 func (c *Client) FindResourceOrganizationID(ctx context.Context, rt influxdb.ResourceType, id influxdb.ID) (influxdb.ID, error) {
@@ -525,7 +524,7 @@ func (c *Client) FindResourceOrganizationID(ctx context.Context, rt influxdb.Res
 		if err != nil {
 			return influxdb.InvalidID(), err
 		}
-		return r.OrgID, nil
+		return r.OrganizationID, nil
 	case influxdb.DashboardsResourceType:
 		r, err := c.FindDashboardByID(ctx, id)
 		if err != nil {
@@ -549,9 +548,9 @@ func (c *Client) FindResourceOrganizationID(ctx context.Context, rt influxdb.Res
 		if err != nil {
 			return influxdb.InvalidID(), err
 		}
-		return r.OrgID, nil
-	case influxdb.VariablesResourceType:
-		r, err := c.FindVariableByID(ctx, id)
+		return r.OrganizationID, nil
+	case influxdb.MacrosResourceType:
+		r, err := c.FindMacroByID(ctx, id)
 		if err != nil {
 			return influxdb.InvalidID(), err
 		}

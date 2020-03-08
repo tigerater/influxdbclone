@@ -13,19 +13,16 @@ import (
 // the SessionHandler.
 type SessionBackend struct {
 	Logger *zap.Logger
-	platform.HTTPErrorHandler
 
-	PasswordsService platform.PasswordsService
+	BasicAuthService platform.BasicAuthService
 	SessionService   platform.SessionService
 }
 
-// NewSessionBackend creates a new SessionBackend with associated logger.
 func NewSessionBackend(b *APIBackend) *SessionBackend {
 	return &SessionBackend{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger.With(zap.String("handler", "session")),
+		Logger: b.Logger.With(zap.String("handler", "session")),
 
-		PasswordsService: b.PasswordsService,
+		BasicAuthService: b.BasicAuthService,
 		SessionService:   b.SessionService,
 	}
 }
@@ -33,21 +30,19 @@ func NewSessionBackend(b *APIBackend) *SessionBackend {
 // SessionHandler represents an HTTP API handler for authorizations.
 type SessionHandler struct {
 	*httprouter.Router
-	platform.HTTPErrorHandler
 	Logger *zap.Logger
 
-	PasswordsService platform.PasswordsService
+	BasicAuthService platform.BasicAuthService
 	SessionService   platform.SessionService
 }
 
 // NewSessionHandler returns a new instance of SessionHandler.
 func NewSessionHandler(b *SessionBackend) *SessionHandler {
 	h := &SessionHandler{
-		Router:           NewRouter(b.HTTPErrorHandler),
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger,
+		Router: NewRouter(),
+		Logger: b.Logger,
 
-		PasswordsService: b.PasswordsService,
+		BasicAuthService: b.BasicAuthService,
 		SessionService:   b.SessionService,
 	}
 
@@ -62,19 +57,19 @@ func (h *SessionHandler) handleSignin(w http.ResponseWriter, r *http.Request) {
 
 	req, err := decodeSigninRequest(ctx, r)
 	if err != nil {
-		UnauthorizedError(ctx, h, w)
+		UnauthorizedError(ctx, w)
 		return
 	}
 
-	if err := h.PasswordsService.ComparePassword(ctx, req.Username, req.Password); err != nil {
+	if err := h.BasicAuthService.ComparePassword(ctx, req.Username, req.Password); err != nil {
 		// Don't log here, it should already be handled by the service
-		UnauthorizedError(ctx, h, w)
+		UnauthorizedError(ctx, w)
 		return
 	}
 
 	s, e := h.SessionService.CreateSession(ctx, req.Username)
 	if e != nil {
-		UnauthorizedError(ctx, h, w)
+		UnauthorizedError(ctx, w)
 		return
 	}
 
@@ -108,12 +103,12 @@ func (h *SessionHandler) handleSignout(w http.ResponseWriter, r *http.Request) {
 
 	req, err := decodeSignoutRequest(ctx, r)
 	if err != nil {
-		UnauthorizedError(ctx, h, w)
+		UnauthorizedError(ctx, w)
 		return
 	}
 
 	if err := h.SessionService.ExpireSession(ctx, req.Key); err != nil {
-		UnauthorizedError(ctx, h, w)
+		UnauthorizedError(ctx, w)
 		return
 	}
 

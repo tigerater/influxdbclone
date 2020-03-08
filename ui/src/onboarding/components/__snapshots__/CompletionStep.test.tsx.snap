@@ -2,7 +2,7 @@
 
 exports[`Onboarding.Components.CompletionStep renders 1`] = `
 <div
-  className="onboarding-step"
+  className="onboarding-step buttonless"
 >
   <div
     className="wizard-step--scroll-area"
@@ -10,8 +10,6 @@ exports[`Onboarding.Components.CompletionStep renders 1`] = `
     <FancyScrollbar
       autoHeight={false}
       autoHide={false}
-      className=""
-      hideTracksWhenNotNeeded={true}
       maxHeight={null}
       setScrollTop={[Function]}
       style={Object {}}
@@ -40,14 +38,9 @@ exports[`Onboarding.Components.CompletionStep renders 1`] = `
         <dl
           className="wizard-completion--options"
         >
-          <t
-            testID="grid"
-          >
-            <t
-              testID="grid--row"
-            >
-              <t
-                testID="grid--column"
+          <Grid>
+            <GridRow>
+              <GridColumn
                 widthSM={4}
                 widthXS={12}
               >
@@ -66,9 +59,8 @@ exports[`Onboarding.Components.CompletionStep renders 1`] = `
                     This will set up local metric collection and allow you to explore the features of InfluxDB 2.0 quickly.
                   </dd>
                 </div>
-              </t>
-              <t
-                testID="grid--column"
+              </GridColumn>
+              <GridColumn
                 widthSM={4}
                 widthXS={12}
               >
@@ -87,24 +79,21 @@ exports[`Onboarding.Components.CompletionStep renders 1`] = `
                     This allows you to set up Telegraf, scrapers, and much more.
                   </dd>
                 </div>
-              </t>
-              <t
-                testID="grid--column"
+              </GridColumn>
+              <GridColumn
                 widthSM={4}
                 widthXS={12}
               >
                 <div
                   className="wizard-completion--option"
                 >
-                  <t
+                  <Button
                     active={false}
                     color="success"
                     onClick={[MockFunction]}
-                    placeIconAfterText={false}
                     shape="none"
                     size="lg"
                     status="default"
-                    testID="button--conf-later"
                     text="Configure Later"
                     type="button"
                   />
@@ -115,9 +104,9 @@ exports[`Onboarding.Components.CompletionStep renders 1`] = `
                     Jump into InfluxDB 2.0 and set up data collection when you’re ready.
                   </dd>
                 </div>
-              </t>
-            </t>
-          </t>
+              </GridColumn>
+            </GridRow>
+          </Grid>
         </dl>
         <h5
           className="wizard-step--sub-title"

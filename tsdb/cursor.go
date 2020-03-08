@@ -7,12 +7,11 @@ import "github.com/influxdata/influxdb/tsdb/cursors"
 // talk about consuming data.
 
 type (
-	IntegerArray   = cursors.IntegerArray
-	FloatArray     = cursors.FloatArray
-	UnsignedArray  = cursors.UnsignedArray
-	StringArray    = cursors.StringArray
-	BooleanArray   = cursors.BooleanArray
-	TimestampArray = cursors.TimestampArray
+	IntegerArray  = cursors.IntegerArray
+	FloatArray    = cursors.FloatArray
+	UnsignedArray = cursors.UnsignedArray
+	StringArray   = cursors.StringArray
+	BooleanArray  = cursors.BooleanArray
 
 	IntegerArrayCursor  = cursors.IntegerArrayCursor
 	FloatArrayCursor    = cursors.FloatArrayCursor

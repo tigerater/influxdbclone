@@ -1,4 +1,3 @@
 package gen
 
-//go:generate tmpl -data=@types.tmpldata arrays.gen.go.tmpl values.gen.go.tmpl values_sequence.gen.go.tmpl
-//go:generate stringer -type=precision -trimprefix=precision
+//go:generate env GO111MODULE=on go run github.com/benbjohnson/tmpl -data=@types.tmpldata arrays.gen.go.tmpl values_constant.gen.go.tmpl

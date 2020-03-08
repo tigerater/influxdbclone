@@ -3,7 +3,6 @@ package coordinator
 import (
 	"context"
 	"fmt"
-	"time"
 
 	platform "github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/task/backend"
@@ -11,13 +10,12 @@ import (
 )
 
 type Coordinator struct {
-	platform.TaskService
+	backend.Store
 
 	logger *zap.Logger
 	sch    backend.Scheduler
 
-	limit         int
-	claimExisting bool
+	limit int
 }
 
 type Option func(*Coordinator)
@@ -28,61 +26,41 @@ func WithLimit(i int) Option {
 	}
 }
 
-// WithoutExistingTasks allows us to skip claiming tasks already in the system.
-func WithoutExistingTasks() Option {
-	return func(c *Coordinator) {
-		c.claimExisting = false
-	}
-}
-
-func New(logger *zap.Logger, scheduler backend.Scheduler, ts platform.TaskService, opts ...Option) *Coordinator {
+func New(logger *zap.Logger, scheduler backend.Scheduler, st backend.Store, opts ...Option) *Coordinator {
 	c := &Coordinator{
-		logger:        logger,
-		sch:           scheduler,
-		TaskService:   ts,
-		limit:         1000,
-		claimExisting: true,
+		logger: logger,
+		sch:    scheduler,
+		Store:  st,
+		limit:  1000,
 	}
 
 	for _, opt := range opts {
 		opt(c)
 	}
 
-	if c.claimExisting {
-		go c.claimExistingTasks()
-	}
+	go c.claimExistingTasks()
 
 	return c
 }
 
 // claimExistingTasks is called on startup to claim all tasks in the store.
 func (c *Coordinator) claimExistingTasks() {
-	tasks, _, err := c.TaskService.FindTasks(context.Background(), platform.TaskFilter{})
+	tasks, err := c.Store.ListTasks(context.Background(), backend.TaskSearchParams{})
 	if err != nil {
+		c.logger.Error("failed to list tasks", zap.Error(err))
 		return
 	}
-	newLatestCompleted := time.Now().UTC().Format(time.RFC3339)
+
 	for len(tasks) > 0 {
 		for _, task := range tasks {
-
-			task, err := c.TaskService.UpdateTask(context.Background(), task.ID, platform.TaskUpdate{LatestCompleted: &newLatestCompleted})
-			if err != nil {
-				c.logger.Error("failed to set latestCompleted", zap.Error(err))
-			}
-
-			if task.Status != string(backend.TaskActive) {
-				// Don't claim inactive tasks at startup.
-				continue
-			}
-
-			// I may need a context with an auth here
-			if err := c.sch.ClaimTask(context.Background(), task); err != nil {
+			t := task // Copy to avoid mistaken closure around task value.
+			if err := c.sch.ClaimTask(&t.Task, &t.Meta); err != nil {
 				c.logger.Error("failed claim task", zap.Error(err))
 				continue
 			}
 		}
-		tasks, _, err = c.TaskService.FindTasks(context.Background(), platform.TaskFilter{
-			After: &tasks[len(tasks)-1].ID,
+		tasks, err = c.Store.ListTasks(context.Background(), backend.TaskSearchParams{
+			After: tasks[len(tasks)-1].Task.ID,
 		})
 		if err != nil {
 			c.logger.Error("failed list additional tasks", zap.Error(err))
@@ -91,105 +69,102 @@ func (c *Coordinator) claimExistingTasks() {
 	}
 }
 
-func (c *Coordinator) CreateTask(ctx context.Context, t platform.TaskCreate) (*platform.Task, error) {
-	task, err := c.TaskService.CreateTask(ctx, t)
+func (c *Coordinator) CreateTask(ctx context.Context, req backend.CreateTaskRequest) (platform.ID, error) {
+	id, err := c.Store.CreateTask(ctx, req)
 	if err != nil {
-		return task, err
+		return id, err
 	}
 
-	if err := c.sch.ClaimTask(ctx, task); err != nil {
-		delErr := c.TaskService.DeleteTask(ctx, task.ID)
+	task, meta, err := c.Store.FindTaskByIDWithMeta(ctx, id)
+	if err != nil {
+		return id, err
+	}
+
+	if err := c.sch.ClaimTask(task, meta); err != nil {
+		_, delErr := c.Store.DeleteTask(ctx, id)
 		if delErr != nil {
-			return task, fmt.Errorf("schedule task failed: %s\n\tcleanup also failed: %s", err, delErr)
+			return id, fmt.Errorf("schedule task failed: %s\n\tcleanup also failed: %s", err, delErr)
 		}
-		return task, err
+		return id, err
 	}
 
-	return task, nil
+	return id, nil
 }
 
-func (c *Coordinator) UpdateTask(ctx context.Context, id platform.ID, upd platform.TaskUpdate) (*platform.Task, error) {
-	oldTask, err := c.TaskService.FindTaskByID(ctx, id)
+func (c *Coordinator) UpdateTask(ctx context.Context, req backend.UpdateTaskRequest) (backend.UpdateTaskResult, error) {
+	res, err := c.Store.UpdateTask(ctx, req)
 	if err != nil {
-		return nil, err
+		return res, err
 	}
 
-	task, err := c.TaskService.UpdateTask(ctx, id, upd)
+	task, meta, err := c.Store.FindTaskByIDWithMeta(ctx, req.ID)
 	if err != nil {
-		return task, err
+		return res, err
 	}
 
 	// If disabling the task, do so before modifying the script.
-	if task.Status != oldTask.Status && task.Status == string(backend.TaskInactive) {
-		if err := c.sch.ReleaseTask(id); err != nil && err != &platform.ErrTaskNotClaimed {
-			return task, err
+	if req.Status == backend.TaskInactive && res.OldStatus != backend.TaskInactive {
+		if err := c.sch.ReleaseTask(req.ID); err != nil && err != backend.ErrTaskNotClaimed {
+			return res, err
 		}
 	}
 
-	if err := c.sch.UpdateTask(ctx, task); err != nil && err != &platform.ErrTaskNotClaimed {
-		return task, err
+	if err := c.sch.UpdateTask(task, meta); err != nil && err != backend.ErrTaskNotClaimed {
+		return res, err
 	}
 
 	// If enabling the task, claim it after modifying the script.
-	if task.Status != oldTask.Status && task.Status == string(backend.TaskActive) {
-		// don't catch up on all the missed task runs while disabled
-		newLatestCompleted := c.sch.Now().UTC().Format(time.RFC3339)
-		task, err := c.TaskService.UpdateTask(ctx, task.ID, platform.TaskUpdate{LatestCompleted: &newLatestCompleted})
-		if err != nil {
-			return task, err
-		}
-
-		if err := c.sch.ClaimTask(ctx, task); err != nil && err != &platform.ErrTaskAlreadyClaimed {
-			return task, err
+	if req.Status == backend.TaskActive {
+		if err := c.sch.ClaimTask(task, meta); err != nil && err != backend.ErrTaskAlreadyClaimed {
+			return res, err
 		}
 	}
 
-	return task, nil
+	return res, nil
 }
 
-func (c *Coordinator) DeleteTask(ctx context.Context, id platform.ID) error {
-	if err := c.sch.ReleaseTask(id); err != nil && err != &platform.ErrTaskNotClaimed {
+func (c *Coordinator) DeleteTask(ctx context.Context, id platform.ID) (deleted bool, err error) {
+	if err := c.sch.ReleaseTask(id); err != nil && err != backend.ErrTaskNotClaimed {
+		return false, err
+	}
+
+	return c.Store.DeleteTask(ctx, id)
+}
+
+func (c *Coordinator) DeleteOrg(ctx context.Context, orgID platform.ID) error {
+	orgTasks, err := c.Store.ListTasks(ctx, backend.TaskSearchParams{
+		Org: orgID,
+	})
+	if err != nil {
 		return err
 	}
 
-	return c.TaskService.DeleteTask(ctx, id)
+	for _, orgTask := range orgTasks {
+		if err := c.sch.ReleaseTask(orgTask.Task.ID); err != nil {
+			return err
+		}
+	}
+
+	return c.Store.DeleteOrg(ctx, orgID)
+}
+
+func (c *Coordinator) DeleteUser(ctx context.Context, userID platform.ID) error {
+	userTasks, err := c.Store.ListTasks(ctx, backend.TaskSearchParams{
+		User: userID,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, userTask := range userTasks {
+		if err := c.sch.ReleaseTask(userTask.Task.ID); err != nil {
+			return err
+		}
+	}
+
+	return c.Store.DeleteUser(ctx, userID)
 }
 
 func (c *Coordinator) CancelRun(ctx context.Context, taskID, runID platform.ID) error {
-	err := c.sch.CancelRun(ctx, taskID, runID)
-	if err != nil {
-		return err
-	}
-
-	// TODO(lh): Im not sure if we need to call the task service here directly or if the scheduler does that
-	// for now we will do it and then if it causes errors we can opt to do it in the scheduler only
-	return c.TaskService.CancelRun(ctx, taskID, runID)
-}
-
-func (c *Coordinator) RetryRun(ctx context.Context, taskID, runID platform.ID) (*platform.Run, error) {
-	task, err := c.TaskService.FindTaskByID(ctx, taskID)
-	if err != nil {
-		return nil, err
-	}
-
-	r, err := c.TaskService.RetryRun(ctx, taskID, runID)
-	if err != nil {
-		return r, err
-	}
-
-	return r, c.sch.UpdateTask(ctx, task)
-}
-
-func (c *Coordinator) ForceRun(ctx context.Context, taskID platform.ID, scheduledFor int64) (*platform.Run, error) {
-	task, err := c.TaskService.FindTaskByID(ctx, taskID)
-	if err != nil {
-		return nil, err
-	}
-
-	r, err := c.TaskService.ForceRun(ctx, taskID, scheduledFor)
-	if err != nil {
-		return r, err
-	}
-
-	return r, c.sch.UpdateTask(ctx, task)
+	return c.sch.CancelRun(ctx, taskID, runID)
 }

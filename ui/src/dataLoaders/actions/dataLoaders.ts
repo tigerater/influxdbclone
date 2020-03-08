@@ -3,12 +3,7 @@ import _ from 'lodash'
 
 // Apis
 import {client} from 'src/utils/api'
-import {
-  ScraperTargetRequest,
-  PermissionResource,
-  ILabelProperties,
-} from '@influxdata/influx'
-import {createAuthorization} from 'src/authorizations/apis'
+import {ScraperTargetRequest} from '@influxdata/influx'
 
 // Utils
 import {createNewPlugin} from 'src/dataLoaders/utils/pluginConfigs'
@@ -28,25 +23,15 @@ import {
   Plugin,
   BundleName,
   ConfigurationState,
-} from 'src/types/dataLoaders'
-import {AppState} from 'src/types'
+} from 'src/types/v2/dataLoaders'
+import {AppState} from 'src/types/v2'
 import {RemoteDataState} from 'src/types'
 import {
   WritePrecision,
   TelegrafRequest,
   TelegrafPluginOutputInfluxDBV2,
-  Permission,
 } from '@influxdata/influx'
 import {Dispatch} from 'redux'
-import {addTelegraf, editTelegraf} from 'src/telegrafs/actions'
-import {addAuthorization} from 'src/authorizations/actions'
-import {notify} from 'src/shared/actions/notifications'
-import {
-  TelegrafConfigCreationError,
-  TelegrafConfigCreationSuccess,
-  writeLimitReached,
-} from 'src/shared/copy/notifications'
-import {RATE_LIMIT_ERROR_STATUS} from 'src/cloud/constants/index'
 
 type GetState = () => AppState
 
@@ -76,8 +61,6 @@ export type Action =
   | SetScraperTargetID
   | ClearDataLoaders
   | SetTelegrafConfigName
-  | SetTelegrafConfigDescription
-  | SetToken
 
 interface SetDataLoadersType {
   type: 'SET_DATA_LOADERS_TYPE'
@@ -107,18 +90,6 @@ interface SetTelegrafConfigName {
 export const setTelegrafConfigName = (name: string): SetTelegrafConfigName => ({
   type: 'SET_TELEGRAF_CONFIG_NAME',
   payload: {name},
-})
-
-interface SetTelegrafConfigDescription {
-  type: 'SET_TELEGRAF_CONFIG_DESCRIPTION'
-  payload: {description: string}
-}
-
-export const setTelegrafConfigDescription = (
-  description: string
-): SetTelegrafConfigDescription => ({
-  type: 'SET_TELEGRAF_CONFIG_DESCRIPTION',
-  payload: {description},
 })
 
 interface UpdateTelegrafPluginConfig {
@@ -296,16 +267,6 @@ export const setScraperTargetID = (id: string): SetScraperTargetID => ({
   payload: {id},
 })
 
-interface SetToken {
-  type: 'SET_TOKEN'
-  payload: {token: string}
-}
-
-export const setToken = (token: string): SetToken => ({
-  type: 'SET_TOKEN',
-  payload: {token},
-})
-
 export const addPluginBundleWithPlugins = (bundle: BundleName) => dispatch => {
   dispatch(addPluginBundle(bundle))
   const plugins = pluginsByBundle[bundle]
@@ -339,16 +300,8 @@ export const createOrUpdateTelegrafConfigAsync = () => async (
 ) => {
   const {
     dataLoading: {
-      dataLoaders: {
-        telegrafPlugins,
-        telegrafConfigID,
-        telegrafConfigName,
-        telegrafConfigDescription,
-      },
-      steps: {bucket},
-    },
-    orgs: {
-      org: {name},
+      dataLoaders: {telegrafPlugins, telegrafConfigID, telegrafConfigName},
+      steps: {org, bucket, orgID},
     },
   } = getState()
 
@@ -356,9 +309,9 @@ export const createOrUpdateTelegrafConfigAsync = () => async (
     name: TelegrafPluginOutputInfluxDBV2.NameEnum.InfluxdbV2,
     type: TelegrafPluginOutputInfluxDBV2.TypeEnum.Output,
     config: {
-      urls: [`${window.location.origin}`],
+      urls: ['http://127.0.0.1:9999'],
       token: '$INFLUX_TOKEN',
-      organization: name,
+      organization: org,
       bucket,
     },
   }
@@ -375,102 +328,23 @@ export const createOrUpdateTelegrafConfigAsync = () => async (
   )
 
   if (telegrafConfigID) {
-    const telegraf = await client.telegrafConfigs.update(telegrafConfigID, {
+    await client.telegrafConfigs.update(telegrafConfigID, {
       name: telegrafConfigName,
-      description: telegrafConfigDescription,
       plugins,
     })
-    dispatch(editTelegraf(telegraf))
     dispatch(setTelegrafConfigID(telegrafConfigID))
     return
   }
 
-  createTelegraf(dispatch, getState, plugins)
-}
-
-const createTelegraf = async (dispatch, getState, plugins) => {
-  try {
-    const {
-      dataLoading: {
-        dataLoaders: {telegrafConfigName, telegrafConfigDescription},
-        steps: {bucket, bucketID},
-      },
-      orgs: {org},
-    } = getState()
-
-    const telegrafRequest: TelegrafRequest = {
-      name: telegrafConfigName,
-      description: telegrafConfigDescription,
-      agent: {collectionInterval: DEFAULT_COLLECTION_INTERVAL},
-      orgID: org.id,
-      plugins,
-    }
-
-    // create telegraf config
-    const tc = await client.telegrafConfigs.create(telegrafRequest)
-
-    const permissions = [
-      {
-        action: Permission.ActionEnum.Write,
-        resource: {
-          type: PermissionResource.TypeEnum.Buckets,
-          id: bucketID,
-          orgID: org.id,
-        },
-      },
-      {
-        action: Permission.ActionEnum.Read,
-        resource: {
-          type: PermissionResource.TypeEnum.Telegrafs,
-          id: tc.id,
-          orgID: org.id,
-        },
-      },
-    ]
-
-    const token = {
-      name: `${telegrafConfigName} token`,
-      orgID: org.id,
-      description: `WRITE ${bucket} bucket / READ ${telegrafConfigName} telegraf config`,
-      permissions,
-    }
-
-    // create token
-    const createdToken = await createAuthorization(token)
-
-    // add token to data loader state
-    dispatch(setToken(createdToken.token))
-
-    // add token to authorizations state
-    dispatch(addAuthorization(createdToken))
-
-    // create token label
-    const properties = {
-      color: '#FFFFFF',
-      description: `token for telegraf config: ${telegrafConfigName}`,
-      tokenID: createdToken.id,
-    } as ILabelProperties // hack to make compiler work
-
-    const createdLabel = await client.labels.create({
-      orgID: org.id,
-      name: '@influxdata.token',
-      properties,
-    })
-
-    // add label to telegraf config
-    const label = await client.telegrafConfigs.addLabel(tc.id, createdLabel)
-
-    const config = {
-      ...tc,
-      labels: [label],
-    }
-
-    dispatch(setTelegrafConfigID(tc.id))
-    dispatch(addTelegraf(config))
-    dispatch(notify(TelegrafConfigCreationSuccess))
-  } catch (error) {
-    dispatch(notify(TelegrafConfigCreationError))
+  const telegrafRequest: TelegrafRequest = {
+    name: telegrafConfigName,
+    agent: {collectionInterval: DEFAULT_COLLECTION_INTERVAL},
+    organizationID: orgID,
+    plugins,
   }
+
+  const created = await client.telegrafConfigs.create(telegrafRequest)
+  dispatch(setTelegrafConfigID(created.id))
 }
 
 interface SetActiveTelegrafPlugin {
@@ -523,15 +397,12 @@ export const setActiveLPTab = (
 
 interface SetLPStatus {
   type: 'SET_LP_STATUS'
-  payload: {lpStatus: RemoteDataState; lpError: string}
+  payload: {lpStatus: RemoteDataState}
 }
 
-export const setLPStatus = (
-  lpStatus: RemoteDataState,
-  lpError: string = ''
-): SetLPStatus => ({
+export const setLPStatus = (lpStatus: RemoteDataState): SetLPStatus => ({
   type: 'SET_LP_STATUS',
-  payload: {lpStatus, lpError},
+  payload: {lpStatus},
 })
 
 interface SetPrecision {
@@ -555,13 +426,7 @@ export const writeLineProtocolAction = (
     await client.write.create(org, bucket, body, {precision})
     dispatch(setLPStatus(RemoteDataState.Done))
   } catch (error) {
-    const errorMessage = _.get(error, 'response.data.message', '')
-    console.error(errorMessage || error)
-    dispatch(setLPStatus(RemoteDataState.Error, errorMessage))
-
-    if (error.response.status === RATE_LIMIT_ERROR_STATUS) {
-      dispatch(notify(writeLimitReached()))
-    }
+    dispatch(setLPStatus(RemoteDataState.Error))
   }
 }
 

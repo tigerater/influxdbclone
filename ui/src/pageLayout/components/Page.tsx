@@ -11,6 +11,7 @@ import PageContents from 'src/pageLayout/components/PageContents'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
+  children: JSX.Element | JSX.Element[]
   className?: string
   titleTag: string
 }

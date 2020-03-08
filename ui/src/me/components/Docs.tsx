@@ -2,7 +2,7 @@
 import React, {PureComponent} from 'react'
 
 // Components
-import {Panel} from '@influxdata/clockface'
+import {Panel} from 'src/clockface'
 
 const supportLinks = [
   {

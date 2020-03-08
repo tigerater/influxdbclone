@@ -7,7 +7,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/influxdata/influxdb"
 	platform "github.com/influxdata/influxdb"
 	platformtesting "github.com/influxdata/influxdb/testing"
 )
@@ -40,7 +39,7 @@ func TestIDFromString(t *testing.T) {
 			name:    "Should not be able to decode a non hex ID",
 			id:      "gggggggggggggggg",
 			wantErr: true,
-			err:     platform.ErrInvalidID.Error(),
+			err:     `strconv.ParseUint: parsing "gggggggggggggggg": invalid syntax`,
 		},
 		{
 			name:    "Should not be able to decode inputs with length less than 16 bytes",
@@ -181,28 +180,6 @@ func TestMarshalling(t *testing.T) {
 
 	if !bytes.Equal(bytes1, bytes2) {
 		t.Errorf("error marshalling/unmarshalling ID")
-	}
-
-	// When used as a map key, IDs must use their string encoding.
-	// If you only implement json.Marshaller, they will be encoded with Go's default integer encoding.
-	b, err := json.Marshal(map[influxdb.ID]int{0x1234: 5678})
-	if err != nil {
-		t.Error(err)
-	}
-	const exp = `{"0000000000001234":5678}`
-	if string(b) != exp {
-		t.Errorf("expected map to json.Marshal as %s; got %s", exp, string(b))
-	}
-
-	var idMap map[influxdb.ID]int
-	if err := json.Unmarshal(b, &idMap); err != nil {
-		t.Error(err)
-	}
-	if len(idMap) != 1 {
-		t.Errorf("expected length 1, got %d", len(idMap))
-	}
-	if idMap[0x1234] != 5678 {
-		t.Errorf("unmarshalled incorrectly; exp 0x1234:5678, got %v", idMap)
 	}
 }
 
