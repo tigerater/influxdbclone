@@ -508,7 +508,6 @@ func TestService_handlePostCheck(t *testing.T) {
 					Base: check.Base{
 						Name:                  "hello",
 						OrgID:                 influxTesting.MustIDBase16("6f626f7274697320"),
-						OwnerID:               influxTesting.MustIDBase16("6f626f7274697321"),
 						Description:           "desc1",
 						StatusMessageTemplate: "msg1",
 						Status:                influxdb.Active,

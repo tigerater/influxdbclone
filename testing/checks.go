@@ -309,7 +309,6 @@ func CreateCheck(
 					Base: check.Base{
 						Name:                  "name2",
 						OrgID:                 MustIDBase16(orgTwoID),
-						OwnerID:               MustIDBase16(twoID),
 						Description:           "desc2",
 						Status:                influxdb.Active,
 						StatusMessageTemplate: "msg2",
