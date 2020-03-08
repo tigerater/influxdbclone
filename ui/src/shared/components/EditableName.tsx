@@ -33,7 +33,7 @@ interface State {
 @ErrorHandling
 class EditableName extends Component<Props, State> {
   public static defaultProps = {
-    hrefValue: 'javascript:void(0);',
+    hrefValue: '#',
     testID: 'editable-name',
   }
 

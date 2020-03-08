@@ -3,7 +3,6 @@ package tsm1_test
 import (
 	"bytes"
 	"context"
-	"github.com/influxdata/influxdb/tsdb/tsm1"
 	"reflect"
 	"testing"
 
@@ -34,7 +33,7 @@ func TestEngine_DeletePrefix(t *testing.T) {
 		t.Fatalf("failed to write points: %s", err.Error())
 	}
 
-	if err := e.WriteSnapshot(context.Background(), tsm1.CacheStatusColdNoWrites); err != nil {
+	if err := e.WriteSnapshot(context.Background()); err != nil {
 		t.Fatalf("failed to snapshot: %s", err.Error())
 	}
 

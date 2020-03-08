@@ -22,14 +22,13 @@ import {
   XYViewGeom,
   RemoteDataState,
   TimeZone,
-  CheckViewProperties,
 } from 'src/types'
 
 interface Props {
   giraffeResult: FromFluxResult
   files: string[]
   loading: RemoteDataState
-  properties: QueryViewProperties | CheckViewProperties
+  properties: QueryViewProperties
   timeZone: TimeZone
 }
 

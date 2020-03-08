@@ -8,6 +8,7 @@ import {getActiveQuery, getActiveTimeMachine} from 'src/timeMachine/selectors'
 import {Dispatch} from 'redux-thunk'
 import {GetState} from 'src/types'
 import {RemoteDataState} from 'src/types'
+import {CancellationError} from 'src/types/promises'
 
 export type Action =
   | SetBuilderBucketSelectionAction
@@ -245,7 +246,7 @@ export const loadBuckets = () => async (
       dispatch(selectBucket(buckets[0], true))
     }
   } catch (e) {
-    if (e.name === 'CancellationError') {
+    if (e instanceof CancellationError) {
       return
     }
 
@@ -313,7 +314,7 @@ export const loadTagSelector = (index: number) => async (
     dispatch(setBuilderTagKeys(index, keys))
     dispatch(loadTagSelectorValues(index))
   } catch (e) {
-    if (e.name === 'CancellationError') {
+    if (e instanceof CancellationError) {
       return
     }
 
@@ -363,7 +364,7 @@ const loadTagSelectorValues = (index: number) => async (
     dispatch(setBuilderTagValues(index, values))
     dispatch(loadTagSelector(index + 1))
   } catch (e) {
-    if (e.name === 'CancellationError') {
+    if (e instanceof CancellationError) {
       return
     }
 

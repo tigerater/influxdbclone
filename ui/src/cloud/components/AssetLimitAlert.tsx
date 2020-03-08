@@ -23,21 +23,17 @@ import CheckoutButton from 'src/cloud/components/CheckoutButton'
 interface Props {
   resourceName: string
   limitStatus: LimitStatus
-  className?: string
 }
 
 export default class AssetLimitAlert extends PureComponent<Props> {
   public render() {
-    const {limitStatus, resourceName, className} = this.props
-
+    const {limitStatus, resourceName} = this.props
     if (CLOUD && limitStatus === LimitStatus.EXCEEDED) {
       return (
         <ComponentSpacer
           direction={FlexDirection.Column}
           alignItems={AlignItems.Center}
           margin={ComponentSize.Large}
-          stretchToFitWidth={true}
-          className={className}
         >
           <Alert icon={IconFont.Cloud} color={ComponentColor.Primary}>
             <ComponentSpacer
@@ -54,10 +50,10 @@ export default class AssetLimitAlert extends PureComponent<Props> {
               <CheckoutButton />
             </ComponentSpacer>
           </Alert>
+          {this.props.children}
         </ComponentSpacer>
       )
     }
-
-    return null
+    return this.props.children
   }
 }

@@ -1,6 +1,8 @@
-import {CancelBox} from 'src/types/promises'
+import {WrappedCancelablePromise} from 'src/types/promises'
 
-export const makeCancelable = <T>(promise: Promise<T>): CancelBox<T> => {
+export const makeCancelable = <T>(
+  promise: Promise<T>
+): WrappedCancelablePromise<T> => {
   let isCanceled = false
 
   const wrappedPromise = new Promise<T>(async (resolve, reject) => {

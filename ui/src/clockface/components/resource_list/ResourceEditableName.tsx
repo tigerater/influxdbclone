@@ -1,7 +1,6 @@
 // Libraries
 import React, {Component, KeyboardEvent, ChangeEvent, MouseEvent} from 'react'
 import classnames from 'classnames'
-import {Link} from 'react-router'
 
 // Components
 import {Input, SpinnerContainer, TechnoSpinner} from '@influxdata/clockface'
@@ -17,7 +16,7 @@ import {ErrorHandling} from 'src/shared/decorators/errors'
 interface Props {
   onUpdate: (name: string) => void
   name: string
-  onClick?: (e: MouseEvent) => void
+  onClick?: (e: MouseEvent<HTMLAnchorElement>) => void
   placeholder?: string
   noNameString: string
   parentTestID: string
@@ -66,9 +65,9 @@ class ResourceEditableName extends Component<Props, State> {
           loading={this.state.loading}
           spinnerComponent={<TechnoSpinner diameterPixels={20} />}
         >
-          <Link to={hrefValue} onClick={this.handleClick}>
+          <a href={hrefValue} onClick={this.handleClick}>
             <span>{name || noNameString}</span>
-          </Link>
+          </a>
         </SpinnerContainer>
         <div
           className="resource-editable-name--toggle"
@@ -107,9 +106,8 @@ class ResourceEditableName extends Component<Props, State> {
     }
   }
 
-  private handleClick = (e: MouseEvent) => {
+  private handleClick = (e: MouseEvent<HTMLAnchorElement>) => {
     const {onClick} = this.props
-
     if (onClick) {
       onClick(e)
     }

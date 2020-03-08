@@ -11,6 +11,7 @@ import (
 	"github.com/influxdata/flux/lang"
 	"github.com/influxdata/influxdb"
 	platform "github.com/influxdata/influxdb"
+	pctx "github.com/influxdata/influxdb/context"
 	"github.com/influxdata/influxdb/models"
 	"github.com/influxdata/influxdb/query"
 	"github.com/influxdata/influxdb/storage"
@@ -183,24 +184,14 @@ func (as *AnalyticalStorage) FindRuns(ctx context.Context, filter influxdb.RunFi
 
 	  `, filter.Task.String(), filterPart)
 
-	// At this point we are behind authorization
-	// so we are faking a read only permission to the org's system bucket
-	runSystemBucketID := taskSystemBucketID
-	runAuth := &influxdb.Authorization{
-		ID:    taskSystemBucketID,
-		OrgID: task.OrganizationID,
-		Permissions: []influxdb.Permission{
-			influxdb.Permission{
-				Action: influxdb.ReadAction,
-				Resource: influxdb.Resource{
-					Type:  influxdb.BucketsResourceType,
-					OrgID: &task.OrganizationID,
-					ID:    &runSystemBucketID,
-				},
-			},
-		},
+	auth, err := pctx.GetAuthorizer(ctx)
+	if err != nil {
+		return nil, 0, err
 	}
-	request := &query.Request{Authorization: runAuth, OrganizationID: task.OrganizationID, Compiler: lang.FluxCompiler{Query: runsScript}}
+	if auth.Kind() != "authorization" {
+		return nil, 0, influxdb.ErrAuthorizerNotSupported
+	}
+	request := &query.Request{Authorization: auth.(*influxdb.Authorization), OrganizationID: task.OrganizationID, Compiler: lang.FluxCompiler{Query: runsScript}}
 
 	ittr, err := as.qs.Query(ctx, request)
 	if err != nil {
@@ -214,10 +205,6 @@ func (as *AnalyticalStorage) FindRuns(ctx context.Context, filter influxdb.RunFi
 		if err != nil {
 			return runs, n, err
 		}
-	}
-
-	if err := ittr.Err(); err != nil {
-		return nil, 0, fmt.Errorf("unexpected internal error while decoding run response: %v", err)
 	}
 
 	runs = append(runs, re.runs...)
@@ -253,24 +240,14 @@ func (as *AnalyticalStorage) FindRunByID(ctx context.Context, taskID, runID infl
 	|> filter(fn: (r) => r.runID == %q)
 	  `, taskID.String(), runID.String())
 
-	// At this point we are behind authorization
-	// so we are faking a read only permission to the org's system bucket
-	runSystemBucketID := taskSystemBucketID
-	runAuth := &influxdb.Authorization{
-		ID:    taskSystemBucketID,
-		OrgID: task.OrganizationID,
-		Permissions: []influxdb.Permission{
-			influxdb.Permission{
-				Action: influxdb.ReadAction,
-				Resource: influxdb.Resource{
-					Type:  influxdb.BucketsResourceType,
-					OrgID: &task.OrganizationID,
-					ID:    &runSystemBucketID,
-				},
-			},
-		},
+	auth, err := pctx.GetAuthorizer(ctx)
+	if err != nil {
+		return nil, err
 	}
-	request := &query.Request{Authorization: runAuth, OrganizationID: task.OrganizationID, Compiler: lang.FluxCompiler{Query: findRunScript}}
+	if auth.Kind() != "authorization" {
+		return nil, influxdb.ErrAuthorizerNotSupported
+	}
+	request := &query.Request{Authorization: auth.(*influxdb.Authorization), OrganizationID: task.OrganizationID, Compiler: lang.FluxCompiler{Query: findRunScript}}
 
 	ittr, err := as.qs.Query(ctx, request)
 	if err != nil {
@@ -284,10 +261,6 @@ func (as *AnalyticalStorage) FindRunByID(ctx context.Context, taskID, runID infl
 		if err != nil {
 			return nil, err
 		}
-	}
-
-	if err := ittr.Err(); err != nil {
-		return nil, fmt.Errorf("unexpected internal error while decoding run response: %v", err)
 	}
 
 	if len(re.runs) == 0 {

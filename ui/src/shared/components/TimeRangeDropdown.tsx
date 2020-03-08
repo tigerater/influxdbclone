@@ -26,7 +26,6 @@ export enum RangeType {
 interface Props {
   timeRange: TimeRange
   onSetTimeRange: (timeRange: TimeRange, rangeType?: RangeType) => void
-  centerPicker: boolean
 }
 
 interface State {
@@ -35,10 +34,6 @@ interface State {
 }
 
 class TimeRangeDropdown extends PureComponent<Props, State> {
-  public static defaultProps = {
-    centerPicker: false,
-  }
-
   private dropdownRef = createRef<HTMLDivElement>()
 
   constructor(props: Props) {
@@ -49,7 +44,6 @@ class TimeRangeDropdown extends PureComponent<Props, State> {
 
   public render() {
     const timeRange = this.timeRange
-    const {centerPicker} = this.props
 
     return (
       <>
@@ -58,7 +52,7 @@ class TimeRangeDropdown extends PureComponent<Props, State> {
             timeRange={timeRange}
             onSetTimeRange={this.handleApplyTimeRange}
             onClose={this.handleHideDatePicker}
-            position={centerPicker ? null : this.state.dropdownPosition}
+            position={this.state.dropdownPosition}
           />
         )}
         <div ref={this.dropdownRef}>

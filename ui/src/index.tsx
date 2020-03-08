@@ -76,8 +76,6 @@ import TaskImportFromTemplateOverlay from './tasks/components/TaskImportFromTemp
 import StaticTemplateViewOverlay from 'src/templates/components/StaticTemplateViewOverlay'
 import AlertingIndex from 'src/alerting/containers/AlertingIndex'
 import AlertHistoryIndex from 'src/alerting/containers/AlertHistoryIndex'
-import BucketsDeleteDataOverlay from 'src/shared/components/DeleteDataOverlay'
-import DEDeleteDataOverlay from 'src/dataExplorer/components/DeleteDataOverlay'
 
 import {FeatureFlag} from 'src/shared/utils/featureFlag'
 
@@ -171,10 +169,6 @@ class Root extends PureComponent {
                             component={DataExplorerPage}
                           >
                             <Route path="save" component={SaveAsOverlay} />
-                            <Route
-                              path="delete-data"
-                              component={DEDeleteDataOverlay}
-                            />
                           </Route>
                           <Route path="dashboards" component={DashboardsIndex}>
                             <Route
@@ -228,10 +222,6 @@ class Root extends PureComponent {
                               <Route
                                 path="edit"
                                 component={UpdateBucketOverlay}
-                              />
-                              <Route
-                                path="delete-data"
-                                component={BucketsDeleteDataOverlay}
                               />
                               <Route
                                 path="rename"

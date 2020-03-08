@@ -28,7 +28,7 @@ import {
   QueryView,
   QueryViewProperties,
   ExtractWorkingView,
-  BuilderConfigAggregateWindow,
+  AggregateWindow,
 } from 'src/types/dashboards'
 import {Action} from 'src/timeMachine/actions'
 import {TimeMachineTab} from 'src/types/timeMachine'
@@ -39,7 +39,7 @@ interface QueryBuilderState {
   buckets: string[]
   bucketsStatus: RemoteDataState
   functions: Array<[{name: string}]>
-  aggregateWindow: BuilderConfigAggregateWindow
+  aggregateWindow: AggregateWindow
   tags: Array<{
     valuesSearchTerm: string
     keysSearchTerm: string

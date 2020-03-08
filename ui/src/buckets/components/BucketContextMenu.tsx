@@ -3,7 +3,6 @@ import React, {PureComponent} from 'react'
 
 // Components
 import {Context, Alignment, ComponentSize} from 'src/clockface'
-import {FeatureFlag} from 'src/shared/utils/featureFlag'
 
 import CloudExclude from 'src/shared/components/cloud/CloudExclude'
 
@@ -21,20 +20,18 @@ import {PrettyBucket} from 'src/buckets/components/BucketCard'
 
 interface Props {
   bucket: PrettyBucket
-  onDeleteBucket: (bucket: PrettyBucket) => void
-  onDeleteData: (bucket: PrettyBucket) => void
+  onDelete: (bucket: PrettyBucket) => void
   onRename: () => void
   onAddCollector: () => void
   onAddLineProtocol: () => void
   onAddScraper: () => void
 }
 
-export default class BucketContextMenu extends PureComponent<Props> {
+export default class MemberContextMenu extends PureComponent<Props> {
   public render() {
     const {
       bucket,
-      onDeleteBucket,
-      onDeleteData,
+      onDelete,
       onRename,
       onAddCollector,
       onAddLineProtocol,
@@ -54,25 +51,15 @@ export default class BucketContextMenu extends PureComponent<Props> {
               color={ComponentColor.Danger}
             >
               <Context.Item label="Rename" action={onRename} value={bucket} />
-              <FeatureFlag name="deleteWithPredicate">
-                <Context.Item
-                  label="Delete Data By Filter"
-                  action={onDeleteData}
-                  value={bucket}
-                  testID="context-delete-task"
-                />
-              </FeatureFlag>
             </Context.Menu>
             <Context.Menu
               icon={IconFont.Trash}
               color={ComponentColor.Danger}
-              shape={ButtonShape.Default}
-              text="Delete Bucket"
               testID="context-delete-menu"
             >
               <Context.Item
                 label="Delete"
-                action={onDeleteBucket}
+                action={onDelete}
                 value={bucket}
                 testID="context-delete-task"
               />

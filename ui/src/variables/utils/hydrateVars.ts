@@ -10,7 +10,7 @@ import {OPTION_NAME, BOUNDARY_GROUP} from 'src/variables/constants/index'
 // Types
 import {RemoteDataState} from 'src/types'
 import {IVariable as Variable} from '@influxdata/influx'
-import {CancelBox, CancellationError} from 'src/types/promises'
+import {WrappedCancelablePromise, CancellationError} from 'src/types/promises'
 import {
   VariableValues,
   VariableValuesByID,
@@ -392,7 +392,7 @@ export const hydrateVars = (
   variables: Variable[],
   allVariables: Variable[],
   options: HydrateVarsOptions
-): CancelBox<VariableValuesByID> => {
+): WrappedCancelablePromise<VariableValuesByID> => {
   const graph = findSubgraph(createVariableGraph(allVariables), variables)
 
   invalidateCycles(graph)
@@ -412,7 +412,7 @@ export const hydrateVars = (
 
       return Promise.all(node.parents.filter(readyToResolve).map(resolve))
     } catch (e) {
-      if (e.name === 'CancellationError') {
+      if (e instanceof CancellationError) {
         return
       }
 

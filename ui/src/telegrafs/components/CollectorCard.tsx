@@ -146,9 +146,8 @@ class CollectorRow extends PureComponent<Props & WithRouterProps> {
     }
   }
 
-  private handleNameClick = (e: MouseEvent) => {
+  private handleNameClick = (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
-
     this.handleOpenConfig()
   }
 

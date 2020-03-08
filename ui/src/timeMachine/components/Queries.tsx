@@ -92,7 +92,6 @@ class TimeMachineQueries extends PureComponent<Props> {
               <TimeRangeDropdown
                 timeRange={timeRange}
                 onSetTimeRange={this.handleSetTimeRange}
-                centerPicker={true}
               />
               <TimeMachineQueriesSwitcher />
               <SubmitQueryButton />

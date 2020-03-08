@@ -45,17 +45,18 @@ class DataExplorer extends PureComponent<Props, {}> {
     const {resourceName, limitStatus} = this.props
 
     return (
-      <LimitChecker>
-        <AssetLimitAlert
-          resourceName={resourceName}
-          limitStatus={limitStatus}
-        />
-        <div className="data-explorer">
-          <HoverTimeProvider>
-            <TimeMachine />
-          </HoverTimeProvider>
-        </div>
-      </LimitChecker>
+      <div className="data-explorer">
+        <LimitChecker>
+          <AssetLimitAlert
+            resourceName={resourceName}
+            limitStatus={limitStatus}
+          >
+            <HoverTimeProvider>
+              <TimeMachine />
+            </HoverTimeProvider>
+          </AssetLimitAlert>
+        </LimitChecker>
+      </div>
     )
   }
 }

@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"github.com/influxdata/influxdb/tsdb/tsm1"
 	"math"
 	"math/rand"
 	"reflect"
@@ -17,7 +16,7 @@ import (
 
 func TestRetentionService(t *testing.T) {
 	engine := NewTestEngine()
-	service := newRetentionEnforcer(engine, &TestSnapshotter{}, NewTestBucketFinder())
+	service := newRetentionEnforcer(engine, NewTestBucketFinder())
 	now := time.Date(2018, 4, 10, 23, 12, 33, 0, time.UTC)
 
 	t.Run("no buckets", func(t *testing.T) {
@@ -163,12 +162,6 @@ func NewTestEngine() *TestEngine {
 
 func (e *TestEngine) DeleteBucketRange(orgID, bucketID influxdb.ID, min, max int64) error {
 	return e.DeleteBucketRangeFn(orgID, bucketID, min, max)
-}
-
-type TestSnapshotter struct{}
-
-func (s *TestSnapshotter) WriteSnapshot(ctx context.Context, status tsm1.CacheStatus) error {
-	return nil
 }
 
 type TestBucketFinder struct {

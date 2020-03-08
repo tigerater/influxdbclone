@@ -1,4 +1,5 @@
 import {restartable} from 'src/utils/restartable'
+import {CancellationError} from 'src/types/promises'
 
 describe('restartable', () => {
   test('with three concurrent promises', async () => {
@@ -16,7 +17,7 @@ describe('restartable', () => {
 
         successMock(result)
       } catch (e) {
-        if (e.name === 'CancellationError') {
+        if (e instanceof CancellationError) {
           errorMock()
         }
       }
@@ -49,7 +50,7 @@ describe('restartable', () => {
 
         successMock(result)
       } catch (e) {
-        if (e.name === 'CancellationError') {
+        if (e instanceof CancellationError) {
           errorMock()
         }
       }

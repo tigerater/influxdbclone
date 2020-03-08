@@ -2,10 +2,13 @@ import {getWindowVars} from 'src/variables/utils/getWindowVars'
 import {buildVarsOption} from 'src/variables/utils/buildVarsOption'
 import {client} from 'src/utils/api'
 
-import {File} from '@influxdata/influx'
+import {
+  File,
+  CancellationError as ClientCancellationError,
+} from '@influxdata/influx'
 
 // Types
-import {CancelBox, CancellationError} from 'src/types/promises'
+import {WrappedCancelablePromise, CancellationError} from 'src/types/promises'
 import {VariableAssignment} from 'src/types/ast'
 
 const MAX_RESPONSE_CHARS = 50000 * 160
@@ -14,11 +17,20 @@ export const runQuery = (
   orgID: string,
   query: string,
   extern?: File
-): CancelBox<string> => {
-  return client.queries.execute(orgID, query, {
+): WrappedCancelablePromise<string> => {
+  const {promise, cancel} = client.queries.execute(orgID, query, {
     extern,
     limitChars: MAX_RESPONSE_CHARS,
   })
+
+  // Convert the client `CancellationError` to a UI `CancellationError`
+  const wrappedPromise = promise.catch(error =>
+    error instanceof ClientCancellationError
+      ? Promise.reject(CancellationError)
+      : Promise.reject(error)
+  )
+
+  return {promise: wrappedPromise, cancel}
 }
 
 /*
@@ -42,7 +54,7 @@ export const executeQueryWithVars = (
   orgID: string,
   query: string,
   variables?: VariableAssignment[]
-): CancelBox<string> => {
+): WrappedCancelablePromise<string> => {
   let isCancelled = false
   let cancelExecution
 

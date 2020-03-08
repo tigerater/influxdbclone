@@ -191,9 +191,8 @@ class TemplateCard extends PureComponent<Props & WithRouterProps> {
     onClone(id)
   }
 
-  private handleNameClick = (e: MouseEvent) => {
+  private handleNameClick = (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
-
     this.handleViewTemplate()
   }
 

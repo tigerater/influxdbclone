@@ -14,8 +14,6 @@ import {getTasks} from 'src/tasks/actions'
 import {getAuthorizations} from 'src/authorizations/actions'
 import {getTemplates} from 'src/templates/actions'
 import {getMembers, getUsers} from 'src/members/actions'
-import {getChecks} from 'src/alerting/actions/checks'
-import {getNotificationRules} from 'src/alerting/actions/notificationRules'
 
 // Types
 import {AppState} from 'src/types'
@@ -29,8 +27,6 @@ import {AuthorizationsState} from 'src/authorizations/reducers'
 import {VariablesState} from 'src/variables/reducers'
 import {TemplatesState} from 'src/templates/reducers'
 import {MembersState, UsersMap} from 'src/members/reducers'
-import {ChecksState} from 'src/alerting/reducers/checks'
-import {NotificationRulesState} from 'src/alerting/reducers/notificationRules'
 
 // Components
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -52,8 +48,6 @@ interface StateProps {
   tasks: TasksState
   members: MembersState
   users: {status: RemoteDataState; item: UsersMap}
-  checks: ChecksState
-  notificationRules: NotificationRulesState
 }
 
 interface DispatchProps {
@@ -68,8 +62,6 @@ interface DispatchProps {
   getTemplates: typeof getTemplates
   getMembers: typeof getMembers
   getUsers: typeof getUsers
-  getChecks: typeof getChecks
-  getNotificationRules: typeof getNotificationRules
 }
 
 interface PassedProps {
@@ -90,8 +82,6 @@ export enum ResourceTypes {
   Templates = 'templates',
   Members = 'members',
   Users = 'users',
-  Checks = 'checks',
-  NotificationRules = 'notificationRules',
 }
 
 @ErrorHandling
@@ -142,14 +132,6 @@ class GetResources extends PureComponent<Props, StateProps> {
         return await this.props.getUsers()
       }
 
-      case ResourceTypes.Checks: {
-        return await this.props.getChecks()
-      }
-
-      case ResourceTypes.NotificationRules: {
-        return await this.props.getNotificationRules()
-      }
-
       default: {
         throw new Error('incorrect resource type provided')
       }
@@ -181,8 +163,6 @@ const mstp = ({
   tasks,
   templates,
   members,
-  checks,
-  notificationRules,
 }: AppState): StateProps => {
   return {
     labels,
@@ -196,8 +176,6 @@ const mstp = ({
     templates,
     members,
     users: members.users,
-    checks,
-    notificationRules,
   }
 }
 
@@ -213,8 +191,6 @@ const mdtp = {
   getTemplates: getTemplates,
   getMembers: getMembers,
   getUsers: getUsers,
-  getChecks: getChecks,
-  getNotificationRules: getNotificationRules,
 }
 
 export default connect<StateProps, DispatchProps, {}>(

@@ -1,5 +1,5 @@
 // Libraries
-import React, {PureComponent, MouseEvent} from 'react'
+import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
 
 // Actions
@@ -37,15 +37,15 @@ class TokenRow extends PureComponent<Props> {
       <IndexList.Row>
         <IndexList.Cell>
           <EditableName
-            name={description}
             onUpdate={this.handleUpdateName}
+            name={description}
             noNameString={DEFAULT_TOKEN_DESCRIPTION}
             onEditName={this.handleClickDescription}
           />
         </IndexList.Cell>
         <IndexList.Cell>
           <SlideToggle
-            active={this.isTokenEnabled}
+            active={this.isTokenEnbled}
             size={ComponentSize.ExtraSmall}
             onChange={this.changeToggle}
           />
@@ -62,7 +62,7 @@ class TokenRow extends PureComponent<Props> {
     )
   }
 
-  private get isTokenEnabled(): boolean {
+  private get isTokenEnbled(): boolean {
     const {auth} = this.props
     return auth.status === AuthorizationUpdateRequest.StatusEnum.Active
   }
@@ -82,11 +82,8 @@ class TokenRow extends PureComponent<Props> {
     this.props.onDelete(id, description)
   }
 
-  private handleClickDescription = (e: MouseEvent<HTMLAnchorElement>) => {
+  private handleClickDescription = () => {
     const {onClickDescription, auth} = this.props
-
-    e.preventDefault()
-
     onClickDescription(auth.id)
   }
 

@@ -116,7 +116,7 @@ export class TaskCard extends PureComponent<Props & WithRouterProps> {
     )
   }
 
-  private handleNameClick = (e: MouseEvent) => {
+  private handleNameClick = (e: MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault()
 
     this.props.onSelect(this.props.task)
