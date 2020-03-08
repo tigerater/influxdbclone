@@ -4,9 +4,9 @@ import {connect} from 'react-redux'
 import {withRouter, WithRouterProps, Link} from 'react-router'
 
 // Components
-import {ResourceList, Context, IconFont} from 'src/clockface'
+import {Context} from 'src/clockface'
+import {ResourceCard, IconFont} from '@influxdata/clockface'
 import {ComponentColor} from '@influxdata/clockface'
-import {ITelegraf as Telegraf, Organization} from '@influxdata/influx'
 import InlineLabels from 'src/shared/components/inlineLabels/InlineLabels'
 
 // Actions
@@ -23,8 +23,8 @@ import {viewableLabels} from 'src/labels/selectors'
 import {DEFAULT_COLLECTOR_NAME} from 'src/dashboards/constants'
 
 // Types
-import {AppState} from 'src/types'
-import {ILabel} from '@influxdata/influx'
+import {AppState, Organization} from 'src/types'
+import {ILabel, ITelegraf as Telegraf} from '@influxdata/influx'
 
 interface OwnProps {
   collector: Telegraf
@@ -52,29 +52,29 @@ class CollectorRow extends PureComponent<Props & WithRouterProps> {
     const {collector, bucket, org} = this.props
 
     return (
-      <ResourceList.Card
+      <ResourceCard
         key={`telegraf-id--${collector.id}`}
         testID="resource-card"
-        name={() => (
-          <ResourceList.EditableName
+        name={
+          <ResourceCard.EditableName
             onUpdate={this.handleUpdateName}
             onClick={this.handleNameClick}
             name={collector.name}
             noNameString={DEFAULT_COLLECTOR_NAME}
-            parentTestID="collector-card--name"
+            testID="collector-card--name"
             buttonTestID="collector-card--name-button"
             inputTestID="collector-card--input"
           />
-        )}
-        description={() => (
-          <ResourceList.Description
+        }
+        description={
+          <ResourceCard.Description
             onUpdate={this.handleUpdateDescription}
             description={collector.description}
             placeholder={`Describe ${collector.name}`}
           />
-        )}
-        labels={() => this.labels}
-        metaData={() => [
+        }
+        labels={this.labels}
+        metaData={[
           <>Bucket: {bucket}</>,
           <>
             <Link to={`/orgs/${org.id}/telegrafs/${collector.id}/instructions`}>
@@ -82,7 +82,7 @@ class CollectorRow extends PureComponent<Props & WithRouterProps> {
             </Link>
           </>,
         ]}
-        contextMenu={() => this.contextMenu}
+        contextMenu={this.contextMenu}
       />
     )
   }

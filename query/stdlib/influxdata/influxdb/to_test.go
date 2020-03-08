@@ -116,8 +116,8 @@ func TestToOpSpec_BucketsAccessed(t *testing.T) {
 }
 
 func TestTo_Process(t *testing.T) {
-	oid, _ := (mockOrgLookup{}).Lookup(context.Background(), "my-org")
-	bid, _ := (mockBucketLookup{}).Lookup(context.Background(), oid, "my-bucket")
+	oid, _ := mock.OrganizationLookup{}.Lookup(context.Background(), "my-org")
+	bid, _ := mock.BucketLookup{}.Lookup(context.Background(), oid, "my-bucket")
 	type wanted struct {
 		result *mock.PointsWriter
 		tables []*executetest.Table
@@ -718,7 +718,10 @@ c _hello=4 41`),
 				tc.want.tables,
 				nil,
 				func(d execute.Dataset, c execute.TableBuilderCache) execute.Transformation {
-					newT, _ := influxdb.NewToTransformation(context.Background(), d, c, tc.spec, deps)
+					newT, err := influxdb.NewToTransformation(context.Background(), d, c, tc.spec, deps)
+					if err != nil {
+						t.Error(err)
+					}
 					return newT
 				},
 			)
@@ -739,28 +742,10 @@ c _hello=4 41`),
 
 func mockDependencies() influxdb.ToDependencies {
 	return influxdb.ToDependencies{
-		BucketLookup:       mockBucketLookup{},
-		OrganizationLookup: mockOrgLookup{},
+		BucketLookup:       mock.BucketLookup{},
+		OrganizationLookup: mock.OrganizationLookup{},
 		PointsWriter:       new(mock.PointsWriter),
 	}
-}
-
-type mockBucketLookup struct{}
-
-func (mockBucketLookup) Lookup(_ context.Context, orgID platform.ID, name string) (platform.ID, bool) {
-	if name == "my-bucket" {
-		return platform.ID(1), true
-	}
-	return platform.InvalidID(), false
-}
-
-type mockOrgLookup struct{}
-
-func (mockOrgLookup) Lookup(_ context.Context, name string) (platform.ID, bool) {
-	if name == "my-org" {
-		return platform.ID(2), true
-	}
-	return platform.InvalidID(), false
 }
 
 func pointsToStr(points []models.Point) string {

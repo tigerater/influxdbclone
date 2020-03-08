@@ -1,71 +1,178 @@
-import {getWindowVars} from 'src/variables/utils/getWindowVars'
-import {buildVarsOption} from 'src/variables/utils/buildVarsOption'
-import {client} from 'src/utils/api'
-
-import {File} from '@influxdata/influx'
+// Constants
+import {FLUX_RESPONSE_BYTES_LIMIT} from 'src/shared/constants'
+import {
+  RATE_LIMIT_ERROR_STATUS,
+  RATE_LIMIT_ERROR_TEXT,
+} from 'src/cloud/constants'
 
 // Types
-import {CancelBox, CancellationError} from 'src/types/promises'
-import {VariableAssignment} from 'src/types/ast'
+import {CancelBox} from 'src/types/promises'
+import {File, Query, CancellationError} from 'src/types'
 
-const MAX_RESPONSE_CHARS = 50000 * 160
+export type RunQueryResult =
+  | RunQuerySuccessResult
+  | RunQueryLimitResult
+  | RunQueryErrorResult
+
+export interface RunQuerySuccessResult {
+  type: 'SUCCESS'
+  csv: string
+  didTruncate: boolean
+  bytesRead: number
+}
+
+export interface RunQueryLimitResult {
+  type: 'RATE_LIMIT_ERROR'
+  retryAfter: number
+  message: string
+}
+
+export interface RunQueryErrorResult {
+  type: 'UNKNOWN_ERROR'
+  message: string
+}
 
 export const runQuery = (
   orgID: string,
   query: string,
   extern?: File
-): CancelBox<string> => {
-  return client.queries.execute(orgID, query, {
+): CancelBox<RunQueryResult> => {
+  const url = `/api/v2/query?${new URLSearchParams({orgID})}`
+
+  const headers = {
+    'Content-Type': 'application/json',
+    'Accept-Encoding': 'gzip',
+  }
+
+  const body: Query = {
+    query,
     extern,
-    limitChars: MAX_RESPONSE_CHARS,
+    dialect: {annotations: ['group', 'datatype', 'default']},
+  }
+
+  const controller = new AbortController()
+
+  const request = fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+    signal: controller.signal,
   })
+
+  const promise = request
+    .then(processResponse)
+    .catch(e =>
+      e.name === 'AbortError'
+        ? Promise.reject(new CancellationError())
+        : Promise.reject(e)
+    )
+
+  return {
+    promise,
+    cancel: () => controller.abort(),
+  }
 }
 
-/*
-  Execute a Flux query that uses external variables.
+const processResponse = async (response: Response): Promise<RunQueryResult> => {
+  switch (response.status) {
+    case 200:
+      return processSuccessResponse(response)
+    case RATE_LIMIT_ERROR_STATUS:
+      return processRateLimitResponse(response)
+    default:
+      return processErrorResponse(response)
+  }
+}
 
-  The external variables will be supplied to the query via the `extern`
-  parameter.
+const processSuccessResponse = async (
+  response: Response
+): Promise<RunQuerySuccessResult> => {
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
 
-  The query may be using the `windowPeriod` variable, which cannot be supplied
-  directly but must be derived from the query. To derive the `windowPeriod`
-  variable, we:
+  let csv = ''
+  let bytesRead = 0
+  let didTruncate = false
 
-  - Fetch the AST for the query
-  - Analyse the AST to find the duration of the query, if possible
-  - Use the duration of the query to compute the value of `windowPeriod`
+  let read = await reader.read()
 
-  This function will handle supplying the `windowPeriod` variable, if it is
-  used in the query.
-*/
-export const executeQueryWithVars = (
-  orgID: string,
-  query: string,
-  variables?: VariableAssignment[]
-): CancelBox<string> => {
-  let isCancelled = false
-  let cancelExecution
+  while (!read.done) {
+    const text = decoder.decode(read.value)
 
-  const cancel = () => {
-    isCancelled = true
+    bytesRead += read.value.byteLength
 
-    if (cancelExecution) {
-      cancelExecution()
+    if (bytesRead > FLUX_RESPONSE_BYTES_LIMIT) {
+      csv += trimPartialLines(text)
+      didTruncate = true
+      break
+    } else {
+      csv += text
+      read = await reader.read()
     }
   }
 
-  const promise = getWindowVars(query, variables).then(windowVars => {
-    if (isCancelled) {
-      return Promise.reject(new CancellationError())
+  reader.cancel()
+
+  return {
+    type: 'SUCCESS',
+    csv,
+    bytesRead,
+    didTruncate,
+  }
+}
+
+const processRateLimitResponse = async (
+  response: Response
+): Promise<RunQueryLimitResult> => {
+  const retryAfter = response.headers.get('Retry-After')
+
+  return {
+    type: 'RATE_LIMIT_ERROR',
+    retryAfter: retryAfter ? parseInt(retryAfter) : null,
+    message: RATE_LIMIT_ERROR_TEXT,
+  }
+}
+
+const processErrorResponse = async (
+  response: Response
+): Promise<RunQueryErrorResult> => {
+  try {
+    const body = await response.text()
+    const json = JSON.parse(body)
+    const message = json.message || json.error
+
+    return {type: 'UNKNOWN_ERROR', message}
+  } catch {
+    return {type: 'UNKNOWN_ERROR', message: 'Failed to execute Flux query'}
+  }
+}
+
+/*
+  Given an arbitrary text chunk of a Flux CSV, trim partial lines off of the end
+  of the text.
+
+  For example, given the following partial Flux response,
+
+            r,baz,3
+      foo,bar,baz,2
+      foo,bar,b
+
+  we want to trim the last incomplete line, so that the result is
+
+            r,baz,3
+      foo,bar,baz,2
+
+*/
+const trimPartialLines = (partialResp: string): string => {
+  let i = partialResp.length - 1
+
+  while (partialResp[i] !== '\n') {
+    if (i <= 0) {
+      return partialResp
     }
 
-    const extern = buildVarsOption([...variables, ...windowVars])
-    const pendingResult = runQuery(orgID, query, extern)
+    i -= 1
+  }
 
-    cancelExecution = pendingResult.cancel
-
-    return pendingResult.promise
-  })
-
-  return {promise, cancel}
+  return partialResp.slice(0, i + 1)
 }

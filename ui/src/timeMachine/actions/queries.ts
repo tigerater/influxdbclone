@@ -1,15 +1,16 @@
-import {get} from 'lodash'
-
 // API
-import {executeQueryWithVars} from 'src/shared/apis/query'
+import {
+  runQuery,
+  RunQueryResult,
+  RunQuerySuccessResult,
+} from 'src/shared/apis/query'
 
 // Actions
 import {refreshVariableValues, selectValue} from 'src/variables/actions'
 import {notify} from 'src/shared/actions/notifications'
 
 // Constants
-import {rateLimitReached} from 'src/shared/copy/notifications'
-import {RATE_LIMIT_ERROR_STATUS} from 'src/cloud/constants/index'
+import {rateLimitReached, resultTooLarge} from 'src/shared/copy/notifications'
 
 // Utils
 import {getActiveTimeMachine} from 'src/timeMachine/selectors'
@@ -22,6 +23,8 @@ import {
   getVariable,
   getHydratedVariables,
 } from 'src/variables/selectors'
+import {getWindowVars} from 'src/variables/utils/getWindowVars'
+import {buildVarsOption} from 'src/variables/utils/buildVarsOption'
 
 // Types
 import {CancelBox} from 'src/types/promises'
@@ -82,7 +85,7 @@ export const refreshTimeMachineVariableValues = () => async (
   await dispatch(refreshVariableValues(contextID, variablesToRefresh))
 }
 
-let pendingResults: Array<CancelBox<string>> = []
+let pendingResults: Array<CancelBox<RunQueryResult>> = []
 
 export const executeQueries = () => async (dispatch, getState: GetState) => {
   const {view, timeRange} = getActiveTimeMachine(getState())
@@ -108,25 +111,40 @@ export const executeQueries = () => async (dispatch, getState: GetState) => {
 
     pendingResults.forEach(({cancel}) => cancel())
 
-    pendingResults = queries.map(({text}) =>
-      executeQueryWithVars(orgID, text, variableAssignments)
-    )
+    pendingResults = queries.map(({text}) => {
+      const windowVars = getWindowVars(text, variableAssignments)
+      const extern = buildVarsOption([...variableAssignments, ...windowVars])
 
-    const files = await Promise.all(pendingResults.map(r => r.promise))
+      return runQuery(orgID, text, extern)
+    })
 
+    const results = await Promise.all(pendingResults.map(r => r.promise))
     const duration = Date.now() - startTime
 
-    files.forEach(checkQueryResult)
+    for (const result of results) {
+      if (result.type === 'UNKNOWN_ERROR') {
+        throw new Error(result.message)
+      }
+
+      if (result.type === 'RATE_LIMIT_ERROR') {
+        dispatch(notify(rateLimitReached(result.retryAfter)))
+
+        throw new Error(result.message)
+      }
+
+      if (result.didTruncate) {
+        dispatch(notify(resultTooLarge(result.bytesRead)))
+      }
+
+      checkQueryResult(result.csv)
+    }
+
+    const files = (results as RunQuerySuccessResult[]).map(r => r.csv)
 
     dispatch(setQueryResults(RemoteDataState.Done, files, duration))
   } catch (e) {
     if (e.name === 'CancellationError') {
       return
-    }
-
-    if (get(e, 'status') === RATE_LIMIT_ERROR_STATUS) {
-      const retryAfter = get(e, 'headers.Retry-After')
-      dispatch(notify(rateLimitReached(retryAfter)))
     }
 
     console.error(e)

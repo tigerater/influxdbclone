@@ -2,7 +2,7 @@
 import React, {PureComponent, ChangeEvent} from 'react'
 import {connect} from 'react-redux'
 import {withRouter, WithRouterProps} from 'react-router'
-import _ from 'lodash'
+import {intersectionBy} from 'lodash'
 
 // Components
 import TaskForm from 'src/tasks/components/TaskForm'
@@ -18,7 +18,9 @@ import {
 import {getAuthorizations} from 'src/authorizations/actions'
 
 // Utils
-import {getActiveTimeMachine} from 'src/timeMachine/selectors'
+import {filterIrrelevantAuths} from 'src/authorizations/utils/permissions'
+import {getReadBuckets} from 'src/shared/utils/getReadBuckets'
+import {getActiveTimeMachine, getActiveQuery} from 'src/timeMachine/selectors'
 import {getTimeRangeVars} from 'src/variables/utils/getTimeRangeVars'
 import {getWindowVars} from 'src/variables/utils/getWindowVars'
 import {formatVarsOption} from 'src/variables/utils/formatVarsOption'
@@ -53,8 +55,7 @@ interface DispatchProps {
 
 interface StateProps {
   taskOptions: TaskOptions
-  draftQueries: DashboardDraftQuery[]
-  activeQueryIndex: number
+  activeQuery: DashboardDraftQuery
   newScript: string
   timeRange: TimeRange
   tokens: Authorization[]
@@ -74,9 +75,11 @@ class SaveAsTaskForm extends PureComponent<Props & WithRouterProps> {
     })
 
     setNewScript(this.activeScript)
+
     await this.props.getTokens()
 
-    const relevantTokens = this.getRelevantTokens
+    const relevantTokens = this.relevantTokens
+
     if (relevantTokens.length > 0) {
       this.props.setTaskToken(relevantTokens[0])
     }
@@ -105,7 +108,7 @@ class SaveAsTaskForm extends PureComponent<Props & WithRouterProps> {
           onSubmit={this.handleSubmit}
           canSubmit={this.isFormValid}
           dismiss={dismiss}
-          tokens={this.getRelevantTokens}
+          tokens={this.relevantTokens}
           selectedToken={selectedToken}
           onTokenChange={this.handleTokenChange}
         />
@@ -113,82 +116,48 @@ class SaveAsTaskForm extends PureComponent<Props & WithRouterProps> {
     )
   }
 
-  private get getRelevantTokens() {
-    const readAuthorizations = this.getReadAuthorizations
-    const writeAuthorizations = this.getWriteAuthorizations
-
-    const relevantAuthorizations = _.intersectionBy(
-      readAuthorizations,
-      writeAuthorizations,
-      'id'
-    )
-
-    return relevantAuthorizations
-  }
-
-  private get readBucketName() {
-    const {draftQueries, activeQueryIndex} = this.props
-
-    const query = draftQueries[activeQueryIndex]
-
-    let readBucketName = ''
-    if (query.editMode === 'builder') {
-      readBucketName = query.builderConfig.buckets[0] || ''
-    } else {
-      const text = query.text
-      const splitBucket = text.split('bucket:')
-      const splitQuotes = splitBucket[1].split('"')
-      readBucketName = splitQuotes[1]
-    }
-
-    return readBucketName
-  }
-
-  private get getReadAuthorizations() {
-    const authorizations = this.props.tokens
-    const readBucketName = this.readBucketName
-
-    return authorizations.filter(auth =>
-      auth.permissions.some(
-        permission =>
-          permission.action === 'read' &&
-          permission.resource.type === 'buckets' &&
-          (!permission.resource.name ||
-            permission.resource.name === readBucketName)
-      )
-    )
-  }
-
-  private get getWriteAuthorizations() {
-    const authorizations = this.props.tokens
+  private get relevantTokens() {
     const {
+      tokens,
       taskOptions: {toBucketName},
     } = this.props
 
-    return authorizations.filter(auth =>
-      auth.permissions.some(
-        permission =>
-          permission.action === 'write' &&
-          permission.resource.type === 'buckets' &&
-          (!permission.resource.name ||
-            permission.resource.name === toBucketName)
-      )
+    const readAuths = filterIrrelevantAuths(
+      tokens,
+      'read',
+      this.readBucketNames
     )
+
+    const writeAuths = filterIrrelevantAuths(tokens, 'write', [toBucketName])
+    const relevantAuths = intersectionBy(readAuths, writeAuths, 'id')
+
+    return relevantAuths
+  }
+
+  private get readBucketNames(): string[] {
+    const {activeQuery} = this.props
+
+    if (activeQuery.editMode === 'builder') {
+      return activeQuery.builderConfig.buckets
+    }
+
+    return getReadBuckets(this.activeScript)
   }
 
   private get isFormValid(): boolean {
     const {
       taskOptions: {name, cron, interval},
     } = this.props
+
     const hasSchedule = !!cron || !!interval
 
     return hasSchedule && !!name && !!this.activeScript
   }
 
   private get activeScript(): string {
-    const {draftQueries, activeQueryIndex} = this.props
+    const {activeQuery} = this.props
 
-    return _.get(draftQueries, `${activeQueryIndex}.text`)
+    return activeQuery.text
   }
 
   private handleSubmit = async () => {
@@ -255,16 +224,14 @@ const mstp = (state: AppState): StateProps => {
     orgs: {org},
   } = state
 
-  const {draftQueries, activeQueryIndex, timeRange} = getActiveTimeMachine(
-    state
-  )
+  const {timeRange} = getActiveTimeMachine(state)
+  const activeQuery = getActiveQuery(state)
 
   return {
     newScript,
     taskOptions: {...taskOptions, toOrgName: org.name},
     timeRange,
-    draftQueries,
-    activeQueryIndex,
+    activeQuery,
     tokens: tokens.list,
     tokenStatus: tokens.status,
     selectedToken: taskToken,
