@@ -81,7 +81,7 @@ var threshold1 = &check.Threshold{
 		OwnerID:               MustIDBase16(sixID),
 		TaskID:                1,
 		Description:           "desc2",
-		Status:                influxdb.Inactive,
+		Status:                influxdb.Active,
 		StatusMessageTemplate: "msg2",
 		Every:                 mustDuration("1m"),
 		Query: influxdb.DashboardQuery{
@@ -274,7 +274,7 @@ func CreateCheck(
 							},
 						},
 						Every:                 mustDuration("1m"),
-						Status:                influxdb.Inactive,
+						Status:                influxdb.Active,
 						StatusMessageTemplate: "msg1",
 						Tags: []influxdb.Tag{
 							{Key: "k1", Value: "v1"},
@@ -325,7 +325,7 @@ func CreateCheck(
 							},
 							Every:                 mustDuration("1m"),
 							Description:           "desc1",
-							Status:                influxdb.Inactive,
+							Status:                influxdb.Active,
 							StatusMessageTemplate: "msg1",
 							Tags: []influxdb.Tag{
 								{Key: "k1", Value: "v1"},
@@ -375,7 +375,7 @@ func CreateCheck(
 						OrgID:                 MustIDBase16(orgTwoID),
 						OwnerID:               MustIDBase16(twoID),
 						Description:           "desc2",
-						Status:                influxdb.Inactive,
+						Status:                influxdb.Active,
 						StatusMessageTemplate: "msg2",
 						Every:                 mustDuration("1m"),
 						Query: influxdb.DashboardQuery{
@@ -1252,7 +1252,7 @@ data = from(bucket: "telegraf") |> range(start: -1m)`,
 			},
 			args: args{
 				id: MustIDBase16(checkOneID),
-				check: &check.Threshold{
+				check: &check.Deadman{
 					Base: check.Base{
 						ID:      MustIDBase16(checkTwoID),
 						OrgID:   MustIDBase16(orgOneID),
@@ -1287,32 +1287,14 @@ data = from(bucket: "telegraf") |> range(start: -1m)`,
 							UpdatedAt: time.Date(2002, 5, 4, 1, 2, 3, 0, time.UTC),
 						},
 					},
-					Thresholds: []check.ThresholdConfig{
-						&check.Lesser{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Ok,
-							},
-							Value: 1000,
-						},
-						&check.Greater{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Warn,
-							},
-							Value: 2000,
-						},
-						&check.Range{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Info,
-							},
-							Min:    1500,
-							Max:    1900,
-							Within: true,
-						},
-					},
+					TimeSince:  mustDuration("12s"),
+					StaleTime:  mustDuration("1h"),
+					ReportZero: false,
+					Level:      notification.Warn,
 				},
 			},
 			wants: wants{
-				check: &check.Threshold{
+				check: &check.Deadman{
 					Base: check.Base{
 						ID:      MustIDBase16(checkOneID),
 						OrgID:   MustIDBase16(orgOneID),
@@ -1347,28 +1329,10 @@ data = from(bucket: "telegraf") |> range(start: -1m)`,
 							UpdatedAt: time.Date(2007, 5, 4, 1, 2, 3, 0, time.UTC),
 						},
 					},
-					Thresholds: []check.ThresholdConfig{
-						&check.Lesser{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Ok,
-							},
-							Value: 1000,
-						},
-						&check.Greater{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Warn,
-							},
-							Value: 2000,
-						},
-						&check.Range{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Info,
-							},
-							Min:    1500,
-							Max:    1900,
-							Within: true,
-						},
-					},
+					TimeSince:  mustDuration("12s"),
+					StaleTime:  mustDuration("1h"),
+					ReportZero: false,
+					Level:      notification.Warn,
 				},
 			},
 		},
@@ -1490,16 +1454,7 @@ func PatchCheck(
 		{
 			name: "mixed patch",
 			fields: CheckFields{
-				IDGenerator:   mock.NewIDGenerator("0000000000000001", t),
 				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2007, 5, 4, 1, 2, 3, 0, time.UTC)},
-				Tasks: []influxdb.TaskCreate{
-					{
-						Flux: `option task = { every: 10s, name: "foo" }
-data = from(bucket: "telegraf") |> range(start: -1m)`,
-						OrganizationID: MustIDBase16(orgOneID),
-						OwnerID:        MustIDBase16(sixID),
-					},
-				},
 				Organizations: []*influxdb.Organization{
 					{
 						Name: "theorg",

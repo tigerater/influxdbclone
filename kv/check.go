@@ -352,7 +352,6 @@ func (s *Service) createCheckTask(ctx context.Context, tx Tx, c influxdb.Check) 
 		Flux:           script,
 		OwnerID:        c.GetOwnerID(),
 		OrganizationID: c.GetOrgID(),
-		Status:         string(c.GetStatus()),
 	}
 
 	t, err := s.createTask(ctx, tx, tc)
@@ -573,25 +572,21 @@ func (s *Service) updateCheck(ctx context.Context, tx Tx, id influxdb.ID, chk in
 		}
 	}
 
-	chk.SetTaskID(current.GetTaskID())
-	flux, err := chk.GenerateFlux()
-	if err != nil {
+	if err := s.deleteTask(ctx, tx, chk.GetTaskID()); err != nil {
 		return nil, err
 	}
-	if _, err := s.updateTask(ctx, tx, chk.GetTaskID(),
-		influxdb.TaskUpdate{
-			Flux:        &flux,
-			Status:      strPtr(string(chk.GetStatus())),
-			Description: strPtr(chk.GetDescription()),
-		},
-	); err != nil {
+
+	chk.SetOwnerID(current.GetOwnerID())
+
+	t, err := s.createCheckTask(ctx, tx, chk)
+	if err != nil {
 		return nil, err
 	}
 
 	// ID and OrganizationID can not be updated
+	chk.SetTaskID(t.ID)
 	chk.SetID(current.GetID())
 	chk.SetOrgID(current.GetOrgID())
-	chk.SetOwnerID(current.GetOwnerID())
 	chk.SetCreatedAt(current.GetCRUDLog().CreatedAt)
 	chk.SetUpdatedAt(s.Now())
 
@@ -600,12 +595,6 @@ func (s *Service) updateCheck(ctx context.Context, tx Tx, id influxdb.ID, chk in
 	}
 
 	return chk, nil
-}
-
-func strPtr(s string) *string {
-	ss := new(string)
-	*ss = s
-	return ss
 }
 
 func (s *Service) patchCheck(ctx context.Context, tx Tx, id influxdb.ID, upd influxdb.CheckUpdate) (influxdb.Check, error) {
@@ -648,15 +637,6 @@ func (s *Service) patchCheck(ctx context.Context, tx Tx, id influxdb.ID, upd inf
 	}
 
 	c.SetUpdatedAt(s.Now())
-
-	if _, err := s.updateTask(ctx, tx, c.GetTaskID(),
-		influxdb.TaskUpdate{
-			Status:      strPtr(string(c.GetStatus())),
-			Description: strPtr(c.GetDescription()),
-		},
-	); err != nil {
-		return nil, err
-	}
 
 	if err := s.putCheck(ctx, tx, c); err != nil {
 		return nil, err
