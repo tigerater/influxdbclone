@@ -8,7 +8,6 @@ import {createView, defaultViewQuery} from 'src/shared/utils/view'
 import {isConfigValid, buildQuery} from 'src/timeMachine/utils/queryBuilder'
 
 // Constants
-import {TimeMachineID} from 'src/timeMachine/constants'
 import {AUTOREFRESH_DEFAULT} from 'src/shared/constants'
 import {
   THRESHOLD_TYPE_TEXT,
@@ -28,7 +27,7 @@ import {
 } from 'src/types/dashboards'
 import {Action} from 'src/timeMachine/actions'
 import {TimeMachineTab} from 'src/types/timeMachine'
-import {RemoteDataState} from 'src/types'
+import {RemoteDataState, TimeMachineID} from 'src/types'
 import {Color} from 'src/types/colors'
 
 interface QueryBuilderState {
@@ -60,6 +59,7 @@ export interface TimeMachineState {
   autoRefresh: AutoRefresh
   draftQueries: DashboardDraftQuery[]
   isViewingRawData: boolean
+  isViewingVisOptions: boolean
   activeTab: TimeMachineTab
   activeQueryIndex: number | null
   queryBuilder: QueryBuilderState
@@ -81,6 +81,7 @@ export const initialStateHelper = (): TimeMachineState => ({
   view: createView(),
   draftQueries: [{...defaultViewQuery(), hidden: false}],
   isViewingRawData: false,
+  isViewingVisOptions: false,
   activeTab: 'queries',
   activeQueryIndex: 0,
   queryResults: initialQueryResultsState(),
@@ -241,7 +242,12 @@ export const timeMachineReducer = (
 
     case 'SET_ACTIVE_TAB': {
       const {activeTab} = action.payload
+
       return {...state, activeTab}
+    }
+
+    case 'TOGGLE_VIS_OPTIONS': {
+      return {...state, isViewingVisOptions: !state.isViewingVisOptions}
     }
 
     case 'SET_AXES': {
@@ -808,14 +814,29 @@ export const timeMachineReducer = (
       })
     }
 
-    case 'REMOVE_CHECK': {
+    case 'CONVERT_TO_CHECK_VIEW': {
+      const view = convertView(state.view, 'check')
+
+      return {...state, view, activeTab: 'alerting'}
+    }
+
+    case 'CONVERT_FROM_CHECK_VIEW': {
       const view = convertView(state.view, 'xy')
+
       return {...state, view, activeTab: 'queries'}
     }
 
-    case 'ADD_CHECK': {
-      const view = convertView(state.view, 'check')
-      return {...state, view, activeTab: 'alerting'}
+    case 'TOGGLE_ALERTING_PANEL': {
+      if (
+        state.activeTab === 'queries' &&
+        state.view.properties.type === 'check'
+      ) {
+        return {...state, activeTab: 'alerting'}
+      } else if (state.activeTab === 'queries') {
+        return {...state, activeTab: 'alertingNotice'}
+      } else {
+        return {...state, activeTab: 'queries'}
+      }
     }
   }
 

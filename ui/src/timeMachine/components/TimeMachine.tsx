@@ -8,6 +8,7 @@ import {DraggableResizer, Orientation} from '@influxdata/clockface'
 import TimeMachineQueries from 'src/timeMachine/components/Queries'
 import TimeMachineAlerting from 'src/timeMachine/components/TimeMachineAlerting'
 import TimeMachineVis from 'src/timeMachine/components/Vis'
+import AddCheckDialog from 'src/timeMachine/components/AddCheckDialog'
 import ViewOptions from 'src/timeMachine/components/view_options/ViewOptions'
 
 // Utils
@@ -15,24 +16,33 @@ import {getActiveTimeMachine} from 'src/timeMachine/selectors'
 
 // Types
 import {AppState, TimeMachineTab} from 'src/types'
-import {TimeMachineID} from 'src/timeMachine/constants'
 
 const INITIAL_RESIZER_HANDLE = 0.5
 
 interface StateProps {
   activeTab: TimeMachineTab
-  activeTimeMachineID: TimeMachineID
+  isViewingVisOptions: boolean
 }
 
 const TimeMachine: FunctionComponent<StateProps> = ({
-  activeTimeMachineID,
   activeTab,
+  isViewingVisOptions,
 }) => {
   const [dragPosition, setDragPosition] = useState([INITIAL_RESIZER_HANDLE])
 
   const containerClassName = classnames('time-machine', {
-    'time-machine--split': activeTab === 'visualization',
+    'time-machine--split': isViewingVisOptions,
   })
+
+  let bottomContents: JSX.Element = null
+
+  if (activeTab === 'alerting') {
+    bottomContents = <TimeMachineAlerting />
+  } else if (activeTab === 'alertingNotice') {
+    bottomContents = <AddCheckDialog />
+  } else if (activeTab === 'queries') {
+    bottomContents = <TimeMachineQueries />
+  }
 
   return (
     <>
@@ -53,28 +63,21 @@ const TimeMachine: FunctionComponent<StateProps> = ({
               data-testid="time-machine--bottom"
             >
               <div className="time-machine--bottom-contents">
-                {activeTab === 'alerting' ? (
-                  <TimeMachineAlerting
-                    activeTimeMachineID={activeTimeMachineID}
-                  />
-                ) : (
-                  <TimeMachineQueries />
-                )}
+                {bottomContents}
               </div>
             </div>
           </DraggableResizer.Panel>
         </DraggableResizer>
       </div>
-      {activeTab === 'visualization' && <ViewOptions />}
+      {isViewingVisOptions && <ViewOptions />}
     </>
   )
 }
 
 const mstp = (state: AppState) => {
-  const {activeTab} = getActiveTimeMachine(state)
-  const {activeTimeMachineID} = state.timeMachines
+  const {activeTab, isViewingVisOptions} = getActiveTimeMachine(state)
 
-  return {activeTab, activeTimeMachineID}
+  return {activeTab, isViewingVisOptions}
 }
 
 export default connect<StateProps>(mstp)(TimeMachine)

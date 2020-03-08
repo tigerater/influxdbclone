@@ -278,41 +278,23 @@ func (m *HashMap) PrometheusCollectors() []prometheus.Collector {
 }
 
 type rhhTracker struct {
-	metrics    *Metrics
-	enabled    bool
-	baseLabels prometheus.Labels
-
-	// Prevent allocations by initialising these static maps when creating a
-	// new tracker.
-	hitIncLabels  prometheus.Labels
-	missIncLabels prometheus.Labels
+	metrics *Metrics
+	labels  prometheus.Labels
+	enabled bool
 }
 
 // Labels returns a copy of the default labels used by the tracker's metrics.
 // The returned map is safe for modification.
 func (t *rhhTracker) Labels() prometheus.Labels {
-	labels := make(prometheus.Labels, len(t.baseLabels))
-	for k, v := range t.baseLabels {
+	labels := make(prometheus.Labels, len(t.labels))
+	for k, v := range t.labels {
 		labels[k] = v
 	}
 	return labels
 }
 
 func newRHHTracker(metrics *Metrics, defaultLabels prometheus.Labels) *rhhTracker {
-	tracker := &rhhTracker{metrics: metrics, enabled: true}
-
-	// Create a copy of the provided labels.
-	tracker.baseLabels = make(prometheus.Labels, len(defaultLabels))
-	for k, v := range defaultLabels {
-		tracker.baseLabels[k] = v
-	}
-
-	tracker.hitIncLabels = tracker.Labels()
-	tracker.hitIncLabels["status"] = "hit"
-	tracker.missIncLabels = tracker.Labels()
-	tracker.missIncLabels["status"] = "miss"
-
-	return tracker
+	return &rhhTracker{metrics: metrics, labels: defaultLabels, enabled: true}
 }
 
 func (t *rhhTracker) SetLoadFactor(load float64) {
@@ -320,7 +302,8 @@ func (t *rhhTracker) SetLoadFactor(load float64) {
 		return
 	}
 
-	t.metrics.LoadFactor.With(t.baseLabels).Set(load)
+	labels := t.Labels()
+	t.metrics.LoadFactor.With(labels).Set(load)
 }
 
 func (t *rhhTracker) SetSize(sz uint64) {
@@ -328,7 +311,8 @@ func (t *rhhTracker) SetSize(sz uint64) {
 		return
 	}
 
-	t.metrics.Size.With(t.baseLabels).Set(float64(sz))
+	labels := t.Labels()
+	t.metrics.Size.With(labels).Set(float64(sz))
 }
 
 func (t *rhhTracker) ObserveGet(d time.Duration) {
@@ -336,8 +320,9 @@ func (t *rhhTracker) ObserveGet(d time.Duration) {
 		return
 	}
 
-	t.metrics.GetDuration.With(t.baseLabels).Observe(float64(d.Nanoseconds()))
-	t.metrics.LastGetDuration.With(t.baseLabels).Set(float64(d.Nanoseconds()))
+	labels := t.Labels()
+	t.metrics.GetDuration.With(labels).Observe(float64(d.Nanoseconds()))
+	t.metrics.LastGetDuration.With(labels).Set(float64(d.Nanoseconds()))
 }
 
 func (t *rhhTracker) ObservePut(d time.Duration) {
@@ -345,8 +330,9 @@ func (t *rhhTracker) ObservePut(d time.Duration) {
 		return
 	}
 
-	t.metrics.InsertDuration.With(t.baseLabels).Observe(float64(d.Nanoseconds()))
-	t.metrics.LastInsertDuration.With(t.baseLabels).Set(float64(d.Nanoseconds()))
+	labels := t.Labels()
+	t.metrics.InsertDuration.With(labels).Observe(float64(d.Nanoseconds()))
+	t.metrics.LastInsertDuration.With(labels).Set(float64(d.Nanoseconds()))
 }
 
 func (t *rhhTracker) SetGrowDuration(d time.Duration) {
@@ -354,7 +340,8 @@ func (t *rhhTracker) SetGrowDuration(d time.Duration) {
 		return
 	}
 
-	t.metrics.LastGrowDuration.With(t.baseLabels).Set(d.Seconds())
+	labels := t.Labels()
+	t.metrics.LastGrowDuration.With(labels).Set(d.Seconds())
 }
 
 // TODO(edd): currently no safe way to calculate this concurrently.
@@ -363,7 +350,8 @@ func (t *rhhTracker) SetProbeCount(length float64) {
 		return
 	}
 
-	t.metrics.MeanProbeCount.With(t.baseLabels).Set(length)
+	labels := t.Labels()
+	t.metrics.MeanProbeCount.With(labels).Set(length)
 }
 
 func (t *rhhTracker) incGet(status string) {
@@ -371,10 +359,8 @@ func (t *rhhTracker) incGet(status string) {
 		return
 	}
 
-	labels := t.hitIncLabels
-	if status == "miss" {
-		labels = t.missIncLabels
-	}
+	labels := t.Labels()
+	labels["status"] = status
 	t.metrics.Gets.With(labels).Inc()
 }
 
@@ -386,10 +372,8 @@ func (t *rhhTracker) incPut(status string) {
 		return
 	}
 
-	labels := t.hitIncLabels
-	if status == "miss" {
-		labels = t.missIncLabels
-	}
+	labels := t.Labels()
+	labels["status"] = status
 	t.metrics.Puts.With(labels).Inc()
 }
 

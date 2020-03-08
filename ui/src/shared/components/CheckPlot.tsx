@@ -22,7 +22,6 @@ import {
   RemoteDataState,
   CheckViewProperties,
   TimeZone,
-  AppState,
   Check,
   Threshold,
 } from 'src/types'
@@ -35,13 +34,9 @@ interface DispatchProps {
   updateCurrentCheck: typeof updateCurrentCheck
 }
 
-interface StateProps {
-  check: Partial<Check>
-  thresholds: Threshold[]
-}
-
 interface OwnProps {
   table: Table
+  check: Partial<Check>
   fluxGroupKeyUnion: string[]
   loading: RemoteDataState
   timeZone: TimeZone
@@ -49,17 +44,23 @@ interface OwnProps {
   children: (config: Config) => JSX.Element
 }
 
-type Props = OwnProps & DispatchProps & StateProps
+type Props = OwnProps & DispatchProps
 
 const CheckPlot: FunctionComponent<Props> = ({
   updateCurrentCheck,
   table,
-  thresholds,
+  check,
   fluxGroupKeyUnion,
   loading,
   children,
   timeZone,
+  viewProperties: {colors},
 }) => {
+  let thresholds = []
+  if (check && check.type === 'threshold') {
+    thresholds = check.thresholds
+  }
+
   const updateCheckThresholds = (thresholds: Threshold[]) => {
     updateCurrentCheck({thresholds})
   }
@@ -119,6 +120,7 @@ const CheckPlot: FunctionComponent<Props> = ({
         y: Y_COLUMN,
         fill: groupKey,
         interpolation: 'monotoneX',
+        colors,
       },
       {
         type: 'custom',
@@ -143,26 +145,11 @@ const CheckPlot: FunctionComponent<Props> = ({
   )
 }
 
-const mstp = (state: AppState): StateProps => {
-  const {
-    checks: {
-      current: {check},
-    },
-  } = state
-
-  let thresholds = []
-  if (check.type === 'threshold') {
-    thresholds = check.thresholds
-  }
-
-  return {check, thresholds}
-}
-
 const mdtp: DispatchProps = {
   updateCurrentCheck: updateCurrentCheck,
 }
 
-export default connect<StateProps, DispatchProps, {}>(
-  mstp,
+export default connect<{}, DispatchProps, {}>(
+  null,
   mdtp
 )(CheckPlot)

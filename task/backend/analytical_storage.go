@@ -180,8 +180,10 @@ func (as *AnalyticalStorage) FindRuns(ctx context.Context, filter influxdb.RunFi
 	  %s
 	  |> group(columns: ["taskID"])
 	  |> pivot(rowKey:["_time"], columnKey: ["_field"], valueColumn: "_value")
+	  |> limit(n:%d)
+	  |> sort(columns:["scheduledFor"], desc: true)
 
-	  `, filter.Task.String(), filterPart)
+	  `, filter.Task.String(), filterPart, filter.Limit-len(runs))
 
 	// At this point we are behind authorization
 	// so we are faking a read only permission to the org's system bucket
