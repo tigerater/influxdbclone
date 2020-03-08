@@ -11,17 +11,14 @@ import TimeMachine from 'src/timeMachine/components/TimeMachine'
 // Actions
 import {
   updateCheck,
-  saveCheckFromTimeMachine,
+  setCurrentCheck,
+  updateCurrentCheck,
+  saveCurrentCheck,
 } from 'src/alerting/actions/checks'
-import {
-  setActiveTimeMachine,
-  updateTimeMachineCheck,
-  setTimeMachineCheck,
-} from 'src/timeMachine/actions'
+import {setActiveTimeMachine} from 'src/timeMachine/actions'
 
 // Utils
 import {createView} from 'src/shared/utils/view'
-import {getActiveTimeMachine} from 'src/timeMachine/selectors'
 
 // Types
 import {Check, AppState, RemoteDataState, CheckViewProperties} from 'src/types'
@@ -29,47 +26,44 @@ import {DEFAULT_THRESHOLD_CHECK} from 'src/alerting/constants'
 
 interface DispatchProps {
   updateCheck: typeof updateCheck
-  setTimeMachineCheck: typeof setTimeMachineCheck
-  updateTimeMachineCheck: typeof updateTimeMachineCheck
+  setCurrentCheck: typeof setCurrentCheck
+  updateCurrentCheck: typeof updateCurrentCheck
   onSetActiveTimeMachine: typeof setActiveTimeMachine
-  saveCheckFromTimeMachine: typeof saveCheckFromTimeMachine
+  saveCurrentCheck: typeof saveCurrentCheck
 }
 
 interface StateProps {
   check: Partial<Check>
-  checkStatus: RemoteDataState
+  status: RemoteDataState
 }
 
 type Props = DispatchProps & StateProps & WithRouterProps
 
 const NewCheckOverlay: FunctionComponent<Props> = ({
   onSetActiveTimeMachine,
-  updateTimeMachineCheck,
-  setTimeMachineCheck,
-  saveCheckFromTimeMachine,
+  updateCurrentCheck,
+  setCurrentCheck,
+  saveCurrentCheck,
   params,
   router,
-  checkStatus,
+  status,
   check,
 }) => {
   useEffect(() => {
+    setCurrentCheck(RemoteDataState.Done, DEFAULT_THRESHOLD_CHECK)
     const view = createView<CheckViewProperties>('check')
     onSetActiveTimeMachine('alerting', {
       view,
       activeTab: 'queries',
-      alerting: {
-        checkStatus: RemoteDataState.Done,
-        check: DEFAULT_THRESHOLD_CHECK,
-      },
     })
   }, [])
 
   const handleUpdateName = (name: string) => {
-    updateTimeMachineCheck({name})
+    updateCurrentCheck({name})
   }
 
   const handleClose = () => {
-    setTimeMachineCheck(RemoteDataState.NotStarted, null)
+    setCurrentCheck(RemoteDataState.NotStarted, null)
     router.push(`/orgs/${params.orgID}/alerting`)
   }
 
@@ -77,7 +71,7 @@ const NewCheckOverlay: FunctionComponent<Props> = ({
     // todo: when check has own view
     // save view as view
     // put view.id on check.viewID
-    saveCheckFromTimeMachine()
+    saveCurrentCheck()
     handleClose()
   }
 
@@ -86,7 +80,7 @@ const NewCheckOverlay: FunctionComponent<Props> = ({
       <div className="veo">
         <SpinnerContainer
           spinnerComponent={<TechnoSpinner />}
-          loading={checkStatus || RemoteDataState.Loading}
+          loading={status || RemoteDataState.Loading}
         >
           <CheckEOHeader
             key={check && check.name}
@@ -106,18 +100,20 @@ const NewCheckOverlay: FunctionComponent<Props> = ({
 
 const mstp = (state: AppState): StateProps => {
   const {
-    alerting: {check, checkStatus},
-  } = getActiveTimeMachine(state)
+    checks: {
+      current: {check, status},
+    },
+  } = state
 
-  return {check, checkStatus}
+  return {check, status}
 }
 
 const mdtp: DispatchProps = {
   updateCheck: updateCheck,
-  setTimeMachineCheck: setTimeMachineCheck,
-  updateTimeMachineCheck: updateTimeMachineCheck,
+  setCurrentCheck: setCurrentCheck,
+  updateCurrentCheck: updateCurrentCheck,
   onSetActiveTimeMachine: setActiveTimeMachine,
-  saveCheckFromTimeMachine: saveCheckFromTimeMachine,
+  saveCurrentCheck: saveCurrentCheck,
 }
 
 export default connect<StateProps, DispatchProps, {}>(

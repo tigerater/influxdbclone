@@ -15,14 +15,14 @@ import StatusRuleComponent from 'src/alerting/components/notifications/StatusRul
 import TagRuleComponent from 'src/alerting/components/notifications/TagRule'
 import DashedButton from 'src/shared/components/dashed_button/DashedButton'
 
-// Utils
-import {useRuleDispatch} from './RuleOverlay.reducer'
-
 // Constants
-import {NEW_TAG_RULE_DRAFT} from 'src/alerting/constants'
+import {newTagRule} from 'src/alerting/constants'
 
 // Types
 import {RuleState} from './RuleOverlay.reducer'
+
+// Hooks
+import {useRuleDispatch} from 'src/shared/hooks'
 
 interface Props {
   rule: RuleState
@@ -35,16 +35,16 @@ const RuleConditions: FC<Props> = ({rule}) => {
   const addTagRule = () => {
     dispatch({
       type: 'ADD_TAG_RULE',
-      tagRule: NEW_TAG_RULE_DRAFT,
+      tagRule: newTagRule,
     })
   }
 
   const statuses = statusRules.map(status => (
-    <StatusRuleComponent key={status.cid} status={status} />
+    <StatusRuleComponent key={status.id} status={status} />
   ))
 
   const tags = tagRules.map(tagRule => (
-    <TagRuleComponent key={tagRule.cid} tagRule={tagRule} />
+    <TagRuleComponent key={tagRule.id} tagRule={tagRule} />
   ))
 
   return (

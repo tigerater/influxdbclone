@@ -6,12 +6,14 @@ import {Form, Panel, Grid, Columns} from '@influxdata/clockface'
 import RuleEndpointDropdown from 'src/alerting/components/notifications/RuleEndpointDropdown'
 import RuleMessageContents from 'src/alerting/components/notifications/RuleMessageContents'
 
-// Utils
-import {getEndpointBase} from 'src/alerting/components/notifications/utils'
-import {useRuleDispatch} from './RuleOverlay.reducer'
-
 // Types
 import {NotificationEndpoint, NotificationRuleDraft} from 'src/types'
+
+// Utils
+import {getEndpointBase} from 'src/alerting/components/notifications/utils'
+
+// Hooks
+import {useRuleDispatch} from 'src/shared/hooks'
 
 interface Props {
   endpoints: NotificationEndpoint[]

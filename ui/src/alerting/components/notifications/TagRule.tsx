@@ -12,16 +12,15 @@ import {
   FlexDirection,
   ComponentColor,
 } from '@influxdata/clockface'
-
 import TagRuleOperatorDropdown, {
   Operator,
 } from 'src/alerting/components/notifications/TagRuleOperatorDropdown'
 
-// Utils
-import {useRuleDispatch} from './RuleOverlay.reducer'
-
 // Types
 import {TagRuleDraft} from 'src/types'
+
+// Hooks
+import {useRuleDispatch} from 'src/shared/hooks'
 
 interface Props {
   tagRule: TagRuleDraft
@@ -51,7 +50,7 @@ const TagRule: FC<Props> = ({tagRule}) => {
   const onSelectOperator = (operator: Operator) => {
     dispatch({
       type: 'SET_TAG_RULE_OPERATOR',
-      tagRuleID: tagRule.cid,
+      tagRuleID: tagRule.id,
       operator,
     })
   }
@@ -59,7 +58,7 @@ const TagRule: FC<Props> = ({tagRule}) => {
   const onDelete = () => {
     dispatch({
       type: 'DELETE_TAG_RULE',
-      tagRuleID: tagRule.cid,
+      tagRuleID: tagRule.id,
     })
   }
 

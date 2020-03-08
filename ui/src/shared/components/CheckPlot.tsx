@@ -25,13 +25,13 @@ import {
   Check,
   Threshold,
 } from 'src/types'
-import {updateTimeMachineCheck} from 'src/timeMachine/actions'
+import {updateCurrentCheck} from 'src/alerting/actions/checks'
 
 const X_COLUMN = '_time'
 const Y_COLUMN = '_value'
 
 interface DispatchProps {
-  updateTimeMachineCheck: typeof updateTimeMachineCheck
+  updateCurrentCheck: typeof updateCurrentCheck
 }
 
 interface OwnProps {
@@ -47,7 +47,7 @@ interface OwnProps {
 type Props = OwnProps & DispatchProps
 
 const CheckPlot: FunctionComponent<Props> = ({
-  updateTimeMachineCheck,
+  updateCurrentCheck,
   table,
   check,
   fluxGroupKeyUnion,
@@ -61,8 +61,8 @@ const CheckPlot: FunctionComponent<Props> = ({
     thresholds = check.thresholds
   }
 
-  const updateTimeMachineCheckThresholds = (thresholds: Threshold[]) => {
-    updateTimeMachineCheck({thresholds})
+  const updateCheckThresholds = (thresholds: Threshold[]) => {
+    updateCurrentCheck({thresholds})
   }
 
   const [yDomain, onSetYDomain, onResetYDomain] = useVisDomainSettings(
@@ -128,7 +128,7 @@ const CheckPlot: FunctionComponent<Props> = ({
           <ThresholdMarkers
             key="custom"
             thresholds={thresholds}
-            onSetThresholds={updateTimeMachineCheckThresholds}
+            onSetThresholds={updateCheckThresholds}
             yScale={yScale}
             yDomain={yDomain}
           />
@@ -146,7 +146,7 @@ const CheckPlot: FunctionComponent<Props> = ({
 }
 
 const mdtp: DispatchProps = {
-  updateTimeMachineCheck: updateTimeMachineCheck,
+  updateCurrentCheck: updateCurrentCheck,
 }
 
 export default connect<{}, DispatchProps, {}>(

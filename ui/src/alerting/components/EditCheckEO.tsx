@@ -13,12 +13,13 @@ import {createView} from 'src/shared/utils/view'
 import {getActiveTimeMachine} from 'src/timeMachine/selectors'
 
 // Actions
-import {updateCheck, getCheckForTimeMachine} from 'src/alerting/actions/checks'
 import {
-  setActiveTimeMachine,
-  setTimeMachineCheck,
-  updateTimeMachineCheck,
-} from 'src/timeMachine/actions'
+  updateCheck,
+  setCurrentCheck,
+  updateCurrentCheck,
+  getCurrentCheck,
+} from 'src/alerting/actions/checks'
+import {setActiveTimeMachine} from 'src/timeMachine/actions'
 
 // Types
 import {
@@ -31,11 +32,11 @@ import {
 } from 'src/types'
 
 interface DispatchProps {
-  onUpdateCheck: typeof updateCheck
-  onGetCheckForTimeMachine: typeof getCheckForTimeMachine
-  onUpdateTimeMachineCheck: typeof updateTimeMachineCheck
+  updateCheck: typeof updateCheck
+  setCurrentCheck: typeof setCurrentCheck
+  getCurrentCheck: typeof getCurrentCheck
+  updateCurrentCheck: typeof updateCurrentCheck
   onSetActiveTimeMachine: typeof setActiveTimeMachine
-  onSetTimeMachineCheck: typeof setTimeMachineCheck
 }
 
 interface StateProps {
@@ -48,13 +49,11 @@ interface StateProps {
 type Props = WithRouterProps & DispatchProps & StateProps
 
 const EditCheckEditorOverlay: FunctionComponent<Props> = ({
-  onUpdateCheck,
-  onGetCheckForTimeMachine,
-  onUpdateTimeMachineCheck,
   onSetActiveTimeMachine,
-  onSetTimeMachineCheck,
   activeTimeMachineID,
+  getCurrentCheck,
   checkStatus,
+  updateCheck,
   router,
   params: {checkID, orgID},
   query,
@@ -70,22 +69,22 @@ const EditCheckEditorOverlay: FunctionComponent<Props> = ({
         isViewingRawData: false,
       })
     } else {
-      onGetCheckForTimeMachine(checkID)
+      getCurrentCheck(checkID)
     }
   }, [check, checkID])
 
   const handleUpdateName = (name: string) => {
-    onUpdateTimeMachineCheck({name})
+    updateCurrentCheck({name})
   }
 
   const handleClose = () => {
-    onSetTimeMachineCheck(RemoteDataState.NotStarted, null)
+    setCurrentCheck(RemoteDataState.NotStarted, null)
     router.push(`/orgs/${orgID}/alerting`)
   }
 
   const handleSave = () => {
     // todo: update view when check has own view
-    onUpdateCheck({...check, query})
+    updateCheck({...check, query})
     handleClose()
   }
 
@@ -127,23 +126,23 @@ const EditCheckEditorOverlay: FunctionComponent<Props> = ({
 
 const mstp = (state: AppState): StateProps => {
   const {
+    checks: {
+      current: {check, status: checkStatus},
+    },
     timeMachines: {activeTimeMachineID},
   } = state
 
-  const {
-    draftQueries,
-    alerting: {check, checkStatus},
-  } = getActiveTimeMachine(state)
+  const {draftQueries} = getActiveTimeMachine(state)
 
   return {check, checkStatus, activeTimeMachineID, query: draftQueries[0]}
 }
 
 const mdtp: DispatchProps = {
-  onUpdateCheck: updateCheck,
-  onSetTimeMachineCheck: setTimeMachineCheck,
-  onUpdateTimeMachineCheck: updateTimeMachineCheck,
+  updateCheck: updateCheck,
+  setCurrentCheck: setCurrentCheck,
+  updateCurrentCheck: updateCurrentCheck,
   onSetActiveTimeMachine: setActiveTimeMachine,
-  onGetCheckForTimeMachine: getCheckForTimeMachine,
+  getCurrentCheck: getCurrentCheck,
 }
 
 export default connect<StateProps, DispatchProps, {}>(

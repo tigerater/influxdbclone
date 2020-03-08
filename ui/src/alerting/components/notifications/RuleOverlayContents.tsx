@@ -14,22 +14,23 @@ import RuleSchedule from 'src/alerting/components/notifications/RuleSchedule'
 import RuleConditions from 'src/alerting/components/notifications/RuleConditions'
 import RuleMessage from 'src/alerting/components/notifications/RuleMessage'
 
-// Constants
-import {NEW_ENDPOINT_FIXTURES} from 'src/alerting/constants'
-
-// Utils
-import {useRuleState, useRuleDispatch} from './RuleOverlay.reducer'
-
 // Types
 import {NotificationRuleDraft} from 'src/types'
 
-const RuleOverlayContents: FC = () => {
-  const rule = useRuleState()
-  const dispatch = useRuleDispatch()
+// Constants
+import {endpoints} from 'src/alerting/constants'
 
+// Hooks
+import {useRuleDispatch} from 'src/shared/hooks'
+
+interface Props {
+  rule: NotificationRuleDraft
+}
+
+const RuleOverlayContents: FC<Props> = ({rule}) => {
+  const dispatch = useRuleDispatch()
   const handleChange = e => {
     const {name, value} = e.target
-
     dispatch({
       type: 'UPDATE_RULE',
       rule: {...rule, [name]: value} as NotificationRuleDraft,
@@ -62,7 +63,7 @@ const RuleOverlayContents: FC = () => {
           </Grid.Column>
         </Grid.Row>
         <RuleConditions rule={rule} />
-        <RuleMessage rule={rule} endpoints={NEW_ENDPOINT_FIXTURES} />
+        <RuleMessage rule={rule} endpoints={endpoints} />
       </Form>
     </Grid>
   )

@@ -16,7 +16,6 @@ const PagerDutyMessage: FC<Props> = ({messageTemplate, onChange}) => {
         name="messageTemplate"
         onChange={onChange}
         value={messageTemplate}
-        rows={3}
       />
     </Form.Element>
   )

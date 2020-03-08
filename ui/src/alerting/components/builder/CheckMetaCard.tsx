@@ -16,10 +16,10 @@ import {
 import {Input} from '@influxdata/clockface'
 
 // Actions
-import {updateTimeMachineCheck, changeCheckType} from 'src/timeMachine/actions'
-
-//Selectors
-import {getActiveTimeMachine} from 'src/timeMachine/selectors'
+import {
+  updateCurrentCheck,
+  changeCurrentCheckType,
+} from 'src/alerting/actions/checks'
 
 // Types
 import {Check, AppState, CheckType} from 'src/types'
@@ -30,8 +30,8 @@ import {
 } from 'src/alerting/constants'
 
 interface DispatchProps {
-  updateTimeMachineCheck: typeof updateTimeMachineCheck
-  changeCheckType: typeof changeCheckType
+  updateCurrentCheck: typeof updateCurrentCheck
+  changeCurrentCheckType: typeof changeCurrentCheckType
 }
 
 interface StateProps {
@@ -41,34 +41,30 @@ interface StateProps {
 type Props = DispatchProps & StateProps
 
 const CheckMetaCard: FC<Props> = ({
-  updateTimeMachineCheck,
-  changeCheckType,
+  updateCurrentCheck,
+  changeCurrentCheckType,
   check,
 }) => {
   const handleChangeType = (type: CheckType) => {
-    changeCheckType(type)
+    changeCurrentCheckType(type)
   }
 
   const handleChangeName = (e: React.ChangeEvent<HTMLInputElement>) => {
-    updateTimeMachineCheck({name: e.target.value})
+    updateCurrentCheck({name: e.target.value})
   }
 
   const handleChangeMessage = (e: ChangeEvent<HTMLTextAreaElement>) => {
     const statusMessageTemplate = e.target.value
-    updateTimeMachineCheck({statusMessageTemplate})
+    updateCurrentCheck({statusMessageTemplate})
   }
 
   const handleChangeSchedule = (scheduleType: 'cron' | 'every') => {
     if (scheduleType == 'cron' && !check.cron) {
-      updateTimeMachineCheck({
-        cron: DEFAULT_CHECK_CRON,
-        every: null,
-        offset: null,
-      })
+      updateCurrentCheck({cron: DEFAULT_CHECK_CRON, every: null, offset: null})
       return
     }
     if (scheduleType == 'every' && !check.every) {
-      updateTimeMachineCheck({
+      updateCurrentCheck({
         every: DEFAULT_CHECK_EVERY,
         offset: DEFAULT_CHECK_OFFSET,
         cron: null,
@@ -220,15 +216,17 @@ const CheckMetaCard: FC<Props> = ({
 
 const mstp = (state: AppState): StateProps => {
   const {
-    alerting: {check},
-  } = getActiveTimeMachine(state)
+    checks: {
+      current: {check},
+    },
+  } = state
 
   return {check}
 }
 
 const mdtp: DispatchProps = {
-  updateTimeMachineCheck: updateTimeMachineCheck,
-  changeCheckType: changeCheckType,
+  updateCurrentCheck: updateCurrentCheck,
+  changeCurrentCheckType: changeCurrentCheckType,
 }
 
 export default connect<StateProps, DispatchProps, {}>(

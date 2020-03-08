@@ -1,29 +1,19 @@
 // Utils
-import {getView as getViewFromState} from 'src/dashboards/selectors'
-import {getCheck as getCheckFromState} from 'src/alerting/selectors'
-
-// APIs
 import {
   getView as getViewAJAX,
   updateView as updateViewAJAX,
 } from 'src/dashboards/apis/'
-import * as api from 'src/client'
-
-// Constants
-import * as copy from 'src/shared/copy/notifications'
-
-// Actions
-import {
-  notify,
-  Action as NotificationAction,
-} from 'src/shared/actions/notifications'
-import {setActiveTimeMachine} from 'src/timeMachine/actions'
 
 // Types
-import {RemoteDataState, QueryView, GetState} from 'src/types'
+import {RemoteDataState, QueryView} from 'src/types'
 import {Dispatch} from 'redux'
 import {View} from 'src/types'
 import {Action as TimeMachineAction} from 'src/timeMachine/actions'
+import {Action as CheckAction} from 'src/alerting/actions/checks'
+
+// Actions
+import {setActiveTimeMachine} from 'src/timeMachine/actions'
+import {setCurrentCheck} from 'src/alerting/actions/checks'
 import {TimeMachineID} from 'src/types'
 
 export type Action = SetViewAction | SetViewsAction | ResetViewsAction
@@ -106,40 +96,17 @@ export const getViewForTimeMachine = (
   cellID: string,
   timeMachineID: TimeMachineID
 ) => async (
-  dispatch: Dispatch<Action | TimeMachineAction | NotificationAction>,
-  getState: GetState
+  dispatch: Dispatch<Action | TimeMachineAction | CheckAction>
 ): Promise<void> => {
-  const state = getState()
   dispatch(setView(cellID, null, RemoteDataState.Loading))
   try {
-    let view = getViewFromState(state, cellID) as QueryView
-
-    if (!view) {
-      view = (await getViewAJAX(dashboardID, cellID)) as QueryView
+    const view = (await getViewAJAX(dashboardID, cellID)) as QueryView
+    if (view.properties.type === 'check') {
+      dispatch(setCurrentCheck(RemoteDataState.Done, view.properties.check))
     }
-
-    if (view.properties.type !== 'check') {
-      dispatch(setActiveTimeMachine(timeMachineID, {view}))
-    } else {
-      let check = getCheckFromState(state, view.properties.checkID)
-
-      if (!check) {
-        const resp = await api.getCheck({checkID: view.properties.checkID})
-        if (resp.status !== 200) {
-          throw new Error(resp.data.message)
-        }
-        check = resp.data
-      }
-
-      dispatch(
-        setActiveTimeMachine(timeMachineID, {
-          view,
-          alerting: {check, checkStatus: RemoteDataState.Done},
-        })
-      )
-    }
-  } catch (e) {
-    dispatch(notify(copy.getVieworCheckFailed(e.message)))
+    dispatch(setView(cellID, view, RemoteDataState.Done))
+    dispatch(setActiveTimeMachine(timeMachineID, {view}))
+  } catch {
     dispatch(setView(cellID, null, RemoteDataState.Error))
   }
 }
