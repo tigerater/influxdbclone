@@ -2,30 +2,28 @@ package inmem
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path"
 
-	"github.com/influxdata/influxdb"
+	platform "github.com/influxdata/influxdb"
 )
 
 var (
-	errDBRPMappingNotFound = &influxdb.Error{
-		Code: influxdb.ENotFound,
-		Msg:  "dbrp mapping not found",
-	}
+	errDBRPMappingNotFound = fmt.Errorf("dbrp mapping not found")
 )
 
 func encodeDBRPMappingKey(cluster, db, rp string) string {
 	return path.Join(cluster, db, rp)
 }
 
-func (s *Service) loadDBRPMapping(ctx context.Context, cluster, db, rp string) (*influxdb.DBRPMapping, error) {
-	i, ok := s.dbrpMappingKV.Load(encodeDBRPMappingKey(cluster, db, rp))
+func (c *Service) loadDBRPMapping(ctx context.Context, cluster, db, rp string) (*platform.DBRPMapping, error) {
+	i, ok := c.dbrpMappingKV.Load(encodeDBRPMappingKey(cluster, db, rp))
 	if !ok {
 		return nil, errDBRPMappingNotFound
 	}
 
-	m, ok := i.(influxdb.DBRPMapping)
+	m, ok := i.(platform.DBRPMapping)
 	if !ok {
 		return nil, fmt.Errorf("type %T is not a dbrp mapping", i)
 	}
@@ -34,14 +32,14 @@ func (s *Service) loadDBRPMapping(ctx context.Context, cluster, db, rp string) (
 }
 
 // FindBy returns a single dbrp mapping by cluster, db and rp.
-func (s *Service) FindBy(ctx context.Context, cluster, db, rp string) (*influxdb.DBRPMapping, error) {
+func (s *Service) FindBy(ctx context.Context, cluster, db, rp string) (*platform.DBRPMapping, error) {
 	return s.loadDBRPMapping(ctx, cluster, db, rp)
 }
 
-func (s *Service) forEachDBRPMapping(ctx context.Context, fn func(m *influxdb.DBRPMapping) bool) error {
+func (c *Service) forEachDBRPMapping(ctx context.Context, fn func(m *platform.DBRPMapping) bool) error {
 	var err error
-	s.dbrpMappingKV.Range(func(k, v interface{}) bool {
-		m, ok := v.(influxdb.DBRPMapping)
+	c.dbrpMappingKV.Range(func(k, v interface{}) bool {
+		m, ok := v.(platform.DBRPMapping)
 		if !ok {
 			err = fmt.Errorf("type %T is not a dbrp mapping", v)
 			return false
@@ -52,9 +50,9 @@ func (s *Service) forEachDBRPMapping(ctx context.Context, fn func(m *influxdb.DB
 	return err
 }
 
-func (s *Service) filterDBRPMappings(ctx context.Context, fn func(m *influxdb.DBRPMapping) bool) ([]*influxdb.DBRPMapping, error) {
-	mappings := []*influxdb.DBRPMapping{}
-	err := s.forEachDBRPMapping(ctx, func(m *influxdb.DBRPMapping) bool {
+func (s *Service) filterDBRPMappings(ctx context.Context, fn func(m *platform.DBRPMapping) bool) ([]*platform.DBRPMapping, error) {
+	mappings := []*platform.DBRPMapping{}
+	err := s.forEachDBRPMapping(ctx, func(m *platform.DBRPMapping) bool {
 		if fn(m) {
 			mappings = append(mappings, m)
 		}
@@ -69,12 +67,9 @@ func (s *Service) filterDBRPMappings(ctx context.Context, fn func(m *influxdb.DB
 }
 
 // Find returns the first dbrp mapping that matches filter.
-func (s *Service) Find(ctx context.Context, filter influxdb.DBRPMappingFilter) (*influxdb.DBRPMapping, error) {
+func (s *Service) Find(ctx context.Context, filter platform.DBRPMappingFilter) (*platform.DBRPMapping, error) {
 	if filter.Cluster == nil && filter.Database == nil && filter.RetentionPolicy == nil {
-		return nil, &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Msg:  "no filter parameters provided",
-		}
+		return nil, fmt.Errorf("no filter parameters provided")
 	}
 
 	// filter by dbrpMapping id
@@ -96,17 +91,17 @@ func (s *Service) Find(ctx context.Context, filter influxdb.DBRPMappingFilter) (
 
 // FindMany returns a list of dbrpMappings that match filter and the total count of matching dbrp mappings.
 // Additional options provide pagination & sorting.
-func (s *Service) FindMany(ctx context.Context, filter influxdb.DBRPMappingFilter, opt ...influxdb.FindOptions) ([]*influxdb.DBRPMapping, int, error) {
+func (s *Service) FindMany(ctx context.Context, filter platform.DBRPMappingFilter, opt ...platform.FindOptions) ([]*platform.DBRPMapping, int, error) {
 	// filter by dbrpMapping id
 	if filter.Cluster != nil && filter.Database != nil && filter.RetentionPolicy != nil {
 		m, err := s.FindBy(ctx, *filter.Cluster, *filter.Database, *filter.RetentionPolicy)
 		if err != nil {
 			return nil, 0, err
 		}
-		return []*influxdb.DBRPMapping{m}, 1, nil
+		return []*platform.DBRPMapping{m}, 1, nil
 	}
 
-	filterFunc := func(mapping *influxdb.DBRPMapping) bool {
+	filterFunc := func(mapping *platform.DBRPMapping) bool {
 		return (filter.Cluster == nil || (*filter.Cluster) == mapping.Cluster) &&
 			(filter.Database == nil || (*filter.Database) == mapping.Database) &&
 			(filter.RetentionPolicy == nil || (*filter.RetentionPolicy) == mapping.RetentionPolicy) &&
@@ -122,7 +117,7 @@ func (s *Service) FindMany(ctx context.Context, filter influxdb.DBRPMappingFilte
 }
 
 // Create creates a new dbrp mapping.
-func (s *Service) Create(ctx context.Context, m *influxdb.DBRPMapping) error {
+func (s *Service) Create(ctx context.Context, m *platform.DBRPMapping) error {
 	if err := m.Validate(); err != nil {
 		return nil
 	}
@@ -135,17 +130,14 @@ func (s *Service) Create(ctx context.Context, m *influxdb.DBRPMapping) error {
 	}
 
 	if !existing.Equal(m) {
-		return &influxdb.Error{
-			Code: influxdb.EConflict,
-			Msg:  "dbrp mapping already exists",
-		}
+		return errors.New("dbrp mapping already exists")
 	}
 
 	return s.PutDBRPMapping(ctx, m)
 }
 
 // PutDBRPMapping sets dbrpMapping with the current ID.
-func (s *Service) PutDBRPMapping(ctx context.Context, m *influxdb.DBRPMapping) error {
+func (s *Service) PutDBRPMapping(ctx context.Context, m *platform.DBRPMapping) error {
 	k := encodeDBRPMappingKey(m.Cluster, m.Database, m.RetentionPolicy)
 	s.dbrpMappingKV.Store(k, *m)
 	return nil
