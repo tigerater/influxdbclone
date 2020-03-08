@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io/ioutil"
+	"math"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -13,7 +14,6 @@ import (
 	"time"
 
 	"github.com/influxdata/influxdb/logger"
-	"github.com/influxdata/influxdb/pkg/fs"
 	"github.com/influxdata/influxdb/tsdb/tsm1"
 )
 
@@ -2363,7 +2363,7 @@ func TestFileStore_Open(t *testing.T) {
 	}
 
 	fs := tsm1.NewFileStore(dir)
-	if err := fs.Open(); err != nil {
+	if err := fs.Open(context.Background()); err != nil {
 		fatal(t, "opening file store", err)
 	}
 	defer fs.Close()
@@ -2394,7 +2394,7 @@ func TestFileStore_Remove(t *testing.T) {
 	}
 
 	fs := tsm1.NewFileStore(dir)
-	if err := fs.Open(); err != nil {
+	if err := fs.Open(context.Background()); err != nil {
 		fatal(t, "opening file store", err)
 	}
 	defer fs.Close()
@@ -2440,10 +2440,10 @@ func TestFileStore_Replace(t *testing.T) {
 
 	// Replace requires assumes new files have a .tmp extension
 	replacement := fmt.Sprintf("%s.%s", files[2], tsm1.TmpTSMFileExtension)
-	fs.RenameFile(files[2], replacement)
+	os.Rename(files[2], replacement)
 
 	fs := tsm1.NewFileStore(dir)
-	if err := fs.Open(); err != nil {
+	if err := fs.Open(context.Background()); err != nil {
 		fatal(t, "opening file store", err)
 	}
 	defer fs.Close()
@@ -2529,7 +2529,7 @@ func TestFileStore_Open_Deleted(t *testing.T) {
 	}
 
 	fs := tsm1.NewFileStore(dir)
-	if err := fs.Open(); err != nil {
+	if err := fs.Open(context.Background()); err != nil {
 		fatal(t, "opening file store", err)
 	}
 	defer fs.Close()
@@ -2543,7 +2543,7 @@ func TestFileStore_Open_Deleted(t *testing.T) {
 	}
 
 	fs2 := tsm1.NewFileStore(dir)
-	if err := fs2.Open(); err != nil {
+	if err := fs2.Open(context.Background()); err != nil {
 		fatal(t, "opening file store", err)
 	}
 	defer fs2.Close()
@@ -2640,25 +2640,25 @@ func TestFileStore_Stats(t *testing.T) {
 		fatal(t, "creating test files", err)
 	}
 
-	filestore := tsm1.NewFileStore(dir)
-	if err := filestore.Open(); err != nil {
+	fs := tsm1.NewFileStore(dir)
+	if err := fs.Open(context.Background()); err != nil {
 		fatal(t, "opening file store", err)
 	}
-	defer filestore.Close()
+	defer fs.Close()
 
-	stats := filestore.Stats()
+	stats := fs.Stats()
 	if got, exp := len(stats), 3; got != exp {
 		t.Fatalf("file count mismatch: got %v, exp %v", got, exp)
 	}
 
 	// Another call should result in the same stats being returned.
-	if got, exp := filestore.Stats(), stats; !reflect.DeepEqual(got, exp) {
+	if got, exp := fs.Stats(), stats; !reflect.DeepEqual(got, exp) {
 		t.Fatalf("got %v, exp %v", got, exp)
 	}
 
 	// Removing one of the files should invalidate the cache.
-	filestore.Replace(files[0:1], nil)
-	if got, exp := len(filestore.Stats()), 2; got != exp {
+	fs.Replace(files[0:1], nil)
+	if got, exp := len(fs.Stats()), 2; got != exp {
 		t.Fatalf("file count mismatch: got %v, exp %v", got, exp)
 	}
 
@@ -2668,16 +2668,16 @@ func TestFileStore_Stats(t *testing.T) {
 	})
 
 	replacement := fmt.Sprintf("%s.%s.%s", files[2], tsm1.TmpTSMFileExtension, tsm1.TSMFileExtension) // Assumes new files have a .tmp extension
-	if err := fs.RenameFile(newFile, replacement); err != nil {
+	if err := os.Rename(newFile, replacement); err != nil {
 		t.Fatalf("rename: %v", err)
 	}
 	// Replace 3 w/ 1
-	if err := filestore.Replace(files, []string{replacement}); err != nil {
+	if err := fs.Replace(files, []string{replacement}); err != nil {
 		t.Fatalf("replace: %v", err)
 	}
 
 	var found bool
-	stats = filestore.Stats()
+	stats = fs.Stats()
 	for _, stat := range stats {
 		if strings.HasSuffix(stat.Path, fmt.Sprintf("%s.%s.%s", tsm1.TSMFileExtension, tsm1.TmpTSMFileExtension, tsm1.TSMFileExtension)) {
 			found = true
@@ -2693,8 +2693,8 @@ func TestFileStore_Stats(t *testing.T) {
 	})
 
 	// Adding some files should invalidate the cache.
-	filestore.Replace(nil, []string{newFile})
-	if got, exp := len(filestore.Stats()), 2; got != exp {
+	fs.Replace(nil, []string{newFile})
+	if got, exp := len(fs.Stats()), 2; got != exp {
 		t.Fatalf("file count mismatch: got %v, exp %v", got, exp)
 	}
 }
@@ -2723,7 +2723,7 @@ func TestFileStore_CreateSnapshot(t *testing.T) {
 		t.Fatalf("unexpected error delete range: %v", err)
 	}
 
-	s, e := fs.CreateSnapshot()
+	s, e := fs.CreateSnapshot(context.Background())
 	if e != nil {
 		t.Fatal(e)
 	}
@@ -2819,10 +2819,10 @@ func TestFileStore_Observer(t *testing.T) {
 
 	// Check that we observed finishes correctly
 	check(finishes,
-		"000000001-000000001.tsm",
-		"000000002-000000001.tsm",
-		"000000003-000000001.tsm",
-		"000000002-000000001.tombstone.tmp",
+		"000000000000001-000000001.tsm",
+		"000000000000002-000000001.tsm",
+		"000000000000003-000000001.tsm",
+		"000000000000002-000000001.tombstone.tmp",
 	)
 	check(unlinks)
 	unlinks, finishes = nil, nil
@@ -2835,9 +2835,9 @@ func TestFileStore_Observer(t *testing.T) {
 	// Check that we observed unlinks correctly
 	check(finishes)
 	check(unlinks,
-		"000000002-000000001.tsm",
-		"000000002-000000001.tombstone",
-		"000000003-000000001.tsm",
+		"000000000000002-000000001.tsm",
+		"000000000000002-000000001.tombstone",
+		"000000000000003-000000001.tsm",
 	)
 	unlinks, finishes = nil, nil
 
@@ -2850,8 +2850,8 @@ func TestFileStore_Observer(t *testing.T) {
 	}
 
 	check(finishes,
-		"000000001-000000001.tombstone.tmp",
-		"000000001-000000001.tombstone.tmp",
+		"000000000000001-000000001.tombstone.tmp",
+		"000000000000001-000000001.tombstone.tmp",
 	)
 	check(unlinks)
 	unlinks, finishes = nil, nil
@@ -2880,7 +2880,7 @@ func newFileDir(dir string, values ...keyValues) ([]string, error) {
 			return nil, err
 		}
 		newName := filepath.Join(filepath.Dir(f.Name()), tsm1.DefaultFormatFileName(id, 1)+".tsm")
-		if err := fs.RenameFile(f.Name(), newName); err != nil {
+		if err := os.Rename(f.Name(), newName); err != nil {
 			return nil, err
 		}
 		id++
@@ -2915,7 +2915,7 @@ func newFiles(dir string, values ...keyValues) ([]string, error) {
 		}
 
 		newName := filepath.Join(filepath.Dir(f.Name()), tsm1.DefaultFormatFileName(id, 1)+".tsm")
-		if err := fs.RenameFile(f.Name(), newName); err != nil {
+		if err := os.Rename(f.Name(), newName); err != nil {
 			return nil, err
 		}
 		id++
@@ -2972,7 +2972,7 @@ func BenchmarkFileStore_Stats(b *testing.B) {
 		fs.WithLogger(logger.New(os.Stderr))
 	}
 
-	if err := fs.Open(); err != nil {
+	if err := fs.Open(context.Background()); err != nil {
 		b.Fatalf("opening file store %v", err)
 	}
 	defer fs.Close()
@@ -2981,5 +2981,104 @@ func BenchmarkFileStore_Stats(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		fsResult = fs.Stats()
+	}
+}
+
+func TestDefaultFormatFileName(t *testing.T) {
+	testCases := []struct {
+		generation       int
+		sequence         int
+		expectedFilename string
+	}{{
+		generation:       0,
+		sequence:         0,
+		expectedFilename: "000000000000000-000000000",
+	}, {
+		generation:       12345,
+		sequence:         98765,
+		expectedFilename: "000000000012345-000098765",
+	}, {
+		generation:       123,
+		sequence:         123456789,
+		expectedFilename: "000000000000123-123456789",
+	}, {
+		generation:       123,
+		sequence:         999999999,
+		expectedFilename: "000000000000123-999999999",
+	}, {
+		generation:       int(math.Pow(1000, 5)) - 1,
+		sequence:         123,
+		expectedFilename: "999999999999999-000000123",
+	}}
+
+	for _, testCase := range testCases {
+		t.Run(fmt.Sprintf("%d,%d", testCase.generation, testCase.sequence), func(t *testing.T) {
+			gotFilename := tsm1.DefaultFormatFileName(testCase.generation, testCase.sequence)
+			if gotFilename != testCase.expectedFilename {
+				t.Errorf("input %d,%d expected '%s' got '%s'",
+					testCase.generation, testCase.sequence, testCase.expectedFilename, gotFilename)
+			}
+		})
+	}
+}
+
+func TestDefaultParseFileName(t *testing.T) {
+	testCases := []struct {
+		filename           string
+		expectedGeneration int
+		expectedSequence   int
+		expectError        bool
+	}{{
+		filename:           "0-0.tsm",
+		expectedGeneration: 0,
+		expectedSequence:   0,
+		expectError:        true,
+	}, {
+		filename:    "00000000000000a-00000000a.tsm",
+		expectError: true,
+	}, {
+		filename:           "000000000000000-000000000.tsm",
+		expectedGeneration: 0,
+		expectedSequence:   0,
+		expectError:        false,
+	}, {
+		filename:           "000000000000001-000000002.tsm",
+		expectedGeneration: 1,
+		expectedSequence:   2,
+		expectError:        false,
+	}, {
+		filename:           "000000000000123-999999999.tsm",
+		expectedGeneration: 123,
+		expectedSequence:   999999999,
+		expectError:        false,
+	}, {
+		filename:           "123-999999999.tsm",
+		expectedGeneration: 123,
+		expectedSequence:   999999999,
+		expectError:        false,
+	}, {
+		filename:           "999999999999999-000000123.tsm",
+		expectedGeneration: int(math.Pow(1000, 5)) - 1,
+		expectedSequence:   123,
+		expectError:        false,
+	}}
+
+	for _, testCase := range testCases {
+		t.Run(testCase.filename, func(t *testing.T) {
+			generation, sequence, err := tsm1.DefaultParseFileName(testCase.filename)
+			if err != nil {
+				if !testCase.expectError {
+					t.Errorf("did not expected error '%v'", err)
+				}
+				return
+			}
+
+			if testCase.expectedGeneration != generation || testCase.expectedSequence != sequence {
+				t.Errorf("input '%s' expected %d,%d got %d,%d",
+					testCase.filename,
+					testCase.expectedGeneration, testCase.expectedSequence,
+					generation, sequence)
+			}
+		})
 	}
 }
