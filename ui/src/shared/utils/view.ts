@@ -8,25 +8,24 @@ import {
 } from 'src/shared/constants/thresholds'
 
 // Types
+import {ViewType, ViewShape, Base, Scale} from 'src/types'
 import {
-  ViewType,
-  Base,
-  XYViewProperties,
-  HistogramViewProperties,
-  HeatmapViewProperties,
-  ScatterViewProperties,
-  LinePlusSingleStatProperties,
-  SingleStatViewProperties,
-  MarkdownViewProperties,
-  TableViewProperties,
-  GaugeViewProperties,
+  XYView,
+  XYViewGeom,
+  HistogramView,
+  HeatmapView,
+  LinePlusSingleStatView,
+  SingleStatView,
+  TableView,
+  GaugeView,
+  MarkdownView,
   NewView,
   ViewProperties,
   DashboardQuery,
+  QueryEditMode,
   BuilderConfig,
-  Axis,
-  Color,
-} from 'src/types'
+  ScatterView,
+} from 'src/types/dashboards'
 
 function defaultView() {
   return {
@@ -38,7 +37,7 @@ export function defaultViewQuery(): DashboardQuery {
   return {
     name: '',
     text: '',
-    editMode: 'builder',
+    editMode: QueryEditMode.Builder,
     builderConfig: defaultBuilderConfig(),
   }
 }
@@ -55,27 +54,27 @@ export function defaultBuilderConfig(): BuilderConfig {
 function defaultLineViewProperties() {
   return {
     queries: [defaultViewQuery()],
-    colors: DEFAULT_LINE_COLORS as Color[],
+    colors: DEFAULT_LINE_COLORS,
     legend: {},
     note: '',
     showNoteWhenEmpty: false,
     axes: {
       x: {
-        bounds: ['', ''],
-        label: '',
-        prefix: '',
-        suffix: '',
-        base: '10',
-        scale: 'linear',
-      } as Axis,
-      y: {
-        bounds: ['', ''],
+        bounds: ['', ''] as [string, string],
         label: '',
         prefix: '',
         suffix: '',
         base: '10' as Base,
-        scale: 'linear',
-      } as Axis,
+        scale: Scale.Linear,
+      },
+      y: {
+        bounds: ['', ''] as [string, string],
+        label: '',
+        prefix: '',
+        suffix: '',
+        base: '10' as Base,
+        scale: Scale.Linear,
+      },
     },
   }
 }
@@ -83,7 +82,7 @@ function defaultLineViewProperties() {
 function defaultGaugeViewProperties() {
   return {
     queries: [defaultViewQuery()],
-    colors: DEFAULT_GAUGE_COLORS as Color[],
+    colors: DEFAULT_GAUGE_COLORS,
     prefix: '',
     suffix: '',
     note: '',
@@ -98,7 +97,7 @@ function defaultGaugeViewProperties() {
 function defaultSingleStatViewProperties() {
   return {
     queries: [defaultViewQuery()],
-    colors: DEFAULT_THRESHOLDS_LIST_COLORS as Color[],
+    colors: DEFAULT_THRESHOLDS_LIST_COLORS,
     prefix: '',
     suffix: '',
     note: '',
@@ -112,40 +111,40 @@ function defaultSingleStatViewProperties() {
 
 // Defines the zero values of the various view types
 const NEW_VIEW_CREATORS = {
-  xy: (): NewView<XYViewProperties> => ({
+  [ViewType.XY]: (): NewView<XYView> => ({
     ...defaultView(),
     properties: {
       ...defaultLineViewProperties(),
-      type: 'xy',
-      shape: 'chronograf-v2',
-      geom: 'line',
+      type: ViewType.XY,
+      shape: ViewShape.ChronografV2,
+      geom: XYViewGeom.Line,
       xColumn: null,
       yColumn: null,
     },
   }),
-  histogram: (): NewView<HistogramViewProperties> => ({
+  [ViewType.Histogram]: (): NewView<HistogramView> => ({
     ...defaultView(),
     properties: {
       queries: [],
-      type: 'histogram',
-      shape: 'chronograf-v2',
+      type: ViewType.Histogram,
+      shape: ViewShape.ChronografV2,
       xColumn: '_value',
       xDomain: null,
       xAxisLabel: '',
       fillColumns: null,
       position: 'stacked',
       binCount: 30,
-      colors: DEFAULT_LINE_COLORS as Color[],
+      colors: DEFAULT_LINE_COLORS,
       note: '',
       showNoteWhenEmpty: false,
     },
   }),
-  heatmap: (): NewView<HeatmapViewProperties> => ({
+  [ViewType.Heatmap]: (): NewView<HeatmapView> => ({
     ...defaultView(),
     properties: {
       queries: [],
-      type: 'heatmap',
-      shape: 'chronograf-v2',
+      type: ViewType.Heatmap,
+      shape: ViewShape.ChronografV2,
       xColumn: null,
       yColumn: null,
       xDomain: null,
@@ -162,42 +161,40 @@ const NEW_VIEW_CREATORS = {
       showNoteWhenEmpty: false,
     },
   }),
-  'single-stat': (): NewView<SingleStatViewProperties> => ({
+  [ViewType.SingleStat]: (): NewView<SingleStatView> => ({
     ...defaultView(),
     properties: {
       ...defaultSingleStatViewProperties(),
-      type: 'single-stat',
-      shape: 'chronograf-v2',
-      legend: {},
+      type: ViewType.SingleStat,
+      shape: ViewShape.ChronografV2,
     },
   }),
-  gauge: (): NewView<GaugeViewProperties> => ({
+  [ViewType.Gauge]: (): NewView<GaugeView> => ({
     ...defaultView(),
     properties: {
       ...defaultGaugeViewProperties(),
-      type: 'gauge',
-      shape: 'chronograf-v2',
-      legend: {},
+      type: ViewType.Gauge,
+      shape: ViewShape.ChronografV2,
     },
   }),
-  'line-plus-single-stat': (): NewView<LinePlusSingleStatProperties> => ({
+  [ViewType.LinePlusSingleStat]: (): NewView<LinePlusSingleStatView> => ({
     ...defaultView(),
     properties: {
       ...defaultLineViewProperties(),
       ...defaultSingleStatViewProperties(),
-      type: 'line-plus-single-stat',
-      shape: 'chronograf-v2',
+      type: ViewType.LinePlusSingleStat,
+      shape: ViewShape.ChronografV2,
       xColumn: null,
       yColumn: null,
     },
   }),
-  table: (): NewView<TableViewProperties> => ({
+  [ViewType.Table]: (): NewView<TableView> => ({
     ...defaultView(),
     properties: {
-      type: 'table',
-      shape: 'chronograf-v2',
+      type: ViewType.Table,
+      shape: ViewShape.ChronografV2,
       queries: [defaultViewQuery()],
-      colors: DEFAULT_THRESHOLDS_LIST_COLORS as Color[],
+      colors: DEFAULT_THRESHOLDS_LIST_COLORS,
       tableOptions: {
         verticalTimeAxis: true,
         sortBy: null,
@@ -213,19 +210,19 @@ const NEW_VIEW_CREATORS = {
       showNoteWhenEmpty: false,
     },
   }),
-  markdown: (): NewView<MarkdownViewProperties> => ({
+  [ViewType.Markdown]: (): NewView<MarkdownView> => ({
     ...defaultView(),
     properties: {
-      type: 'markdown',
-      shape: 'chronograf-v2',
+      type: ViewType.Markdown,
+      shape: ViewShape.ChronografV2,
       note: '',
     },
   }),
-  scatter: (): NewView<ScatterViewProperties> => ({
+  [ViewType.Scatter]: (): NewView<ScatterView> => ({
     ...defaultView(),
     properties: {
-      type: 'scatter',
-      shape: 'chronograf-v2',
+      type: ViewType.Scatter,
+      shape: ViewShape.ChronografV2,
       queries: [defaultViewQuery()],
       colors: NINETEEN_EIGHTY_FOUR,
       note: '',
@@ -247,7 +244,7 @@ const NEW_VIEW_CREATORS = {
 }
 
 export function createView<T extends ViewProperties = ViewProperties>(
-  viewType: ViewType = 'xy'
+  viewType: ViewType = ViewType.XY
 ): NewView<T> {
   const creator = NEW_VIEW_CREATORS[viewType]
 

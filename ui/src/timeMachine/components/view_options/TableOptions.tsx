@@ -33,7 +33,7 @@ import {
   AppState,
   NewView,
   DecimalPlaces,
-  TableViewProperties,
+  TableView,
   FieldOption,
   TableOptions as ViewTableOptions,
   Color,
@@ -166,7 +166,7 @@ export class TableOptions extends Component<Props, {}> {
 }
 
 const mstp = (state: AppState) => {
-  const view = getActiveTimeMachine(state).view as NewView<TableViewProperties>
+  const view = getActiveTimeMachine(state).view as NewView<TableView>
   const {
     colors,
     decimalPlaces,

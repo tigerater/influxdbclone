@@ -126,10 +126,6 @@ func (s *Service) Initialize(ctx context.Context) error {
 			return err
 		}
 
-		if err := s.initializeChecks(ctx, tx); err != nil {
-			return err
-		}
-
 		if err := s.initializeNotificationRule(ctx, tx); err != nil {
 			return err
 		}

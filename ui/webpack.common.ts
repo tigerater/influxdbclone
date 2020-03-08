@@ -1,31 +1,32 @@
 const path = require('path')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
 const {CleanWebpackPlugin} = require('clean-webpack-plugin')
+const MiniCssExtractPlugin = require('mini-css-extract-plugin')
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin')
 const webpack = require('webpack')
 const GIT_SHA = require('child_process')
   .execSync('git rev-parse HEAD')
   .toString()
 
+const devMode = process.env.NODE_ENV !== 'production'
+
 module.exports = {
   context: __dirname,
   output: {
+    filename: devMode ? '[name].bundle.js' : '[name].[hash].bundle.js',
     path: path.resolve(__dirname, 'build'),
   },
   entry: {
-    app: './src/bootstrap.ts',
+    app: './src/index.tsx',
   },
   resolve: {
     alias: {
       src: path.resolve(__dirname, 'src'),
     },
-    extensions: ['.tsx', '.ts', '.js', '.wasm'],
+    extensions: ['.tsx', '.ts', '.js'],
   },
   module: {
     rules: [
-      {
-        test: /\.wasm$/,
-        type: 'webassembly/experimental',
-      },
       {
         test: /\.tsx?$/,
         use: [
@@ -33,6 +34,20 @@ module.exports = {
             loader: 'ts-loader',
             options: {
               transpileOnly: true,
+            },
+          },
+        ],
+      },
+      {
+        test: /\.s?css$/i,
+        use: [
+          MiniCssExtractPlugin.loader,
+          'css-loader',
+          {
+            loader: 'sass-loader',
+            options: {
+              implementation: require('sass'),
+              hmr: process.env.NODE_ENV === 'development',
             },
           },
         ],
@@ -54,6 +69,14 @@ module.exports = {
       template: './assets/index.html',
       favicon: './assets/images/favicon.ico',
       inject: 'body',
+    }),
+    new MiniCssExtractPlugin({
+      filename: devMode ? '[name].css' : '[name].[hash].css',
+      chunkFilename: devMode ? '[id].css' : '[id].[hash].css',
+    }),
+    new ForkTsCheckerWebpackPlugin({
+      eslint: !devMode,
+      warningsFilter: /export * was not found in/,
     }),
     new webpack.ProgressPlugin(),
     new webpack.EnvironmentPlugin({...process.env, GIT_SHA}),

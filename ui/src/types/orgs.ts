@@ -1,1 +1,3 @@
-export {Organization} from 'src/client'
+import {Organization as OrgsAPI} from '@influxdata/influx'
+
+export interface Organization extends OrgsAPI {}

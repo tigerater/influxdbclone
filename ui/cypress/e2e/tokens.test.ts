@@ -1,4 +1,4 @@
-import {Organization} from '../../src/types'
+import {Organization} from '@influxdata/influx'
 
 describe('tokens', () => {
   let authData: {description: string; status: boolean; id: string}[]
@@ -150,9 +150,9 @@ describe('tokens', () => {
             // @ts-ignore
             cy.request(
               'api/v2/authorizations/' +
-                (authData.find(function(item) {
+                authData.find(function(item) {
                   return item.description === 'token test 02'
-                }) as any).id
+                }).id
             ).then(resp => {
               expect(resp.body.status).equals('active')
             })
@@ -180,9 +180,9 @@ describe('tokens', () => {
             // @ts-ignore
             cy.request(
               'api/v2/authorizations/' +
-                (authData.find(function(item) {
+                authData.find(function(item) {
                   return item.description === 'token test 02'
-                }) as any).id
+                }).id
             ).then(resp => {
               expect(resp.body.status).equals('inactive')
             })

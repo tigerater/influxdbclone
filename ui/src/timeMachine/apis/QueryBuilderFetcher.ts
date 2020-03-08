@@ -33,11 +33,9 @@ class QueryBuilderFetcher {
 
     const pendingResult = findBuckets(options)
 
-    pendingResult.promise
-      .then(result => {
-        this.findBucketsCache[cacheKey] = result
-      })
-      .catch(() => {})
+    pendingResult.promise.then(result => {
+      this.findBucketsCache[cacheKey] = result
+    })
 
     return pendingResult.promise
   }
@@ -65,11 +63,9 @@ class QueryBuilderFetcher {
 
     this.findKeysQueries[index] = pendingResult
 
-    pendingResult.promise
-      .then(result => {
-        this.findKeysCache[cacheKey] = result
-      })
-      .catch(() => {})
+    pendingResult.promise.then(result => {
+      this.findKeysCache[cacheKey] = result
+    })
 
     return pendingResult.promise
   }
@@ -97,11 +93,9 @@ class QueryBuilderFetcher {
 
     this.findValuesQueries[index] = pendingResult
 
-    pendingResult.promise
-      .then(result => {
-        this.findValuesCache[cacheKey] = result
-      })
-      .catch(() => {})
+    pendingResult.promise.then(result => {
+      this.findValuesCache[cacheKey] = result
+    })
 
     return pendingResult.promise
   }

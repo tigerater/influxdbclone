@@ -336,13 +336,13 @@ export const deleteDashboardAsync = (dashboard: Dashboard) => async (
 }
 
 export const refreshDashboardVariableValues = (
-  dashboardID: string,
+  dashboard: Dashboard,
   nextViews: View[]
 ) => (dispatch, getState: GetState) => {
   const variables = extractVariablesList(getState())
   const variablesInUse = filterUnusedVars(variables, nextViews)
 
-  return dispatch(refreshVariableValues(dashboardID, variablesInUse))
+  return dispatch(refreshVariableValues(dashboard.id, variablesInUse))
 }
 
 export const getDashboardAsync = (dashboardID: string) => async (
@@ -363,7 +363,7 @@ export const getDashboardAsync = (dashboardID: string) => async (
     dispatch(setViews(RemoteDataState.Done, views))
 
     // Ensure the values for the variables in use on the dashboard are populated
-    await dispatch(refreshDashboardVariableValues(dashboard.id, views))
+    await dispatch(refreshDashboardVariableValues(dashboard, views))
 
     // Now that all the necessary state has been loaded, set the dashboard
     dispatch(setDashboard(dashboard))
@@ -390,24 +390,18 @@ export const updateDashboardAsync = (dashboard: Dashboard) => async (
 }
 
 export const createCellWithView = (
-  dashboardID: string,
+  dashboard: Dashboard,
   view: NewView,
   clonedCell?: Cell
 ) => async (dispatch, getState: GetState): Promise<void> => {
   try {
-    const state = getState()
-    let dashboard = state.dashboards.list.find(d => d.id === dashboardID)
-    if (!dashboard) {
-      dashboard = await getDashboardAJAX(dashboardID)
-    }
-
     const cell: CreateCell = getNewDashboardCell(dashboard, clonedCell)
 
     // Create the cell
-    const createdCell = await addCellAJAX(dashboardID, cell)
+    const createdCell = await addCellAJAX(dashboard.id, cell)
 
     // Create the view and associate it with the cell
-    const newView = await updateViewAJAX(dashboardID, createdCell.id, view)
+    const newView = await updateViewAJAX(dashboard.id, createdCell.id, view)
 
     // Update the dashboard with the new cell
     let updatedDashboard: Dashboard = {
@@ -418,9 +412,9 @@ export const createCellWithView = (
     updatedDashboard = await updateDashboardAJAX(dashboard)
 
     // Refresh variables in use on dashboard
-    const views = [...getViewsForDashboard(state, dashboard.id), newView]
+    const views = [...getViewsForDashboard(getState(), dashboard.id), newView]
 
-    await dispatch(refreshDashboardVariableValues(dashboard.id, views))
+    await dispatch(refreshDashboardVariableValues(dashboard, views))
 
     dispatch(setView(createdCell.id, newView, RemoteDataState.Done))
     dispatch(editDashboard(updatedDashboard))
@@ -429,20 +423,20 @@ export const createCellWithView = (
   }
 }
 
-export const updateView = (dashboardID: string, view: View) => async (
+export const updateView = (dashboard: Dashboard, view: View) => async (
   dispatch,
   getState: GetState
 ) => {
   const cellID = view.cellID
 
   try {
-    const newView = await updateViewAJAX(dashboardID, cellID, view)
+    const newView = await updateViewAJAX(dashboard.id, cellID, view)
 
-    const views = getViewsForDashboard(getState(), dashboardID)
+    const views = getViewsForDashboard(getState(), dashboard.id)
 
     views.splice(views.findIndex(v => v.id === newView.id), 1, newView)
 
-    await dispatch(refreshDashboardVariableValues(dashboardID, views))
+    await dispatch(refreshDashboardVariableValues(dashboard, views))
 
     dispatch(setView(cellID, newView, RemoteDataState.Done))
   } catch (e) {
@@ -479,7 +473,7 @@ export const deleteCellAsync = (dashboard: Dashboard, cell: Cell) => async (
 
     await Promise.all([
       deleteCellAJAX(dashboard.id, cell),
-      dispatch(refreshDashboardVariableValues(dashboard.id, views)),
+      dispatch(refreshDashboardVariableValues(dashboard, views)),
     ])
 
     dispatch(removeCell(dashboard, cell))
@@ -583,7 +577,7 @@ export const convertToTemplate = (dashboardID: string) => async (
   }
 }
 
-export const saveVEOView = (dashboardID: string) => async (
+export const saveVEOView = (dashboard: Dashboard) => async (
   dispatch,
   getState: GetState
 ): Promise<void> => {
@@ -591,13 +585,12 @@ export const saveVEOView = (dashboardID: string) => async (
 
   try {
     if (view.id) {
-      await dispatch(updateView(dashboardID, view))
+      await dispatch(updateView(dashboard, view))
     } else {
-      await dispatch(createCellWithView(dashboardID, view))
+      await dispatch(createCellWithView(dashboard, view))
     }
   } catch (error) {
     console.error(error)
     dispatch(notify(copy.cellAddFailed()))
-    throw error
   }
 }

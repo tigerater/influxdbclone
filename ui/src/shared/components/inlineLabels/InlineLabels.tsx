@@ -3,11 +3,11 @@ import React, {Component} from 'react'
 import _ from 'lodash'
 
 // Components
-import {Label as LabelComponent} from '@influxdata/clockface'
+import {Label} from '@influxdata/clockface'
 import InlineLabelsEditor from 'src/shared/components/inlineLabels/InlineLabelsEditor'
 
 // Types
-import {Label} from 'src/types'
+import {ILabel} from '@influxdata/influx'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -19,11 +19,11 @@ export enum LabelsEditMode {
 
 interface Props {
   editMode?: LabelsEditMode // temporary for displaying labels
-  selectedLabels: Label[]
-  labels: Label[]
-  onRemoveLabel?: (label: Label) => void
-  onAddLabel?: (label: Label) => void
-  onCreateLabel?: (label: Label) => Promise<void>
+  selectedLabels: ILabel[]
+  labels: ILabel[]
+  onRemoveLabel?: (label: ILabel) => void
+  onAddLabel?: (label: ILabel) => void
+  onCreateLabel?: (label: ILabel) => Promise<void>
   onFilterChange?: (searchTerm: string) => void
 }
 
@@ -61,7 +61,7 @@ export default class InlineLabels extends Component<Props> {
 
     if (selectedLabels.length) {
       return selectedLabels.map(label => (
-        <LabelComponent
+        <Label
           id={label.id}
           key={label.id}
           name={label.name}

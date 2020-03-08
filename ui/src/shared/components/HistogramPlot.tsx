@@ -16,12 +16,12 @@ import {DEFAULT_LINE_COLORS} from 'src/shared/constants/graphColorPalettes'
 import {INVALID_DATA_COPY} from 'src/shared/copy/cell'
 
 // Types
-import {RemoteDataState, HistogramViewProperties, TimeZone} from 'src/types'
+import {RemoteDataState, HistogramView, TimeZone} from 'src/types'
 
 interface Props {
   table: Table
   loading: RemoteDataState
-  viewProperties: HistogramViewProperties
+  viewProperties: HistogramView
   children: (config: Config) => JSX.Element
   timeZone: TimeZone
 }

@@ -12,7 +12,8 @@ import TabbedPageSection from 'src/shared/components/tabbed_page/TabbedPageSecti
 import {Grid, Columns} from '@influxdata/clockface'
 
 // Types
-import {AppState, Organization} from 'src/types'
+import {Organization} from '@influxdata/influx'
+import {AppState} from 'src/types'
 import OrgProfileTab from '../components/OrgProfileTab'
 
 interface StateProps {

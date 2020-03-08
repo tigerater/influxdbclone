@@ -32,7 +32,6 @@ import (
 	"github.com/influxdata/flux/memory"
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/kit/errors"
-	"github.com/influxdata/influxdb/kit/prom"
 	"github.com/influxdata/influxdb/kit/tracing"
 	"github.com/influxdata/influxdb/query"
 	"github.com/opentracing/opentracing-go"
@@ -422,15 +421,9 @@ func (c *Controller) Shutdown(ctx context.Context) error {
 	}
 }
 
-// PrometheusCollectors satisfies the prom.PrometheusCollector interface.
+// PrometheusCollectors satisifies the prom.PrometheusCollector interface.
 func (c *Controller) PrometheusCollectors() []prometheus.Collector {
-	collectors := c.metrics.PrometheusCollectors()
-	for _, v := range c.dependencies {
-		if pc, ok := v.(prom.PrometheusCollector); ok {
-			collectors = append(collectors, pc.PrometheusCollectors()...)
-		}
-	}
-	return collectors
+	return c.metrics.PrometheusCollectors()
 }
 
 // Query represents a single request.

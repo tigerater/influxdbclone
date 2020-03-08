@@ -15,7 +15,7 @@ import {extent} from 'src/shared/utils/vis'
   passed to the plot.
 */
 export const useVisDomainSettings = (
-  storedDomain: number[],
+  storedDomain: [number, number],
   data: NumericColumnData
 ) => {
   const initialDomain = useMemo(() => {

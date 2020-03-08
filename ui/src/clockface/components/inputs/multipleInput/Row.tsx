@@ -4,8 +4,12 @@ import uuid from 'uuid'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 // Components
-import {ConfirmationButton} from 'src/clockface'
-import {IndexList, ComponentSize, Alignment} from '@influxdata/clockface'
+import {
+  IndexList,
+  ConfirmationButton,
+  ComponentSize,
+  Alignment,
+} from 'src/clockface'
 import EditableDescription from 'src/shared/components/editable_description/EditableDescription'
 
 interface Item {

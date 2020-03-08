@@ -24,8 +24,9 @@ import {ErrorHandling} from 'src/shared/decorators/errors'
 import {renameOrg} from 'src/organizations/actions/orgs'
 
 // Types
+import {Organization} from '@influxdata/influx'
 import {ComponentStatus} from '@influxdata/clockface'
-import {AppState, Organization} from 'src/types'
+import {AppState} from 'src/types'
 
 interface StateProps {
   startOrg: Organization

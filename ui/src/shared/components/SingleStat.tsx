@@ -6,10 +6,10 @@ import {generateThresholdsListHexs} from 'src/shared/constants/colorOperations'
 import {formatStatValue} from 'src/shared/utils/formatStatValue'
 
 // Types
-import {SingleStatViewProperties} from 'src/types/dashboards'
+import {ViewType, SingleStatView} from 'src/types/dashboards'
 
 interface Props {
-  properties: SingleStatViewProperties
+  properties: SingleStatView
   stat: number
 }
 
@@ -19,7 +19,7 @@ const SingleStat: SFC<Props> = ({stat, properties}) => {
   const {bgColor: backgroundColor, textColor} = generateThresholdsListHexs({
     colors,
     lastValue: stat,
-    cellType: 'single-stat',
+    cellType: ViewType.SingleStat,
   })
 
   const formattedValue = formatStatValue(stat, {decimalPlaces, prefix, suffix})

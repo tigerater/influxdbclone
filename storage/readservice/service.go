@@ -27,13 +27,12 @@ func AddControllerConfigDependencies(
 ) error {
 	bucketLookupSvc := query.FromBucketService(bucketSvc)
 	orgLookupSvc := query.FromOrganizationService(orgSvc)
-	metrics := influxdb.NewMetrics(cc.MetricLabelKeys)
-	if err := influxdb.InjectFromDependencies(cc.ExecutorDependencies, influxdb.Dependencies{
+	err := influxdb.InjectFromDependencies(cc.ExecutorDependencies, influxdb.Dependencies{
 		Reader:             reads.NewReader(newStore(engine)),
 		BucketLookup:       bucketLookupSvc,
 		OrganizationLookup: orgLookupSvc,
-		Metrics:            metrics,
-	}); err != nil {
+	})
+	if err != nil {
 		return err
 	}
 

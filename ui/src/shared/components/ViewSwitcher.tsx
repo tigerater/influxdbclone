@@ -16,8 +16,10 @@ import LatestValueTransform from 'src/shared/components/LatestValueTransform'
 // Types
 import {
   QueryViewProperties,
-  SingleStatViewProperties,
-  XYViewProperties,
+  ViewType,
+  SingleStatView,
+  XYView,
+  XYViewGeom,
   RemoteDataState,
   TimeZone,
   CheckViewProperties,
@@ -39,7 +41,7 @@ const ViewSwitcher: FunctionComponent<Props> = ({
   timeZone,
 }) => {
   switch (properties.type) {
-    case 'single-stat':
+    case ViewType.SingleStat:
       return (
         <LatestValueTransform table={table}>
           {latestValue => (
@@ -48,7 +50,7 @@ const ViewSwitcher: FunctionComponent<Props> = ({
         </LatestValueTransform>
       )
 
-    case 'table':
+    case ViewType.Table:
       return (
         <FluxTablesTransform files={files}>
           {tables => (
@@ -61,7 +63,7 @@ const ViewSwitcher: FunctionComponent<Props> = ({
         </FluxTablesTransform>
       )
 
-    case 'gauge':
+    case ViewType.Gauge:
       return (
         <LatestValueTransform table={table}>
           {latestValue => (
@@ -70,7 +72,7 @@ const ViewSwitcher: FunctionComponent<Props> = ({
         </LatestValueTransform>
       )
 
-    case 'xy':
+    case ViewType.XY:
       return (
         <XYPlot
           table={table}
@@ -83,19 +85,19 @@ const ViewSwitcher: FunctionComponent<Props> = ({
         </XYPlot>
       )
 
-    case 'line-plus-single-stat':
+    case ViewType.LinePlusSingleStat:
       const xyProperties = {
         ...properties,
         colors: properties.colors.filter(c => c.type === 'scale'),
-        type: 'xy' as 'xy',
-        geom: 'line' as 'line',
-      } as XYViewProperties
+        type: ViewType.XY,
+        geom: XYViewGeom.Line,
+      } as XYView
 
       const singleStatProperties = {
         ...properties,
         colors: properties.colors.filter(c => c.type !== 'scale'),
-        type: 'single-stat',
-      } as SingleStatViewProperties
+        type: ViewType.SingleStat,
+      } as SingleStatView
 
       return (
         <XYPlot
@@ -120,7 +122,7 @@ const ViewSwitcher: FunctionComponent<Props> = ({
         </XYPlot>
       )
 
-    case 'histogram':
+    case ViewType.Histogram:
       return (
         <HistogramPlot
           table={table}
@@ -132,7 +134,7 @@ const ViewSwitcher: FunctionComponent<Props> = ({
         </HistogramPlot>
       )
 
-    case 'heatmap':
+    case ViewType.Heatmap:
       return (
         <HeatmapPlot
           table={table}
@@ -144,7 +146,7 @@ const ViewSwitcher: FunctionComponent<Props> = ({
         </HeatmapPlot>
       )
 
-    case 'scatter':
+    case ViewType.Scatter:
       return (
         <ScatterPlot
           table={table}

@@ -14,14 +14,14 @@ import {ADD_NEW_LABEL_ITEM_ID} from 'src/shared/components/inlineLabels/InlineLa
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 // Types
-import {Label} from 'src/types'
+import {ILabel} from '@influxdata/influx'
 import {ComponentSize} from '@influxdata/clockface'
 
 interface Props {
   searchTerm: string
   selectedItemID: string
   onUpdateSelectedItemID: (labelID: string) => void
-  filteredLabels: Label[]
+  filteredLabels: ILabel[]
   onItemClick: (labelID: string) => void
   allLabelsUsed: boolean
   onStartCreatingLabel: () => void

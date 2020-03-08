@@ -7,7 +7,7 @@ import {Form, Input, Grid, Button, ButtonType} from '@influxdata/clockface'
 import BucketDropdown from 'src/dataLoaders/components/BucketsDropdown'
 
 // Types
-import {Bucket} from 'src/types'
+import {Bucket} from '@influxdata/influx'
 import {Columns, ComponentStatus, ComponentColor} from '@influxdata/clockface'
 
 interface Props {

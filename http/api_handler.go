@@ -30,7 +30,6 @@ type APIHandler struct {
 	SourceHandler           *SourceHandler
 	VariableHandler         *VariableHandler
 	TaskHandler             *TaskHandler
-	CheckHandler            *CheckHandler
 	TelegrafHandler         *TelegrafHandler
 	QueryHandler            *FluxHandler
 	WriteHandler            *WriteHandler
@@ -75,7 +74,6 @@ type APIBackend struct {
 	InfluxQLService                 query.ProxyQueryService
 	FluxService                     query.ProxyQueryService
 	TaskService                     influxdb.TaskService
-	CheckService                    influxdb.CheckService
 	TelegrafService                 influxdb.TelegrafConfigStore
 	ScraperTargetStoreService       influxdb.ScraperTargetStoreService
 	SecretService                   influxdb.SecretService
@@ -167,11 +165,6 @@ func NewAPIHandler(b *APIBackend) *APIHandler {
 		b.UserResourceMappingService, b.OrganizationService)
 	h.NotificationRuleHandler = NewNotificationRuleHandler(notificationRuleBackend)
 
-	checkBackend := NewCheckBackend(b)
-	checkBackend.CheckService = authorizer.NewCheckService(b.CheckService,
-		b.UserResourceMappingService, b.OrganizationService)
-	h.CheckHandler = NewCheckHandler(checkBackend)
-
 	writeBackend := NewWriteBackend(b)
 	h.WriteHandler = NewWriteHandler(writeBackend)
 
@@ -217,7 +210,6 @@ var apiLinks = map[string]interface{}{
 		"health":  "/health",
 	},
 	"tasks":     "/api/v2/tasks",
-	"checks":    "/api/v2/checks",
 	"telegrafs": "/api/v2/telegrafs",
 	"users":     "/api/v2/users",
 	"write":     "/api/v2/write",
@@ -310,11 +302,6 @@ func (h *APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if strings.HasPrefix(r.URL.Path, "/api/v2/tasks") {
 		h.TaskHandler.ServeHTTP(w, r)
-		return
-	}
-
-	if strings.HasPrefix(r.URL.Path, "/api/v2/checks") {
-		h.CheckHandler.ServeHTTP(w, r)
 		return
 	}
 

@@ -24,7 +24,7 @@
     "test:watch": "jest --watch --verbose false",
     "test:update": "jest --updateSnapshot",
     "test:debug": "node --inspect-brk node_modules/.bin/jest --runInBand --watch --verbose false",
-    "test:junit": "CYPRESS_baseUrl=http://localhost:9999 cypress run --browser chrome --reporter junit --reporter-options 'mochaFile=junit-results/test-output-[hash].xml'",
+    "test:junit": "CYPRESS_baseUrl=http://localhost:9999 cypress run --reporter junit --reporter-options 'mochaFile=junit-results/test-output-[hash].xml'",
     "test:ju:report": "junit-viewer --results=junit-results --save-file=cypress/site/junit-report.html",
     "test:ju:clean": "rm junit-results/*.xml",
     "test:ju:all": "yarn test:ju:clean && yarn test:junit; yarn test:ju:report;",
@@ -34,8 +34,7 @@
     "tsc": "tsc -p ./tsconfig.json --noEmit --pretty --skipLibCheck",
     "tsc:cypress": "tsc -p ./cypress/tsconfig.json --noEmit --pretty --skipLibCheck",
     "cy": "CYPRESS_baseUrl=http://localhost:9999 cypress open",
-    "cy:dev": "CYPRESS_baseUrl=http://localhost:8080 cypress open",
-    "generate": "oats ../http/swagger.yml > src/client/index.ts"
+    "cy:dev": "CYPRESS_baseUrl=http://localhost:8080 cypress open"
   },
   "jest": {
     "setupFilesAfterEnv": [
@@ -53,7 +52,7 @@
     ],
     "modulePaths": [
       "<rootDir>",
-      "<rootDir>/node_modules"
+      "<rootDir>/node_modules/"
     ],
     "moduleDirectories": [
       "src"
@@ -81,15 +80,16 @@
   "devDependencies": {
     "@babel/core": "^7.5.5",
     "@babel/preset-env": "^7.5.5",
-    "@chnn/oats": "0.2.1",
     "@cypress/webpack-preprocessor": "^4.0.3",
     "@types/chroma-js": "^1.3.4",
     "@types/codemirror": "^0.0.56",
     "@types/d3-color": "^1.2.1",
     "@types/d3-scale": "^2.0.1",
+    "@types/encoding-down": "^5.0.0",
     "@types/enzyme": "^3.1.14",
     "@types/history": "3.2.2",
     "@types/jest": "^23.3.2",
+    "@types/levelup": "^3.1.0",
     "@types/lodash": "^4.14.116",
     "@types/memoize-one": "^4.0.2",
     "@types/node": "^12.6.8",
@@ -144,26 +144,23 @@
     "react-testing-library": "^5.4.4",
     "sass": "^1.22.7",
     "sass-loader": "^7.1.0",
-    "style-loader": "^0.23.1",
     "terser-webpack-plugin": "^1.3.0",
     "ts-jest": "^24.0.0",
     "ts-loader": "^5.3.3",
-    "ts-node": "^8.3.0",
     "tslib": "^1.9.0",
-    "typescript": "3.3.3",
-    "webpack": "^4.37.0",
+    "typescript": "^3.3.3",
+    "webpack": "^4.29.0",
     "webpack-cli": "^3.3.6",
     "webpack-dev-server": "^3.7.2",
-    "webpack-merge": "^4.2.1"
+    "webpack-merge": "^4.2.1",
+    "ts-node": "^8.3.0"
   },
   "dependencies": {
-    "@influxdata/clockface": "0.0.19",
-    "@influxdata/flux-parser": "^0.3.0",
-    "@influxdata/giraffe": "0.16.2",
+    "@influxdata/clockface": "0.0.18",
+    "@influxdata/giraffe": "0.16.1",
     "@influxdata/influx": "0.5.5",
     "@influxdata/influxdb-templates": "0.5.0",
     "@influxdata/react-custom-scrollbars": "4.3.8",
-    "abortcontroller-polyfill": "^1.3.0",
     "axios": "^0.19.0",
     "babel-polyfill": "^6.26.0",
     "bignumber.js": "^4.0.2",
@@ -173,10 +170,13 @@
     "codemirror": "^5.36.0",
     "d3-format": "^1.3.2",
     "d3-scale": "^2.1.0",
+    "encoding-down": "^5.0.4",
     "fast.js": "^0.1.1",
     "history": "^3.2",
     "honeybadger-js": "^1.0.2",
     "immer": "^1.9.3",
+    "level-js": "^3.0.0",
+    "levelup": "^3.1.1",
     "lodash": "^4.3.0",
     "memoize-one": "^4.0.2",
     "moment": "^2.13.0",

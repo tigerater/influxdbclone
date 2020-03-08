@@ -4,7 +4,7 @@ import {connect} from 'react-redux'
 import {withRouter, WithRouterProps} from 'react-router'
 
 // Components
-import {ResourceCard} from '@influxdata/clockface'
+import {ResourceList} from 'src/clockface'
 import InlineLabels from 'src/shared/components/inlineLabels/InlineLabels'
 import VariableContextMenu from 'src/variables/components/VariableContextMenu'
 
@@ -47,36 +47,35 @@ class VariableCard extends PureComponent<Props & WithRouterProps> {
     const {variable, onDeleteVariable} = this.props
 
     return (
-      <ResourceCard
+      <ResourceList.Card
         testID="resource-card"
-        labels={this.labels}
-        contextMenu={
+        labels={() => this.labels}
+        contextMenu={() => (
           <VariableContextMenu
             variable={variable}
             onExport={this.handleExport}
             onRename={this.handleRenameVariable}
             onDelete={onDeleteVariable}
           />
-        }
-        name={
-          <ResourceCard.Name
-            onClick={this.handleNameClick}
+        )}
+        name={() => (
+          <ResourceList.Name
+            hrefValue={this.editVariablePath}
             name={variable.name}
           />
-        }
-        metaData={[<>Type: {variable.arguments.type}</>]}
+        )}
+        metaData={() => [<>Type: {variable.arguments.type}</>]}
       />
     )
   }
 
-  private handleNameClick = (): void => {
+  private get editVariablePath(): string {
     const {
       variable,
       params: {orgID},
-      router,
     } = this.props
 
-    router.push(`/orgs/${orgID}/variables/${variable.id}/edit`)
+    return `/orgs/${orgID}/variables/${variable.id}/edit`
   }
 
   private get labels(): JSX.Element {
@@ -138,7 +137,7 @@ class VariableCard extends PureComponent<Props & WithRouterProps> {
 
 const mstp = ({labels}: AppState): StateProps => {
   return {
-    labels: viewableLabels(labels.list as ILabel[]),
+    labels: viewableLabels(labels.list),
   }
 }
 

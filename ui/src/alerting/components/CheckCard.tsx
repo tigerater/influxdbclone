@@ -4,7 +4,8 @@ import {connect} from 'react-redux'
 import {withRouter, WithRouterProps} from 'react-router'
 
 // Components
-import {SlideToggle, ComponentSize, ResourceCard} from '@influxdata/clockface'
+import {ResourceList} from 'src/clockface'
+import {SlideToggle, ComponentSize} from '@influxdata/clockface'
 import CheckCardContext from 'src/alerting/components/CheckCardContext'
 
 // Constants
@@ -14,7 +15,7 @@ import {DEFAULT_CHECK_NAME} from 'src/alerting/constants'
 import {updateCheck, deleteCheck} from 'src/alerting/actions/checks'
 
 // Types
-import {Check} from 'src/types'
+import {Check, CheckBase} from 'src/types'
 
 interface DispatchProps {
   updateCheck: typeof updateCheck
@@ -32,7 +33,6 @@ const CheckCard: FunctionComponent<Props> = ({
   updateCheck,
   deleteCheck,
   params: {orgID},
-  router,
 }) => {
   const onUpdateName = (name: string) => {
     updateCheck({id: check.id, name})
@@ -47,49 +47,47 @@ const CheckCard: FunctionComponent<Props> = ({
   const onClone = () => {}
 
   const onToggle = () => {
-    const status = check.status === 'active' ? 'inactive' : 'active'
-
+    const status =
+      check.status == CheckBase.StatusEnum.Active
+        ? CheckBase.StatusEnum.Inactive
+        : CheckBase.StatusEnum.Active
     updateCheck({id: check.id, status})
   }
 
-  const onCheckClick = () => {
-    router.push(`/orgs/${orgID}/checks/${check.id}`)
-  }
-
   return (
-    <ResourceCard
+    <ResourceList.Card
       key={`check-id--${check.id}`}
       testID="check-card"
-      name={
-        <ResourceCard.EditableName
+      name={() => (
+        <ResourceList.EditableName
           onUpdate={onUpdateName}
-          onClick={onCheckClick}
+          hrefValue={`/orgs/${orgID}/checks/${check.id}`}
           name={check.name}
           noNameString={DEFAULT_CHECK_NAME}
-          testID="check-card--name"
+          parentTestID="check-card--name"
           buttonTestID="check-card--name-button"
           inputTestID="check-card--input"
         />
-      }
-      toggle={
+      )}
+      toggle={() => (
         <SlideToggle
-          active={check.status === 'active'}
+          active={check.status == CheckBase.StatusEnum.Active}
           size={ComponentSize.ExtraSmall}
           onChange={onToggle}
           testID="check-card--slide-toggle"
         />
-      }
+      )}
       // description
       // labels
-      disabled={check.status === 'inactive'}
-      contextMenu={
+      disabled={check.status == CheckBase.StatusEnum.Inactive}
+      contextMenu={() => (
         <CheckCardContext
           onDelete={onDelete}
           onExport={onExport}
           onClone={onClone}
         />
-      }
-      metaData={[<>{check.updatedAt.toString()}</>]}
+      )}
+      updatedAt={check.updatedAt.toString()}
     />
   )
 }

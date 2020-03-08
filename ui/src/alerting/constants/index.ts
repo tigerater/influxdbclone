@@ -1,90 +1,85 @@
 import {
   Check,
+  CheckType,
   DashboardQuery,
+  QueryEditMode,
+  CheckBase,
   NotificationRule,
-  GreaterThreshold,
-  ThresholdCheck,
+  NotificationRuleBase,
+  NotificationRuleType,
+  CheckStatusLevel,
+  ThresholdType,
 } from 'src/types'
 
 export const DEFAULT_CHECK_NAME = 'Name this check'
 export const DEFAULT_NOTIFICATION_RULE_NAME = 'Name this notification rule'
 
-export const DEFAULT_CHECK: Partial<ThresholdCheck> = {
-  name: DEFAULT_CHECK_NAME,
-  type: 'threshold',
-  status: 'active',
-  thresholds: [],
-}
-
 export const query: DashboardQuery = {
   text: 'this is query',
-  editMode: 'advanced',
+  editMode: QueryEditMode.Advanced,
   builderConfig: null,
   name: 'great q',
 }
 
 export const check1: Check = {
   id: '1',
-  type: 'threshold',
+  type: CheckType.Threshold,
   name: 'Amoozing check',
   orgID: 'lala',
-  createdAt: '2019-12-17T00:00',
-  updatedAt: '2019-05-17T00:00',
+  createdAt: new Date('December 17, 2019'),
+  updatedAt: new Date('April 17, 2019'),
   query: query,
-  status: 'active',
+  status: CheckBase.StatusEnum.Active,
   every: '2d',
   offset: '1m',
   tags: [{key: 'a', value: 'b'}],
   statusMessageTemplate: 'this is a great message template',
   thresholds: [
     {
-      level: 'WARN',
+      level: CheckStatusLevel.WARN,
       allValues: false,
-      type: 'greater',
-    } as GreaterThreshold,
+      type: ThresholdType.Greater,
+    },
   ],
 }
 
 export const check2: Check = {
   id: '2',
-  type: 'threshold',
+  type: CheckType.Threshold,
   name: 'Another check',
   orgID: 'lala',
-  createdAt: '2019-12-17T00:00',
-  updatedAt: '2019-05-17T00:00',
+  createdAt: new Date('December 17, 2019'),
+  updatedAt: new Date('April 17, 2019'),
   query: query,
-  status: 'active',
+  status: CheckBase.StatusEnum.Active,
   every: '2d',
   offset: '1m',
   tags: [{key: 'a', value: 'b'}],
   statusMessageTemplate: 'this is a great message template',
   thresholds: [
     {
-      level: 'WARN',
+      level: CheckStatusLevel.WARN,
       allValues: false,
-      type: 'greater',
-    } as GreaterThreshold,
+      type: ThresholdType.Greater,
+    },
   ],
 }
 
 export const checks: Array<Check> = [check1, check2]
 
-export const rule: NotificationRule = {
+export const notificationRule: NotificationRule = {
   id: '3',
   notifyEndpointID: '2',
   orgID: 'lala',
-  createdAt: '2019-12-17T00:00',
-  updatedAt: '2019-05-17T00:00',
-  status: 'active',
-  description: '',
+  createdAt: new Date('December 17, 2019'),
+  updatedAt: new Date('April 17, 2019'),
+  status: NotificationRuleBase.StatusEnum.Active,
   name: 'amazing notification rule',
-  type: 'slack',
+  type: NotificationRuleType.Slack,
   every: '2d',
   offset: '5m',
   limitEvery: 1,
   limit: 5,
   tagRules: [],
   statusRules: [],
-  channel: '#monitoring-team',
-  messageTemplate: 'hello, this is a NotificationRule fixture speaking :)',
 }

@@ -21,7 +21,8 @@ import {
 import {renameBucket} from 'src/buckets/actions'
 
 // Types
-import {AppState, Bucket} from 'src/types'
+import {IBucket as Bucket} from '@influxdata/influx'
+import {AppState} from 'src/types'
 
 interface State {
   bucket: Bucket

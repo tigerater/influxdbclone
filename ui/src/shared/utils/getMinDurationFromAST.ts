@@ -1,8 +1,5 @@
 // Libraries
-import {get} from 'lodash'
-
-// Utils
-import {findNodes} from 'src/shared/utils/ast'
+import {get, isObject, isArray} from 'lodash'
 
 // Types
 import {
@@ -15,7 +12,7 @@ import {
   ObjectExpression,
   DateTimeLiteral,
   DurationLiteral,
-} from 'src/types'
+} from 'src/types/ast'
 
 export function getMinDurationFromAST(ast: Package): number {
   // We can't take the minimum of durations of each range individually, since
@@ -44,7 +41,7 @@ export function getMinDurationFromAST(ast: Package): number {
 }
 
 function allRangeTimes(ast: any): Array<[number, number]> {
-  return findNodes(ast, isRangeNode).map(node => rangeTimes(ast, node))
+  return findNodes(isRangeNode, ast).map(node => rangeTimes(ast, node))
 }
 
 /*
@@ -83,16 +80,12 @@ function propertyTime(ast: any, value: Expression, now: number): number {
   switch (value.type) {
     case 'UnaryExpression':
       return now - durationDuration(value.argument as DurationLiteral)
-
     case 'DurationLiteral':
       return now + durationDuration(value)
-
     case 'DateTimeLiteral':
       return Date.parse(value.value)
-
     case 'Identifier':
       return propertyTime(ast, lookupVariable(ast, value.name), now)
-
     case 'BinaryExpression':
       const leftTime = Date.parse((value.left as DateTimeLiteral).value)
       const rightDuration = durationDuration(value.right as DurationLiteral)
@@ -105,24 +98,6 @@ function propertyTime(ast: any, value: Expression, now: number): number {
         default:
           throw new Error(`unexpected operator ${value.operator}`)
       }
-
-    case 'MemberExpression':
-      const objName = get(value, 'object.name')
-      const propertyName = get(value, 'property.name')
-      const objExpr = lookupVariable(ast, objName) as ObjectExpression
-      const property = objExpr.properties.find(
-        p => get(p, 'key.name') === propertyName
-      )
-
-      return propertyTime(ast, property.value, now)
-
-    case 'CallExpression':
-      if (isNowCall(value)) {
-        return now
-      }
-
-      throw new Error('unexpected CallExpression')
-
     default:
       throw new Error(`unexpected expression type ${value.type}`)
   }
@@ -163,7 +138,7 @@ function lookupVariable(ast: any, name: string): Expression {
     )
   }
 
-  const declarator = findNodes(ast, isDeclarator)
+  const declarator = findNodes(isDeclarator, ast)
 
   if (!declarator.length) {
     throw new Error(`unable to lookup variable "${name}"`)
@@ -178,14 +153,37 @@ function lookupVariable(ast: any, name: string): Expression {
   return init
 }
 
-function isNowCall(node: CallExpression): boolean {
-  return get(node, 'callee.name') === 'now'
-}
-
 function isRangeNode(node: Node) {
   return (
     get(node, 'type') === 'CallExpression' &&
     get(node, 'callee.type') === 'Identifier' &&
     get(node, 'callee.name') === 'range'
   )
+}
+
+/*
+  Find all nodes in a tree matching the `predicate` function. Each node in the
+  tree is an object, which may contain objects or arrays of objects as children
+  under any key.
+*/
+function findNodes(
+  predicate: (node: Node) => boolean,
+  node: any,
+  acc: any[] = []
+) {
+  if (predicate(node)) {
+    acc.push(node)
+  }
+
+  for (const value of Object.values(node)) {
+    if (isObject(value)) {
+      findNodes(predicate, value, acc)
+    } else if (isArray(value)) {
+      for (const innerValue of value) {
+        findNodes(predicate, innerValue, acc)
+      }
+    }
+  }
+
+  return acc
 }

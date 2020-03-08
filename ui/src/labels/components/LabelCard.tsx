@@ -2,21 +2,18 @@
 import React, {PureComponent} from 'react'
 
 // Components
-import {
-  ComponentSize,
-  Label as LabelComponent,
-  ResourceCard,
-} from '@influxdata/clockface'
+import {ComponentSize, Label} from '@influxdata/clockface'
+import {ResourceList} from 'src/clockface'
 
 // Types
-import {Label} from 'src/types'
+import {ILabel} from '@influxdata/influx'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
 import LabelContextMenu from './LabelContextMenu'
 
 interface Props {
-  label: Label
+  label: ILabel
   onClick: (labelID: string) => void
   onDelete: (labelID: string) => void
 }
@@ -28,11 +25,13 @@ export default class LabelCard extends PureComponent<Props> {
 
     return (
       <>
-        <ResourceCard
+        <ResourceList.Card
           testID="label-card"
-          contextMenu={<LabelContextMenu label={label} onDelete={onDelete} />}
-          name={
-            <LabelComponent
+          contextMenu={() => (
+            <LabelContextMenu label={label} onDelete={onDelete} />
+          )}
+          name={() => (
+            <Label
               id={label.id}
               name={label.name}
               color={label.properties.color}
@@ -40,8 +39,8 @@ export default class LabelCard extends PureComponent<Props> {
               size={ComponentSize.Small}
               onClick={this.handleClick}
             />
-          }
-          metaData={[<>Description: {label.properties.description}</>]}
+          )}
+          metaData={() => [<>Description: {label.properties.description}</>]}
         />
       </>
     )

@@ -3,7 +3,8 @@ import React, {PureComponent} from 'react'
 import _ from 'lodash'
 
 //Components
-import {Overlay, IndexList} from '@influxdata/clockface'
+import {Overlay} from '@influxdata/clockface'
+import {IndexList} from 'src/clockface'
 import RunLogRow from 'src/tasks/components/RunLogRow'
 import FancyScrollbar from 'src/shared/components/fancy_scrollbar/FancyScrollbar'
 

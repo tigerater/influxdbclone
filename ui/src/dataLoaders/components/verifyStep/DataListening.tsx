@@ -122,13 +122,8 @@ class DataListening extends PureComponent<OwnProps & WithRouterProps, State> {
     let timePassed: number
 
     try {
-      const result = await runQuery(orgID, script).promise
-
-      if (result.type !== 'SUCCESS') {
-        throw new Error(result.message)
-      }
-
-      responseLength = result.csv.length
+      const response = await runQuery(orgID, script).promise
+      responseLength = response.length
       timePassed = Number(new Date()) - this.startTime
     } catch (err) {
       this.setState({loading: LoadingState.Error})
