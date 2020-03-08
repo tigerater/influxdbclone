@@ -44,17 +44,6 @@ var deadman1 = &check.Deadman{
 		Status:      influxdb.Active,
 		Query: influxdb.DashboardQuery{
 			Text: script,
-			BuilderConfig: influxdb.BuilderConfig{
-				Tags: []struct {
-					Key    string   `json:"key"`
-					Values []string `json:"values"`
-				}{
-					{
-						Key:    "_field",
-						Values: []string{"usage_user"},
-					},
-				},
-			},
 		},
 		Every:                 mustDuration("1m"),
 		StatusMessageTemplate: "msg1",
@@ -85,17 +74,6 @@ var threshold1 = &check.Threshold{
 		Every:                 mustDuration("1m"),
 		Query: influxdb.DashboardQuery{
 			Text: script,
-			BuilderConfig: influxdb.BuilderConfig{
-				Tags: []struct {
-					Key    string   `json:"key"`
-					Values []string `json:"values"`
-				}{
-					{
-						Key:    "_field",
-						Values: []string{"usage_user"},
-					},
-				},
-			},
 		},
 		Tags: []notification.Tag{
 			{Key: "k11", Value: "v11"},
@@ -106,26 +84,9 @@ var threshold1 = &check.Threshold{
 		},
 	},
 	Thresholds: []check.ThresholdConfig{
-		&check.Lesser{
-			ThresholdConfigBase: check.ThresholdConfigBase{
-				Level: notification.Ok,
-			},
-			Value: 1000,
-		},
-		&check.Greater{
-			ThresholdConfigBase: check.ThresholdConfigBase{
-				Level: notification.Warn,
-			},
-			Value: 2000,
-		},
-		&check.Range{
-			ThresholdConfigBase: check.ThresholdConfigBase{
-				Level: notification.Info,
-			},
-			Min:    1500,
-			Max:    1900,
-			Within: true,
-		},
+		&check.Lesser{Value: 1000},
+		&check.Greater{Value: 2000},
+		&check.Range{Min: 1500, Max: 1900, Within: true},
 	},
 }
 
@@ -260,17 +221,6 @@ func CreateCheck(
 						Description: "desc1",
 						Query: influxdb.DashboardQuery{
 							Text: script,
-							BuilderConfig: influxdb.BuilderConfig{
-								Tags: []struct {
-									Key    string   `json:"key"`
-									Values []string `json:"values"`
-								}{
-									{
-										Key:    "_field",
-										Values: []string{"usage_user"},
-									},
-								},
-							},
 						},
 						Every:                 mustDuration("1m"),
 						Status:                influxdb.Active,
@@ -309,17 +259,6 @@ func CreateCheck(
 							OwnerID: MustIDBase16(twoID),
 							Query: influxdb.DashboardQuery{
 								Text: script,
-								BuilderConfig: influxdb.BuilderConfig{
-									Tags: []struct {
-										Key    string   `json:"key"`
-										Values []string `json:"values"`
-									}{
-										{
-											Key:    "_field",
-											Values: []string{"usage_user"},
-										},
-									},
-								},
 							},
 							Every:                 mustDuration("1m"),
 							Description:           "desc1",
@@ -377,43 +316,15 @@ func CreateCheck(
 						Every:                 mustDuration("1m"),
 						Query: influxdb.DashboardQuery{
 							Text: script,
-							BuilderConfig: influxdb.BuilderConfig{
-								Tags: []struct {
-									Key    string   `json:"key"`
-									Values []string `json:"values"`
-								}{
-									{
-										Key:    "_field",
-										Values: []string{"usage_user"},
-									},
-								},
-							},
 						},
 						Tags: []notification.Tag{
 							{Key: "k11", Value: "v11"},
 						},
 					},
 					Thresholds: []check.ThresholdConfig{
-						&check.Lesser{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Ok,
-							},
-							Value: 1000,
-						},
-						&check.Greater{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Warn,
-							},
-							Value: 2000,
-						},
-						&check.Range{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Info,
-							},
-							Min:    1500,
-							Max:    1900,
-							Within: true,
-						},
+						&check.Lesser{Value: 1000},
+						&check.Greater{Value: 2000},
+						&check.Range{Min: 1500, Max: 1900, Within: true},
 					},
 				},
 			},
@@ -458,17 +369,6 @@ func CreateCheck(
 						Every:       mustDuration("1m"),
 						Query: influxdb.DashboardQuery{
 							Text: script,
-							BuilderConfig: influxdb.BuilderConfig{
-								Tags: []struct {
-									Key    string   `json:"key"`
-									Values []string `json:"values"`
-								}{
-									{
-										Key:    "_field",
-										Values: []string{"usage_user"},
-									},
-								},
-							},
 						},
 						StatusMessageTemplate: "msg1",
 						Tags: []notification.Tag{
@@ -522,17 +422,6 @@ func CreateCheck(
 						Every:       mustDuration("1m"),
 						Query: influxdb.DashboardQuery{
 							Text: script,
-							BuilderConfig: influxdb.BuilderConfig{
-								Tags: []struct {
-									Key    string   `json:"key"`
-									Values []string `json:"values"`
-								}{
-									{
-										Key:    "_field",
-										Values: []string{"usage_user"},
-									},
-								},
-							},
 						},
 						Status:                influxdb.Inactive,
 						StatusMessageTemplate: "msg2",
@@ -554,17 +443,6 @@ func CreateCheck(
 							Every: mustDuration("1m"),
 							Query: influxdb.DashboardQuery{
 								Text: script,
-								BuilderConfig: influxdb.BuilderConfig{
-									Tags: []struct {
-										Key    string   `json:"key"`
-										Values []string `json:"values"`
-									}{
-										{
-											Key:    "_field",
-											Values: []string{"usage_user"},
-										},
-									},
-								},
 							},
 							OwnerID:               MustIDBase16(twoID),
 							Description:           "desc2",
@@ -600,17 +478,6 @@ func CreateCheck(
 						Every: mustDuration("1m"),
 						Query: influxdb.DashboardQuery{
 							Text: script,
-							BuilderConfig: influxdb.BuilderConfig{
-								Tags: []struct {
-									Key    string   `json:"key"`
-									Values []string `json:"values"`
-								}{
-									{
-										Key:    "_field",
-										Values: []string{"usage_user"},
-									},
-								},
-							},
 						},
 						Description:           "desc2",
 						Status:                influxdb.Inactive,
@@ -1257,17 +1124,6 @@ data = from(bucket: "telegraf") |> range(start: -1m)`,
 						Every:   mustDuration("1m"),
 						Query: influxdb.DashboardQuery{
 							Text: script,
-							BuilderConfig: influxdb.BuilderConfig{
-								Tags: []struct {
-									Key    string   `json:"key"`
-									Values []string `json:"values"`
-								}{
-									{
-										Key:    "_field",
-										Values: []string{"usage_user"},
-									},
-								},
-							},
 						},
 						Name:                  "changed",
 						Description:           "desc changed",
@@ -1299,17 +1155,6 @@ data = from(bucket: "telegraf") |> range(start: -1m)`,
 						OwnerID: MustIDBase16(sixID),
 						Query: influxdb.DashboardQuery{
 							Text: script,
-							BuilderConfig: influxdb.BuilderConfig{
-								Tags: []struct {
-									Key    string   `json:"key"`
-									Values []string `json:"values"`
-								}{
-									{
-										Key:    "_field",
-										Values: []string{"usage_user"},
-									},
-								},
-							},
 						},
 						Description:           "desc changed",
 						Status:                influxdb.Inactive,
@@ -1350,17 +1195,6 @@ data = from(bucket: "telegraf") |> range(start: -1m)`,
 							Every: mustDuration("1m"),
 							Query: influxdb.DashboardQuery{
 								Text: script,
-								BuilderConfig: influxdb.BuilderConfig{
-									Tags: []struct {
-										Key    string   `json:"key"`
-										Values []string `json:"values"`
-									}{
-										{
-											Key:    "_field",
-											Values: []string{"usage_user"},
-										},
-									},
-								},
 							},
 							TaskID:                1,
 							Name:                  "check2",
@@ -1479,17 +1313,6 @@ func PatchCheck(
 						Status:      influxdb.Inactive,
 						Query: influxdb.DashboardQuery{
 							Text: script,
-							BuilderConfig: influxdb.BuilderConfig{
-								Tags: []struct {
-									Key    string   `json:"key"`
-									Values []string `json:"values"`
-								}{
-									{
-										Key:    "_field",
-										Values: []string{"usage_user"},
-									},
-								},
-							},
 						},
 						StatusMessageTemplate: "msg1",
 						Tags: []notification.Tag{
@@ -1529,17 +1352,6 @@ func PatchCheck(
 							Status:  influxdb.Inactive,
 							Query: influxdb.DashboardQuery{
 								Text: script,
-								BuilderConfig: influxdb.BuilderConfig{
-									Tags: []struct {
-										Key    string   `json:"key"`
-										Values []string `json:"values"`
-									}{
-										{
-											Key:    "_field",
-											Values: []string{"usage_user"},
-										},
-									},
-								},
 							},
 							StatusMessageTemplate: "msg1",
 						},

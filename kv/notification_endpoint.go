@@ -98,8 +98,12 @@ func (s *Service) createNotificationEndpoint(ctx context.Context, tx Tx, edp inf
 		span, ctx := tracing.StartSpanFromContext(ctx)
 		defer span.Finish()
 
-		if _, err := s.findOrganizationByID(ctx, tx, edp.GetOrgID()); err != nil {
-			return err
+		_, pe := s.findOrganizationByID(ctx, tx, edp.GetOrgID())
+		if pe != nil {
+			return &influxdb.Error{
+				Op:  influxdb.OpCreateCheck,
+				Err: pe,
+			}
 		}
 	}
 	// notification endpoint name unique

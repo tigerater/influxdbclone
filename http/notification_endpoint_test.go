@@ -68,7 +68,7 @@ func TestService_handleGetNotificationEndpoints(t *testing.T) {
 								URL:   "http://example.com",
 								Token: influxdb.SecretField{Key: "slack-token-key"},
 							},
-							&endpoint.HTTP{
+							&endpoint.WebHook{
 								Base: endpoint.Base{
 									ID:     influxTesting.MustIDBase16("c0175f0077a77005"),
 									Name:   "example",
@@ -76,8 +76,8 @@ func TestService_handleGetNotificationEndpoints(t *testing.T) {
 									Status: influxdb.Inactive,
 								},
 								URL:             "example.com",
-								Username:        influxdb.SecretField{Key: "http-user-key"},
-								Password:        influxdb.SecretField{Key: "http-password-key"},
+								Username:        influxdb.SecretField{Key: "webhook-user-key"},
+								Password:        influxdb.SecretField{Key: "webhook-password-key"},
 								AuthMethod:      "basic",
 								Method:          "POST",
 								ContentTemplate: "template",
@@ -162,15 +162,15 @@ func TestService_handleGetNotificationEndpoints(t *testing.T) {
 		     },
 		     "name": "example",
 			 "orgID": "7e55e118dbabb1ed",
-			 "authMethod": "basic",
+			 "authmethod": "basic",
              "contentTemplate": "template",
-			 "password": "secret: http-password-key",
+			 "password": "secret: webhook-password-key",
 			 "token":"",
   			 "method": "POST",
 		     "status": "inactive",
-		     "type": "http",
+		     "type": "webhook",
 		     "updatedAt": "0001-01-01T00:00:00Z",
-		     "username": "secret: http-user-key"
+		     "username": "secret: webhook-user-key"
 		   }
 		   ]
 		}`,
@@ -268,7 +268,7 @@ func TestService_handleGetNotificationEndpoint(t *testing.T) {
 				&mock.NotificationEndpointService{
 					FindNotificationEndpointByIDF: func(ctx context.Context, id influxdb.ID) (influxdb.NotificationEndpoint, error) {
 						if id == influxTesting.MustIDBase16("020f755c3c082000") {
-							return &endpoint.HTTP{
+							return &endpoint.WebHook{
 								Base: endpoint.Base{
 									ID:     influxTesting.MustIDBase16("020f755c3c082000"),
 									OrgID:  influxTesting.MustIDBase16("020f755c3c082000"),
@@ -276,8 +276,8 @@ func TestService_handleGetNotificationEndpoint(t *testing.T) {
 									Status: influxdb.Active,
 								},
 								URL:             "example.com",
-								Username:        influxdb.SecretField{Key: "http-user-key"},
-								Password:        influxdb.SecretField{Key: "http-password-key"},
+								Username:        influxdb.SecretField{Key: "webhook-user-key"},
+								Password:        influxdb.SecretField{Key: "webhook-password-key"},
 								AuthMethod:      "basic",
 								Method:          "POST",
 								ContentTemplate: "template",
@@ -302,18 +302,18 @@ func TestService_handleGetNotificationEndpoint(t *testing.T) {
 		    "owners": "/api/v2/notificationEndpoints/020f755c3c082000/owners"
 		  },
 		  "labels": [],
-		  "authMethod": "basic",
+		  "authmethod": "basic",
 		  "method": "POST",
 		  "contentTemplate": "template",
 		  "createdAt": "0001-01-01T00:00:00Z",
 		  "updatedAt": "0001-01-01T00:00:00Z",
 		  "id": "020f755c3c082000",
 		  "url": "example.com",
-		  "username": "secret: http-user-key",
-		  "password": "secret: http-password-key",
+		  "username": "secret: webhook-user-key",
+		  "password": "secret: webhook-password-key",
 		  "token":"",
 		  "status": "active",
-          "type": "http",
+          "type": "webhook",
 		  "orgID": "020f755c3c082000",
 		  "name": "hello"
 		}
@@ -422,7 +422,7 @@ func TestService_handlePostNotificationEndpoint(t *testing.T) {
 				},
 			},
 			args: args{
-				endpoint: &endpoint.HTTP{
+				endpoint: &endpoint.WebHook{
 					Base: endpoint.Base{
 						Name:        "hello",
 						OrgID:       influxTesting.MustIDBase16("6f626f7274697320"),
@@ -430,8 +430,8 @@ func TestService_handlePostNotificationEndpoint(t *testing.T) {
 						Status:      influxdb.Active,
 					},
 					URL:             "example.com",
-					Username:        influxdb.SecretField{Key: "http-user-key"},
-					Password:        influxdb.SecretField{Key: "http-password-key"},
+					Username:        influxdb.SecretField{Key: "webhook-user-key"},
+					Password:        influxdb.SecretField{Key: "webhook-password-key"},
 					AuthMethod:      "basic",
 					Method:          "POST",
 					ContentTemplate: "template",
@@ -450,12 +450,12 @@ func TestService_handlePostNotificationEndpoint(t *testing.T) {
   },
   "url": "example.com",
   "status": "active",
-  "username": "secret: http-user-key",
-  "password": "secret: http-password-key",
+  "username": "secret: webhook-user-key",
+  "password": "secret: webhook-password-key",
   "token":"",
-  "authMethod": "basic",
+  "authmethod": "basic",
   "contentTemplate": "template",
-  "type": "http",
+  "type": "webhook",
   "method": "POST",
   "createdAt": "0001-01-01T00:00:00Z",
   "updatedAt": "0001-01-01T00:00:00Z",

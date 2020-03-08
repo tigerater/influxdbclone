@@ -10,44 +10,44 @@ import (
 	"github.com/influxdata/influxdb"
 )
 
-var _ influxdb.NotificationEndpoint = &HTTP{}
+var _ influxdb.NotificationEndpoint = &WebHook{}
 
 const (
-	httpTokenSuffix    = "-token"
-	httpUsernameSuffix = "-username"
-	httpPasswordSuffix = "-password"
+	webhookTokenSuffix    = "-token"
+	webhookUsernameSuffix = "-username"
+	webhookPasswordSuffix = "-password"
 )
 
-// HTTP is the notification endpoint config of http.
-type HTTP struct {
+// WebHook is the notification endpoint config of webhook.
+type WebHook struct {
 	Base
-	// Path is the API path of HTTP
+	// Path is the API path of WebHook
 	URL string `json:"url"`
 	// Token is the bearer token for authorization
 	Token           influxdb.SecretField `json:"token,omitempty"`
 	Username        influxdb.SecretField `json:"username,omitempty"`
 	Password        influxdb.SecretField `json:"password,omitempty"`
-	AuthMethod      string               `json:"authMethod"`
+	AuthMethod      string               `json:"authmethod"`
 	Method          string               `json:"method"`
 	ContentTemplate string               `json:"contentTemplate"`
 }
 
 // BackfillSecretKeys fill back fill the secret field key during the unmarshalling
 // if value of that secret field is not nil.
-func (s *HTTP) BackfillSecretKeys() {
+func (s *WebHook) BackfillSecretKeys() {
 	if s.Token.Key == "" && s.Token.Value != nil {
-		s.Token.Key = s.ID.String() + httpTokenSuffix
+		s.Token.Key = s.ID.String() + webhookTokenSuffix
 	}
 	if s.Username.Key == "" && s.Username.Value != nil {
-		s.Username.Key = s.ID.String() + httpUsernameSuffix
+		s.Username.Key = s.ID.String() + webhookUsernameSuffix
 	}
 	if s.Password.Key == "" && s.Password.Value != nil {
-		s.Password.Key = s.ID.String() + httpPasswordSuffix
+		s.Password.Key = s.ID.String() + webhookPasswordSuffix
 	}
 }
 
 // SecretFields return available secret fields.
-func (s HTTP) SecretFields() []influxdb.SecretField {
+func (s WebHook) SecretFields() []influxdb.SecretField {
 	arr := make([]influxdb.SecretField, 0)
 	if s.Token.Key != "" {
 		arr = append(arr, s.Token)
@@ -61,7 +61,7 @@ func (s HTTP) SecretFields() []influxdb.SecretField {
 	return arr
 }
 
-var goodHTTPAuthMethod = map[string]bool{
+var goodWebHookAuthMethod = map[string]bool{
 	"none":   true,
 	"basic":  true,
 	"bearer": true,
@@ -74,73 +74,73 @@ var goodHTTPMethod = map[string]bool{
 }
 
 // Valid returns error if some configuration is invalid
-func (s HTTP) Valid() error {
+func (s WebHook) Valid() error {
 	if err := s.Base.valid(); err != nil {
 		return err
 	}
 	if s.URL == "" {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
-			Msg:  "http endpoint URL is empty",
+			Msg:  "webhook endpoint URL is empty",
 		}
 	}
 	if _, err := url.Parse(s.URL); err != nil {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
-			Msg:  fmt.Sprintf("http endpoint URL is invalid: %s", err.Error()),
+			Msg:  fmt.Sprintf("webhook endpoint URL is invalid: %s", err.Error()),
 		}
 	}
 	if !goodHTTPMethod[s.Method] {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
-			Msg:  "invalid http http method",
+			Msg:  "invalid webhook http method",
 		}
 	}
-	if !goodHTTPAuthMethod[s.AuthMethod] {
+	if !goodWebHookAuthMethod[s.AuthMethod] {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
-			Msg:  "invalid http auth method",
+			Msg:  "invalid webhook auth method",
 		}
 	}
 	if s.AuthMethod == "basic" &&
-		(s.Username.Key != s.ID.String()+httpUsernameSuffix ||
-			s.Password.Key != s.ID.String()+httpPasswordSuffix) {
+		(s.Username.Key != s.ID.String()+webhookUsernameSuffix ||
+			s.Password.Key != s.ID.String()+webhookPasswordSuffix) {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
-			Msg:  "invalid http username/password for basic auth",
+			Msg:  "invalid webhook username/password for basic auth",
 		}
 	}
-	if s.AuthMethod == "bearer" && s.Token.Key != httpTokenSuffix {
+	if s.AuthMethod == "bearer" && s.Token.Key != webhookTokenSuffix {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
-			Msg:  "invalid http token for bearer auth",
+			Msg:  "invalid webhook token for bearer auth",
 		}
 	}
 
 	return nil
 }
 
-type httpAlias HTTP
+type webhookAlias WebHook
 
 // MarshalJSON implement json.Marshaler interface.
-func (s HTTP) MarshalJSON() ([]byte, error) {
+func (s WebHook) MarshalJSON() ([]byte, error) {
 	return json.Marshal(
 		struct {
-			httpAlias
+			webhookAlias
 			Type string `json:"type"`
 		}{
-			httpAlias: httpAlias(s),
-			Type:      s.Type(),
+			webhookAlias: webhookAlias(s),
+			Type:         s.Type(),
 		})
 }
 
 // Type returns the type.
-func (s HTTP) Type() string {
-	return HTTPType
+func (s WebHook) Type() string {
+	return WebhookType
 }
 
-// ParseResponse will parse the http response from http.
-func (s HTTP) ParseResponse(resp *http.Response) error {
+// ParseResponse will parse the http response from webhook.
+func (s WebHook) ParseResponse(resp *http.Response) error {
 	if resp.StatusCode != http.StatusOK {
 		body, err := ioutil.ReadAll(resp.Body)
 		if err != nil {

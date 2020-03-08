@@ -81,6 +81,7 @@ export const changeStatusRule = (
 export const initRuleDraft = (orgID: string): NotificationRuleDraft => ({
   type: 'http',
   every: '10m',
+  url: 'http://www.google.com',
   orgID,
   name: '',
   status: 'active',

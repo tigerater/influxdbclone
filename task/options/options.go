@@ -194,21 +194,6 @@ func grabTaskOptionAST(p *ast.Package, keys ...string) map[string]ast.Expression
 	return res
 }
 
-type constantSecretService struct{}
-
-func (s constantSecretService) LoadSecret(ctx context.Context, k string) (string, error) {
-	return "", nil
-}
-
-func newDeps() dependencies.Dependencies {
-	deps := dependencies.NewDefaults()
-	deps.Deps.HTTPClient = nil
-	deps.Deps.URLValidator = nil
-	deps.Deps.SecretService = constantSecretService{}
-
-	return deps
-}
-
 // FromScript extracts Options from a Flux script.
 func FromScript(script string) (Options, error) {
 	opt := Options{Retry: pointer.Int64(1), Concurrency: pointer.Int64(1)}
@@ -218,8 +203,7 @@ func FromScript(script string) (Options, error) {
 		return opt, err
 	}
 	durTypes := grabTaskOptionAST(fluxAST, optEvery, optOffset)
-	// TODO(desa): should be dependencies.NewEmpty(), but for now we'll hack things together
-	ctx, deps := context.Background(), newDeps()
+	ctx, deps := context.Background(), dependencies.NewEmpty()
 	_, scope, err := flux.EvalAST(ctx, deps, fluxAST)
 	if err != nil {
 		return opt, err

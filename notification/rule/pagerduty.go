@@ -9,7 +9,7 @@ import (
 // PagerDuty is the rule config of pagerduty notification.
 type PagerDuty struct {
 	Base
-	MessageTemplate string `json:"messageTemplate"`
+	MessageTemp string `json:"messageTemplate"`
 }
 
 // GenerateFlux Generates the flux pager duty notification.
@@ -41,7 +41,7 @@ func (c PagerDuty) Valid() error {
 	if err := c.Base.valid(); err != nil {
 		return err
 	}
-	if c.MessageTemplate == "" {
+	if c.MessageTemp == "" {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  "pagerduty invalid message template",
