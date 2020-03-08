@@ -31,7 +31,6 @@ import {
 
 interface DispatchProps {
   updateCurrentCheck: typeof updateCurrentCheck
-  changeCurrentCheckType: typeof changeCurrentCheckType
 }
 
 interface StateProps {
@@ -40,11 +39,7 @@ interface StateProps {
 
 type Props = DispatchProps & StateProps
 
-const CheckMetaCard: FC<Props> = ({
-  updateCurrentCheck,
-  changeCurrentCheckType,
-  check,
-}) => {
+const CheckMetaCard: FC<Props> = ({updateCurrentCheck, check}) => {
   const handleChangeType = (type: CheckType) => {
     changeCurrentCheckType(type)
   }
@@ -226,7 +221,6 @@ const mstp = (state: AppState): StateProps => {
 
 const mdtp: DispatchProps = {
   updateCurrentCheck: updateCurrentCheck,
-  changeCurrentCheckType: changeCurrentCheckType,
 }
 
 export default connect<StateProps, DispatchProps, {}>(

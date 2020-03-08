@@ -4,16 +4,11 @@ import {connect} from 'react-redux'
 import _ from 'lodash'
 
 // Components
-import {
-  Form,
-  Input,
-  Grid,
-  Dropdown,
-  MultiSelectDropdown,
-} from '@influxdata/clockface'
+import {Form, Input, Grid} from '@influxdata/clockface'
+import {AutoInput} from 'src/clockface'
+import {Dropdown, MultiSelectDropdown} from '@influxdata/clockface'
 import ColorSchemeDropdown from 'src/shared/components/ColorSchemeDropdown'
 import AutoDomainInput from 'src/shared/components/AutoDomainInput'
-import BinCountInput from 'src/timeMachine/components/view_options/BinCountInput'
 
 // Actions
 import {
@@ -157,7 +152,13 @@ const HistogramOptions: SFC<Props> = props => {
         />
       </Form.Element>
       <Form.Element label="Bins">
-        <BinCountInput binCount={binCount} onSetBinCount={onSetBinCount} />
+        <AutoInput
+          name="binCount"
+          inputPlaceholder="Enter a number"
+          value={binCount}
+          onChange={onSetBinCount}
+          min={0}
+        />
       </Form.Element>
       <h5 className="view-options--header">X Axis</h5>
       <Form.Element label="X Axis Label">

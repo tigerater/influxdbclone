@@ -20,10 +20,10 @@ import {
   TableOptions,
   TimeMachineTab,
   AutoRefresh,
-  TimeMachineID,
 } from 'src/types'
 import {Color} from 'src/types/colors'
 import {HistogramPosition} from '@influxdata/giraffe'
+import {TimeMachineID} from 'src/timeMachine/constants'
 
 export type Action =
   | QueryBuilderAction
@@ -73,10 +73,8 @@ export type Action =
   | SetYDomainAction
   | SetXAxisLabelAction
   | SetShadeBelowAction
-  | ReturnType<typeof convertToCheckView>
-  | ReturnType<typeof convertFromCheckView>
-  | ReturnType<typeof toggleAlertingPanel>
-  | ReturnType<typeof toggleVisOptions>
+  | ReturnType<typeof removeCheck>
+  | ReturnType<typeof addCheck>
 
 interface SetActiveTimeMachineAction {
   type: 'SET_ACTIVE_TIME_MACHINE'
@@ -104,10 +102,6 @@ export const setActiveTab = (
 ): SetActiveTabAction => ({
   type: 'SET_ACTIVE_TAB',
   payload: {activeTab},
-})
-
-export const toggleVisOptions = () => ({
-  type: 'TOGGLE_VIS_OPTIONS' as 'TOGGLE_VIS_OPTIONS',
 })
 
 interface SetNameAction {
@@ -602,14 +596,10 @@ export const setXAxisLabel = (xAxisLabel: string): SetXAxisLabelAction => ({
   payload: {xAxisLabel},
 })
 
-export const convertToCheckView = () => ({
-  type: 'CONVERT_TO_CHECK_VIEW' as 'CONVERT_TO_CHECK_VIEW',
+export const removeCheck = () => ({
+  type: 'REMOVE_CHECK' as 'REMOVE_CHECK',
 })
 
-export const convertFromCheckView = () => ({
-  type: 'CONVERT_FROM_CHECK_VIEW' as 'CONVERT_FROM_CHECK_VIEW',
-})
-
-export const toggleAlertingPanel = () => ({
-  type: 'TOGGLE_ALERTING_PANEL' as 'TOGGLE_ALERTING_PANEL',
+export const addCheck = () => ({
+  type: 'ADD_CHECK' as 'ADD_CHECK',
 })

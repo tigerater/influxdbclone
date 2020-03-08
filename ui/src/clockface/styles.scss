@@ -5,6 +5,7 @@
 
 @import 'components/card_select/CardSelectCard';
 @import 'components/card_select/ProtoboardIcon';
+@import 'components/form_layout/Form';
 @import 'components/grid_sizer/GridSizer';
 @import 'components/grid_sizer/ResponsiveGridSizer.scss';
 @import 'components/inputs/multipleInput/MultipleInput';
@@ -13,6 +14,7 @@
 @import 'components/wizard/ProgressBar';
 @import 'components/wizard/WizardOverlay';
 @import 'components/tooltips/Tooltips';
+@import 'components/auto_input/AutoInput.scss';
 @import 'components/context_menu/ContextMenu.scss';
 @import 'components/right_click_menu/RightClick.scss';
 @import 'components/tabs/Tabs.scss';

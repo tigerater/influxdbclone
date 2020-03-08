@@ -27,7 +27,6 @@ import {
   AppState,
   QueryViewProperties,
   TimeZone,
-  Check,
 } from 'src/types'
 
 interface StateProps {
@@ -40,7 +39,6 @@ interface StateProps {
   giraffeResult: FromFluxResult
   xColumn: string
   yColumn: string
-  check: Partial<Check>
   fillColumns: string[]
   symbolColumns: string[]
   timeZone: TimeZone
@@ -54,7 +52,6 @@ const TimeMachineVis: SFC<Props> = ({
   isInitialFetch,
   isViewingRawData,
   files,
-  check,
   viewProperties,
   giraffeResult,
   xColumn,
@@ -106,7 +103,6 @@ const TimeMachineVis: SFC<Props> = ({
               files={files}
               loading={loading}
               properties={resolvedViewProperties}
-              check={check}
               timeZone={timeZone}
             />
           )}
@@ -123,12 +119,6 @@ const mstp = (state: AppState): StateProps => {
     queryResults: {status: loading, errorMessage, isInitialFetch, files},
   } = getActiveTimeMachine(state)
 
-  const {
-    checks: {
-      current: {check},
-    },
-  } = state
-
   const giraffeResult = getVisTable(state)
   const xColumn = getXColumnSelection(state)
   const yColumn = getYColumnSelection(state)
@@ -139,7 +129,6 @@ const mstp = (state: AppState): StateProps => {
 
   return {
     loading,
-    check,
     errorMessage,
     isInitialFetch,
     files,

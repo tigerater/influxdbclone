@@ -70,13 +70,13 @@ export default (
         if (action.payload.type == 'deadman') {
           draftState.current.check = {
             ...DEFAULT_DEADMAN_CHECK,
-            ...omit(exCheck, ['thresholds', 'type']),
+            ...omit(exCheck, 'thresholds'),
           } as DeadmanCheck
         }
         if (action.payload.type == 'threshold') {
           draftState.current.check = {
             ...DEFAULT_THRESHOLD_CHECK,
-            ...omit(exCheck, ['timeSince', 'reportZero', 'level', 'type']),
+            ...omit(exCheck, ['timeSince', 'reportZero', 'level']),
           } as ThresholdCheck
         }
         return

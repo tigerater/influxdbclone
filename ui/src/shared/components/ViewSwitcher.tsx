@@ -22,12 +22,10 @@ import {
   RemoteDataState,
   TimeZone,
   CheckViewProperties,
-  Check,
 } from 'src/types'
 
 interface Props {
   giraffeResult: FromFluxResult
-  check: Partial<Check>
   files: string[]
   loading: RemoteDataState
   properties: QueryViewProperties | CheckViewProperties
@@ -36,7 +34,6 @@ interface Props {
 
 const ViewSwitcher: FunctionComponent<Props> = ({
   properties,
-  check,
   loading,
   files,
   giraffeResult: {table, fluxGroupKeyUnion},
@@ -162,7 +159,6 @@ const ViewSwitcher: FunctionComponent<Props> = ({
     case 'check':
       return (
         <CheckPlot
-          check={check}
           table={table}
           fluxGroupKeyUnion={fluxGroupKeyUnion}
           loading={loading}

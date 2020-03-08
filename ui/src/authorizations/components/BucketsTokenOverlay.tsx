@@ -3,6 +3,7 @@ import {connect} from 'react-redux'
 import {withRouter, WithRouterProps} from 'react-router'
 
 // Components
+import {Form} from 'src/clockface'
 import {
   IconFont,
   ComponentColor,
@@ -16,7 +17,6 @@ import {
   Columns,
   Input,
   Overlay,
-  Form,
 } from '@influxdata/clockface'
 import BucketsSelector from 'src/authorizations/components/BucketsSelector'
 import GetResources, {ResourceTypes} from 'src/shared/components/GetResources'
@@ -79,7 +79,7 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
 
     return (
       <Overlay visible={true}>
-        <Overlay.Container maxWidth={700}>
+        <Overlay.Container>
           <Overlay.Header
             title="Generate Read/Write Token"
             onDismiss={this.handleDismiss}
@@ -135,7 +135,11 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
                     </Grid.Row>
                   </GetResources>
                 </Form.Element>
-                <Form.Footer>
+                <ComponentSpacer
+                  alignItems={AlignItems.Center}
+                  direction={FlexDirection.Row}
+                  margin={ComponentSize.Small}
+                >
                   <Button
                     text="Cancel"
                     icon={IconFont.Remove}
@@ -150,7 +154,7 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
                     type={ButtonType.Submit}
                     testID="button--save"
                   />
-                </Form.Footer>
+                </ComponentSpacer>
               </ComponentSpacer>
             </Form>
           </Overlay.Body>

@@ -1,4 +1,6 @@
 // Import Components
+import AutoInput from './components/auto_input/AutoInput'
+import Form from './components/form_layout/Form'
 import MultipleInput, {
   MultiInputType,
 } from './components/inputs/multipleInput/MultipleInput'
@@ -7,6 +9,7 @@ import WizardOverlay from './components/wizard/WizardOverlay'
 import WizardProgressHeader from './components/wizard/WizardProgressHeader'
 import ProgressBar from './components/wizard/ProgressBar'
 import Context from './components/context_menu/Context'
+import FormElement from 'src/clockface/components/form_layout/FormElement'
 import GridSizer from 'src/clockface/components/grid_sizer/GridSizer'
 import ResponsiveGridSizer from 'src/clockface/components/grid_sizer/ResponsiveGridSizer'
 import Select from 'src/clockface/components/Select'
@@ -35,6 +38,7 @@ import {
 // Fire de lazer
 export {
   Alignment,
+  AutoInput,
   ButtonType,
   ButtonShape,
   Columns,
@@ -45,6 +49,8 @@ export {
   DropdownChild,
   DropdownMenuColors,
   DropdownMenuPosition,
+  Form,
+  FormElement,
   Greys,
   GridSizer,
   IconFont,
