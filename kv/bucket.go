@@ -21,6 +21,44 @@ var (
 var _ influxdb.BucketService = (*Service)(nil)
 var _ influxdb.BucketOperationLogService = (*Service)(nil)
 
+// UnexpectedBucketError is used when the error comes from an internal system.
+func UnexpectedBucketError(err error) *influxdb.Error {
+	return &influxdb.Error{
+		Code: influxdb.EInternal,
+		Msg:  fmt.Sprintf("unexpected error retrieving bucket's bucket; Err %v", err),
+		Op:   "kv/bucketBucket",
+	}
+}
+
+// UnexpectedBucketIndexError is used when the error comes from an internal system.
+func UnexpectedBucketIndexError(err error) *influxdb.Error {
+	return &influxdb.Error{
+		Code: influxdb.EInternal,
+		Msg:  fmt.Sprintf("unexpected error retrieving bucket index; Err: %v", err),
+		Op:   "kv/bucketIndex",
+	}
+}
+
+// BucketAlreadyExistsError is used when creating a bucket with a name
+// that already exists within an organization.
+func BucketAlreadyExistsError(b *influxdb.Bucket) error {
+	return &influxdb.Error{
+		Code: influxdb.EConflict,
+		Op:   "kv/bucket",
+		Msg:  fmt.Sprintf("bucket with name %s already exists", b.Name),
+	}
+}
+
+// ReservedBucketNameError is used when creating a bucket with a name that
+// starts with an underscore.
+func ReservedBucketNameError(b *influxdb.Bucket) error {
+	return &influxdb.Error{
+		Code: influxdb.EInvalid,
+		Op:   "kv/bucket",
+		Msg:  fmt.Sprintf("bucket name %s is invalid. Buckets may not start with underscore", b.Name),
+	}
+}
+
 func (s *Service) initializeBuckets(ctx context.Context, tx Tx) error {
 	if _, err := s.bucketsBucket(tx); err != nil {
 		return err
@@ -120,14 +158,8 @@ func (s *Service) FindBucketByName(ctx context.Context, orgID influxdb.ID, n str
 	span, ctx := tracing.StartSpanFromContext(ctx)
 	defer span.Finish()
 
-	internal, err := s.findSystemBucket(n)
-	// if found in our internals list, return mock
-	if err == nil {
-		internal.OrgID = orgID
-		return internal, nil
-	}
-
 	var b *influxdb.Bucket
+	var err error
 
 	err = s.kv.View(ctx, func(tx Tx) error {
 		bkt, pe := s.findBucketByName(ctx, tx, orgID, n)
@@ -140,30 +172,6 @@ func (s *Service) FindBucketByName(ctx context.Context, orgID influxdb.ID, n str
 	})
 
 	return b, err
-}
-
-func (s *Service) findSystemBucket(n string) (*influxdb.Bucket, error) {
-	switch n {
-	case "_tasks":
-		return &influxdb.Bucket{
-			ID:              influxdb.TasksSystemBucketID,
-			Name:            "_tasks",
-			RetentionPeriod: time.Hour * 24 * 3,
-			Description:     "System bucket for task logs",
-		}, nil
-	case "_monitoring":
-		return &influxdb.Bucket{
-			ID:              influxdb.MonitoringSystemBucketID,
-			Name:            "_monitoring",
-			RetentionPeriod: time.Hour * 24 * 7,
-			Description:     "System bucket for monitoring logs",
-		}, nil
-	default:
-		return nil, &influxdb.Error{
-			Code: influxdb.ENotFound,
-			Msg:  fmt.Sprintf("system bucket %q not found", n),
-		}
-	}
 }
 
 func (s *Service) findBucketByName(ctx context.Context, tx Tx, orgID influxdb.ID, n string) (*influxdb.Bucket, error) {
@@ -334,17 +342,6 @@ func (s *Service) FindBuckets(ctx context.Context, filter influxdb.BucketFilter,
 		return nil, 0, err
 	}
 
-	tasks, error := s.findSystemBucket("_tasks")
-	if error != nil {
-		return bs, 0, error
-	}
-
-	monitoring, error := s.findSystemBucket("_monitoring")
-	if error != nil {
-		return bs, 0, error
-	}
-	bs = append(bs, tasks, monitoring)
-
 	return bs, len(bs), nil
 }
 
@@ -423,8 +420,13 @@ func (s *Service) createBucket(ctx context.Context, tx Tx, b *influxdb.Bucket) (
 		return err
 	}
 
-	if b.ID, err = s.generateBucketID(); err != nil {
-		return err
+	// system buckets all have a fixed ID
+	if b.IsSystem() {
+		b.ID = influxdb.ID(b.Type)
+	} else {
+		if b.ID, err = s.generateBucketID(); err != nil {
+			return err
+		}
 	}
 
 	b.CreatedAt = s.Now()
@@ -501,6 +503,10 @@ func (s *Service) createBucketUserResourceMappings(ctx context.Context, tx Tx, b
 func (s *Service) putBucket(ctx context.Context, tx Tx, b *influxdb.Bucket) error {
 	span, _ := tracing.StartSpanFromContext(ctx)
 	defer span.Finish()
+
+	if b.Type == 0 {
+		b.Type = influxdb.BucketTypeUser
+	}
 
 	v, err := json.Marshal(b)
 	if err != nil {
@@ -613,11 +619,11 @@ func (s *Service) validBucketName(ctx context.Context, tx Tx, b *influxdb.Bucket
 	}
 
 	// names starting with an underscore are reserved for system buckets
-	if strings.HasPrefix(b.Name, "_") {
+	if !b.IsSystem() && strings.HasPrefix(b.Name, "_") {
 		return ReservedBucketNameError(b)
 	}
 
-	return err
+	return nil
 }
 
 // UpdateBucket updates a bucket according the parameters set on upd.
@@ -826,40 +832,22 @@ func (s *Service) appendBucketEventToLog(ctx context.Context, tx Tx, id influxdb
 	return s.addLogEntry(ctx, tx, k, v, s.Now())
 }
 
-// UnexpectedBucketError is used when the error comes from an internal system.
-func UnexpectedBucketError(err error) *influxdb.Error {
-	return &influxdb.Error{
-		Code: influxdb.EInternal,
-		Msg:  fmt.Sprintf("unexpected error retrieving bucket's bucket; Err %v", err),
-		Op:   "kv/bucketBucket",
+func (s *Service) createSystemBuckets(ctx context.Context, tx Tx, orgID influxdb.ID) error {
+	tasksBucket := &influxdb.Bucket{
+		OrgID: orgID,
+		Type:  influxdb.BucketTypeTasks,
+		Name:  "_tasks",
 	}
-}
 
-// UnexpectedBucketIndexError is used when the error comes from an internal system.
-func UnexpectedBucketIndexError(err error) *influxdb.Error {
-	return &influxdb.Error{
-		Code: influxdb.EInternal,
-		Msg:  fmt.Sprintf("unexpected error retrieving bucket index; Err: %v", err),
-		Op:   "kv/bucketIndex",
+	if err := s.createBucket(ctx, tx, tasksBucket); err != nil {
+		return err
 	}
-}
 
-// BucketAlreadyExistsError is used when creating a bucket with a name
-// that already exists within an organization.
-func BucketAlreadyExistsError(b *influxdb.Bucket) error {
-	return &influxdb.Error{
-		Code: influxdb.EConflict,
-		Op:   "kv/bucket",
-		Msg:  fmt.Sprintf("bucket with name %s already exists", b.Name),
+	monitoringBucket := &influxdb.Bucket{
+		OrgID: orgID,
+		Type:  influxdb.BucketTypeMonitoring,
+		Name:  "_monitoring",
 	}
-}
 
-// ReservedBucketNameError is used when creating a bucket with a name that
-// starts with an underscore.
-func ReservedBucketNameError(b *influxdb.Bucket) error {
-	return &influxdb.Error{
-		Code: influxdb.EInvalid,
-		Op:   "kv/bucket",
-		Msg:  fmt.Sprintf("bucket name %s is invalid. Buckets may not start with underscore", b.Name),
-	}
+	return s.createBucket(ctx, tx, monitoringBucket)
 }
