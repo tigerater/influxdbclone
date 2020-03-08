@@ -2,8 +2,6 @@
 
 ### Features
 
-1. [14221](https://github.com/influxdata/influxdb/pull/14221): Add influxd inspect verify-wal tool
-
 ### Bug Fixes
 
 ### UI Improvements
