@@ -912,6 +912,7 @@ export const VIS_GRAPHICS = [
     type: ViewType.Heatmap,
     name: 'Heatmap',
     graphic: GRAPHIC_SVGS[ViewType.Heatmap],
+    featureFlag: 'heatmap',
   },
   {
     type: ViewType.Histogram,
@@ -937,5 +938,6 @@ export const VIS_GRAPHICS = [
     type: ViewType.Scatter,
     name: 'Scatter',
     graphic: GRAPHIC_SVGS[ViewType.Scatter],
+    featureFlag: 'scatter',
   },
 ]

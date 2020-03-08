@@ -12,6 +12,7 @@ import AutoDomainInput from 'src/shared/components/AutoDomainInput'
 import YAxisBase from 'src/timeMachine/components/view_options/YAxisBase'
 import ColumnSelector from 'src/shared/components/ColumnSelector'
 import Checkbox from 'src/shared/components/Checkbox'
+import {FeatureFlag} from 'src/shared/utils/featureFlag'
 
 // Actions
 import {
@@ -40,6 +41,7 @@ import {ViewType} from 'src/types'
 import {Axes, XYViewGeom} from 'src/types/dashboards'
 import {Color} from 'src/types/colors'
 import {AppState} from 'src/types'
+import CloudExclude from 'src/shared/components/cloud/CloudExclude'
 
 interface OwnProps {
   type: ViewType
@@ -97,19 +99,21 @@ class LineOptions extends PureComponent<Props> {
       <>
         <Grid.Column>
           <h4 className="view-options--header">Customize Line Graph</h4>
-          <h5 className="view-options--header">Data</h5>
-          <ColumnSelector
-            selectedColumn={xColumn}
-            onSelectColumn={onSetXColumn}
-            availableColumns={numericColumns}
-            axisName="x"
-          />
-          <ColumnSelector
-            selectedColumn={yColumn}
-            onSelectColumn={onSetYColumn}
-            availableColumns={numericColumns}
-            axisName="y"
-          />
+          <CloudExclude>
+            <h5 className="view-options--header">Data</h5>
+            <ColumnSelector
+              selectedColumn={xColumn}
+              onSelectColumn={onSetXColumn}
+              availableColumns={numericColumns}
+              axisName="x"
+            />
+            <ColumnSelector
+              selectedColumn={yColumn}
+              onSelectColumn={onSetYColumn}
+              availableColumns={numericColumns}
+              axisName="y"
+            />
+          </CloudExclude>
           <h5 className="view-options--header">Options</h5>
         </Grid.Column>
         {geom && <Geom geom={geom} onSetGeom={onSetGeom} />}
@@ -118,11 +122,13 @@ class LineOptions extends PureComponent<Props> {
           onUpdateColors={onUpdateColors}
         />
         <Grid.Column>
-          <Checkbox
-            label="Shade Area Below Lines"
-            checked={!!shadeBelow}
-            onSetChecked={onSetShadeBelow}
-          />
+          <FeatureFlag name="lineGraphShading">
+            <Checkbox
+              label="Shade Area Below Lines"
+              checked={!!shadeBelow}
+              onSetChecked={onSetShadeBelow}
+            />
+          </FeatureFlag>
         </Grid.Column>
         <Grid.Column>
           <h5 className="view-options--header">Y Axis</h5>
