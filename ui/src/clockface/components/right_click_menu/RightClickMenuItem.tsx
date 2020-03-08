@@ -6,23 +6,14 @@ interface Props {
   disabled?: boolean
   onClick: (e?: MouseEvent<HTMLLIElement>) => void
   children: JSX.Element[] | JSX.Element | string
-  testID?: string
 }
 
 class RightClickMenuItem extends Component<Props> {
-  static defaultProps: Pick<Props, 'testID'> = {
-    testID: 'right-click--menu-item',
-  }
-
   public render() {
-    const {children, testID} = this.props
+    const {children} = this.props
 
     return (
-      <li
-        className={this.className}
-        onClick={this.handleClick}
-        data-testid={testID}
-      >
+      <li className={this.className} onClick={this.handleClick}>
         {children}
       </li>
     )

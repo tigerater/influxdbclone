@@ -3,13 +3,15 @@ package mock
 
 import (
 	"context"
+	"errors"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
-	"github.com/influxdata/flux"
 	platform "github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/task/backend"
+	scheduler "github.com/influxdata/influxdb/task/backend"
 	"go.uber.org/zap"
 )
 
@@ -19,19 +21,28 @@ type Scheduler struct {
 
 	lastTick int64
 
-	claims map[platform.ID]*platform.Task
+	claims map[string]*Task
+	meta   map[string]backend.StoreTaskMeta
 
-	createChan  chan *platform.Task
-	releaseChan chan *platform.Task
-	updateChan  chan *platform.Task
+	createChan  chan *Task
+	releaseChan chan *Task
+	updateChan  chan *Task
 
 	claimError   error
 	releaseError error
 }
 
+// Task is a mock implementation of a task.
+type Task struct {
+	Script           string
+	StartExecution   int64
+	ConcurrencyLimit uint8
+}
+
 func NewScheduler() *Scheduler {
 	return &Scheduler{
-		claims: map[platform.ID]*platform.Task{},
+		claims: map[string]*Task{},
+		meta:   map[string]backend.StoreTaskMeta{},
 	}
 }
 
@@ -48,11 +59,7 @@ func (s *Scheduler) Start(context.Context) {}
 
 func (s *Scheduler) Stop() {}
 
-func (s *Scheduler) Now() time.Time {
-	return time.Unix(s.lastTick, 0)
-}
-
-func (s *Scheduler) ClaimTask(_ context.Context, task *platform.Task) error {
+func (s *Scheduler) ClaimTask(task *backend.StoreTask, meta *backend.StoreTaskMeta) error {
 	if s.claimError != nil {
 		return s.claimError
 	}
@@ -60,33 +67,40 @@ func (s *Scheduler) ClaimTask(_ context.Context, task *platform.Task) error {
 	s.Lock()
 	defer s.Unlock()
 
-	_, ok := s.claims[task.ID]
+	_, ok := s.claims[task.ID.String()]
 	if ok {
-		return &platform.ErrTaskAlreadyClaimed
+		return backend.ErrTaskAlreadyClaimed
 	}
+	s.meta[task.ID.String()] = *meta
 
-	s.claims[task.ID] = task
+	t := &Task{Script: task.Script, StartExecution: meta.LatestCompleted, ConcurrencyLimit: uint8(meta.MaxConcurrency)}
+
+	s.claims[task.ID.String()] = t
 
 	if s.createChan != nil {
-		s.createChan <- task
+		s.createChan <- t
 	}
 
 	return nil
 }
 
-func (s *Scheduler) UpdateTask(_ context.Context, task *platform.Task) error {
+func (s *Scheduler) UpdateTask(task *backend.StoreTask, meta *backend.StoreTaskMeta) error {
 	s.Lock()
 	defer s.Unlock()
 
-	_, ok := s.claims[task.ID]
+	_, ok := s.claims[task.ID.String()]
 	if !ok {
-		return &platform.ErrTaskNotClaimed
+		return backend.ErrTaskNotClaimed
 	}
 
-	s.claims[task.ID] = task
+	s.meta[task.ID.String()] = *meta
+
+	t := &Task{Script: task.Script, StartExecution: meta.LatestCompleted, ConcurrencyLimit: uint8(meta.MaxConcurrency)}
+
+	s.claims[task.ID.String()] = t
 
 	if s.updateChan != nil {
-		s.updateChan <- task
+		s.updateChan <- t
 	}
 
 	return nil
@@ -100,44 +114,36 @@ func (s *Scheduler) ReleaseTask(taskID platform.ID) error {
 	s.Lock()
 	defer s.Unlock()
 
-	t, ok := s.claims[taskID]
+	t, ok := s.claims[taskID.String()]
 	if !ok {
-		return &platform.ErrTaskNotClaimed
+		return backend.ErrTaskNotClaimed
 	}
 	if s.releaseChan != nil {
 		s.releaseChan <- t
 	}
 
-	delete(s.claims, taskID)
+	delete(s.claims, taskID.String())
+	delete(s.meta, taskID.String())
 
 	return nil
 }
 
-func (s *Scheduler) TaskFor(id platform.ID) *platform.Task {
+func (s *Scheduler) TaskFor(id platform.ID) *Task {
 	s.Lock()
 	defer s.Unlock()
-	return s.claims[id]
+	return s.claims[id.String()]
 }
 
-func (s *Scheduler) TaskCreateChan() <-chan *platform.Task {
-	s.Lock()
-	defer s.Unlock()
-
-	s.createChan = make(chan *platform.Task, 10)
+func (s *Scheduler) TaskCreateChan() <-chan *Task {
+	s.createChan = make(chan *Task, 10)
 	return s.createChan
 }
-func (s *Scheduler) TaskReleaseChan() <-chan *platform.Task {
-	s.Lock()
-	defer s.Unlock()
-
-	s.releaseChan = make(chan *platform.Task, 10)
+func (s *Scheduler) TaskReleaseChan() <-chan *Task {
+	s.releaseChan = make(chan *Task, 10)
 	return s.releaseChan
 }
-func (s *Scheduler) TaskUpdateChan() <-chan *platform.Task {
-	s.Lock()
-	defer s.Unlock()
-
-	s.updateChan = make(chan *platform.Task, 10)
+func (s *Scheduler) TaskUpdateChan() <-chan *Task {
+	s.updateChan = make(chan *Task, 10)
 	return s.updateChan
 }
 
@@ -155,6 +161,121 @@ func (s *Scheduler) CancelRun(_ context.Context, taskID, runID platform.ID) erro
 	return nil
 }
 
+// DesiredState is a mock implementation of DesiredState (used by NewScheduler).
+type DesiredState struct {
+	mu sync.Mutex
+	// Map of stringified task ID to last ID used for run.
+	runIDs map[string]uint64
+
+	// Map of stringified, concatenated task and platform ID, to runs that have been created.
+	created map[string]backend.QueuedRun
+
+	// Map of stringified task ID to task meta.
+	meta map[string]backend.StoreTaskMeta
+}
+
+var _ backend.DesiredState = (*DesiredState)(nil)
+
+func NewDesiredState() *DesiredState {
+	return &DesiredState{
+		runIDs:  make(map[string]uint64),
+		created: make(map[string]backend.QueuedRun),
+		meta:    make(map[string]backend.StoreTaskMeta),
+	}
+}
+
+// SetTaskMeta sets the task meta for the given task ID.
+// SetTaskMeta must be called before CreateNextRun, for a given task ID.
+func (d *DesiredState) SetTaskMeta(taskID platform.ID, meta backend.StoreTaskMeta) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	d.meta[taskID.String()] = meta
+}
+
+// CreateNextRun creates the next run for the given task.
+// Refer to the documentation for SetTaskPeriod to understand how the times are determined.
+func (d *DesiredState) CreateNextRun(_ context.Context, taskID platform.ID, now int64) (backend.RunCreation, error) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if !taskID.Valid() {
+		return backend.RunCreation{}, errors.New("invalid task id")
+	}
+	tid := taskID.String()
+
+	meta, ok := d.meta[tid]
+	if !ok {
+		panic(fmt.Sprintf("meta not set for task with ID %s", tid))
+	}
+
+	makeID := func() (platform.ID, error) {
+		d.runIDs[tid]++
+		runID := platform.ID(d.runIDs[tid])
+		return runID, nil
+	}
+
+	rc, err := meta.CreateNextRun(now, makeID)
+	if err != nil {
+		return backend.RunCreation{}, err
+	}
+	d.meta[tid] = meta
+	rc.Created.TaskID = taskID
+	d.created[tid+rc.Created.RunID.String()] = rc.Created
+	return rc, nil
+}
+
+func (d *DesiredState) FinishRun(_ context.Context, taskID, runID platform.ID) error {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	tid := taskID.String()
+	rid := runID.String()
+	m := d.meta[tid]
+	if !m.FinishRun(runID) {
+		var knownIDs []string
+		for _, r := range m.CurrentlyRunning {
+			knownIDs = append(knownIDs, platform.ID(r.RunID).String())
+		}
+		return fmt.Errorf("unknown run ID %s; known run IDs: %s", rid, strings.Join(knownIDs, ", "))
+	}
+	d.meta[tid] = m
+	delete(d.created, tid+rid)
+	return nil
+}
+
+func (d *DesiredState) CreatedFor(taskID platform.ID) []backend.QueuedRun {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	var qrs []backend.QueuedRun
+	for _, qr := range d.created {
+		if qr.TaskID == taskID {
+			qrs = append(qrs, qr)
+		}
+	}
+
+	return qrs
+}
+
+// PollForNumberCreated blocks for a small amount of time waiting for exactly the given count of created runs for the given task ID.
+// If the expected number isn't found in time, it returns an error.
+//
+// Because the scheduler and executor do a lot of state changes asynchronously, this is useful in test.
+func (d *DesiredState) PollForNumberCreated(taskID platform.ID, count int) ([]scheduler.QueuedRun, error) {
+	const numAttempts = 50
+	actualCount := 0
+	var created []scheduler.QueuedRun
+	for i := 0; i < numAttempts; i++ {
+		time.Sleep(2 * time.Millisecond) // we sleep even on first so it becomes more likely that we catch when too many are produced.
+		created = d.CreatedFor(taskID)
+		actualCount = len(created)
+		if actualCount == count {
+			return created, nil
+		}
+	}
+	return created, fmt.Errorf("did not see count of %d created task(s) for ID %s in time, instead saw %d", count, taskID.String(), actualCount) // we return created anyways, to make it easier to debug
+}
+
 type Executor struct {
 	mu         sync.Mutex
 	hangingFor time.Duration
@@ -164,9 +285,6 @@ type Executor struct {
 
 	// Map of stringified, concatenated task and run ID, to results of runs that have executed and completed.
 	finished map[string]backend.RunResult
-
-	// Forced error for next call to Execute.
-	nextExecuteErr error
 
 	wg sync.WaitGroup
 }
@@ -185,11 +303,6 @@ func (e *Executor) Execute(ctx context.Context, run backend.QueuedRun) (backend.
 	rp.WithHanging(ctx, e.hangingFor)
 	id := run.TaskID.String() + run.RunID.String()
 	e.mu.Lock()
-	if err := e.nextExecuteErr; err != nil {
-		e.nextExecuteErr = nil
-		e.mu.Unlock()
-		return nil, err
-	}
 	e.running[id] = rp
 	e.mu.Unlock()
 	e.wg.Add(1)
@@ -206,13 +319,6 @@ func (e *Executor) Execute(ctx context.Context, run backend.QueuedRun) (backend.
 
 func (e *Executor) Wait() {
 	e.wg.Wait()
-}
-
-// FailNextCallToExecute causes the next call to e.Execute to unconditionally return err.
-func (e *Executor) FailNextCallToExecute(err error) {
-	e.mu.Lock()
-	e.nextExecuteErr = err
-	e.mu.Unlock()
 }
 
 func (e *Executor) WithHanging(dt time.Duration) {
@@ -250,7 +356,7 @@ func (e *Executor) PollForNumberRunning(taskID platform.ID, count int) ([]*RunPr
 			return running, nil
 		}
 	}
-	return nil, fmt.Errorf("did not see count of %d running task(s) for ID %s in time; last count was %d", count, taskID, len(running))
+	return nil, fmt.Errorf("did not see count of %d running task(s) for ID %s in time; last count was %d", count, taskID.String(), len(running))
 }
 
 // RunPromise is a mock RunPromise.
@@ -302,7 +408,7 @@ func (p *RunPromise) Wait() (backend.RunResult, error) {
 
 func (p *RunPromise) Cancel() {
 	p.cancelFunc()
-	p.Finish(nil, &platform.ErrRunCanceled)
+	p.Finish(nil, backend.ErrRunCanceled)
 }
 
 // Finish unblocks any call to Wait, to return r and err.
@@ -318,10 +424,6 @@ func (p *RunPromise) Finish(r backend.RunResult, err error) {
 type RunResult struct {
 	err         error
 	isRetryable bool
-
-	// Most tests don't care about statistics.
-	// If your test does care, adjust it after the call to NewRunResult.
-	Stats flux.Statistics
 }
 
 var _ backend.RunResult = (*RunResult)(nil)
@@ -336,8 +438,4 @@ func (rr *RunResult) Err() error {
 
 func (rr *RunResult) IsRetryable() bool {
 	return rr.isRetryable
-}
-
-func (rr *RunResult) Statistics() flux.Statistics {
-	return rr.Stats
 }

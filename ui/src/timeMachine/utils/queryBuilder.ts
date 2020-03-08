@@ -1,13 +1,6 @@
-import _ from 'lodash'
-import {BuilderConfig} from 'src/types'
+import {BuilderConfig} from 'src/types/v2'
 import {FUNCTIONS} from 'src/timeMachine/constants/queryBuilder'
-import {
-  TIME_RANGE_START,
-  TIME_RANGE_STOP,
-  OPTION_NAME,
-  WINDOW_PERIOD,
-} from 'src/variables/constants'
-import {AGG_WINDOW_AUTO} from 'src/timeMachine/constants/queryBuilder'
+import {TIME_RANGE_START, WINDOW_PERIOD} from 'src/shared/constants'
 
 export function isConfigValid(builderConfig: BuilderConfig): boolean {
   const {buckets, tags} = builderConfig
@@ -39,36 +32,32 @@ function buildQueryHelper(
 ): string {
   const [bucket] = builderConfig.buckets
   const tagFilterCall = formatTagFilterCall(builderConfig.tags)
-  const {aggregateWindow} = builderConfig
-  const fnCall = fn ? formatFunctionCall(fn, aggregateWindow.period) : ''
+  const fnCall = fn ? formatFunctionCall(fn) : ''
 
   const query = `from(bucket: "${bucket}")
-  |> range(start: ${OPTION_NAME}.${TIME_RANGE_START}, stop: ${OPTION_NAME}.${TIME_RANGE_STOP})${tagFilterCall}${fnCall}`
+  |> range(start: ${TIME_RANGE_START})${tagFilterCall}${fnCall}`
 
   return query
 }
 
-export function formatFunctionCall(
-  fn: BuilderConfig['functions'][0],
-  period: string
-) {
-  const fnSpec = FUNCTIONS.find(spec => spec.name === fn.name)
+export function formatFunctionCall(fn: BuilderConfig['functions'][0]) {
+  const fnSpec = FUNCTIONS.find(f => f.name === fn.name)
 
-  if (!fnSpec) {
-    return
+  let fnCall: string = ''
+
+  if (fnSpec && fnSpec.aggregate) {
+    fnCall = `
+  |> window(period: ${WINDOW_PERIOD})
+  ${fnSpec.flux}
+  |> group(columns: ["_value", "_time", "_start", "_stop"], mode: "except")
+  |> yield(name: "${fn.name}")`
+  } else {
+    fnCall = `
+  ${fnSpec.flux}
+  |> yield(name: "${fn.name}")`
   }
 
-  const formattedPeriod = formatPeriod(period)
-
-  return `\n  ${fnSpec.flux(formattedPeriod)}\n  |> yield(name: "${fn.name}")`
-}
-
-const formatPeriod = (period: string): string => {
-  if (period === AGG_WINDOW_AUTO || !period) {
-    return `${OPTION_NAME}.${WINDOW_PERIOD}`
-  }
-
-  return period
+  return fnCall
 }
 
 function formatTagFilterCall(tagsSelections: BuilderConfig['tags']) {
@@ -86,14 +75,4 @@ function formatTagFilterCall(tagsSelections: BuilderConfig['tags']) {
     .join('\n  ')
 
   return `\n  ${calls}`
-}
-
-export function hasQueryBeenEdited(
-  query: string,
-  builderConfig: BuilderConfig
-): boolean {
-  const emptyQueryChanged = !isConfigValid(builderConfig) && !_.isEmpty(query)
-  const existingQueryChanged = query !== buildQuery(builderConfig)
-
-  return emptyQueryChanged || existingQueryChanged
 }

@@ -2,10 +2,9 @@
 import React, {PureComponent, ChangeEvent} from 'react'
 
 // Components
-import {Form, Input, Grid} from '@influxdata/clockface'
+import {Input, InputType, Grid, Form, Columns} from 'src/clockface'
 
 // Types
-import {Columns, InputType} from '@influxdata/clockface'
 import {TaskSchedule} from 'src/utils/taskOptionsToFluxScript'
 
 interface Props {

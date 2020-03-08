@@ -1,15 +1,18 @@
 // Libraries
-import React, {PureComponent, MouseEvent} from 'react'
+import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
+import classnames from 'classnames'
 
 // Components
 import {
+  Radio,
   SlideToggle,
   ComponentSize,
   ComponentSpacer,
-  FlexDirection,
-  JustifyContent,
-} from '@influxdata/clockface'
+  ButtonShape,
+  Stack,
+  Alignment,
+} from 'src/clockface'
 import NoteEditorText from 'src/dashboards/components/NoteEditorText'
 import NoteEditorPreview from 'src/dashboards/components/NoteEditorPreview'
 
@@ -18,13 +21,18 @@ import {
   setIsPreviewing,
   toggleShowNoteWhenEmpty,
   setNote,
-} from 'src/dashboards/actions/notes'
+} from 'src/dashboards/actions/v2/notes'
+
+// Styles
+import 'src/dashboards/components/NoteEditor.scss'
 
 // Types
-import {AppState} from 'src/types'
+import {AppState} from 'src/types/v2'
 
 interface StateProps {
   note: string
+  isPreviewing: boolean
+  toggleVisible: boolean
   showNoteWhenEmpty: boolean
 }
 
@@ -38,79 +46,95 @@ interface OwnProps {}
 
 type Props = StateProps & DispatchProps & OwnProps
 
-interface State {
-  scrollTop: number
-}
-
-class NoteEditor extends PureComponent<Props, State> {
-  public state = {scrollTop: 0}
-
+class NoteEditor extends PureComponent<Props> {
   public render() {
-    const {note, onSetNote} = this.props
-    const {scrollTop} = this.state
+    const {note, isPreviewing, onSetIsPreviewing, onSetNote} = this.props
 
     return (
       <div className="note-editor">
-        <div className="note-editor--controls">
-          <div className="note-editor--helper">
-            Need help using Markdown? Check out{' '}
-            <a href="https://www.markdownguide.org/cheat-sheet" target="_blank">
-              this handy guide
-            </a>
+        <div className={this.controlsClassName}>
+          <div className="note-editor--radio">
+            <Radio shape={ButtonShape.StretchToFit}>
+              <Radio.Button
+                value={false}
+                active={!isPreviewing}
+                onClick={onSetIsPreviewing}
+              >
+                Compose
+              </Radio.Button>
+              <Radio.Button
+                value={true}
+                active={isPreviewing}
+                onClick={onSetIsPreviewing}
+              >
+                Preview
+              </Radio.Button>
+            </Radio>
           </div>
           {this.visibilityToggle}
         </div>
         <div className="note-editor--body">
-          <NoteEditorText
-            note={note}
-            onChangeNote={onSetNote}
-            onScroll={this.handleEditorScroll}
-            scrollTop={scrollTop}
-          />
-          <NoteEditorPreview
-            note={note}
-            scrollTop={scrollTop}
-            onScroll={this.handlePreviewScroll}
-          />
+          {this.noteEditorPreview}
+          <NoteEditorText note={note} onChangeNote={onSetNote} />
+        </div>
+        <div className="note-editor--footer">
+          Need help using Markdown? Check out{' '}
+          <a
+            href="https://daringfireball.net/projects/markdown/syntax"
+            target="_blank"
+          >
+            this handy guide
+          </a>
         </div>
       </div>
     )
   }
 
+  private get controlsClassName(): string {
+    const {toggleVisible} = this.props
+
+    return classnames('note-editor--controls', {centered: !toggleVisible})
+  }
+
+  private get noteEditorPreview(): JSX.Element {
+    const {isPreviewing, note} = this.props
+
+    if (isPreviewing) {
+      return <NoteEditorPreview note={note} />
+    }
+  }
+
   private get visibilityToggle(): JSX.Element {
-    const {showNoteWhenEmpty, onToggleShowNoteWhenEmpty} = this.props
+    const {
+      toggleVisible,
+      showNoteWhenEmpty,
+      onToggleShowNoteWhenEmpty,
+    } = this.props
 
-    return (
-      <ComponentSpacer
-        direction={FlexDirection.Row}
-        justifyContent={JustifyContent.FlexEnd}
-      >
-        <SlideToggle.Label text="Show note when query returns no data" />
-        <SlideToggle
-          active={showNoteWhenEmpty}
-          size={ComponentSize.ExtraSmall}
-          onChange={onToggleShowNoteWhenEmpty}
-        />
-      </ComponentSpacer>
-    )
-  }
-
-  private handleEditorScroll = (scrollTop: number) => {
-    this.setState({scrollTop})
-  }
-
-  private handlePreviewScroll = (e: MouseEvent<HTMLElement>) => {
-    const target = e.target as HTMLElement
-    const {scrollTop} = target
-
-    this.setState({scrollTop})
+    if (toggleVisible) {
+      return (
+        <ComponentSpacer stackChildren={Stack.Columns} align={Alignment.Right}>
+          <SlideToggle.Label text="Show note when query returns no data" />
+          <SlideToggle
+            active={showNoteWhenEmpty}
+            size={ComponentSize.ExtraSmall}
+            onChange={onToggleShowNoteWhenEmpty}
+          />
+        </ComponentSpacer>
+      )
+    }
   }
 }
 
 const mstp = (state: AppState) => {
-  const {note, isPreviewing, showNoteWhenEmpty} = state.noteEditor
+  const {
+    note,
+    isPreviewing,
+    toggleVisible,
+    showNoteWhenEmpty,
+  } = state.noteEditor
 
-  return {note, isPreviewing, showNoteWhenEmpty}
+  return {note, isPreviewing, toggleVisible, showNoteWhenEmpty}
 }
 
 const mdtp = {

@@ -15,7 +15,7 @@ func init() {
 	|> group(columns: ["_measurement", "_start"], mode: "by")
 	|> ` + name + `()
 	|> duplicate(column: "_start", as: "_time")
-	|> map(fn: (r) => ({_time: r._time, ` + name + `: r._value}), mergeKey: true)
+	|> map(fn: (r) => ({_time: r._time, ` + name + `: r._value}))
 	|> yield(name: "0")
 `
 		}),

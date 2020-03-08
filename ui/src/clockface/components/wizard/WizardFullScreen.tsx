@@ -10,7 +10,7 @@ const WizardFullScreen: SFC<Props> = (props: Props) => {
     <>
       <div className="wizard--full-screen">
         {props.children}
-        <div className="wizard--credits" data-testid="credits">
+        <div className="wizard--credits">
           Powered by <span className="icon cubo-uniform" />{' '}
           <a href="https://www.influxdata.com/" target="_blank">
             InfluxData

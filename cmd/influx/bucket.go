@@ -7,8 +7,10 @@ import (
 	"time"
 
 	platform "github.com/influxdata/influxdb"
+	"github.com/influxdata/influxdb/bolt"
 	"github.com/influxdata/influxdb/cmd/influx/internal"
 	"github.com/influxdata/influxdb/http"
+	"github.com/influxdata/influxdb/internal/fs"
 	"github.com/spf13/cobra"
 )
 
@@ -26,6 +28,7 @@ func bucketF(cmd *cobra.Command, args []string) {
 // BucketCreateFlags define the Create Command
 type BucketCreateFlags struct {
 	name      string
+	org       string
 	orgID     string
 	retention time.Duration
 }
@@ -41,6 +44,7 @@ func init() {
 
 	bucketCreateCmd.Flags().StringVarP(&bucketCreateFlags.name, "name", "n", "", "Name of bucket that will be created")
 	bucketCreateCmd.Flags().DurationVarP(&bucketCreateFlags.retention, "retention", "r", 0, "Duration in nanoseconds data will live in bucket")
+	bucketCreateCmd.Flags().StringVarP(&bucketCreateFlags.org, "org", "o", "", "Name of the organization that owns the bucket")
 	bucketCreateCmd.Flags().StringVarP(&bucketCreateFlags.orgID, "org-id", "", "", "The ID of the organization that owns the bucket")
 	bucketCreateCmd.MarkFlagRequired("name")
 
@@ -49,7 +53,17 @@ func init() {
 
 func newBucketService(f Flags) (platform.BucketService, error) {
 	if flags.local {
-		return newLocalKVService()
+		boltFile, err := fs.BoltFile()
+		if err != nil {
+			return nil, err
+		}
+		c := bolt.NewClient()
+		c.Path = boltFile
+		if err := c.Open(context.Background()); err != nil {
+			return nil, err
+		}
+
+		return c, nil
 	}
 	return &http.BucketService{
 		Addr:  flags.host,
@@ -58,8 +72,9 @@ func newBucketService(f Flags) (platform.BucketService, error) {
 }
 
 func bucketCreateF(cmd *cobra.Command, args []string) error {
-	if bucketCreateFlags.orgID == "" {
-		return fmt.Errorf("must specify org-id")
+	if (bucketCreateFlags.org == "" && bucketCreateFlags.orgID == "") ||
+		(bucketCreateFlags.org != "" && bucketCreateFlags.orgID != "") {
+		return fmt.Errorf("must specify exactly one of org or org-id")
 	}
 
 	s, err := newBucketService(flags)
@@ -72,12 +87,16 @@ func bucketCreateF(cmd *cobra.Command, args []string) error {
 		RetentionPeriod: bucketCreateFlags.retention,
 	}
 
+	if bucketCreateFlags.org != "" {
+		b.Organization = bucketCreateFlags.org
+	}
+
 	if bucketCreateFlags.orgID != "" {
 		id, err := platform.IDFromString(bucketCreateFlags.orgID)
 		if err != nil {
 			return fmt.Errorf("failed to decode org id %q: %v", bucketCreateFlags.orgID, err)
 		}
-		b.OrgID = *id
+		b.OrganizationID = *id
 	}
 
 	if err := s.CreateBucket(context.Background(), b); err != nil {
@@ -89,14 +108,15 @@ func bucketCreateF(cmd *cobra.Command, args []string) error {
 		"ID",
 		"Name",
 		"Retention",
-		"Org",
+		"Organization",
 		"OrganizationID",
 	)
 	w.Write(map[string]interface{}{
-		"ID":        b.ID.String(),
-		"Name":      b.Name,
-		"Retention": b.RetentionPeriod,
-		"OrgID":     b.OrgID.String(),
+		"ID":             b.ID.String(),
+		"Name":           b.Name,
+		"Retention":      b.RetentionPeriod,
+		"Organization":   b.Organization,
+		"OrganizationID": b.OrganizationID.String(),
 	})
 	w.Flush()
 
@@ -160,7 +180,7 @@ func bucketFindF(cmd *cobra.Command, args []string) error {
 	}
 
 	if bucketFindFlags.org != "" {
-		filter.Org = &bucketFindFlags.org
+		filter.Organization = &bucketFindFlags.org
 	}
 
 	buckets, _, err := s.FindBuckets(context.Background(), filter)
@@ -173,15 +193,16 @@ func bucketFindF(cmd *cobra.Command, args []string) error {
 		"ID",
 		"Name",
 		"Retention",
-		"Org",
+		"Organization",
 		"OrganizationID",
 	)
 	for _, b := range buckets {
 		w.Write(map[string]interface{}{
-			"ID":        b.ID.String(),
-			"Name":      b.Name,
-			"Retention": b.RetentionPeriod,
-			"OrgID":     b.OrgID.String(),
+			"ID":             b.ID.String(),
+			"Name":           b.Name,
+			"Retention":      b.RetentionPeriod,
+			"Organization":   b.Organization,
+			"OrganizationID": b.OrganizationID.String(),
 		})
 	}
 	w.Flush()
@@ -246,10 +267,11 @@ func bucketUpdateF(cmd *cobra.Command, args []string) error {
 		"OrganizationID",
 	)
 	w.Write(map[string]interface{}{
-		"ID":        b.ID.String(),
-		"Name":      b.Name,
-		"Retention": b.RetentionPeriod,
-		"OrgID":     b.OrgID.String(),
+		"ID":             b.ID.String(),
+		"Name":           b.Name,
+		"Retention":      b.RetentionPeriod,
+		"Organization":   b.Organization,
+		"OrganizationID": b.OrganizationID.String(),
 	})
 	w.Flush()
 
@@ -294,11 +316,12 @@ func bucketDeleteF(cmd *cobra.Command, args []string) error {
 		"Deleted",
 	)
 	w.Write(map[string]interface{}{
-		"ID":        b.ID.String(),
-		"Name":      b.Name,
-		"Retention": b.RetentionPeriod,
-		"OrgID":     b.OrgID.String(),
-		"Deleted":   true,
+		"ID":             b.ID.String(),
+		"Name":           b.Name,
+		"Retention":      b.RetentionPeriod,
+		"Organization":   b.Organization,
+		"OrganizationID": b.OrganizationID.String(),
+		"Deleted":        true,
 	})
 	w.Flush()
 

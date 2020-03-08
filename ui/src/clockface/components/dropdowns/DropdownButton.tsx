@@ -8,27 +8,27 @@ import {
   ComponentColor,
   ComponentSize,
   IconFont,
+  DropdownChild,
   ButtonType,
-} from '@influxdata/clockface'
-import {DropdownChild} from 'src/clockface'
+} from 'src/clockface/types'
 
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
   children: DropdownChild
   onClick: (e: MouseEvent<HTMLElement>) => void
-  status: ComponentStatus
-  color: ComponentColor
-  size: ComponentSize
-  active: boolean
+  status?: ComponentStatus
+  active?: boolean
+  color?: ComponentColor
+  size?: ComponentSize
   icon?: IconFont
   title?: string
-  testID?: string
+  testID: string
 }
 
 @ErrorHandling
 class DropdownButton extends Component<Props> {
-  public static defaultProps = {
+  public static defaultProps: Partial<Props> = {
     color: ComponentColor.Default,
     size: ComponentSize.Small,
     status: ComponentStatus.Default,
@@ -48,9 +48,19 @@ class DropdownButton extends Component<Props> {
       >
         {this.icon}
         <span className="dropdown--selected">{children}</span>
-        <span className="dropdown--caret icon caret-down" />
+        {this.caret}
       </button>
     )
+  }
+
+  private get caret(): JSX.Element {
+    const {active} = this.props
+
+    if (active) {
+      return <span className="dropdown--caret icon caret-up" />
+    }
+
+    return <span className="dropdown--caret icon caret-down" />
   }
 
   private get isDisabled(): boolean {

@@ -5,6 +5,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/influxdata/influxdb/models"
+	"github.com/influxdata/influxdb/query/stdlib/influxdata/influxdb"
 	"github.com/influxdata/influxdb/storage/reads/datatypes"
 	"github.com/influxdata/influxdb/tsdb/cursors"
 )
@@ -74,11 +75,7 @@ type GroupCursor interface {
 }
 
 type Store interface {
-	ReadFilter(ctx context.Context, req *datatypes.ReadFilterRequest) (ResultSet, error)
-	ReadGroup(ctx context.Context, req *datatypes.ReadGroupRequest) (GroupResultSet, error)
-
-	TagKeys(ctx context.Context, req *datatypes.TagKeysRequest) (cursors.StringIterator, error)
-	TagValues(ctx context.Context, req *datatypes.TagValuesRequest) (cursors.StringIterator, error)
-
-	GetSource(orgID, bucketID uint64) proto.Message
+	Read(ctx context.Context, req *datatypes.ReadRequest) (ResultSet, error)
+	GroupRead(ctx context.Context, req *datatypes.ReadRequest) (GroupResultSet, error)
+	GetSource(rs influxdb.ReadSpec) (proto.Message, error)
 }

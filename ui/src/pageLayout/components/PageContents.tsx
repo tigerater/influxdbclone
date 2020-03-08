@@ -3,7 +3,7 @@ import React, {Component, ReactNode} from 'react'
 import classnames from 'classnames'
 
 // Components
-import DapperScrollbars from 'src/shared/components/dapperScrollbars/DapperScrollbars'
+import FancyScrollbar from 'src/shared/components/fancy_scrollbar/FancyScrollbar'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -21,13 +21,9 @@ class PageContents extends Component<Props> {
 
     if (scrollable) {
       return (
-        <DapperScrollbars
-          className={this.containerClass}
-          autoHide={false}
-          autoSize={false}
-        >
+        <FancyScrollbar className={this.containerClass}>
           {this.children}
-        </DapperScrollbars>
+        </FancyScrollbar>
       )
     }
 

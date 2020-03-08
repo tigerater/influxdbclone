@@ -5,14 +5,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go.uber.org/zap"
 	"io/ioutil"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
-	"go.uber.org/zap"
-
-	"github.com/influxdata/influxdb"
+	platform "github.com/influxdata/influxdb"
 	platcontext "github.com/influxdata/influxdb/context"
 	httpMock "github.com/influxdata/influxdb/http/mock"
 	"github.com/influxdata/influxdb/inmem"
@@ -47,9 +46,9 @@ func NewMockScraperBackend() *ScraperBackend {
 
 func TestService_handleGetScraperTargets(t *testing.T) {
 	type fields struct {
-		ScraperTargetStoreService influxdb.ScraperTargetStoreService
-		OrganizationService       influxdb.OrganizationService
-		BucketService             influxdb.BucketService
+		ScraperTargetStoreService platform.ScraperTargetStoreService
+		OrganizationService       platform.OrganizationService
+		BucketService             platform.BucketService
 	}
 
 	type args struct {
@@ -72,28 +71,28 @@ func TestService_handleGetScraperTargets(t *testing.T) {
 			name: "get all scraper targets",
 			fields: fields{
 				OrganizationService: &mock.OrganizationService{
-					FindOrganizationByIDF: func(ctx context.Context, id influxdb.ID) (*influxdb.Organization, error) {
-						return &influxdb.Organization{
+					FindOrganizationByIDF: func(ctx context.Context, id platform.ID) (*platform.Organization, error) {
+						return &platform.Organization{
 							ID:   platformtesting.MustIDBase16("0000000000000211"),
 							Name: "org1",
 						}, nil
 					},
 				},
 				BucketService: &mock.BucketService{
-					FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-						return &influxdb.Bucket{
+					FindBucketByIDFn: func(ctx context.Context, id platform.ID) (*platform.Bucket, error) {
+						return &platform.Bucket{
 							ID:   platformtesting.MustIDBase16("0000000000000212"),
 							Name: "bucket1",
 						}, nil
 					},
 				},
 				ScraperTargetStoreService: &mock.ScraperTargetStoreService{
-					ListTargetsF: func(ctx context.Context, filter influxdb.ScraperTargetFilter) ([]influxdb.ScraperTarget, error) {
-						return []influxdb.ScraperTarget{
+					ListTargetsF: func(ctx context.Context) ([]platform.ScraperTarget, error) {
+						return []platform.ScraperTarget{
 							{
 								ID:       targetOneID,
 								Name:     "target-1",
-								Type:     influxdb.PrometheusScraperType,
+								Type:     platform.PrometheusScraperType,
 								URL:      "www.one.url",
 								OrgID:    platformtesting.MustIDBase16("0000000000000211"),
 								BucketID: platformtesting.MustIDBase16("0000000000000212"),
@@ -101,7 +100,7 @@ func TestService_handleGetScraperTargets(t *testing.T) {
 							{
 								ID:       targetTwoID,
 								Name:     "target-2",
-								Type:     influxdb.PrometheusScraperType,
+								Type:     platform.PrometheusScraperType,
 								URL:      "www.two.url",
 								OrgID:    platformtesting.MustIDBase16("0000000000000211"),
 								BucketID: platformtesting.MustIDBase16("0000000000000212"),
@@ -126,16 +125,14 @@ func TestService_handleGetScraperTargets(t *testing.T) {
 						  "name": "target-1",
 						  "bucket": "bucket1",
 						  "bucketID": "0000000000000212",
-						  "org": "org1",
+						  "organization": "org1",
 						  "orgID": "0000000000000211",
 						  "type": "prometheus",
 						  "url": "www.one.url",
 						  "links": {
 						    "bucket": "/api/v2/buckets/0000000000000212",
 						    "organization": "/api/v2/orgs/0000000000000211",
-						    "self": "/api/v2/scrapers/0000000000000111",
-						    "members": "/api/v2/scrapers/0000000000000111/members",
-						    "owners": "/api/v2/scrapers/0000000000000111/owners"
+						    "self": "/api/v2/scrapers/0000000000000111"
 						  }
 						},
 						{
@@ -144,15 +141,13 @@ func TestService_handleGetScraperTargets(t *testing.T) {
 						  "bucket": "bucket1",
 						  "bucketID": "0000000000000212",
 						  "orgID": "0000000000000211",
-						  "org": "org1",
+						  "organization": "org1",
 						  "type": "prometheus",
 						  "url": "www.two.url",
 						  "links": {
 						    "bucket": "/api/v2/buckets/0000000000000212",
 						    "organization": "/api/v2/orgs/0000000000000211",
-						    "self": "/api/v2/scrapers/0000000000000222",
-						    "members": "/api/v2/scrapers/0000000000000222/members",
-						    "owners": "/api/v2/scrapers/0000000000000222/owners"
+						    "self": "/api/v2/scrapers/0000000000000222"
 						  }
                         }
 					  ]
@@ -167,24 +162,24 @@ func TestService_handleGetScraperTargets(t *testing.T) {
 			name: "get all scraper targets when there are none",
 			fields: fields{
 				OrganizationService: &mock.OrganizationService{
-					FindOrganizationByIDF: func(ctx context.Context, id influxdb.ID) (*influxdb.Organization, error) {
-						return &influxdb.Organization{
+					FindOrganizationByIDF: func(ctx context.Context, id platform.ID) (*platform.Organization, error) {
+						return &platform.Organization{
 							ID:   platformtesting.MustIDBase16("0000000000000211"),
 							Name: "org1",
 						}, nil
 					},
 				},
 				BucketService: &mock.BucketService{
-					FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-						return &influxdb.Bucket{
+					FindBucketByIDFn: func(ctx context.Context, id platform.ID) (*platform.Bucket, error) {
+						return &platform.Bucket{
 							ID:   platformtesting.MustIDBase16("0000000000000212"),
 							Name: "bucket1",
 						}, nil
 					},
 				},
 				ScraperTargetStoreService: &mock.ScraperTargetStoreService{
-					ListTargetsF: func(ctx context.Context, filter influxdb.ScraperTargetFilter) ([]influxdb.ScraperTarget, error) {
-						return []influxdb.ScraperTarget{}, nil
+					ListTargetsF: func(ctx context.Context) ([]platform.ScraperTarget, error) {
+						return []platform.ScraperTarget{}, nil
 					},
 				},
 			},
@@ -207,7 +202,6 @@ func TestService_handleGetScraperTargets(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scraperBackend := NewMockScraperBackend()
-			scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 			scraperBackend.ScraperStorageService = tt.fields.ScraperTargetStoreService
 			scraperBackend.OrganizationService = tt.fields.OrganizationService
 			scraperBackend.BucketService = tt.fields.BucketService
@@ -237,12 +231,8 @@ func TestService_handleGetScraperTargets(t *testing.T) {
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
 				t.Errorf("%q. handleGetScraperTargets() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
-			if tt.wants.body != "" {
-				if eq, diff, err := jsonEqual(string(body), tt.wants.body); err != nil {
-					t.Errorf("%q, handleGetScraperTargets(). error unmarshaling json %v", tt.name, err)
-				} else if !eq {
-					t.Errorf("%q. handleGetScraperTargets() = ***%s***", tt.name, diff)
-				}
+			if eq, diff, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
+				t.Errorf("%q. handleGetScraperTargets() = ***%s***\n\ngot:\n%s\n\nwant:\n%s", tt.name, diff, string(body), tt.wants.body)
 			}
 		})
 	}
@@ -250,9 +240,9 @@ func TestService_handleGetScraperTargets(t *testing.T) {
 
 func TestService_handleGetScraperTarget(t *testing.T) {
 	type fields struct {
-		OrganizationService       influxdb.OrganizationService
-		BucketService             influxdb.BucketService
-		ScraperTargetStoreService influxdb.ScraperTargetStoreService
+		OrganizationService       platform.OrganizationService
+		BucketService             platform.BucketService
+		ScraperTargetStoreService platform.ScraperTargetStoreService
 	}
 
 	type args struct {
@@ -275,35 +265,35 @@ func TestService_handleGetScraperTarget(t *testing.T) {
 			name: "get a scraper target by id",
 			fields: fields{
 				OrganizationService: &mock.OrganizationService{
-					FindOrganizationByIDF: func(ctx context.Context, id influxdb.ID) (*influxdb.Organization, error) {
-						return &influxdb.Organization{
+					FindOrganizationByIDF: func(ctx context.Context, id platform.ID) (*platform.Organization, error) {
+						return &platform.Organization{
 							ID:   platformtesting.MustIDBase16("0000000000000211"),
 							Name: "org1",
 						}, nil
 					},
 				},
 				BucketService: &mock.BucketService{
-					FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-						return &influxdb.Bucket{
+					FindBucketByIDFn: func(ctx context.Context, id platform.ID) (*platform.Bucket, error) {
+						return &platform.Bucket{
 							ID:   platformtesting.MustIDBase16("0000000000000212"),
 							Name: "bucket1",
 						}, nil
 					},
 				},
 				ScraperTargetStoreService: &mock.ScraperTargetStoreService{
-					GetTargetByIDF: func(ctx context.Context, id influxdb.ID) (*influxdb.ScraperTarget, error) {
+					GetTargetByIDF: func(ctx context.Context, id platform.ID) (*platform.ScraperTarget, error) {
 						if id == targetOneID {
-							return &influxdb.ScraperTarget{
+							return &platform.ScraperTarget{
 								ID:       targetOneID,
 								Name:     "target-1",
-								Type:     influxdb.PrometheusScraperType,
+								Type:     platform.PrometheusScraperType,
 								URL:      "www.some.url",
 								OrgID:    platformtesting.MustIDBase16("0000000000000211"),
 								BucketID: platformtesting.MustIDBase16("0000000000000212"),
 							}, nil
 						}
-						return nil, &influxdb.Error{
-							Code: influxdb.ENotFound,
+						return nil, &platform.Error{
+							Code: platform.ENotFound,
 							Msg:  "scraper target is not found",
 						}
 					},
@@ -318,24 +308,22 @@ func TestService_handleGetScraperTarget(t *testing.T) {
 				body: fmt.Sprintf(
 					`
                     {
-                      "id": "%s",
+                      "id": "%[1]s",
                       "name": "target-1",
                       "type": "prometheus",
 					  "url": "www.some.url",
 					  "bucket": "bucket1",
                       "bucketID": "0000000000000212",
 					  "orgID": "0000000000000211",
-					  "org": "org1",
+					  "organization": "org1",
                       "links": {
                         "bucket": "/api/v2/buckets/0000000000000212",
                         "organization": "/api/v2/orgs/0000000000000211",
-                        "self": "/api/v2/scrapers/%s",
-                        "members": "/api/v2/scrapers/%s/members",
-                        "owners": "/api/v2/scrapers/%s/owners"
+                        "self": "/api/v2/scrapers/%[1]s"
                       }
                     }
                     `,
-					targetOneIDString, targetOneIDString, targetOneIDString, targetOneIDString,
+					targetOneIDString,
 				),
 			},
 		},
@@ -344,7 +332,6 @@ func TestService_handleGetScraperTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scraperBackend := NewMockScraperBackend()
-			scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 			scraperBackend.ScraperStorageService = tt.fields.ScraperTargetStoreService
 			scraperBackend.OrganizationService = tt.fields.OrganizationService
 			scraperBackend.BucketService = tt.fields.BucketService
@@ -376,12 +363,8 @@ func TestService_handleGetScraperTarget(t *testing.T) {
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
 				t.Errorf("%q. handleGetScraperTarget() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
-			if tt.wants.body != "" {
-				if eq, diff, err := jsonEqual(string(body), tt.wants.body); err != nil {
-					t.Errorf("%q, handleGetScraperTarget(). error unmarshaling json %v", tt.name, err)
-				} else if !eq {
-					t.Errorf("%q. handleGetScraperTarget() = ***%s***", tt.name, diff)
-				}
+			if eq, diff, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
+				t.Errorf("%q. handleGetScraperTarget() = ***%s***", tt.name, diff)
 			}
 		})
 	}
@@ -389,7 +372,7 @@ func TestService_handleGetScraperTarget(t *testing.T) {
 
 func TestService_handleDeleteScraperTarget(t *testing.T) {
 	type fields struct {
-		Service influxdb.ScraperTargetStoreService
+		Service platform.ScraperTargetStoreService
 	}
 
 	type args struct {
@@ -412,7 +395,7 @@ func TestService_handleDeleteScraperTarget(t *testing.T) {
 			name: "delete a scraper target by id",
 			fields: fields{
 				Service: &mock.ScraperTargetStoreService{
-					RemoveTargetF: func(ctx context.Context, id influxdb.ID) error {
+					RemoveTargetF: func(ctx context.Context, id platform.ID) error {
 						if id == targetOneID {
 							return nil
 						}
@@ -432,10 +415,10 @@ func TestService_handleDeleteScraperTarget(t *testing.T) {
 			name: "scraper target not found",
 			fields: fields{
 				Service: &mock.ScraperTargetStoreService{
-					RemoveTargetF: func(ctx context.Context, id influxdb.ID) error {
-						return &influxdb.Error{
-							Code: influxdb.ENotFound,
-							Msg:  influxdb.ErrScraperTargetNotFound,
+					RemoveTargetF: func(ctx context.Context, id platform.ID) error {
+						return &platform.Error{
+							Code: platform.ENotFound,
+							Msg:  platform.ErrScraperTargetNotFound,
 						}
 					},
 				},
@@ -452,7 +435,6 @@ func TestService_handleDeleteScraperTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scraperBackend := NewMockScraperBackend()
-			scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 			scraperBackend.ScraperStorageService = tt.fields.Service
 			h := NewScraperHandler(scraperBackend)
 
@@ -482,12 +464,8 @@ func TestService_handleDeleteScraperTarget(t *testing.T) {
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
 				t.Errorf("%q. handleDeleteScraperTarget() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
-			if tt.wants.body != "" {
-				if eq, diff, err := jsonEqual(string(body), tt.wants.body); err != nil {
-					t.Errorf("%q, handleDeleteScraperTarget(). error unmarshaling json %v", tt.name, err)
-				} else if !eq {
-					t.Errorf("%q. handleDeleteScraperTarget() = ***%s***", tt.name, diff)
-				}
+			if eq, diff, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
+				t.Errorf("%q. handleDeleteScraperTarget() = ***%s***", tt.name, diff)
 			}
 		})
 	}
@@ -495,13 +473,13 @@ func TestService_handleDeleteScraperTarget(t *testing.T) {
 
 func TestService_handlePostScraperTarget(t *testing.T) {
 	type fields struct {
-		OrganizationService       influxdb.OrganizationService
-		BucketService             influxdb.BucketService
-		ScraperTargetStoreService influxdb.ScraperTargetStoreService
+		OrganizationService       platform.OrganizationService
+		BucketService             platform.BucketService
+		ScraperTargetStoreService platform.ScraperTargetStoreService
 	}
 
 	type args struct {
-		target *influxdb.ScraperTarget
+		target *platform.ScraperTarget
 	}
 
 	type wants struct {
@@ -520,32 +498,32 @@ func TestService_handlePostScraperTarget(t *testing.T) {
 			name: "create a new scraper target",
 			fields: fields{
 				OrganizationService: &mock.OrganizationService{
-					FindOrganizationByIDF: func(ctx context.Context, id influxdb.ID) (*influxdb.Organization, error) {
-						return &influxdb.Organization{
+					FindOrganizationByIDF: func(ctx context.Context, id platform.ID) (*platform.Organization, error) {
+						return &platform.Organization{
 							ID:   platformtesting.MustIDBase16("0000000000000211"),
 							Name: "org1",
 						}, nil
 					},
 				},
 				BucketService: &mock.BucketService{
-					FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-						return &influxdb.Bucket{
+					FindBucketByIDFn: func(ctx context.Context, id platform.ID) (*platform.Bucket, error) {
+						return &platform.Bucket{
 							ID:   platformtesting.MustIDBase16("0000000000000212"),
 							Name: "bucket1",
 						}, nil
 					},
 				},
 				ScraperTargetStoreService: &mock.ScraperTargetStoreService{
-					AddTargetF: func(ctx context.Context, st *influxdb.ScraperTarget, userID influxdb.ID) error {
+					AddTargetF: func(ctx context.Context, st *platform.ScraperTarget, userID platform.ID) error {
 						st.ID = targetOneID
 						return nil
 					},
 				},
 			},
 			args: args{
-				target: &influxdb.ScraperTarget{
+				target: &platform.ScraperTarget{
 					Name:     "hello",
-					Type:     influxdb.PrometheusScraperType,
+					Type:     platform.PrometheusScraperType,
 					BucketID: platformtesting.MustIDBase16("0000000000000212"),
 					OrgID:    platformtesting.MustIDBase16("0000000000000211"),
 					URL:      "www.some.url",
@@ -557,24 +535,22 @@ func TestService_handlePostScraperTarget(t *testing.T) {
 				body: fmt.Sprintf(
 					`
                     {
-                      "id": "%s",
+                      "id": "%[1]s",
                       "name": "hello",
                       "type": "prometheus",
                       "url": "www.some.url",
 					  "orgID": "0000000000000211",
-					  "org": "org1",
+					  "organization": "org1",
 					  "bucket": "bucket1",
                       "bucketID": "0000000000000212",
                       "links": {
                         "bucket": "/api/v2/buckets/0000000000000212",
                         "organization": "/api/v2/orgs/0000000000000211",
-                        "self": "/api/v2/scrapers/%s",
-                        "members": "/api/v2/scrapers/%s/members",
-                        "owners": "/api/v2/scrapers/%s/owners"
+                        "self": "/api/v2/scrapers/%[1]s"
                       }
                     }
                     `,
-					targetOneIDString, targetOneIDString, targetOneIDString, targetOneIDString,
+					targetOneIDString,
 				),
 			},
 		},
@@ -583,7 +559,6 @@ func TestService_handlePostScraperTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scraperBackend := NewMockScraperBackend()
-			scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 			scraperBackend.ScraperStorageService = tt.fields.ScraperTargetStoreService
 			scraperBackend.OrganizationService = tt.fields.OrganizationService
 			scraperBackend.BucketService = tt.fields.BucketService
@@ -595,7 +570,7 @@ func TestService_handlePostScraperTarget(t *testing.T) {
 			}
 
 			r := httptest.NewRequest("GET", "http://any.tld", bytes.NewReader(st))
-			r = r.WithContext(platcontext.SetAuthorizer(r.Context(), &influxdb.Authorization{}))
+			r = r.WithContext(platcontext.SetAuthorizer(r.Context(), &platform.Authorization{}))
 			w := httptest.NewRecorder()
 
 			h.handlePostScraperTarget(w, r)
@@ -610,12 +585,8 @@ func TestService_handlePostScraperTarget(t *testing.T) {
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
 				t.Errorf("%q. handlePostScraperTarget() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
-			if tt.wants.body != "" {
-				if eq, diff, err := jsonEqual(string(body), tt.wants.body); err != nil {
-					t.Errorf("%q, handlePostScraperTarget(). error unmarshaling json %v", tt.name, err)
-				} else if !eq {
-					t.Errorf("%q. handlePostScraperTarget() = ***%s***", tt.name, diff)
-				}
+			if eq, diff, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
+				t.Errorf("%q. handlePostScraperTarget() = ***%s***", tt.name, diff)
 			}
 		})
 	}
@@ -623,14 +594,14 @@ func TestService_handlePostScraperTarget(t *testing.T) {
 
 func TestService_handlePatchScraperTarget(t *testing.T) {
 	type fields struct {
-		BucketService             influxdb.BucketService
-		OrganizationService       influxdb.OrganizationService
-		ScraperTargetStoreService influxdb.ScraperTargetStoreService
+		BucketService             platform.BucketService
+		OrganizationService       platform.OrganizationService
+		ScraperTargetStoreService platform.ScraperTargetStoreService
 	}
 
 	type args struct {
 		id     string
-		update *influxdb.ScraperTarget
+		update *platform.ScraperTarget
 	}
 
 	type wants struct {
@@ -649,29 +620,29 @@ func TestService_handlePatchScraperTarget(t *testing.T) {
 			name: "update a scraper target",
 			fields: fields{
 				OrganizationService: &mock.OrganizationService{
-					FindOrganizationByIDF: func(ctx context.Context, id influxdb.ID) (*influxdb.Organization, error) {
-						return &influxdb.Organization{
+					FindOrganizationByIDF: func(ctx context.Context, id platform.ID) (*platform.Organization, error) {
+						return &platform.Organization{
 							ID:   platformtesting.MustIDBase16("0000000000000211"),
 							Name: "org1",
 						}, nil
 					},
 				},
 				BucketService: &mock.BucketService{
-					FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-						return &influxdb.Bucket{
+					FindBucketByIDFn: func(ctx context.Context, id platform.ID) (*platform.Bucket, error) {
+						return &platform.Bucket{
 							ID:   platformtesting.MustIDBase16("0000000000000212"),
 							Name: "bucket1",
 						}, nil
 					},
 				},
 				ScraperTargetStoreService: &mock.ScraperTargetStoreService{
-					UpdateTargetF: func(ctx context.Context, t *influxdb.ScraperTarget, userID influxdb.ID) (*influxdb.ScraperTarget, error) {
+					UpdateTargetF: func(ctx context.Context, t *platform.ScraperTarget, userID platform.ID) (*platform.ScraperTarget, error) {
 						if t.ID == targetOneID {
 							return t, nil
 						}
 
-						return nil, &influxdb.Error{
-							Code: influxdb.ENotFound,
+						return nil, &platform.Error{
+							Code: platform.ENotFound,
 							Msg:  "scraper target is not found",
 						}
 					},
@@ -679,11 +650,11 @@ func TestService_handlePatchScraperTarget(t *testing.T) {
 			},
 			args: args{
 				id: targetOneIDString,
-				update: &influxdb.ScraperTarget{
+				update: &platform.ScraperTarget{
 					ID:       targetOneID,
 					Name:     "name",
 					BucketID: platformtesting.MustIDBase16("0000000000000212"),
-					Type:     influxdb.PrometheusScraperType,
+					Type:     platform.PrometheusScraperType,
 					URL:      "www.example.url",
 					OrgID:    platformtesting.MustIDBase16("0000000000000211"),
 				},
@@ -693,23 +664,21 @@ func TestService_handlePatchScraperTarget(t *testing.T) {
 				contentType: "application/json; charset=utf-8",
 				body: fmt.Sprintf(
 					`{
-		              "id":"%s",
+		              "id":"%[1]s",
 		              "name":"name",
 		              "type":"prometheus",
 					  "url":"www.example.url",
-					  "org": "org1",
+					  "organization": "org1",
 					  "orgID":"0000000000000211",
 					  "bucket": "bucket1",
 					  "bucketID":"0000000000000212",
 		              "links":{
 		                "bucket": "/api/v2/buckets/0000000000000212",
 		                "organization": "/api/v2/orgs/0000000000000211",
-		                "self":"/api/v2/scrapers/%s",
-		                "members":"/api/v2/scrapers/%s/members",
-		                "owners":"/api/v2/scrapers/%s/owners"
+		                "self":"/api/v2/scrapers/%[1]s"
 		              }
 		            }`,
-					targetOneIDString, targetOneIDString, targetOneIDString, targetOneIDString,
+					targetOneIDString,
 				),
 			},
 		},
@@ -717,37 +686,37 @@ func TestService_handlePatchScraperTarget(t *testing.T) {
 			name: "scraper target not found",
 			fields: fields{
 				OrganizationService: &mock.OrganizationService{
-					FindOrganizationByIDF: func(ctx context.Context, id influxdb.ID) (*influxdb.Organization, error) {
-						return &influxdb.Organization{
+					FindOrganizationByIDF: func(ctx context.Context, id platform.ID) (*platform.Organization, error) {
+						return &platform.Organization{
 							ID:   platformtesting.MustIDBase16("0000000000000211"),
 							Name: "org1",
 						}, nil
 					},
 				},
 				BucketService: &mock.BucketService{
-					FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-						return &influxdb.Bucket{
+					FindBucketByIDFn: func(ctx context.Context, id platform.ID) (*platform.Bucket, error) {
+						return &platform.Bucket{
 							ID:   platformtesting.MustIDBase16("0000000000000212"),
 							Name: "bucket1",
 						}, nil
 					},
 				},
 				ScraperTargetStoreService: &mock.ScraperTargetStoreService{
-					UpdateTargetF: func(ctx context.Context, upd *influxdb.ScraperTarget, userID influxdb.ID) (*influxdb.ScraperTarget, error) {
-						return nil, &influxdb.Error{
-							Code: influxdb.ENotFound,
-							Msg:  influxdb.ErrScraperTargetNotFound,
+					UpdateTargetF: func(ctx context.Context, upd *platform.ScraperTarget, userID platform.ID) (*platform.ScraperTarget, error) {
+						return nil, &platform.Error{
+							Code: platform.ENotFound,
+							Msg:  platform.ErrScraperTargetNotFound,
 						}
 					},
 				},
 			},
 			args: args{
 				id: targetOneIDString,
-				update: &influxdb.ScraperTarget{
+				update: &platform.ScraperTarget{
 					ID:       targetOneID,
 					Name:     "name",
 					BucketID: platformtesting.MustIDBase16("0000000000000212"),
-					Type:     influxdb.PrometheusScraperType,
+					Type:     platform.PrometheusScraperType,
 					URL:      "www.example.url",
 					OrgID:    platformtesting.MustIDBase16("0000000000000211"),
 				},
@@ -761,7 +730,6 @@ func TestService_handlePatchScraperTarget(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			scraperBackend := NewMockScraperBackend()
-			scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 			scraperBackend.ScraperStorageService = tt.fields.ScraperTargetStoreService
 			scraperBackend.OrganizationService = tt.fields.OrganizationService
 			scraperBackend.BucketService = tt.fields.BucketService
@@ -787,7 +755,7 @@ func TestService_handlePatchScraperTarget(t *testing.T) {
 						Value: tt.args.id,
 					},
 				}))
-			r = r.WithContext(platcontext.SetAuthorizer(r.Context(), &influxdb.Authorization{}))
+			r = r.WithContext(platcontext.SetAuthorizer(r.Context(), &platform.Authorization{}))
 			w := httptest.NewRecorder()
 
 			h.handlePatchScraperTarget(w, r)
@@ -802,18 +770,14 @@ func TestService_handlePatchScraperTarget(t *testing.T) {
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
 				t.Errorf("%q. handlePatchScraperTarget() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
-			if tt.wants.body != "" {
-				if eq, diff, err := jsonEqual(string(body), tt.wants.body); err != nil {
-					t.Errorf("%q, handlePatchScraperTarget(). error unmarshaling json %v", tt.name, err)
-				} else if !eq {
-					t.Errorf("%q. handlePatchScraperTarget() = ***%s***", tt.name, diff)
-				}
+			if eq, diff, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
+				t.Errorf("%q. handlePatchScraperTarget() = ***%s***", tt.name, diff)
 			}
 		})
 	}
 }
 
-func initScraperService(f platformtesting.TargetFields, t *testing.T) (influxdb.ScraperTargetStoreService, string, func()) {
+func initScraperService(f platformtesting.TargetFields, t *testing.T) (platform.ScraperTargetStoreService, string, func()) {
 	t.Helper()
 	svc := inmem.NewService()
 	svc.IDGenerator = f.IDGenerator
@@ -830,19 +794,19 @@ func initScraperService(f platformtesting.TargetFields, t *testing.T) (influxdb.
 		}
 	}
 
-	for _, o := range f.Organizations {
-		if err := svc.PutOrganization(ctx, o); err != nil {
-			t.Fatalf("failed to populate orgs")
-		}
-	}
-
 	scraperBackend := NewMockScraperBackend()
-	scraperBackend.HTTPErrorHandler = ErrorHandler(0)
 	scraperBackend.ScraperStorageService = svc
-	scraperBackend.OrganizationService = svc
+	scraperBackend.OrganizationService = &mock.OrganizationService{
+		FindOrganizationByIDF: func(ctx context.Context, id platform.ID) (*platform.Organization, error) {
+			return &platform.Organization{
+				ID:   id,
+				Name: "org1",
+			}, nil
+		},
+	}
 	scraperBackend.BucketService = &mock.BucketService{
-		FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-			return &influxdb.Bucket{
+		FindBucketByIDFn: func(ctx context.Context, id platform.ID) (*platform.Bucket, error) {
+			return &platform.Bucket{
 				ID:   id,
 				Name: "bucket1",
 			}, nil
@@ -852,18 +816,16 @@ func initScraperService(f platformtesting.TargetFields, t *testing.T) (influxdb.
 	handler := NewScraperHandler(scraperBackend)
 	server := httptest.NewServer(httpMock.NewAuthMiddlewareHandler(
 		handler,
-		&influxdb.Authorization{
+		&platform.Authorization{
 			UserID: platformtesting.MustIDBase16("020f755c3c082002"),
 			Token:  "tok",
 		},
 	))
 	client := struct {
-		influxdb.UserResourceMappingService
-		influxdb.OrganizationService
+		platform.UserResourceMappingService
 		ScraperService
 	}{
 		UserResourceMappingService: svc,
-		OrganizationService:        svc,
 		ScraperService: ScraperService{
 			Token:    "tok",
 			Addr:     server.URL,

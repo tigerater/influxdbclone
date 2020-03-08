@@ -1,5 +1,5 @@
 import {getAJAX} from 'src/utils/ajax'
-import {Links} from 'src/types/links'
+import {Links} from 'src/types/v2/links'
 
 const linksURI = '/api/v2'
 

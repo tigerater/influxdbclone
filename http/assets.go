@@ -2,7 +2,6 @@ package http
 
 import (
 	"net/http"
-	"path/filepath"
 
 	// TODO: use platform version of the code
 	"github.com/influxdata/influxdb/chronograf"
@@ -14,29 +13,33 @@ const (
 	Dir = "../../ui/build"
 	// Default is the default item to load if 404
 	Default = "../../ui/build/index.html"
+	// DebugDir is the prefix of the assets in development mode
+	DebugDir = "ui/build"
 	// DebugDefault is the default item to load if 404
-	DebugDefault = "index.html"
+	DebugDefault = "ui/build/index.html"
 	// DefaultContentType is the content-type to return for the Default file
 	DefaultContentType = "text/html; charset=utf-8"
 )
 
 // AssetHandler is an http handler for serving chronograf assets.
 type AssetHandler struct {
-	Path string
+	DeveloperMode bool
 }
 
 // NewAssetHandler is the constructor an asset handler.
 func NewAssetHandler() *AssetHandler {
-	return &AssetHandler{}
+	return &AssetHandler{
+		DeveloperMode: true,
+	}
 }
 
 // ServeHTTP implements the http handler interface for serving assets.
 func (h *AssetHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var assets chronograf.Assets
-	if h.Path != "" {
+	if h.DeveloperMode {
 		assets = &dist.DebugAssets{
-			Dir:     h.Path,
-			Default: filepath.Join(h.Path, DebugDefault),
+			Dir:     DebugDir,
+			Default: DebugDefault,
 		}
 	} else {
 		assets = &dist.BindataAssets{

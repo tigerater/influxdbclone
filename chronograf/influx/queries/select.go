@@ -221,35 +221,35 @@ func (w *Wildcard) MarshalJSON() ([]byte, error) {
 }
 
 func MarshalJSON(v interface{}) ([]byte, error) {
-	switch v := v.(type) {
+	switch v.(type) {
 	case *influxql.BinaryExpr:
-		return json.Marshal(&BinaryExpr{v})
+		return json.Marshal(&BinaryExpr{v.(*influxql.BinaryExpr)})
 	case *influxql.BooleanLiteral:
-		return json.Marshal(&BooleanLiteral{v})
+		return json.Marshal(&BooleanLiteral{v.(*influxql.BooleanLiteral)})
 	case *influxql.Call:
-		return json.Marshal(&Call{v})
+		return json.Marshal(&Call{v.(*influxql.Call)})
 	case *influxql.Distinct:
-		return json.Marshal(&Distinct{v})
+		return json.Marshal(&Distinct{v.(*influxql.Distinct)})
 	case *influxql.DurationLiteral:
-		return json.Marshal(&DurationLiteral{v})
+		return json.Marshal(&DurationLiteral{v.(*influxql.DurationLiteral)})
 	case *influxql.IntegerLiteral:
-		return json.Marshal(&IntegerLiteral{v})
+		return json.Marshal(&IntegerLiteral{v.(*influxql.IntegerLiteral)})
 	case *influxql.NumberLiteral:
-		return json.Marshal(&NumberLiteral{v})
+		return json.Marshal(&NumberLiteral{v.(*influxql.NumberLiteral)})
 	case *influxql.ParenExpr:
-		return json.Marshal(&ParenExpr{v})
+		return json.Marshal(&ParenExpr{v.(*influxql.ParenExpr)})
 	case *influxql.RegexLiteral:
-		return json.Marshal(&RegexLiteral{v})
+		return json.Marshal(&RegexLiteral{v.(*influxql.RegexLiteral)})
 	case *influxql.ListLiteral:
-		return json.Marshal(&ListLiteral{v})
+		return json.Marshal(&ListLiteral{v.(*influxql.ListLiteral)})
 	case *influxql.StringLiteral:
-		return json.Marshal(&StringLiteral{v})
+		return json.Marshal(&StringLiteral{v.(*influxql.StringLiteral)})
 	case *influxql.TimeLiteral:
-		return json.Marshal(&TimeLiteral{v})
+		return json.Marshal(&TimeLiteral{v.(*influxql.TimeLiteral)})
 	case *influxql.VarRef:
-		return json.Marshal(&VarRef{v})
+		return json.Marshal(&VarRef{v.(*influxql.VarRef)})
 	case *influxql.Wildcard:
-		return json.Marshal(&Wildcard{v})
+		return json.Marshal(&Wildcard{v.(*influxql.Wildcard)})
 	default:
 		t := reflect.TypeOf(v)
 		return nil, fmt.Errorf("error marshaling query: unknown type %s", t)

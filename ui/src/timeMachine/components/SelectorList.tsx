@@ -1,45 +1,40 @@
-// Libraries
 import React, {SFC} from 'react'
-import classnames from 'classnames'
 
-// Components
-import BuilderCard from 'src/timeMachine/components/builderCard/BuilderCard'
+import FancyScrollbar from 'src/shared/components/fancy_scrollbar/FancyScrollbar'
+
+import 'src/timeMachine/components/SelectorList.scss'
 
 interface Props {
   items: string[]
   selectedItems: string[]
   onSelectItem: (item: string) => void
-  multiSelect: boolean
 }
 
 const SelectorList: SFC<Props> = props => {
-  const {items, selectedItems, onSelectItem, multiSelect} = props
+  const {items, selectedItems, onSelectItem} = props
 
   return (
-    <BuilderCard.Body addPadding={false}>
-      {items.map(item => {
-        const className = classnames('selector-list--item', {
-          selected: selectedItems.includes(item),
-          'selector-list--checkbox': multiSelect,
-        })
+    <div className="selector-list">
+      <FancyScrollbar>
+        {items.map(item => {
+          const selectedClass = selectedItems.includes(item) ? 'selected' : ''
+          const title = selectedItems.includes(item)
+            ? 'Click to remove this filter'
+            : `Click to filter by ${item}`
 
-        const title = selectedItems.includes(item)
-          ? 'Click to remove this filter'
-          : `Click to filter by ${item}`
-
-        return (
-          <div
-            className={className}
-            data-testid={`selector-list ${item}`}
-            key={item}
-            onClick={() => onSelectItem(item)}
-            title={title}
-          >
-            {item}
-          </div>
-        )
-      })}
-    </BuilderCard.Body>
+          return (
+            <div
+              className={`selector-list--item ${selectedClass}`}
+              key={item}
+              onClick={() => onSelectItem(item)}
+              title={title}
+            >
+              {item}
+            </div>
+          )
+        })}
+      </FancyScrollbar>
+    </div>
   )
 }
 

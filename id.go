@@ -3,6 +3,8 @@ package influxdb
 import (
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
+	"errors"
 	"reflect"
 	"strconv"
 	"unsafe"
@@ -11,19 +13,11 @@ import (
 // IDLength is the exact length a string (or a byte slice representing it) must have in order to be decoded into a valid ID.
 const IDLength = 16
 
-var (
-	// ErrInvalidID signifies invalid IDs.
-	ErrInvalidID = &Error{
-		Code: EInvalid,
-		Msg:  "invalid ID",
-	}
+// ErrInvalidID signifies invalid IDs.
+var ErrInvalidID = errors.New("invalid ID")
 
-	// ErrInvalidIDLength is returned when an ID has the incorrect number of bytes.
-	ErrInvalidIDLength = &Error{
-		Code: EInvalid,
-		Msg:  "id must have a length of 16 bytes",
-	}
-)
+// ErrInvalidIDLength is returned when an ID has the incorrect number of bytes.
+var ErrInvalidIDLength = errors.New("id must have a length of 16 bytes")
 
 // ID is a unique identifier.
 //
@@ -64,7 +58,7 @@ func (i *ID) Decode(b []byte) error {
 
 	res, err := strconv.ParseUint(unsafeBytesToString(b), 16, 64)
 	if err != nil {
-		return ErrInvalidID
+		return err
 	}
 
 	if *i = ID(res); !i.Valid() {
@@ -125,17 +119,24 @@ func (i ID) GoString() string {
 	return `"` + i.String() + `"`
 }
 
-// MarshalText encodes i as text.
-// Providing this method is a fallback for json.Marshal,
-// with the added benefit that IDs encoded as map keys will be the expected string encoding,
-// rather than the effective fmt.Sprintf("%d", i) that json.Marshal uses by default for integer types.
-func (i ID) MarshalText() ([]byte, error) {
-	return i.Encode()
+// UnmarshalJSON implements JSON unmarshaller for IDs.
+func (i *ID) UnmarshalJSON(b []byte) error {
+	if b[0] == '"' {
+		b = b[1:]
+	}
+
+	if b[len(b)-1] == '"' {
+		b = b[:len(b)-1]
+	}
+
+	return i.Decode(b)
 }
 
-// UnmarshalText decodes i from a byte slice.
-// Providing this method is also a fallback for json.Unmarshal,
-// also relevant when IDs are used as map keys.
-func (i *ID) UnmarshalText(b []byte) error {
-	return i.Decode(b)
+// MarshalJSON implements JSON marshaller for IDs.
+func (i ID) MarshalJSON() ([]byte, error) {
+	enc, err := i.Encode()
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(string(enc))
 }

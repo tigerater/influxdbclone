@@ -13,7 +13,6 @@ interface Props {
   handleSetCurrentStep: (stepNumber: number) => void
   stepStatuses: StepStatus[]
   stepTitles: string[]
-  stepTestIds: string[]
   stepSkippable: boolean[]
   hideFirstStep?: boolean
 }
@@ -74,7 +73,6 @@ class ProgressBar extends PureComponent<Props, null> {
       hideFirstStep,
       stepStatuses,
       stepTitles,
-      stepTestIds,
       currentStepIndex,
     } = this.props
 
@@ -106,7 +104,6 @@ class ProgressBar extends PureComponent<Props, null> {
             </span>
             <div
               className={`wizard--progress-title ${currentStep || stepStatus}`}
-              data-testid={stepTestIds[i]}
             >
               {stepTitles[i]}
             </div>

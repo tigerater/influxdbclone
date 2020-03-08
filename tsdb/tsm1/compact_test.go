@@ -2,7 +2,6 @@ package tsm1_test
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"math"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
+	"github.com/influxdata/influxdb/pkg/fs"
 	"github.com/influxdata/influxdb/tsdb/cursors"
 	"github.com/influxdata/influxdb/tsdb/tsm1"
 )
@@ -41,7 +41,7 @@ func TestCompactor_Snapshot(t *testing.T) {
 	compactor.Dir = dir
 	compactor.FileStore = &fakeFileStore{}
 
-	files, err := compactor.WriteSnapshot(context.Background(), c)
+	files, err := compactor.WriteSnapshot(c)
 	if err == nil {
 		t.Fatalf("expected error writing snapshot: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestCompactor_Snapshot(t *testing.T) {
 
 	compactor.Open()
 
-	files, err = compactor.WriteSnapshot(context.Background(), c)
+	files, err = compactor.WriteSnapshot(c)
 	if err != nil {
 		t.Fatalf("unexpected error writing snapshot: %v", err)
 	}
@@ -2917,7 +2917,7 @@ func MustTSMWriter(dir string, gen int) (tsm1.TSMWriter, string) {
 	}
 
 	newName := filepath.Join(filepath.Dir(oldName), tsm1.DefaultFormatFileName(gen, 1)+".tsm")
-	if err := os.Rename(oldName, newName); err != nil {
+	if err := fs.RenameFile(oldName, newName); err != nil {
 		panic(fmt.Sprintf("create tsm file: %v", err))
 	}
 
@@ -2992,8 +2992,6 @@ func (w *fakeFileStore) Stats() []tsm1.FileStat {
 func (w *fakeFileStore) NextGeneration() int {
 	return 1
 }
-
-func (w *fakeFileStore) SetCurrentGenerationFunc(fn func() int) {}
 
 func (w *fakeFileStore) LastModified() time.Time {
 	return w.lastModified

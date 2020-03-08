@@ -2,20 +2,17 @@
 	{
 		"Name":"Float",
 		"name":"float",
-		"Type":"float64",
-		"Rand":"Float64"
+		"Type":"float64"
 	},
 	{
 		"Name":"Integer",
 		"name":"integer",
-		"Type":"int64",
-		"Rand":"Int64"
+		"Type":"int64"
 	},
 	{
 		"Name":"Unsigned",
 		"name":"unsigned",
-		"Type":"uint64",
-		"Rand":"Uint64"
+		"Type":"uint64"
 	},
 	{
 		"Name":"String",

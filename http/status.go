@@ -3,8 +3,7 @@ package http
 import "net/http"
 
 type statusResponseWriter struct {
-	statusCode    int
-	responseBytes int
+	statusCode int
 	http.ResponseWriter
 }
 
@@ -12,12 +11,6 @@ func newStatusResponseWriter(w http.ResponseWriter) *statusResponseWriter {
 	return &statusResponseWriter{
 		ResponseWriter: w,
 	}
-}
-
-func (w *statusResponseWriter) Write(b []byte) (int, error) {
-	n, err := w.ResponseWriter.Write(b)
-	w.responseBytes += n
-	return n, err
 }
 
 // WriteHeader writes the header and captures the status code.
@@ -35,7 +28,6 @@ func (w *statusResponseWriter) code() int {
 	}
 	return code
 }
-
 func (w *statusResponseWriter) statusCodeClass() string {
 	class := "XXX"
 	switch w.code() / 100 {

@@ -2,33 +2,24 @@
 import {get} from 'lodash'
 
 // APIs
-import {runQuery} from 'src/shared/apis/query'
+import {executeQuery, ExecuteFluxQueryResult} from 'src/shared/apis/v2/query'
 import {parseResponse} from 'src/shared/parsing/flux/response'
 
-// Utils
-import {getTimeRangeVars} from 'src/variables/utils/getTimeRangeVars'
-import {formatExpression} from 'src/variables/utils/formatExpression'
-
 // Types
-import {TimeRange, BuilderConfig} from 'src/types'
+import {InfluxLanguage, BuilderConfig} from 'src/types/v2'
 import {WrappedCancelablePromise} from 'src/types/promises'
 
-const DEFAULT_TIME_RANGE: TimeRange = {lower: 'now() - 30d'}
-const DEFAULT_LIMIT = 200
+export const SEARCH_DURATION = '30d'
+export const LIMIT = 200
 
 type CancelableQuery = WrappedCancelablePromise<string[]>
 
-export interface FindBucketsOptions {
-  url: string
-  orgID: string
-}
-
-export function findBuckets({orgID}: FindBucketsOptions): CancelableQuery {
+export function findBuckets(url: string): CancelableQuery {
   const query = `buckets()
   |> sort(columns: ["name"])
-  |> limit(n: ${DEFAULT_LIMIT})`
+  |> limit(n: ${LIMIT})`
 
-  const {promise, cancel} = runQuery(orgID, query)
+  const {promise, cancel} = executeQuery(url, query, InfluxLanguage.Flux)
 
   return {
     promise: promise.then(resp => extractCol(resp, 'name')),
@@ -36,42 +27,29 @@ export function findBuckets({orgID}: FindBucketsOptions): CancelableQuery {
   }
 }
 
-export interface FindKeysOptions {
-  url: string
-  orgID: string
-  bucket: string
-  tagsSelections: BuilderConfig['tags']
-  searchTerm?: string
-  timeRange?: TimeRange
-  limit?: number
-}
-
-export function findKeys({
-  orgID,
-  bucket,
-  tagsSelections,
-  searchTerm = '',
-  timeRange = DEFAULT_TIME_RANGE,
-  limit = DEFAULT_LIMIT,
-}: FindKeysOptions): CancelableQuery {
+export function findKeys(
+  url: string,
+  bucket: string,
+  tagsSelections: BuilderConfig['tags'],
+  searchTerm: string = ''
+): CancelableQuery {
   const tagFilters = formatTagFilterPredicate(tagsSelections)
   const searchFilter = formatSearchFilterCall(searchTerm)
   const previousKeyFilter = formatTagKeyFilterCall(tagsSelections)
-  const timeRangeArguments = formatTimeRangeArguments(timeRange)
 
-  // TODO: Use the `v1.tagKeys` function from the Flux standard library once
-  // this issue is resolved: https://github.com/influxdata/flux/issues/1071
-  const query = `from(bucket: "${bucket}")
-  |> range(${timeRangeArguments})
-  |> filter(fn: ${tagFilters})
-  |> keys()
-  |> keep(columns: ["_value"])
-  |> distinct()${searchFilter}${previousKeyFilter}
-  |> filter(fn: (r) => r._value != "_time" and r._value != "_start" and r._value !=  "_stop" and r._value != "_value")
+  const query = `import "influxdata/influxdb/v1"
+
+v1.tagKeys(bucket: "${bucket}", predicate: ${tagFilters}, start: -${SEARCH_DURATION})${searchFilter}${previousKeyFilter}
+  |> filter(fn: (r) =>
+    r._value != "_time" and
+    r._value != "_start" and
+    r._value !=  "_stop" and
+    r._value != "_value")
+  |> distinct()
   |> sort()
-  |> limit(n: ${limit})`
+  |> limit(n: ${LIMIT})`
 
-  const {promise, cancel} = runQuery(orgID, query)
+  const {promise, cancel} = executeQuery(url, query, InfluxLanguage.Flux)
 
   return {
     promise: promise.then(resp => extractCol(resp, '_value')),
@@ -79,42 +57,23 @@ export function findKeys({
   }
 }
 
-export interface FindValuesOptions {
-  url: string
-  orgID: string
-  bucket: string
-  tagsSelections: BuilderConfig['tags']
-  key: string
-  searchTerm?: string
-  timeRange?: TimeRange
-  limit?: number
-}
-
-export function findValues({
-  orgID,
-  bucket,
-  tagsSelections,
-  key,
-  searchTerm = '',
-  timeRange = DEFAULT_TIME_RANGE,
-  limit = DEFAULT_LIMIT,
-}: FindValuesOptions): CancelableQuery {
+export function findValues(
+  url: string,
+  bucket: string,
+  tagsSelections: BuilderConfig['tags'],
+  key: string,
+  searchTerm: string = ''
+): CancelableQuery {
   const tagFilters = formatTagFilterPredicate(tagsSelections)
   const searchFilter = formatSearchFilterCall(searchTerm)
-  const timeRangeArguments = formatTimeRangeArguments(timeRange)
 
-  // TODO: Use the `v1.tagValues` function from the Flux standard library once
-  // this issue is resolved: https://github.com/influxdata/flux/issues/1071
-  const query = `from(bucket: "${bucket}")
-  |> range(${timeRangeArguments})
-  |> filter(fn: ${tagFilters})
-  |> keep(columns: ["${key}"])
-  |> group()
-  |> distinct(column: "${key}")${searchFilter}
-  |> limit(n: ${limit})
+  const query = `import "influxdata/influxdb/v1"
+
+v1.tagValues(bucket: "${bucket}", tag: "${key}", predicate: ${tagFilters}, start: -${SEARCH_DURATION})${searchFilter}
+  |> limit(n: ${LIMIT})
   |> sort()`
 
-  const {promise, cancel} = runQuery(orgID, query)
+  const {promise, cancel} = executeQuery(url, query, InfluxLanguage.Flux)
 
   return {
     promise: promise.then(resp => extractCol(resp, '_value')),
@@ -122,8 +81,11 @@ export function findValues({
   }
 }
 
-export function extractCol(resp: string, colName: string): string[] {
-  const tables = parseResponse(resp)
+export function extractCol(
+  resp: ExecuteFluxQueryResult,
+  colName: string
+): string[] {
+  const tables = parseResponse(resp.csv)
   const data = get(tables, '0.data', [])
 
   if (!data.length) {
@@ -185,12 +147,4 @@ export function formatSearchFilterCall(searchTerm: string) {
   }
 
   return `\n  |> filter(fn: (r) => r._value =~ /(?i:${searchTerm})/)`
-}
-
-export function formatTimeRangeArguments(timeRange: TimeRange): string {
-  const [start, stop] = getTimeRangeVars(timeRange).map(assignment =>
-    formatExpression(assignment.init)
-  )
-
-  return `start: ${start}, stop: ${stop}`
 }

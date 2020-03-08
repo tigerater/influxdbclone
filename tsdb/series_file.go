@@ -2,7 +2,6 @@ package tsdb
 
 import (
 	"bytes"
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -12,14 +11,11 @@ import (
 	"sync"
 
 	"github.com/cespare/xxhash"
-	"github.com/influxdata/influxdb/kit/tracing"
 	"github.com/influxdata/influxdb/logger"
 	"github.com/influxdata/influxdb/models"
 	"github.com/influxdata/influxdb/pkg/binaryutil"
-	"github.com/influxdata/influxdb/pkg/lifecycle"
 	"github.com/influxdata/influxdb/pkg/rhh"
 	"github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/multierr"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
 )
@@ -29,6 +25,9 @@ var (
 	ErrInvalidSeriesPartitionID = errors.New("tsdb: invalid series partition id")
 )
 
+// SeriesIDSize is the size in bytes of a series key ID.
+const SeriesIDSize = 8
+
 const (
 	// SeriesFilePartitionN is the number of partitions a series file is split into.
 	SeriesFilePartitionN = 8
@@ -36,9 +35,6 @@ const (
 
 // SeriesFile represents the section of the index that holds series data.
 type SeriesFile struct {
-	mu  sync.Mutex // protects concurrent open and close
-	res lifecycle.Resource
-
 	path       string
 	partitions []*SeriesPartition
 
@@ -49,7 +45,7 @@ type SeriesFile struct {
 	defaultMetricLabels prometheus.Labels
 	metricsEnabled      bool
 
-	LargeWriteThreshold int
+	refs sync.RWMutex // RWMutex to track references to the SeriesFile that are in use.
 
 	Logger *zap.Logger
 }
@@ -60,8 +56,6 @@ func NewSeriesFile(path string) *SeriesFile {
 		path:           path,
 		metricsEnabled: true,
 		Logger:         zap.NewNop(),
-
-		LargeWriteThreshold: DefaultLargeSeriesWriteThreshold,
 	}
 }
 
@@ -86,19 +80,13 @@ func (f *SeriesFile) DisableMetrics() {
 }
 
 // Open memory maps the data file at the file's path.
-func (f *SeriesFile) Open(ctx context.Context) error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-
-	if f.res.Opened() {
-		return errors.New("series file already opened")
-	}
-
-	span, ctx := tracing.StartSpanFromContext(ctx)
-	defer span.Finish()
-
-	_, logEnd := logger.NewOperation(ctx, f.Logger, "Opening Series File", "series_file_open", zap.String("path", f.path))
+func (f *SeriesFile) Open() error {
+	_, logEnd := logger.NewOperation(f.Logger, "Opening Series File", "series_file_open", zap.String("path", f.path))
 	defer logEnd()
+
+	// Wait for all references to be released and prevent new ones from being acquired.
+	f.refs.Lock()
+	defer f.refs.Unlock()
 
 	// Create path if it doesn't exist.
 	if err := os.MkdirAll(filepath.Join(f.path), 0777); err != nil {
@@ -126,7 +114,6 @@ func (f *SeriesFile) Open(ctx context.Context) error {
 	for i := 0; i < SeriesFilePartitionN; i++ {
 		// TODO(edd): These partition initialisation should be moved up to NewSeriesFile.
 		p := NewSeriesPartition(i, f.SeriesPartitionPath(i))
-		p.LargeWriteThreshold = f.LargeWriteThreshold
 		p.Logger = f.Logger.With(zap.Int("partition", p.ID()))
 
 		// For each series file index, rhh trackers are used to track the RHH Hashmap.
@@ -147,38 +134,28 @@ func (f *SeriesFile) Open(ctx context.Context) error {
 		p.tracker.enabled = f.metricsEnabled
 
 		if err := p.Open(); err != nil {
-			f.Logger.Error("Unable to open series file",
-				zap.String("path", f.path),
-				zap.Int("partition", p.ID()),
-				zap.Error(err))
-			f.closeNoLock()
+			f.Close()
 			return err
 		}
 		f.partitions = append(f.partitions, p)
 	}
 
-	// The resource is now open.
-	f.res.Open()
-
 	return nil
 }
 
-func (f *SeriesFile) closeNoLock() (err error) {
-	// Close the resource and wait for any outstanding references.
-	f.res.Close()
-
-	var errs []error
-	for _, p := range f.partitions {
-		errs = append(errs, p.Close())
-	}
-	return multierr.Combine(errs...)
-}
-
 // Close unmaps the data file.
-func (f *SeriesFile) Close() error {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	return f.closeNoLock()
+func (f *SeriesFile) Close() (err error) {
+	// Wait for all references to be released and prevent new ones from being acquired.
+	f.refs.Lock()
+	defer f.refs.Unlock()
+
+	for _, p := range f.partitions {
+		if e := p.Close(); e != nil && err == nil {
+			err = e
+		}
+	}
+
+	return err
 }
 
 // Path returns the path to the file.
@@ -192,10 +169,15 @@ func (f *SeriesFile) SeriesPartitionPath(i int) string {
 // Partitions returns all partitions.
 func (f *SeriesFile) Partitions() []*SeriesPartition { return f.partitions }
 
-// Acquire ensures that the series file won't be closed until after the reference
-// has been released.
-func (f *SeriesFile) Acquire() (*lifecycle.Reference, error) {
-	return f.res.Acquire()
+// Retain adds a reference count to the file.  It returns a release func.
+func (f *SeriesFile) Retain() func() {
+	if f != nil {
+		f.refs.RLock()
+
+		// Return the RUnlock func as the release func to be called when done.
+		return f.refs.RUnlock
+	}
+	return nop
 }
 
 // EnableCompactions allows compactions to run.
@@ -212,10 +194,16 @@ func (f *SeriesFile) DisableCompactions() {
 	}
 }
 
+// Wait waits for all Retains to be released.
+func (f *SeriesFile) Wait() {
+	f.refs.Lock()
+	defer f.refs.Unlock()
+}
+
 // CreateSeriesListIfNotExists creates a list of series in bulk if they don't exist. It overwrites
 // the collection's Keys and SeriesIDs fields. The collection's SeriesIDs slice will have IDs for
 // every name+tags, creating new series IDs as needed. If any SeriesID is zero, then a type
-// conflict has occurred for that series.
+// conflict has occured for that series.
 func (f *SeriesFile) CreateSeriesListIfNotExists(collection *SeriesCollection) error {
 	collection.SeriesKeys = GenerateSeriesKeys(collection.Names, collection.Tags)
 	collection.SeriesIDs = make([]SeriesID, len(collection.SeriesKeys))
@@ -587,3 +575,5 @@ func SeriesKeySize(name []byte, tags models.Tags) int {
 	n += binaryutil.UvarintSize(uint64(n))
 	return n
 }
+
+func nop() {}

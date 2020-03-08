@@ -3,10 +3,12 @@
   ------------------------------------------------------------------------------
 */
 
+@import 'src/style/modules';
+
 $getting-started--gutter: $ix-marg-b;
 
 .getting-started {
-  margin: $ix-marg-b 0;
+  margin-top: $ix-marg-b;
   display: flex;
   flex-wrap: wrap;
   justify-content: space-between;

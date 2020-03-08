@@ -1,37 +1,16 @@
-import {Notification} from 'src/types'
+import * as NotificationsActions from 'src/types/actions/notifications'
+import * as NotificationsModels from 'src/types/notifications'
 
-export type Action =
-  | PublishNotificationAction
-  | DismissNotificationAction
-  | DismissAllNotificationsAction
-
-export interface PublishNotificationAction {
-  type: 'PUBLISH_NOTIFICATION'
-  payload: {
-    notification: Notification
-  }
-}
-export const notify = (
-  notification: Notification
-): PublishNotificationAction => ({
+export const notify: NotificationsActions.PublishNotificationActionCreator = (
+  notification: NotificationsModels.Notification
+): NotificationsActions.PublishNotificationAction => ({
   type: 'PUBLISH_NOTIFICATION',
   payload: {notification},
 })
 
-export interface DismissNotificationAction {
-  type: 'DISMISS_NOTIFICATION'
-  payload: {
-    id: string
-  }
-}
-export const dismissNotification = (id: string): DismissNotificationAction => ({
+export const dismissNotification = (
+  id: string
+): NotificationsActions.DismissNotificationAction => ({
   type: 'DISMISS_NOTIFICATION',
   payload: {id},
-})
-
-export interface DismissAllNotificationsAction {
-  type: 'DISMISS_ALL_NOTIFICATIONS'
-}
-export const dismissAllNotifications = (): DismissAllNotificationsAction => ({
-  type: 'DISMISS_ALL_NOTIFICATIONS',
 })

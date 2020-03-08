@@ -8,21 +8,19 @@ import {Dropdown, ComponentStatus} from 'src/clockface'
 import {Bucket} from '@influxdata/influx'
 
 interface Props {
-  selectedBucketID: string
+  selected: string
   buckets: Bucket[]
   onSelectBucket: (bucket: Bucket) => void
 }
 
 class BucketsDropdown extends PureComponent<Props> {
   public render() {
-    const {selectedBucketID, onSelectBucket} = this.props
-
     return (
       <Dropdown
         titleText={this.title}
         status={this.status}
-        selectedID={selectedBucketID}
-        onChange={onSelectBucket}
+        selectedID={this.selectedID}
+        onChange={this.handleSelectBucket}
       >
         {this.dropdownBuckets}
       </Dropdown>
@@ -45,6 +43,10 @@ class BucketsDropdown extends PureComponent<Props> {
     return ComponentStatus.Default
   }
 
+  private get selectedID(): string {
+    return this.props.selected || ''
+  }
+
   private get isBucketsEmpty(): boolean {
     const {buckets} = this.props
     return !buckets || !buckets.length
@@ -57,10 +59,16 @@ class BucketsDropdown extends PureComponent<Props> {
     }
 
     return buckets.map(b => (
-      <Dropdown.Item key={b.name} value={b} id={b.id}>
+      <Dropdown.Item key={b.name} value={b.name} id={b.name}>
         {b.name}
       </Dropdown.Item>
     ))
+  }
+
+  private handleSelectBucket = (bucketName: string) => {
+    const bucket = this.props.buckets.find(b => b.name === bucketName)
+
+    this.props.onSelectBucket(bucket)
   }
 }
 

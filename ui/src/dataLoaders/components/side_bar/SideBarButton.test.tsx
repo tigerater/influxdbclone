@@ -4,7 +4,7 @@ import {shallow} from 'enzyme'
 
 // Components
 import SideBarButton from 'src/dataLoaders/components/side_bar/SideBarButton'
-import {ComponentColor} from '@influxdata/clockface'
+import {ComponentColor} from 'src/clockface'
 
 const onClick = jest.fn(() => {})
 

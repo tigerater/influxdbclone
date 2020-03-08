@@ -249,13 +249,12 @@ func resultsFromQuerier(querier *fluxquerytest.Querier, compiler flux.Compiler) 
 	return decoder.Decode(ioutil.NopCloser(jsonBuf))
 }
 
-func influxQLCompiler(query, filename string) flux.Compiler {
+func influxQLCompiler(query, filename string) *fluxquerytest.ReplaceSpecCompiler {
 	compiler := influxql.NewCompiler(dbrpMappingSvcE2E)
 	compiler.Cluster = "cluster"
 	compiler.DB = "db0"
 	compiler.Query = query
-	querytest.MakeFromInfluxJSONCompiler(compiler, filename)
-	return compiler
+	return querytest.FromInfluxJSONCompiler(compiler, filename)
 }
 
 func queryToJSON(querier *fluxquerytest.Querier, req *query.ProxyRequest) (io.ReadCloser, error) {

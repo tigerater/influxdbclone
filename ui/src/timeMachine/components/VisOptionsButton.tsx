@@ -3,7 +3,7 @@ import React, {Component} from 'react'
 import {connect} from 'react-redux'
 
 // Components
-import {SquareButton, IconFont, ComponentColor} from '@influxdata/clockface'
+import {Button, ButtonShape, IconFont, ComponentColor} from 'src/clockface'
 
 // Actions
 import {setActiveTab} from 'src/timeMachine/actions'
@@ -12,8 +12,8 @@ import {setActiveTab} from 'src/timeMachine/actions'
 import {getActiveTimeMachine} from 'src/timeMachine/selectors'
 
 // Types
-import {TimeMachineTab} from 'src/types/timeMachine'
-import {AppState} from 'src/types'
+import {TimeMachineTab} from 'src/types/v2/timeMachine'
+import {AppState} from 'src/types/v2'
 
 interface StateProps {
   activeTab: TimeMachineTab
@@ -35,8 +35,9 @@ class VisOptionsButton extends Component<Props> {
         : ComponentColor.Default
 
     return (
-      <SquareButton
+      <Button
         color={color}
+        shape={ButtonShape.Square}
         icon={IconFont.CogThick}
         onClick={this.handleClick}
       />

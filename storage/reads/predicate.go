@@ -8,8 +8,8 @@ import (
 
 	"github.com/influxdata/flux/ast"
 	"github.com/influxdata/flux/semantic"
-	"github.com/influxdata/influxdb/models"
 	"github.com/influxdata/influxdb/storage/reads/datatypes"
+	"github.com/influxdata/influxdb/tsdb"
 	"github.com/influxdata/influxql"
 	"github.com/pkg/errors"
 )
@@ -18,7 +18,6 @@ const (
 	fieldKey       = "_field"
 	measurementKey = "_measurement"
 	valueKey       = "_value"
-	fieldRef       = "$"
 )
 
 // NodeVisitor can be called by Walk to traverse the Node hierarchy.
@@ -262,14 +261,14 @@ func toStoragePredicateHelper(n semantic.Expression, objectName string) (*dataty
 			return &datatypes.Node{
 				NodeType: datatypes.NodeTypeTagRef,
 				Value: &datatypes.Node_TagRefValue{
-					TagRefValue: models.FieldKeyTagKey,
+					TagRefValue: tsdb.FieldKeyTagKey,
 				},
 			}, nil
 		case measurementKey:
 			return &datatypes.Node{
 				NodeType: datatypes.NodeTypeTagRef,
 				Value: &datatypes.Node_TagRefValue{
-					TagRefValue: models.MeasurementTagKey,
+					TagRefValue: tsdb.MeasurementTagKey,
 				},
 			}, nil
 		case valueKey:
@@ -455,7 +454,7 @@ func (v *nodeToExprVisitor) Visit(n *datatypes.Node) NodeVisitor {
 		return nil
 
 	case datatypes.NodeTypeFieldRef:
-		v.exprs = append(v.exprs, &influxql.VarRef{Val: fieldRef})
+		v.exprs = append(v.exprs, &influxql.VarRef{Val: "$"})
 		return nil
 
 	case datatypes.NodeTypeLiteral:
@@ -534,7 +533,7 @@ func RewriteExprRemoveFieldValue(expr influxql.Expr) influxql.Expr {
 	return influxql.RewriteExpr(expr, func(expr influxql.Expr) influxql.Expr {
 		if be, ok := expr.(*influxql.BinaryExpr); ok {
 			if ref, ok := be.LHS.(*influxql.VarRef); ok {
-				if ref.Val == fieldRef {
+				if ref.Val == "$" {
 					return &influxql.BooleanLiteral{Val: true}
 				}
 			}
@@ -577,7 +576,7 @@ func (v *hasRefs) Visit(node influxql.Node) influxql.Visitor {
 }
 
 func HasFieldValueKey(expr influxql.Expr) bool {
-	refs := hasRefs{refs: []string{fieldRef}, found: make([]bool, 1)}
+	refs := hasRefs{refs: []string{valueKey}, found: make([]bool, 1)}
 	influxql.Walk(&refs, expr)
 	return refs.found[0]
 }

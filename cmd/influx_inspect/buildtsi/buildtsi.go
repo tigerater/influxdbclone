@@ -2,7 +2,6 @@
 package buildtsi
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"io"
@@ -17,6 +16,7 @@ import (
 
 	"github.com/influxdata/influxdb/logger"
 	"github.com/influxdata/influxdb/models"
+	"github.com/influxdata/influxdb/pkg/fs"
 	"github.com/influxdata/influxdb/storage"
 	"github.com/influxdata/influxdb/storage/wal"
 	"github.com/influxdata/influxdb/toml"
@@ -65,7 +65,7 @@ func (cmd *Command) Run(args ...string) error {
 	fs.StringVar(&cmd.retentionFilter, "retention", "", "optional: retention policy")
 	fs.StringVar(&cmd.shardFilter, "shard", "", "optional: shard id")
 	fs.Int64Var(&cmd.maxLogFileSize, "max-log-file-size", tsi1.DefaultMaxIndexLogFileSize, "optional: maximum log file size")
-	fs.Uint64Var(&cmd.maxCacheSize, "max-cache-size", uint64(tsm1.DefaultCacheMaxMemorySize), "optional: maximum cache size")
+	fs.Uint64Var(&cmd.maxCacheSize, "max-cache-size", tsm1.DefaultCacheMaxMemorySize, "optional: maximum cache size")
 	fs.IntVar(&cmd.batchSize, "batch-size", defaultBatchSize, "optional: set the size of the batches we write to the index. Setting this can have adverse affects on performance and heap requirements")
 	fs.BoolVar(&cmd.Verbose, "v", false, "verbose")
 	fs.SetOutput(cmd.Stdout)
@@ -120,7 +120,7 @@ func (cmd *Command) processDatabase(dbName, dataDir, walDir string) error {
 
 	sfile := tsdb.NewSeriesFile(filepath.Join(dataDir, storage.DefaultSeriesFileDirectoryName))
 	sfile.Logger = cmd.Logger
-	if err := sfile.Open(context.Background()); err != nil {
+	if err := sfile.Open(); err != nil {
 		return err
 	}
 	defer sfile.Close()
@@ -190,7 +190,7 @@ func (cmd *Command) processRetentionPolicy(sfile *tsdb.SeriesFile, dbName, rpNam
 
 				id, name := shards[i].ID, shards[i].Path
 				log := cmd.Logger.With(logger.Database(dbName), logger.RetentionPolicy(rpName), logger.Shard(id))
-				errC <- IndexShard(sfile, filepath.Join(dataDir, "index"), filepath.Join(dataDir, name), filepath.Join(walDir, name), cmd.maxLogFileSize, cmd.maxCacheSize, cmd.batchSize, log, cmd.Verbose)
+				errC <- IndexShard(sfile, filepath.Join(dataDir, name), filepath.Join(walDir, name), cmd.maxLogFileSize, cmd.maxCacheSize, cmd.batchSize, log, cmd.Verbose)
 			}
 		}()
 	}
@@ -204,10 +204,11 @@ func (cmd *Command) processRetentionPolicy(sfile *tsdb.SeriesFile, dbName, rpNam
 	return nil
 }
 
-func IndexShard(sfile *tsdb.SeriesFile, indexPath, dataDir, walDir string, maxLogFileSize int64, maxCacheSize uint64, batchSize int, log *zap.Logger, verboseLogging bool) error {
+func IndexShard(sfile *tsdb.SeriesFile, dataDir, walDir string, maxLogFileSize int64, maxCacheSize uint64, batchSize int, log *zap.Logger, verboseLogging bool) error {
 	log.Info("Rebuilding shard")
 
 	// Check if shard already has a TSI index.
+	indexPath := filepath.Join(dataDir, "index")
 	log.Info("Checking index path", zap.String("path", indexPath))
 	if _, err := os.Stat(indexPath); !os.IsNotExist(err) {
 		log.Info("tsi1 index already exists, skipping", zap.String("path", indexPath))
@@ -238,7 +239,7 @@ func IndexShard(sfile *tsdb.SeriesFile, indexPath, dataDir, walDir string, maxLo
 	tsiIndex.WithLogger(log)
 
 	log.Info("Opening tsi index in temporary location", zap.String("path", tmpPath))
-	if err := tsiIndex.Open(context.Background()); err != nil {
+	if err := tsiIndex.Open(); err != nil {
 		return err
 	}
 	defer tsiIndex.Close()
@@ -267,7 +268,7 @@ func IndexShard(sfile *tsdb.SeriesFile, indexPath, dataDir, walDir string, maxLo
 
 	} else {
 		log.Info("Building cache from wal files")
-		cache := tsm1.NewCache(uint64(tsm1.DefaultCacheMaxMemorySize))
+		cache := tsm1.NewCache(tsm1.DefaultCacheMaxMemorySize)
 		loader := tsm1.NewCacheLoader(walPaths)
 		loader.WithLogger(log)
 		if err := loader.Load(cache); err != nil {
@@ -327,7 +328,7 @@ func IndexShard(sfile *tsdb.SeriesFile, indexPath, dataDir, walDir string, maxLo
 
 	// Rename TSI to standard path.
 	log.Info("Moving tsi to permanent location")
-	return os.Rename(tmpPath, indexPath)
+	return fs.RenameFile(tmpPath, indexPath)
 }
 
 func IndexTSMFile(index *tsi1.Index, path string, batchSize int, log *zap.Logger, verboseLogging bool) error {

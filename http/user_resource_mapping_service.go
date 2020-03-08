@@ -5,10 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"go.uber.org/zap"
 	"net/http"
 	"path"
-
-	"go.uber.org/zap"
 
 	platform "github.com/influxdata/influxdb"
 	"github.com/julienschmidt/httprouter"
@@ -56,7 +55,6 @@ func newResourceUsersResponse(opts platform.FindOptions, f platform.UserResource
 // MemberBackend is all services and associated parameters required to construct
 // member handler.
 type MemberBackend struct {
-	platform.HTTPErrorHandler
 	Logger *zap.Logger
 
 	ResourceType platform.ResourceType
@@ -73,13 +71,13 @@ func newPostMemberHandler(b MemberBackend) http.HandlerFunc {
 
 		req, err := decodePostMemberRequest(ctx, r)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
 		user, err := b.UserService.FindUserByID(ctx, req.MemberID)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -91,12 +89,12 @@ func newPostMemberHandler(b MemberBackend) http.HandlerFunc {
 		}
 
 		if err := b.UserResourceMappingService.CreateUserResourceMapping(ctx, mapping); err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
 		if err := encodeResponse(ctx, w, http.StatusCreated, newResourceUserResponse(user, b.UserType)); err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 	}
@@ -147,7 +145,7 @@ func newGetMembersHandler(b MemberBackend) http.HandlerFunc {
 
 		req, err := decodeGetMembersRequest(ctx, r)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -160,18 +158,15 @@ func newGetMembersHandler(b MemberBackend) http.HandlerFunc {
 		opts := platform.FindOptions{}
 		mappings, _, err := b.UserResourceMappingService.FindUserResourceMappings(ctx, filter)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
 		users := make([]*platform.User, 0, len(mappings))
 		for _, m := range mappings {
-			if m.MappingType == platform.OrgMappingType {
-				continue
-			}
 			user, err := b.UserService.FindUserByID(ctx, m.UserID)
 			if err != nil {
-				b.HandleHTTPError(ctx, err, w)
+				EncodeError(ctx, err, w)
 				return
 			}
 
@@ -179,7 +174,7 @@ func newGetMembersHandler(b MemberBackend) http.HandlerFunc {
 		}
 
 		if err := encodeResponse(ctx, w, http.StatusOK, newResourceUsersResponse(opts, filter, users)); err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 	}
@@ -219,12 +214,12 @@ func newDeleteMemberHandler(b MemberBackend) http.HandlerFunc {
 
 		req, err := decodeDeleteMemberRequest(ctx, r)
 		if err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
 		if err := b.UserResourceMappingService.DeleteUserResourceMapping(ctx, req.ResourceID, req.MemberID); err != nil {
-			b.HandleHTTPError(ctx, err, w)
+			EncodeError(ctx, err, w)
 			return
 		}
 
@@ -272,7 +267,7 @@ func decodeDeleteMemberRequest(ctx context.Context, r *http.Request) (*deleteMem
 }
 
 func (s *UserResourceMappingService) FindUserResourceMappings(ctx context.Context, filter platform.UserResourceMappingFilter, opt ...platform.FindOptions) ([]*platform.UserResourceMapping, int, error) {
-	url, err := NewURL(s.Addr, s.BasePath)
+	url, err := newURL(s.Addr, s.BasePath)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -298,7 +293,7 @@ func (s *UserResourceMappingService) FindUserResourceMappings(ctx context.Contex
 	req.URL.RawQuery = query.Encode()
 	SetToken(s.Token, req)
 
-	hc := NewClient(url.Scheme, s.InsecureSkipVerify)
+	hc := newClient(url.Scheme, s.InsecureSkipVerify)
 	resp, err := hc.Do(req)
 	if err != nil {
 		return nil, 0, err
@@ -318,7 +313,7 @@ func (s *UserResourceMappingService) CreateUserResourceMapping(ctx context.Conte
 		return err
 	}
 
-	url, err := NewURL(s.Addr, resourceIDPath(s.BasePath, m.ResourceID))
+	url, err := newURL(s.Addr, resourceIDPath(s.BasePath, m.ResourceID))
 	if err != nil {
 		return err
 	}
@@ -336,7 +331,7 @@ func (s *UserResourceMappingService) CreateUserResourceMapping(ctx context.Conte
 	req.Header.Set("Content-Type", "application/json")
 	SetToken(s.Token, req)
 
-	hc := NewClient(url.Scheme, s.InsecureSkipVerify)
+	hc := newClient(url.Scheme, s.InsecureSkipVerify)
 
 	resp, err := hc.Do(req)
 	if err != nil {
@@ -357,7 +352,7 @@ func (s *UserResourceMappingService) CreateUserResourceMapping(ctx context.Conte
 }
 
 func (s *UserResourceMappingService) DeleteUserResourceMapping(ctx context.Context, resourceID platform.ID, userID platform.ID) error {
-	url, err := NewURL(s.Addr, memberIDPath(s.BasePath, resourceID, userID))
+	url, err := newURL(s.Addr, memberIDPath(s.BasePath, resourceID, userID))
 	if err != nil {
 		return err
 	}
@@ -368,7 +363,7 @@ func (s *UserResourceMappingService) DeleteUserResourceMapping(ctx context.Conte
 	}
 	SetToken(s.Token, req)
 
-	hc := NewClient(url.Scheme, s.InsecureSkipVerify)
+	hc := newClient(url.Scheme, s.InsecureSkipVerify)
 	resp, err := hc.Do(req)
 	if err != nil {
 		return err

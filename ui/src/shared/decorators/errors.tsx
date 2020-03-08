@@ -3,16 +3,23 @@ tslint:disable no-console
 tslint:disable max-classes-per-file
 */
 
-// Libraries
-import React, {Component} from 'react'
+import React, {ComponentClass, Component} from 'react'
 
-// Components
-import DefaultErrorMessage from 'src/shared/components/DefaultErrorMessage'
+class DefaultError extends Component {
+  public render() {
+    return (
+      <p className="error">
+        An InfluxDB error has occurred. Please report the issue&nbsp;
+        <a href="https://github.com/influxdata/influxdb/issues">here</a>.
+      </p>
+    )
+  }
+}
 
-// Types
-import {ErrorMessageComponent} from 'src/types'
-
-export function ErrorHandlingWith(Error: ErrorMessageComponent) {
+export function ErrorHandlingWith(
+  Error: ComponentClass, // Must be a class based component and not an SFC
+  alwaysDisplay = false
+) {
   return <P, S, T extends {new (...args: any[]): Component<P, S>}>(
     constructor: T
   ) => {
@@ -21,16 +28,18 @@ export function ErrorHandlingWith(Error: ErrorMessageComponent) {
         return constructor.name
       }
 
-      private error: Error = null
+      private error: boolean = false
 
-      public componentDidCatch(error) {
-        this.error = error
+      public componentDidCatch(err, info) {
+        console.error(err)
+        console.warn(info)
+        this.error = true
         this.forceUpdate()
       }
 
       public render() {
-        if (this.error) {
-          return <Error error={this.error} />
+        if (this.error || alwaysDisplay) {
+          return <Error />
         }
 
         return super.render()
@@ -41,4 +50,4 @@ export function ErrorHandlingWith(Error: ErrorMessageComponent) {
   }
 }
 
-export const ErrorHandling = ErrorHandlingWith(DefaultErrorMessage)
+export const ErrorHandling = ErrorHandlingWith(DefaultError)

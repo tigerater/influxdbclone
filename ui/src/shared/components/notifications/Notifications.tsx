@@ -4,14 +4,13 @@ import {Notification as NotificationType} from 'src/types/notifications'
 import Notification from 'src/shared/components/notifications/Notification'
 
 interface Props {
+  inPresentationMode?: boolean
   notifications: NotificationType[]
-  inPresentationMode: boolean
 }
 
 class Notifications extends PureComponent<Props> {
-  public static defaultProps = {
+  public static defaultProps: Partial<Props> = {
     inPresentationMode: false,
-    notifications: [],
   }
 
   public render() {

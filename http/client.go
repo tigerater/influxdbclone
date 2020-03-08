@@ -1,10 +1,9 @@
 package http
 
 import (
+	"crypto/tls"
 	"net/http"
 	"net/url"
-
-	"github.com/influxdata/influxdb/kit/tracing"
 )
 
 // Service connects to an InfluxDB via HTTP.
@@ -17,7 +16,8 @@ type Service struct {
 	*OrganizationService
 	*UserService
 	*BucketService
-	*VariableService
+	*QueryService
+	*MacroService
 	*DashboardService
 }
 
@@ -43,19 +43,30 @@ func NewService(addr, token string) *Service {
 			Addr:  addr,
 			Token: token,
 		},
+		QueryService: &QueryService{
+			Addr:  addr,
+			Token: token,
+		},
 		DashboardService: &DashboardService{
 			Addr:  addr,
 			Token: token,
 		},
-		VariableService: &VariableService{
+		MacroService: &MacroService{
 			Addr:  addr,
 			Token: token,
 		},
 	}
 }
 
-// NewURL concats addr and path.
-func NewURL(addr, path string) (*url.URL, error) {
+// Shared transports for all clients to prevent leaking connections
+var (
+	skipVerifyTransport = &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+	defaultTransport = &http.Transport{}
+)
+
+func newURL(addr, path string) (*url.URL, error) {
 	u, err := url.Parse(addr)
 	if err != nil {
 		return nil, err
@@ -64,8 +75,7 @@ func NewURL(addr, path string) (*url.URL, error) {
 	return u, nil
 }
 
-// NewClient returns an http.Client that pools connections and injects a span.
-func NewClient(scheme string, insecure bool) *traceClient {
+func newClient(scheme string, insecure bool) *traceClient {
 	hc := &traceClient{
 		Client: http.Client{
 			Transport: defaultTransport,
@@ -85,8 +95,6 @@ type traceClient struct {
 
 // Do injects the trace and then performs the request.
 func (c *traceClient) Do(r *http.Request) (*http.Response, error) {
-	span, _ := tracing.StartSpanFromContext(r.Context())
-	defer span.Finish()
-	tracing.InjectToHTTPRequest(span, r)
+	InjectTrace(r)
 	return c.Client.Do(r)
 }

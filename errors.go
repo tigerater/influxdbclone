@@ -1,17 +1,14 @@
 package influxdb
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"net/http"
 	"strings"
 )
 
 // Some error code constant, ideally we want define common platform codes here
 // projects on use platform's error, should have their own central place like this.
-// Any time this set of constants changes, you must also update the swagger for Error.properties.code.enum.
 const (
 	EInternal            = "internal error"
 	ENotFound            = "not found"
@@ -21,7 +18,6 @@ const (
 	EEmptyValue          = "empty value"
 	EUnavailable         = "unavailable"
 	EForbidden           = "forbidden"
-	ETooManyRequests     = "too many requests"
 	EUnauthorized        = "unauthorized"
 	EMethodNotAllowed    = "method not allowed"
 )
@@ -263,9 +259,4 @@ func decodeInternalError(target interface{}) error {
 		return internalErr
 	}
 	return nil
-}
-
-// HTTPErrorHandler is the interface to handle http error.
-type HTTPErrorHandler interface {
-	HandleHTTPError(ctx context.Context, err error, w http.ResponseWriter)
 }

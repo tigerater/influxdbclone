@@ -1,29 +1,25 @@
 // Libraries
 import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
-import {Position} from 'codemirror'
 
 // Components
 import FluxEditor from 'src/shared/components/FluxEditor'
 import Threesizer from 'src/shared/components/threesizer/Threesizer'
-import FluxFunctionsToolbar from 'src/timeMachine/components/fluxFunctionsToolbar/FluxFunctionsToolbar'
-import VariableToolbar from 'src/timeMachine/components/variableToolbar/VariableToolbar'
-import ToolbarTab from 'src/timeMachine/components/ToolbarTab'
+import FluxFunctionsToolbar from 'src/timeMachine/components/flux_functions_toolbar/FluxFunctionsToolbar'
 
 // Actions
-import {setActiveQueryText} from 'src/timeMachine/actions'
-import {saveAndExecuteQueries} from 'src/timeMachine/actions/queries'
+import {setActiveQueryText, submitScript} from 'src/timeMachine/actions'
 
 // Utils
 import {getActiveQuery} from 'src/timeMachine/selectors'
-import {insertFluxFunction} from 'src/timeMachine/utils/insertFunction'
-import {insertVariable} from 'src/timeMachine/utils/insertVariable'
 
 // Constants
 import {HANDLE_VERTICAL, HANDLE_NONE} from 'src/shared/constants'
 
 // Types
-import {AppState, FluxToolbarFunction} from 'src/types'
+import {AppState} from 'src/types/v2'
+
+import 'src/timeMachine/components/TimeMachineFluxEditor.scss'
 
 interface StateProps {
   activeQueryText: string
@@ -31,24 +27,14 @@ interface StateProps {
 
 interface DispatchProps {
   onSetActiveQueryText: typeof setActiveQueryText
-  onSubmitQueries: typeof saveAndExecuteQueries
-}
-
-interface State {
-  displayFluxFunctions: boolean
+  onSubmitScript: typeof submitScript
 }
 
 type Props = StateProps & DispatchProps
 
-class TimeMachineFluxEditor extends PureComponent<Props, State> {
-  private cursorPosition: Position = {line: 0, ch: 0}
-
-  public state: State = {
-    displayFluxFunctions: true,
-  }
-
+class TimeMachineFluxEditor extends PureComponent<Props> {
   public render() {
-    const {activeQueryText, onSubmitQueries, onSetActiveQueryText} = this.props
+    const {activeQueryText, onSetActiveQueryText, onSubmitScript} = this.props
 
     const divisions = [
       {
@@ -59,33 +45,13 @@ class TimeMachineFluxEditor extends PureComponent<Props, State> {
             script={activeQueryText}
             status={{type: '', text: ''}}
             onChangeScript={onSetActiveQueryText}
-            onSubmitScript={onSubmitQueries}
+            onSubmitScript={onSubmitScript}
             suggestions={[]}
-            onCursorChange={this.handleCursorPosition}
           />
         ),
       },
       {
-        render: () => {
-          return (
-            <>
-              <div className="toolbar-tab-container">
-                <ToolbarTab
-                  onSetActive={this.hideFluxFunctions}
-                  name="Variables"
-                  active={!this.state.displayFluxFunctions}
-                />
-                <ToolbarTab
-                  onSetActive={this.showFluxFunctions}
-                  name="Functions"
-                  active={this.state.displayFluxFunctions}
-                  testID="functions-toolbar-tab"
-                />
-              </div>
-              {this.rightDivision}
-            </>
-          )
-        },
+        render: () => <FluxFunctionsToolbar />,
         handlePixels: 6,
         size: 0.25,
       },
@@ -97,66 +63,6 @@ class TimeMachineFluxEditor extends PureComponent<Props, State> {
       </div>
     )
   }
-
-  private get rightDivision(): JSX.Element {
-    const {displayFluxFunctions} = this.state
-
-    if (displayFluxFunctions) {
-      return (
-        <FluxFunctionsToolbar
-          onInsertFluxFunction={this.handleInsertFluxFunction}
-        />
-      )
-    }
-
-    return <VariableToolbar onClickVariable={this.handleInsertVariable} />
-  }
-
-  private handleCursorPosition = (position: Position): void => {
-    this.cursorPosition = position
-  }
-
-  private handleInsertVariable = async (
-    variableName: string
-  ): Promise<void> => {
-    const {activeQueryText} = this.props
-    const {line, ch} = this.cursorPosition
-
-    const {updatedScript, cursorPosition} = insertVariable(
-      line,
-      ch,
-      activeQueryText,
-      variableName
-    )
-
-    await this.props.onSetActiveQueryText(updatedScript)
-
-    this.handleCursorPosition(cursorPosition)
-  }
-
-  private handleInsertFluxFunction = async (
-    func: FluxToolbarFunction
-  ): Promise<void> => {
-    const {activeQueryText} = this.props
-    const {line} = this.cursorPosition
-
-    const {updatedScript, cursorPosition} = insertFluxFunction(
-      line,
-      activeQueryText,
-      func
-    )
-    await this.props.onSetActiveQueryText(updatedScript)
-
-    this.handleCursorPosition(cursorPosition)
-  }
-
-  private showFluxFunctions = () => {
-    this.setState({displayFluxFunctions: true})
-  }
-
-  private hideFluxFunctions = () => {
-    this.setState({displayFluxFunctions: false})
-  }
 }
 
 const mstp = (state: AppState) => {
@@ -167,7 +73,7 @@ const mstp = (state: AppState) => {
 
 const mdtp = {
   onSetActiveQueryText: setActiveQueryText,
-  onSubmitQueries: saveAndExecuteQueries,
+  onSubmitScript: submitScript,
 }
 
 export default connect<StateProps, DispatchProps, {}>(

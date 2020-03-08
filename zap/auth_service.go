@@ -70,13 +70,13 @@ func (s *AuthorizationService) DeleteAuthorization(ctx context.Context, id platf
 	return s.AuthorizationService.DeleteAuthorization(ctx, id)
 }
 
-// UpdateAuthorization updates an authorization's status, description and logs any errors.
-func (s *AuthorizationService) UpdateAuthorization(ctx context.Context, id platform.ID, upd *platform.AuthorizationUpdate) (a *platform.Authorization, err error) {
+// SetAuthorizationStatus updates an authorization's status and logs any errors.
+func (s *AuthorizationService) SetAuthorizationStatus(ctx context.Context, id platform.ID, status platform.Status) (err error) {
 	defer func() {
 		if err != nil {
 			s.Logger.Info("error updating authorization", zap.Error(err))
 		}
 	}()
 
-	return s.AuthorizationService.UpdateAuthorization(ctx, id, upd)
+	return s.AuthorizationService.SetAuthorizationStatus(ctx, id, status)
 }

@@ -17,7 +17,6 @@ import (
 	"github.com/influxdata/flux/stdlib/kafka"
 	"github.com/influxdata/flux/values"
 	platform "github.com/influxdata/influxdb"
-	"github.com/influxdata/influxdb/kit/tracing"
 	"github.com/influxdata/influxdb/models"
 	"github.com/influxdata/influxdb/storage"
 	"github.com/influxdata/influxdb/tsdb"
@@ -172,14 +171,8 @@ func (ToOpSpec) Kind() flux.OperationKind {
 }
 
 // BucketsAccessed returns the buckets accessed by the spec.
-func (o *ToOpSpec) BucketsAccessed(orgID *platform.ID) (readBuckets, writeBuckets []platform.BucketFilter) {
-	bf := platform.BucketFilter{}
-	if o.Bucket != "" {
-		bf.Name = &o.Bucket
-	}
-	if o.Org != "" {
-		bf.Org = &o.Org
-	}
+func (o *ToOpSpec) BucketsAccessed() (readBuckets, writeBuckets []platform.BucketFilter) {
+	bf := platform.BucketFilter{Name: &o.Bucket, Organization: &o.Org}
 	if o.OrgID != "" {
 		id, err := platform.IDFromString(o.OrgID)
 		if err == nil {
@@ -251,12 +244,11 @@ func createToTransformation(id execute.DatasetID, mode execute.AccumulationMode,
 
 // ToTransformation is the transformation for the `to` flux function.
 type ToTransformation struct {
-	d                  execute.Dataset
-	fn                 *execute.RowMapFn
-	cache              execute.TableBuilderCache
-	spec               *ToProcedureSpec
-	implicitTagColumns bool
-	deps               ToDependencies
+	d     execute.Dataset
+	fn    *execute.RowMapFn
+	cache execute.TableBuilderCache
+	spec  *ToProcedureSpec
+	deps  ToDependencies
 }
 
 // RetractTable retracts the table for the transformation for the `to` flux function.
@@ -276,18 +268,17 @@ func NewToTransformation(d execute.Dataset, cache execute.TableBuilderCache, spe
 	}
 
 	return &ToTransformation{
-		d:                  d,
-		fn:                 fn,
-		cache:              cache,
-		spec:               spec,
-		implicitTagColumns: spec.Spec.TagColumns == nil,
-		deps:               deps,
+		d:     d,
+		fn:    fn,
+		cache: cache,
+		spec:  spec,
+		deps:  deps,
 	}, nil
 }
 
 // Process does the actual work for the ToTransformation.
 func (t *ToTransformation) Process(id execute.DatasetID, tbl flux.Table) error {
-	if t.implicitTagColumns {
+	if t.spec.Spec.TagColumns == nil {
 
 		// If no tag columns are specified, by default we exclude
 		// _field and _value from being tag columns.
@@ -360,11 +351,7 @@ func (v *fieldFunctionVisitor) Visit(node semantic.Node) semantic.Visitor {
 func (v *fieldFunctionVisitor) Done(node semantic.Node) {}
 
 func addTagsFromTable(spec *ToOpSpec, table flux.Table, exclude map[string]bool) {
-	if cap(spec.TagColumns) < len(table.Cols()) {
-		spec.TagColumns = make([]string, 0, len(table.Cols()))
-	} else {
-		spec.TagColumns = spec.TagColumns[:0]
-	}
+	spec.TagColumns = make([]string, 0, len(table.Cols()))
 	for _, column := range table.Cols() {
 		if column.Type == flux.TString && !exclude[column.Label] {
 			spec.TagColumns = append(spec.TagColumns, column.Label)
@@ -446,9 +433,6 @@ func (s Stats) Update(o Stats) {
 }
 
 func writeTable(t *ToTransformation, tbl flux.Table) error {
-	span, ctx := tracing.StartSpanFromContext(context.TODO())
-	defer span.Finish()
-
 	var bucketID, orgID *platform.ID
 	var err error
 
@@ -468,7 +452,7 @@ func writeTable(t *ToTransformation, tbl flux.Table) error {
 
 	// Get bucket ID
 	if spec.Bucket != "" {
-		bID, ok := d.BucketLookup.Lookup(ctx, *orgID, spec.Bucket)
+		bID, ok := d.BucketLookup.Lookup(*orgID, spec.Bucket)
 		if !ok {
 			return fmt.Errorf("failed to look up bucket %q in org %q", spec.Bucket, spec.Org)
 		}
@@ -517,9 +501,9 @@ func writeTable(t *ToTransformation, tbl flux.Table) error {
 		var pointTime time.Time
 		var points models.Points
 		var tags models.Tags
+		fields := make(models.Fields)
 		var fieldValues values.Object
 		for i := 0; i < er.Len(); i++ {
-			fields := make(models.Fields)
 			tags = nil
 			// Gather the timestamp and the tags.
 			for j, col := range er.Cols() {
@@ -555,10 +539,6 @@ func writeTable(t *ToTransformation, tbl flux.Table) error {
 			}
 
 			fieldValues.Range(func(k string, v values.Value) {
-				if v.IsNull() {
-					fields[k] = nil
-					return
-				}
 				switch v.Type() {
 				case semantic.Float:
 					fields[k] = v.Float()
@@ -589,32 +569,17 @@ func writeTable(t *ToTransformation, tbl flux.Table) error {
 				measurementStats[measurementName].Update(mstats)
 			}
 
-			name := tsdb.EncodeNameString(*orgID, *bucketID)
-
-			fieldNames := make([]string, 0, len(fields))
-			for k := range fields {
-				fieldNames = append(fieldNames, k)
+			pt, err := models.NewPoint(measurementName, tags, fields, pointTime)
+			if err != nil {
+				return err
 			}
-			sort.Strings(fieldNames)
-
-			for _, k := range fieldNames {
-				v := fields[k]
-				pointTags := models.Tags{{Key: []byte("\x00"), Value: []byte(measurementName)}}
-				pointTags = append(pointTags, tags...)
-				pointTags = append(pointTags, models.Tag{Key: []byte("\xff"), Value: []byte(k)})
-
-				pt, err := models.NewPoint(name, pointTags, models.Fields{k: v}, pointTime)
-				if err != nil {
-					return err
-				}
-				points = append(points, pt)
-			}
-
+			points = append(points, pt)
 			if err := execute.AppendRecord(i, er, builder); err != nil {
 				return err
 			}
 		}
-		return d.PointsWriter.WritePoints(context.TODO(), points)
+		points, err = tsdb.ExplodePoints(*orgID, *bucketID, points)
+		return d.PointsWriter.WritePoints(points)
 	})
 }
 

@@ -1,38 +1,30 @@
 // Libraries
 import React, {PureComponent} from 'react'
 import _ from 'lodash'
-import {connect} from 'react-redux'
 
 // Components
 import {Dropdown, ComponentStatus} from 'src/clockface'
 
 // Types
 import {Bucket} from '@influxdata/influx'
-import {RemoteDataState, AppState} from 'src/types'
+import {RemoteDataState} from 'src/types'
 
-interface OwnProps {
+interface Props {
+  buckets: Bucket[]
   onChangeBucketName: (selectedBucketName: string) => void
   selectedBucketName: string
+  loading: RemoteDataState
 }
 
-interface StateProps {
-  buckets: Bucket[]
-  status: RemoteDataState
-}
-
-type Props = OwnProps & StateProps
-
-class TaskOptionsBucketDropdown extends PureComponent<Props> {
+export default class TaskOptionsBucketDropdown extends PureComponent<Props> {
   public componentDidMount() {
     this.setSelectedToFirst()
   }
-
   public componentDidUpdate(prevProps: Props) {
     if (this.props.buckets !== prevProps.buckets) {
       this.setSelectedToFirst()
     }
   }
-
   public render() {
     return (
       <Dropdown
@@ -58,16 +50,19 @@ class TaskOptionsBucketDropdown extends PureComponent<Props> {
       })
     } else {
       return [
-        <Dropdown.Item id="no-buckets" key="no-buckets" value="no-buckets">
+        <Dropdown.Item
+          id={'no-buckets'}
+          key={'no-buckets'}
+          value={'no-buckets'}
+        >
           {'no buckets found in org'}
         </Dropdown.Item>,
       ]
     }
   }
-
   private get status(): ComponentStatus {
-    const {status, buckets} = this.props
-    if (status === RemoteDataState.Loading) {
+    const {loading, buckets} = this.props
+    if (loading === RemoteDataState.Loading) {
       return ComponentStatus.Loading
     }
     if (!buckets || !buckets.length) {
@@ -94,15 +89,3 @@ class TaskOptionsBucketDropdown extends PureComponent<Props> {
     onChangeBucketName(firstBucketNameInList)
   }
 }
-
-const mstp = ({buckets}: AppState): StateProps => {
-  return {
-    buckets: buckets.list,
-    status: buckets.status,
-  }
-}
-
-export default connect<StateProps, {}, OwnProps>(
-  mstp,
-  null
-)(TaskOptionsBucketDropdown)

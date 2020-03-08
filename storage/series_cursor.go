@@ -1,20 +1,14 @@
 package storage
 
 import (
-	"bytes"
 	"errors"
+	"sort"
+	"sync"
 
-	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/models"
-	"github.com/influxdata/influxdb/pkg/lifecycle"
 	"github.com/influxdata/influxdb/tsdb"
 	"github.com/influxdata/influxdb/tsdb/tsi1"
 	"github.com/influxdata/influxql"
-)
-
-var (
-	errUnexpectedOrg                   = errors.New("seriesCursor: unexpected org")
-	errUnexpectedTagComparisonOperator = errors.New("seriesCursor: unexpected tag comparison operator")
 )
 
 type SeriesCursor interface {
@@ -23,22 +17,18 @@ type SeriesCursor interface {
 }
 
 type SeriesCursorRequest struct {
-	// Name contains the tsdb encoded org and bucket ID
-	Name [influxdb.IDLength]byte
+	Measurements tsdb.MeasurementIterator
 }
 
 // seriesCursor is an implementation of SeriesCursor over an tsi1.Index.
 type seriesCursor struct {
-	index    *tsi1.Index
-	indexref *lifecycle.Reference
-	sfile    *tsdb.SeriesFile
-	sfileref *lifecycle.Reference
-	name     [influxdb.IDLength]byte
-	keys     [][]byte
-	ofs      int
-	row      SeriesCursorRow
-	cond     influxql.Expr
-	init     bool
+	once  sync.Once
+	index *tsi1.Index
+	mitr  tsdb.MeasurementIterator
+	keys  [][]byte
+	ofs   int
+	row   SeriesCursorRow
+	cond  influxql.Expr
 }
 
 type SeriesCursorRow struct {
@@ -47,74 +37,74 @@ type SeriesCursorRow struct {
 }
 
 // newSeriesCursor returns a new instance of SeriesCursor.
-func newSeriesCursor(req SeriesCursorRequest, index *tsi1.Index, sfile *tsdb.SeriesFile, cond influxql.Expr) (SeriesCursor, error) {
-	if cond != nil {
-		var err error
-		influxql.WalkFunc(cond, func(node influxql.Node) {
-			switch n := node.(type) {
-			case *influxql.BinaryExpr:
-				switch n.Op {
-				case influxql.EQ, influxql.NEQ, influxql.EQREGEX, influxql.NEQREGEX, influxql.OR, influxql.AND:
-				default:
-					err = errUnexpectedTagComparisonOperator
-				}
+func newSeriesCursor(req SeriesCursorRequest, index *tsi1.Index, cond influxql.Expr) (_ SeriesCursor, err error) {
+	// Only equality operators are allowed.
+	influxql.WalkFunc(cond, func(node influxql.Node) {
+		switch n := node.(type) {
+		case *influxql.BinaryExpr:
+			switch n.Op {
+			case influxql.EQ, influxql.NEQ, influxql.EQREGEX, influxql.NEQREGEX, influxql.OR, influxql.AND:
+			default:
+				err = errors.New("invalid tag comparison operator")
 			}
-		})
+		}
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	mitr := req.Measurements
+	if mitr == nil {
+		mitr, err = index.MeasurementIterator()
 		if err != nil {
 			return nil, err
 		}
 	}
 
-	indexref, err := index.Acquire()
-	if err != nil {
-		return nil, err
-	}
-	sfileref, err := sfile.Acquire()
-	if err != nil {
-		indexref.Release()
-		return nil, err
-	}
-
 	return &seriesCursor{
-		index:    index,
-		indexref: indexref,
-		sfile:    sfile,
-		sfileref: sfileref,
-		name:     req.Name,
-		cond:     cond,
+		index: index,
+		mitr:  mitr,
+		cond:  cond,
 	}, nil
 }
 
-// Close closes the iterator. Safe to call multiple times.
-func (cur *seriesCursor) Close() error {
-	cur.sfileref.Release()
-	cur.indexref.Release()
-	return nil
+// Close closes the iterator.
+func (cur *seriesCursor) Close() (err error) {
+	cur.once.Do(func() {
+		if cur.mitr != nil {
+			err = cur.mitr.Close()
+		}
+	})
+	return err
 }
 
 // Next emits the next point in the iterator.
 func (cur *seriesCursor) Next() (*SeriesCursorRow, error) {
-	if !cur.init {
-		if err := cur.readSeriesKeys(); err != nil {
-			return nil, err
-		}
-		cur.init = true
-	}
+	for {
+		// Read series keys for next measurement if no more keys remaining.
+		// Exit if there are no measurements remaining.
+		if cur.ofs == len(cur.keys) {
+			m, err := cur.mitr.Next()
+			if err != nil {
+				return nil, err
+			} else if m == nil {
+				return nil, nil
+			}
 
-	if cur.ofs < len(cur.keys) {
-		cur.row.Name, cur.row.Tags = tsdb.ParseSeriesKeyInto(cur.keys[cur.ofs], cur.row.Tags)
-		if !bytes.HasPrefix(cur.row.Name, cur.name[:influxdb.OrgIDLength]) {
-			return nil, errUnexpectedOrg
+			if err := cur.readSeriesKeys(m); err != nil {
+				return nil, err
+			}
+			continue
 		}
+
+		cur.row.Name, cur.row.Tags = tsdb.ParseSeriesKey(cur.keys[cur.ofs])
 		cur.ofs++
 		return &cur.row, nil
 	}
-
-	return nil, nil
 }
 
-func (cur *seriesCursor) readSeriesKeys() error {
-	sitr, err := cur.index.MeasurementSeriesByExprIterator(cur.name[:], cur.cond)
+func (cur *seriesCursor) readSeriesKeys(name []byte) error {
+	sitr, err := cur.index.MeasurementSeriesByExprIterator(name, cur.cond)
 	if err != nil {
 		return err
 	} else if sitr == nil {
@@ -122,6 +112,9 @@ func (cur *seriesCursor) readSeriesKeys() error {
 	}
 	defer sitr.Close()
 
+	// Slurp all series keys.
+	cur.ofs = 0
+	cur.keys = cur.keys[:0]
 	for {
 		elem, err := sitr.Next()
 		if err != nil {
@@ -130,12 +123,22 @@ func (cur *seriesCursor) readSeriesKeys() error {
 			break
 		}
 
-		key := cur.sfile.SeriesKey(elem.SeriesID)
+		key := cur.index.SeriesFile().SeriesKey(elem.SeriesID)
 		if len(key) == 0 {
 			continue
 		}
 		cur.keys = append(cur.keys, key)
 	}
 
+	// Sort keys.
+	sort.Sort(seriesKeys(cur.keys))
 	return nil
+}
+
+type seriesKeys [][]byte
+
+func (a seriesKeys) Len() int      { return len(a) }
+func (a seriesKeys) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a seriesKeys) Less(i, j int) bool {
+	return tsdb.CompareSeriesKeys(a[i], a[j]) == -1
 }

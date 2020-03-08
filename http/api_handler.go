@@ -7,17 +7,13 @@ import (
 	influxdb "github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/authorizer"
 	"github.com/influxdata/influxdb/chronograf/server"
-	"github.com/influxdata/influxdb/http/metric"
-	"github.com/influxdata/influxdb/kit/prom"
 	"github.com/influxdata/influxdb/query"
 	"github.com/influxdata/influxdb/storage"
-	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 )
 
 // APIHandler is a collection of all the service handlers.
 type APIHandler struct {
-	influxdb.HTTPErrorHandler
 	BucketHandler        *BucketHandler
 	UserHandler          *UserHandler
 	OrgHandler           *OrgHandler
@@ -28,30 +24,25 @@ type APIHandler struct {
 	ChronografHandler    *ChronografHandler
 	ScraperHandler       *ScraperHandler
 	SourceHandler        *SourceHandler
-	VariableHandler      *VariableHandler
+	MacroHandler         *MacroHandler
 	TaskHandler          *TaskHandler
 	TelegrafHandler      *TelegrafHandler
 	QueryHandler         *FluxHandler
+	ProtoHandler         *ProtoHandler
 	WriteHandler         *WriteHandler
-	DocumentHandler      *DocumentHandler
 	SetupHandler         *SetupHandler
 	SessionHandler       *SessionHandler
-	SwaggerHandler       http.Handler
+	SwaggerHandler       http.HandlerFunc
 }
 
 // APIBackend is all services and associated parameters required to construct
 // an APIHandler.
 type APIBackend struct {
-	AssetsPath string // if empty then assets are served from bindata.
-	Logger     *zap.Logger
-	influxdb.HTTPErrorHandler
-	SessionRenewDisabled bool
+	DeveloperMode bool
+	Logger        *zap.Logger
 
 	NewBucketService func(*influxdb.Source) (influxdb.BucketService, error)
 	NewQueryService  func(*influxdb.Source) (query.ProxyQueryService, error)
-
-	WriteEventRecorder metric.EventRecorder
-	QueryEventRecorder metric.EventRecorder
 
 	PointsWriter                    storage.PointsWriter
 	AuthorizationService            influxdb.AuthorizationService
@@ -67,47 +58,27 @@ type APIBackend struct {
 	UserOperationLogService         influxdb.UserOperationLogService
 	OrganizationOperationLogService influxdb.OrganizationOperationLogService
 	SourceService                   influxdb.SourceService
-	VariableService                 influxdb.VariableService
-	PasswordsService                influxdb.PasswordsService
+	MacroService                    influxdb.MacroService
+	BasicAuthService                influxdb.BasicAuthService
 	OnboardingService               influxdb.OnboardingService
-	InfluxQLService                 query.ProxyQueryService
-	FluxService                     query.ProxyQueryService
+	ProxyQueryService               query.ProxyQueryService
 	TaskService                     influxdb.TaskService
 	TelegrafService                 influxdb.TelegrafConfigStore
 	ScraperTargetStoreService       influxdb.ScraperTargetStoreService
 	SecretService                   influxdb.SecretService
 	LookupService                   influxdb.LookupService
 	ChronografService               *server.Service
+	ProtoService                    influxdb.ProtoService
 	OrgLookupService                authorizer.OrganizationService
-	DocumentService                 influxdb.DocumentService
-}
-
-// PrometheusCollectors exposes the prometheus collectors associated with an APIBackend.
-func (b *APIBackend) PrometheusCollectors() []prometheus.Collector {
-	var cs []prometheus.Collector
-
-	if pc, ok := b.WriteEventRecorder.(prom.PrometheusCollector); ok {
-		cs = append(cs, pc.PrometheusCollectors()...)
-	}
-
-	if pc, ok := b.QueryEventRecorder.(prom.PrometheusCollector); ok {
-		cs = append(cs, pc.PrometheusCollectors()...)
-	}
-
-	return cs
+	ViewService                     influxdb.ViewService
 }
 
 // NewAPIHandler constructs all api handlers beneath it and returns an APIHandler
 func NewAPIHandler(b *APIBackend) *APIHandler {
-	h := &APIHandler{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-	}
+	h := &APIHandler{}
 
 	internalURM := b.UserResourceMappingService
 	b.UserResourceMappingService = authorizer.NewURMService(b.OrgLookupService, b.UserResourceMappingService)
-
-	documentBackend := NewDocumentBackend(b)
-	h.DocumentHandler = NewDocumentHandler(documentBackend)
 
 	sessionBackend := NewSessionBackend(b)
 	h.SessionHandler = NewSessionHandler(sessionBackend)
@@ -128,23 +99,22 @@ func NewAPIHandler(b *APIBackend) *APIHandler {
 	dashboardBackend.DashboardService = authorizer.NewDashboardService(b.DashboardService)
 	h.DashboardHandler = NewDashboardHandler(dashboardBackend)
 
-	variableBackend := NewVariableBackend(b)
-	variableBackend.VariableService = authorizer.NewVariableService(b.VariableService)
-	h.VariableHandler = NewVariableHandler(variableBackend)
+	macroBackend := NewMacroBackend(b)
+	macroBackend.MacroService = authorizer.NewMacroService(b.MacroService)
+	h.MacroHandler = NewMacroHandler(macroBackend)
 
 	authorizationBackend := NewAuthorizationBackend(b)
 	authorizationBackend.AuthorizationService = authorizer.NewAuthorizationService(b.AuthorizationService)
 	h.AuthorizationHandler = NewAuthorizationHandler(authorizationBackend)
 
 	scraperBackend := NewScraperBackend(b)
-	scraperBackend.ScraperStorageService = authorizer.NewScraperTargetStoreService(b.ScraperTargetStoreService,
-		b.UserResourceMappingService,
-		b.OrganizationService)
+	scraperBackend.ScraperStorageService = authorizer.NewScraperTargetStoreService(b.ScraperTargetStoreService, b.UserResourceMappingService)
 	h.ScraperHandler = NewScraperHandler(scraperBackend)
 
 	sourceBackend := NewSourceBackend(b)
 	sourceBackend.SourceService = authorizer.NewSourceService(b.SourceService)
-	sourceBackend.BucketService = authorizer.NewBucketService(b.BucketService)
+	sourceBackend.NewBucketService = b.NewBucketService
+	sourceBackend.NewQueryService = b.NewQueryService
 	h.SourceHandler = NewSourceHandler(sourceBackend)
 
 	setupBackend := NewSetupBackend(b)
@@ -164,9 +134,13 @@ func NewAPIHandler(b *APIBackend) *APIHandler {
 	fluxBackend := NewFluxBackend(b)
 	h.QueryHandler = NewFluxHandler(fluxBackend)
 
-	h.ChronografHandler = NewChronografHandler(b.ChronografService, b.HTTPErrorHandler)
-	h.SwaggerHandler = newSwaggerLoader(b.Logger.With(zap.String("service", "swagger-loader")), b.HTTPErrorHandler)
-	h.LabelHandler = NewLabelHandler(authorizer.NewLabelService(b.LabelService), b.HTTPErrorHandler)
+	h.ProtoHandler = NewProtoHandler(NewProtoBackend(b))
+
+	h.ChronografHandler = NewChronografHandler(b.ChronografService)
+
+	h.SwaggerHandler = SwaggerHandler()
+
+	h.LabelHandler = NewLabelHandler(b.LabelService)
 
 	return h
 }
@@ -180,14 +154,16 @@ var apiLinks = map[string]interface{}{
 	"external": map[string]string{
 		"statusFeed": "https://www.influxdata.com/feed/json",
 	},
-	"labels":    "/api/v2/labels",
-	"variables": "/api/v2/variables",
-	"me":        "/api/v2/me",
-	"orgs":      "/api/v2/orgs",
+	"labels": "/api/v2/labels",
+	"macros": "/api/v2/macros",
+	"me":     "/api/v2/me",
+	"orgs":   "/api/v2/orgs",
+	"protos": "/api/v2/protos",
 	"query": map[string]string{
 		"self":        "/api/v2/query",
 		"ast":         "/api/v2/query/ast",
 		"analyze":     "/api/v2/query/analyze",
+		"spec":        "/api/v2/query/spec",
 		"suggestions": "/api/v2/query/suggestions",
 	},
 	"setup":    "/api/v2/setup",
@@ -210,7 +186,8 @@ var apiLinks = map[string]interface{}{
 func (h *APIHandler) serveLinks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	if err := encodeResponse(ctx, w, http.StatusOK, apiLinks); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
+		return
 	}
 }
 
@@ -302,13 +279,13 @@ func (h *APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.HasPrefix(r.URL.Path, "/api/v2/variables") {
-		h.VariableHandler.ServeHTTP(w, r)
+	if strings.HasPrefix(r.URL.Path, "/api/v2/macros") {
+		h.MacroHandler.ServeHTTP(w, r)
 		return
 	}
 
-	if strings.HasPrefix(r.URL.Path, "/api/v2/documents") {
-		h.DocumentHandler.ServeHTTP(w, r)
+	if strings.HasPrefix(r.URL.Path, "/api/v2/protos") {
+		h.ProtoHandler.ServeHTTP(w, r)
 		return
 	}
 
@@ -322,5 +299,5 @@ func (h *APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	baseHandler{HTTPErrorHandler: h.HTTPErrorHandler}.notFound(w, r)
+	notFoundHandler(w, r)
 }

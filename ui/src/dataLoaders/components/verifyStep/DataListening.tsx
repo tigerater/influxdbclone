@@ -1,10 +1,9 @@
 // Libraries
 import React, {PureComponent} from 'react'
-import {withRouter, WithRouterProps} from 'react-router'
 import _ from 'lodash'
 
 // Apis
-import {runQuery} from 'src/shared/apis/query'
+import {executeQuery} from 'src/shared/apis/v2/query'
 
 // Components
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -13,12 +12,15 @@ import {
   ComponentColor,
   ComponentSize,
   ComponentStatus,
-} from '@influxdata/clockface'
+} from 'src/clockface'
 import ConnectionInformation, {
   LoadingState,
 } from 'src/dataLoaders/components/verifyStep/ConnectionInformation'
 
-interface OwnProps {
+// Types
+import {InfluxLanguage} from 'src/types/v2/dashboards'
+
+export interface Props {
   bucket: string
 }
 
@@ -34,12 +36,12 @@ const SECONDS = 60
 const TIMER_WAIT = 1000
 
 @ErrorHandling
-class DataListening extends PureComponent<OwnProps & WithRouterProps, State> {
+class DataListening extends PureComponent<Props, State> {
   private intervalID: NodeJS.Timer
   private startTime: number
   private timer: NodeJS.Timer
 
-  constructor(props) {
+  constructor(props: Props) {
     super(props)
 
     this.state = {
@@ -60,7 +62,7 @@ class DataListening extends PureComponent<OwnProps & WithRouterProps, State> {
 
   public render() {
     return (
-      <div className="wizard-step--body-streaming" data-testid="streaming">
+      <div className="wizard-step--body-streaming">
         {this.connectionInfo}
         {this.listenButton}
       </div>
@@ -97,7 +99,7 @@ class DataListening extends PureComponent<OwnProps & WithRouterProps, State> {
         size={ComponentSize.Medium}
         onClick={this.handleClick}
         status={ComponentStatus.Default}
-        titleText="Listen for Data"
+        titleText={'Listen for Data'}
       />
     )
   }
@@ -110,27 +112,28 @@ class DataListening extends PureComponent<OwnProps & WithRouterProps, State> {
   }
 
   private checkForData = async (): Promise<void> => {
-    const {
-      bucket,
-      params: {orgID},
-    } = this.props
+    const {bucket} = this.props
     const {secondsLeft} = this.state
     const script = `from(bucket: "${bucket}")
       |> range(start: -1m)`
 
-    let responseLength: number
-    let timePassed: number
+    let rowCount
+    let timePassed
 
     try {
-      const response = await runQuery(orgID, script).promise
-      responseLength = response.length
+      const response = await executeQuery(
+        '/api/v2/query',
+        script,
+        InfluxLanguage.Flux
+      ).promise
+      rowCount = response.rowCount
       timePassed = Number(new Date()) - this.startTime
     } catch (err) {
       this.setState({loading: LoadingState.Error})
       return
     }
 
-    if (responseLength > 1) {
+    if (rowCount > 1) {
       this.setState({loading: LoadingState.Done})
       return
     }
@@ -139,7 +142,6 @@ class DataListening extends PureComponent<OwnProps & WithRouterProps, State> {
       this.setState({loading: LoadingState.NotFound})
       return
     }
-
     this.intervalID = setTimeout(this.checkForData, FETCH_WAIT)
   }
 
@@ -163,4 +165,4 @@ class DataListening extends PureComponent<OwnProps & WithRouterProps, State> {
   }
 }
 
-export default withRouter(DataListening)
+export default DataListening

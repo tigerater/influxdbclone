@@ -1,6 +1,7 @@
 package tsm1
 
 import (
+	"fmt"
 	"sync"
 	"sync/atomic"
 
@@ -8,11 +9,11 @@ import (
 	"github.com/influxdata/influxdb/pkg/bytesutil"
 )
 
-// numPartitions is the number of partitions we used in the ring's continuum. It
+// partitions is the number of partitions we used in the ring's continuum. It
 // basically defines the maximum number of partitions you can have in the ring.
 // If a smaller number of partitions are chosen when creating a ring, then
 // they're evenly spread across this many partitions in the ring.
-const numPartitions = 16
+const partitions = 16
 
 // ring is a structure that maps series keys to entries.
 //
@@ -23,12 +24,12 @@ const numPartitions = 16
 // ring, and the number of members must always be a power of 2.
 //
 // ring works as follows: Each member of the ring contains a single store, which
-// contains a map of series keys to entries. A ring always has 16 partitions,
+// contains a map of series keys to entries. A ring always has 256 partitions,
 // and a member takes up one or more of these partitions (depending on how many
 // members are specified to be in the ring)
 //
 // To determine the partition that a series key should be added to, the series
-// key is hashed and the least significant 4 bits are used as an index to the ring.
+// key is hashed and the first 8 bits are used as an index to the ring.
 //
 type ring struct {
 	// Number of keys within the ring. This is used to provide a hint for
@@ -39,16 +40,33 @@ type ring struct {
 
 	// The unique set of partitions in the ring.
 	// len(partitions) <= len(continuum)
-	partitions [numPartitions]*partition
+	partitions []*partition
 }
 
-// newring returns a new ring initialised with numPartitions partitions.
-func newRing() *ring {
-	r := new(ring)
-	for i := 0; i < len(r.partitions); i++ {
-		r.partitions[i] = &partition{store: make(map[string]*entry)}
+// newring returns a new ring initialised with n partitions. n must always be a
+// power of 2, and for performance reasons should be larger than the number of
+// cores on the host. The supported set of values for n is:
+//
+//     {1, 2, 4, 8, 16, 32, 64, 128, 256}.
+//
+func newring(n int) (*ring, error) {
+	if n <= 0 || n > partitions {
+		return nil, fmt.Errorf("invalid number of paritions: %d", n)
 	}
-	return r
+
+	r := ring{
+		partitions: make([]*partition, n), // maximum number of partitions.
+	}
+
+	// The trick here is to map N partitions to all points on the continuum,
+	// such that the first eight bits of a given hash will map directly to one
+	// of the N partitions.
+	for i := 0; i < len(r.partitions); i++ {
+		r.partitions[i] = &partition{
+			store: make(map[string]*entry),
+		}
+	}
+	return &r, nil
 }
 
 // reset resets the ring so it can be reused. Before removing references to entries
@@ -63,9 +81,10 @@ func (r *ring) reset() {
 	r.keysHint = 0
 }
 
-// getPartition retrieves the hash ring partition associated with the provided key.
+// getPartition retrieves the hash ring partition associated with the provided
+// key.
 func (r *ring) getPartition(key []byte) *partition {
-	return r.partitions[int(xxhash.Sum64(key)%numPartitions)]
+	return r.partitions[int(xxhash.Sum64(key)%partitions)]
 }
 
 // entry returns the entry for the given key.
@@ -182,15 +201,16 @@ func (r *ring) applySerial(f func([]byte, *entry) error) error {
 	return nil
 }
 
-func (r *ring) split(n int) []*ring {
+func (r *ring) split(n int) []storer {
 	var keys int
-	storers := make([]*ring, n)
+	storers := make([]storer, n)
 	for i := 0; i < n; i++ {
-		storers[i] = newRing()
+		storers[i], _ = newring(len(r.partitions))
 	}
 
 	for i, p := range r.partitions {
-		storers[i%n].partitions[i] = p
+		r := storers[i%n].(*ring)
+		r.partitions[i] = p
 		keys += len(p.store)
 	}
 	return storers

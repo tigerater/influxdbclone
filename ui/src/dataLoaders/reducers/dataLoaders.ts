@@ -21,7 +21,7 @@ import {
   ConfigurationState,
   ConfigFieldType,
   Plugin,
-} from 'src/types/dataLoaders'
+} from 'src/types/v2/dataLoaders'
 import {RemoteDataState} from 'src/types'
 import {WritePrecision} from '@influxdata/influx'
 import {QUICKSTART_SCRAPER_TARGET_URL} from 'src/dataLoaders/constants/pluginConfigs'
@@ -32,7 +32,6 @@ export const INITIAL_STATE: DataLoadersState = {
   lineProtocolBody: '',
   activeLPTab: LineProtocolTab.UploadFile,
   lpStatus: RemoteDataState.NotStarted,
-  lpError: '',
   precision: WritePrecision.Ns,
   telegrafConfigID: null,
   pluginBundles: [],
@@ -42,8 +41,6 @@ export const INITIAL_STATE: DataLoadersState = {
     name: 'Name this Scraper Target',
   },
   telegrafConfigName: 'Name this Configuration',
-  telegrafConfigDescription: '',
-  token: '',
 }
 
 export default (state = INITIAL_STATE, action: Action): DataLoadersState => {
@@ -138,14 +135,8 @@ export default (state = INITIAL_STATE, action: Action): DataLoadersState => {
           if (tp.name === action.payload.pluginName) {
             const plugin = _.get(tp, 'plugin', createNewPlugin(tp.name))
 
-            const config = _.get(
-              plugin,
-              ['config', action.payload.fieldName],
-              []
-            )
-
             const updatedConfigFieldValue: string[] = [
-              ...config,
+              ...plugin.config[action.payload.fieldName],
               action.payload.value,
             ]
 
@@ -232,8 +223,11 @@ export default (state = INITIAL_STATE, action: Action): DataLoadersState => {
               return {...tp, configured: ConfigurationState.Configured}
             }
 
-            const plugin = getDeep<Plugin>(tp, 'plugin', createNewPlugin(name))
-            const config = _.get(plugin, 'config', {})
+            const {config} = getDeep<Plugin>(
+              tp,
+              'plugin',
+              createNewPlugin(name)
+            )
 
             let isValidConfig = true
 
@@ -280,11 +274,6 @@ export default (state = INITIAL_STATE, action: Action): DataLoadersState => {
         ...state,
         telegrafConfigName: action.payload.name,
       }
-    case 'SET_TELEGRAF_CONFIG_DESCRIPTION':
-      return {
-        ...state,
-        telegrafConfigDescription: action.payload.description,
-      }
     case 'SET_SCRAPER_TARGET_NAME':
       const {name} = action.payload
       return {
@@ -326,28 +315,14 @@ export default (state = INITIAL_STATE, action: Action): DataLoadersState => {
         activeLPTab: action.payload.activeLPTab,
       }
     case 'SET_LP_STATUS':
-      const {lpStatus, lpError} = action.payload
-      if (lpStatus === RemoteDataState.Error) {
-        return {
-          ...state,
-          lpStatus,
-          lpError,
-        }
-      }
       return {
         ...state,
-        lpStatus,
-        lpError: '',
+        lpStatus: action.payload.lpStatus,
       }
     case 'SET_PRECISION':
       return {
         ...state,
         precision: action.payload.precision,
-      }
-    case 'SET_TOKEN':
-      return {
-        ...state,
-        token: action.payload.token,
       }
     default:
       return state

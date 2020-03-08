@@ -3,12 +3,7 @@ import React, {Component} from 'react'
 import classnames from 'classnames'
 
 // Components
-import {
-  SquareButton,
-  IconFont,
-  ComponentStatus,
-  Dropdown,
-} from '@influxdata/clockface'
+import {Dropdown, Button, ButtonShape, IconFont} from 'src/clockface'
 
 // Constants
 import autoRefreshOptions, {
@@ -16,24 +11,21 @@ import autoRefreshOptions, {
   AutoRefreshOptionType,
 } from 'src/shared/data/autoRefreshes'
 
-// Types
-import {AutoRefresh, AutoRefreshStatus} from 'src/types'
-
-const DROPDOWN_WIDTH_COLLAPSED = 50
-const DROPDOWN_WIDTH_FULL = 84
+// Styles
+import 'src/shared/components/dropdown_auto_refresh/AutoRefreshDropdown.scss'
 
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {
-  selected: AutoRefresh
+  selected: number
   onChoose: (milliseconds: number) => void
-  showManualRefresh: boolean
+  showManualRefresh?: boolean
   onManualRefresh?: () => void
 }
 
 @ErrorHandling
-export default class AutoRefreshDropdown extends Component<Props> {
-  public static defaultProps = {
+class AutoRefreshDropdown extends Component<Props> {
+  public static defaultProps: Partial<Props> = {
     showManualRefresh: true,
   }
 
@@ -51,10 +43,8 @@ export default class AutoRefreshDropdown extends Component<Props> {
         <Dropdown
           icon={this.dropdownIcon}
           widthPixels={this.dropdownWidthPixels}
-          menuWidthPixels={DROPDOWN_WIDTH_FULL}
           onChange={this.handleDropdownChange}
           selectedID={this.selectedID}
-          status={this.dropdownStatus}
         >
           {autoRefreshOptions.map(option => {
             if (option.type === AutoRefreshOptionType.Header) {
@@ -82,27 +72,16 @@ export default class AutoRefreshDropdown extends Component<Props> {
   public handleDropdownChange = (
     autoRefreshOption: AutoRefreshOption
   ): void => {
-    this.props.onChoose(autoRefreshOption.milliseconds)
-  }
+    const {onChoose} = this.props
+    const {milliseconds} = autoRefreshOption
 
-  private get dropdownStatus(): ComponentStatus {
-    if (this.isDisabled) {
-      return ComponentStatus.Disabled
-    }
-
-    return ComponentStatus.Default
-  }
-
-  private get isDisabled(): boolean {
-    const {selected} = this.props
-
-    return selected.status === AutoRefreshStatus.Disabled
+    onChoose(milliseconds)
   }
 
   private get isPaused(): boolean {
     const {selected} = this.props
 
-    return selected.status === AutoRefreshStatus.Paused || this.isDisabled
+    return selected === 0
   }
 
   private get className(): string {
@@ -119,17 +98,16 @@ export default class AutoRefreshDropdown extends Component<Props> {
 
   private get dropdownWidthPixels(): number {
     if (this.isPaused) {
-      return DROPDOWN_WIDTH_COLLAPSED
+      return 50
     }
 
-    return DROPDOWN_WIDTH_FULL
+    return 84
   }
 
   private get selectedID(): string {
     const {selected} = this.props
-
     const selectedOption = autoRefreshOptions.find(
-      option => option.milliseconds === selected.interval
+      option => option.milliseconds === selected
     )
 
     return selectedOption.id
@@ -144,10 +122,11 @@ export default class AutoRefreshDropdown extends Component<Props> {
 
     if (this.isPaused) {
       return (
-        <SquareButton
+        <Button
+          shape={ButtonShape.Square}
           icon={IconFont.Refresh}
           onClick={onManualRefresh}
-          className="autorefresh-dropdown--pause"
+          customClass="autorefresh-dropdown--pause"
         />
       )
     }
@@ -155,3 +134,5 @@ export default class AutoRefreshDropdown extends Component<Props> {
     return null
   }
 }
+
+export default AutoRefreshDropdown

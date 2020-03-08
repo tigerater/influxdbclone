@@ -7,14 +7,13 @@ import {client} from 'src/utils/api'
 
 // Components
 import {ErrorHandling} from 'src/shared/decorators/errors'
-import {SpinnerContainer, TechnoSpinner} from '@influxdata/clockface'
+import {SpinnerContainer, TechnoSpinner} from 'src/clockface'
 
 // Actions
 import {notify as notifyAction} from 'src/shared/actions/notifications'
 
 // Constants
 import {sessionTimedOut} from 'src/shared/copy/notifications'
-import {CLOUD, CLOUD_SIGNIN_PATHNAME} from 'src/shared/constants'
 
 // Types
 import {RemoteDataState} from 'src/types'
@@ -47,9 +46,8 @@ export class Signin extends PureComponent<Props, State> {
   }
 
   public async componentDidMount() {
-    this.setState({loading: RemoteDataState.Loading})
-    await this.checkForLogin()
     this.setState({loading: RemoteDataState.Done})
+    this.checkForLogin()
     this.intervalID = setInterval(this.checkForLogin, FETCH_WAIT)
   }
 
@@ -76,13 +74,6 @@ export class Signin extends PureComponent<Props, State> {
       } = this.props
       clearInterval(this.intervalID)
 
-      // TODO: add returnTo to CLOUD signin
-      if (CLOUD) {
-        window.location.pathname = CLOUD_SIGNIN_PATHNAME
-
-        throw error
-      }
-
       if (pathname.startsWith('/signin')) {
         return
       }
@@ -94,7 +85,7 @@ export class Signin extends PureComponent<Props, State> {
         this.props.notify(sessionTimedOut())
       }
 
-      this.props.router.replace(`/signin${returnTo}`)
+      this.props.router.push(`/signin${returnTo}`)
     }
   }
 }

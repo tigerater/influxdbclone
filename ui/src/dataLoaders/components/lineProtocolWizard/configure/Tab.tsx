@@ -1,8 +1,8 @@
 import React, {PureComponent} from 'react'
 
-import {Radio} from '@influxdata/clockface'
+import {Radio} from 'src/clockface'
 
-import {LineProtocolTab} from 'src/types'
+import {LineProtocolTab} from 'src/types/v2/dataLoaders'
 
 interface Props {
   active: boolean

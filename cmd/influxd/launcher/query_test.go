@@ -6,19 +6,20 @@ import (
 	"fmt"
 	"io"
 	nethttp "net/http"
-	"strings"
+	"reflect"
+	"sort"
 	"testing"
 	"time"
 
 	"github.com/influxdata/flux"
 	"github.com/influxdata/flux/lang"
-	"github.com/influxdata/influxdb/cmd/influxd/launcher"
+	platform "github.com/influxdata/influxdb"
 	phttp "github.com/influxdata/influxdb/http"
 	"github.com/influxdata/influxdb/query"
 )
 
 func TestPipeline_Write_Query_FieldKey(t *testing.T) {
-	be := launcher.RunTestLauncherOrFail(t, ctx)
+	be := RunLauncherOrFail(t, ctx)
 	be.SetupOrFail(t)
 	defer be.ShutdownOrFail(t, ctx)
 
@@ -44,18 +45,11 @@ mem,server=b value=45.2`))
 	}
 
 	rawQ := fmt.Sprintf(`from(bucket:"%s")
+	|> filter(fn: (r) => r._m ==  "cpu" and (r._f == "v1" or r._f == "v0"))
 	|> range(start:-1m)
-	|> filter(fn: (r) => r._measurement ==  "cpu" and (r._field == "v1" or r._field == "v0"))
-	|> group(columns:["_time", "_value"], mode:"except")
 	`, be.Bucket.Name)
 
-	// Expected keys:
-	//
-	// _measurement=cpu,region=west,server=a,_field=v0
-	// _measurement=cpu,region=west,server=b,_field=v0
-	// _measurement=cpu,region=east,server=b,area=z,_field=v1
-	//
-	results := be.MustExecuteQuery(rawQ)
+	results := be.MustExecuteQuery(be.Org.ID, rawQ, be.Auth)
 	defer results.Done()
 	results.First(t).HasTablesWithCols([]int{4, 4, 5})
 }
@@ -64,7 +58,9 @@ mem,server=b value=45.2`))
 // and checks that the queried results contain the expected number of tables
 // and expected number of columns.
 func TestPipeline_WriteV2_Query(t *testing.T) {
-	be := launcher.RunTestLauncherOrFail(t, ctx)
+	t.Parallel()
+
+	be := RunLauncherOrFail(t, ctx)
 	be.SetupOrFail(t)
 	defer be.ShutdownOrFail(t, ctx)
 
@@ -95,55 +91,127 @@ func TestPipeline_WriteV2_Query(t *testing.T) {
 		t.Fatalf("exp status %d; got %d, body: %s", nethttp.StatusNoContent, resp.StatusCode, buf.String())
 	}
 
-	res := be.MustExecuteQuery(fmt.Sprintf(`from(bucket:"%s") |> range(start:-5m)`, be.Bucket.Name))
+	res := be.MustExecuteQuery(
+		be.Org.ID,
+		fmt.Sprintf(`from(bucket:"%s") |> range(start:-5m)`, be.Bucket.Name),
+		be.Auth)
 	defer res.Done()
 	res.HasTableCount(t, 1)
 }
 
-// This test initializes a default launcher; writes some data; queries the data (success);
-// sets memory limits to the same read query; checks that the query fails because limits are exceeded.
-func TestPipeline_QueryMemoryLimits(t *testing.T) {
-	t.Skip("setting memory limits in the client is not implemented yet")
+// QueryResult wraps a single flux.Result with some helper methods.
+type QueryResult struct {
+	t *testing.T
+	q flux.Result
+}
 
-	l := launcher.RunTestLauncherOrFail(t, ctx)
-	l.SetupOrFail(t)
-	defer l.ShutdownOrFail(t, ctx)
+// HasTableWithCols checks if the desired number of tables and columns exist,
+// ignoring any system columns.
+//
+// If the result is not as expected then the testing.T fails.
+func (r *QueryResult) HasTablesWithCols(want []int) {
+	r.t.Helper()
 
-	// write some points
-	for i := 0; i < 100; i++ {
-		l.WritePointsOrFail(t, fmt.Sprintf(`m,k=v1 f=%di %d`, i*100, time.Now().UnixNano()))
+	// _start, _stop, _time, _f
+	systemCols := 4
+	got := []int{}
+	if err := r.q.Tables().Do(func(b flux.Table) error {
+		got = append(got, len(b.Cols())-systemCols)
+		b.Do(func(c flux.ColReader) error { return nil })
+		return nil
+	}); err != nil {
+		r.t.Fatal(err)
 	}
 
-	// compile a from query and get the spec
-	qs := fmt.Sprintf(`from(bucket:"%s") |> range(start:-5m)`, l.Bucket.Name)
-	pkg, err := flux.Parse(qs)
+	if !reflect.DeepEqual(got, want) {
+		r.t.Fatalf("got %v, expected %v", got, want)
+	}
+}
+
+// TablesN returns the number of tables for the result.
+func (r *QueryResult) TablesN() int {
+	var total int
+	r.q.Tables().Do(func(b flux.Table) error {
+		total++
+		b.Do(func(c flux.ColReader) error { return nil })
+		return nil
+	})
+	return total
+}
+
+// MustExecuteQuery executes the provided query panicking if an error is encountered.
+// Callers of MustExecuteQuery must call Done on the returned QueryResults.
+func (p *Launcher) MustExecuteQuery(orgID platform.ID, query string, auth *platform.Authorization) *QueryResults {
+	results, err := p.ExecuteQuery(orgID, query, auth)
 	if err != nil {
-		t.Fatal(err)
+		panic(err)
 	}
+	return results
+}
 
-	// we expect this request to succeed
-	req := &query.Request{
-		Authorization:  l.Auth,
-		OrganizationID: l.Org.ID,
-		Compiler: lang.ASTCompiler{
-			AST: pkg,
-		},
+// ExecuteQuery executes the provided query against the ith query node.
+// Callers of ExecuteQuery must call Done on the returned QueryResults.
+func (p *Launcher) ExecuteQuery(orgID platform.ID, q string, auth *platform.Authorization) (*QueryResults, error) {
+	fq, err := p.QueryController().Query(context.Background(), &query.Request{
+		Authorization:  auth,
+		OrganizationID: orgID,
+		Compiler: lang.FluxCompiler{
+			Query: q,
+		}})
+	if err != nil {
+		return nil, err
 	}
-	if err := l.QueryAndNopConsume(context.Background(), req); err != nil {
-		t.Fatal(err)
+	if err = fq.Err(); err != nil {
+		return nil, fq.Err()
 	}
+	return &QueryResults{
+		Results: <-fq.Ready(),
+		Query:   fq,
+	}, nil
+}
 
-	// ok, the first request went well, let's add memory limits:
-	// this query should error.
-	// spec.Resources = flux.ResourceManagement{
-	// 	MemoryBytesQuota: 100,
-	// }
+// QueryResults wraps a set of query results with some helper methods.
+type QueryResults struct {
+	Results map[string]flux.Result
+	Query   flux.Query
+}
 
-	if err := l.QueryAndNopConsume(context.Background(), req); err != nil {
-		if !strings.Contains(err.Error(), "allocation limit reached") {
-			t.Fatalf("query errored with unexpected error: %v", err)
-		}
-	} else {
-		t.Fatal("expected error, got successful query execution")
+func (r *QueryResults) Done() {
+	r.Query.Done()
+}
+
+// First returns the first QueryResult. When there are not exactly 1 table First
+// will fail.
+func (r *QueryResults) First(t *testing.T) *QueryResult {
+	r.HasTableCount(t, 1)
+	for _, result := range r.Results {
+		return &QueryResult{t: t, q: result}
 	}
+	return nil
+}
+
+// HasTableCount asserts that there are n tables in the result.
+func (r *QueryResults) HasTableCount(t *testing.T, n int) {
+	if got, exp := len(r.Results), n; got != exp {
+		t.Fatalf("result has %d tables, expected %d. Tables: %s", got, exp, r.Names())
+	}
+}
+
+// Names returns the sorted set of table names for the query results.
+func (r *QueryResults) Names() []string {
+	if len(r.Results) == 0 {
+		return nil
+	}
+	names := make([]string, len(r.Results), 0)
+	for k := range r.Results {
+		names = append(names, k)
+	}
+	return names
+}
+
+// SortedNames returns the sorted set of table names for the query results.
+func (r *QueryResults) SortedNames() []string {
+	names := r.Names()
+	sort.Strings(names)
+	return names
 }

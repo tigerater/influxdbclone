@@ -1,6 +1,6 @@
 // Types
 import {Action} from 'src/dataLoaders/actions/steps'
-import {Substep} from 'src/types/dataLoaders'
+import {Substep} from 'src/types/v2/dataLoaders'
 
 export interface DataLoadersStepsState {
   currentStep: number

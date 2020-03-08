@@ -108,7 +108,7 @@ func TestService_handleGetLabels(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewLabelHandler(tt.fields.LabelService, ErrorHandler(0))
+			h := NewLabelHandler(tt.fields.LabelService)
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
@@ -200,7 +200,7 @@ func TestService_handleGetLabel(t *testing.T) {
 					FindLabelByIDFn: func(ctx context.Context, id platform.ID) (*platform.Label, error) {
 						return nil, &platform.Error{
 							Code: platform.ENotFound,
-							Msg:  platform.ErrLabelNotFound,
+							Err:  platform.ErrLabelNotFound,
 						}
 					},
 				},
@@ -216,7 +216,7 @@ func TestService_handleGetLabel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewLabelHandler(tt.fields.LabelService, ErrorHandler(0))
+			h := NewLabelHandler(tt.fields.LabelService)
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
@@ -244,12 +244,8 @@ func TestService_handleGetLabel(t *testing.T) {
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
 				t.Errorf("%q. handleGetLabel() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
-			if tt.wants.body != "" {
-				if eq, diff, err := jsonEqual(string(body), tt.wants.body); err != nil {
-					t.Errorf("%q, handleGetLabel(). error unmarshaling json %v", tt.name, err)
-				} else if !eq {
-					t.Errorf("%q. handleGetLabel() = ***%s***", tt.name, diff)
-				}
+			if eq, diff, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
+				t.Errorf("%q. handleGetLabel() = ***%v***", tt.name, diff)
 			}
 		})
 	}
@@ -286,8 +282,7 @@ func TestService_handlePostLabel(t *testing.T) {
 			},
 			args: args{
 				label: &platform.Label{
-					Name:  "mylabel",
-					OrgID: platformtesting.MustIDBase16("020f755c3c082008"),
+					Name: "mylabel",
 				},
 			},
 			wants: wants{
@@ -300,8 +295,7 @@ func TestService_handlePostLabel(t *testing.T) {
   },
   "label": {
     "id": "020f755c3c082000",
-    "name": "mylabel",
-		"orgID": "020f755c3c082008"
+    "name": "mylabel"
   }
 }
 `,
@@ -311,7 +305,7 @@ func TestService_handlePostLabel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewLabelHandler(tt.fields.LabelService, ErrorHandler(0))
+			h := NewLabelHandler(tt.fields.LabelService)
 
 			l, err := json.Marshal(tt.args.label)
 			if err != nil {
@@ -386,7 +380,7 @@ func TestService_handleDeleteLabel(t *testing.T) {
 					DeleteLabelFn: func(ctx context.Context, id platform.ID) error {
 						return &platform.Error{
 							Code: platform.ENotFound,
-							Msg:  platform.ErrLabelNotFound,
+							Err:  platform.ErrLabelNotFound,
 						}
 					},
 				},
@@ -402,7 +396,7 @@ func TestService_handleDeleteLabel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewLabelHandler(tt.fields.LabelService, ErrorHandler(0))
+			h := NewLabelHandler(tt.fields.LabelService)
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
@@ -430,12 +424,8 @@ func TestService_handleDeleteLabel(t *testing.T) {
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
 				t.Errorf("%q. handlePostLabel() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
-			if tt.wants.body != "" {
-				if eq, diff, err := jsonEqual(string(body), tt.wants.body); err != nil {
-					t.Errorf("%q, handlePostLabel(). error unmarshaling json %v", tt.name, err)
-				} else if !eq {
-					t.Errorf("%q. handlePostLabel() = ***%s***", tt.name, diff)
-				}
+			if eq, diff, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
+				t.Errorf("%q. handlePostLabel() = ***%v***", tt.name, diff)
 			}
 		})
 	}
@@ -522,7 +512,7 @@ func TestService_handlePatchLabel(t *testing.T) {
 					UpdateLabelFn: func(ctx context.Context, id platform.ID, upd platform.LabelUpdate) (*platform.Label, error) {
 						return nil, &platform.Error{
 							Code: platform.ENotFound,
-							Msg:  platform.ErrLabelNotFound,
+							Err:  platform.ErrLabelNotFound,
 						}
 					},
 				},
@@ -541,7 +531,7 @@ func TestService_handlePatchLabel(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			h := NewLabelHandler(tt.fields.LabelService, ErrorHandler(0))
+			h := NewLabelHandler(tt.fields.LabelService)
 
 			upd := platform.LabelUpdate{}
 			if len(tt.args.properties) > 0 {
@@ -579,12 +569,8 @@ func TestService_handlePatchLabel(t *testing.T) {
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
 				t.Errorf("%q. handlePatchLabel() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
-			if tt.wants.body != "" {
-				if eq, diff, err := jsonEqual(string(body), tt.wants.body); err != nil {
-					t.Errorf("%q, handlePatchLabel(). error unmarshaling json %v", tt.name, err)
-				} else if !eq {
-					t.Errorf("%q. handlePatchLabel() = ***%s***", tt.name, diff)
-				}
+			if eq, diff, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
+				t.Errorf("%q. handlePatchLabel() = ***%v***", tt.name, diff)
 			}
 		})
 	}

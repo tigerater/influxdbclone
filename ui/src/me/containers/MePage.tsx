@@ -1,18 +1,12 @@
 // Libraries
 import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
-import {get} from 'lodash'
+
+// Styles
+import 'src/me/containers/MePage.scss'
 
 // Components
-import {
-  Panel,
-  ComponentSpacer,
-  FlexDirection,
-  ComponentSize,
-  AlignItems,
-  Grid,
-  Columns,
-} from '@influxdata/clockface'
+import {Grid, Columns} from 'src/clockface'
 import {Page} from 'src/pageLayout'
 import Resources from 'src/me/components/Resources'
 import Header from 'src/me/components/UserPageHeader'
@@ -20,43 +14,37 @@ import Docs from 'src/me/components/Docs'
 import GettingStarted from 'src/me/components/GettingStarted'
 
 // Types
-import {AppState} from 'src/types'
+import {MeState, AppState} from 'src/types/v2'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
+import {Panel} from 'src/clockface'
+
 interface StateProps {
-  me: AppState['me']
-  orgName: string
+  me: MeState
 }
 
 @ErrorHandling
 export class MePage extends PureComponent<StateProps> {
   public render() {
-    const {me, orgName} = this.props
+    const {me} = this.props
 
     return (
       <Page className="user-page" titleTag="My Account">
-        <Header userName={me.name} orgName={orgName} />
+        <Header userName={me.name} />
         <Page.Contents fullWidth={false} scrollable={true}>
           <div className="col-xs-12">
             <Grid>
               <Grid.Row>
                 <Grid.Column widthSM={Columns.Eight} widthMD={Columns.Nine}>
-                  <ComponentSpacer
-                    direction={FlexDirection.Column}
-                    margin={ComponentSize.Small}
-                    alignItems={AlignItems.Stretch}
-                    stretchToFitWidth={true}
-                  >
-                    <Panel>
-                      <Panel.Header title="Getting started with InfluxDB 2.0" />
-                      <Panel.Body>
-                        <GettingStarted />
-                      </Panel.Body>
-                    </Panel>
-                    <Docs />
-                  </ComponentSpacer>
+                  <Panel>
+                    <Panel.Header title="Getting started with InfluxDB 2.0" />
+                    <Panel.Body>
+                      <GettingStarted />
+                    </Panel.Body>
+                  </Panel>
+                  <Docs />
                 </Grid.Column>
                 <Grid.Column widthSM={Columns.Four} widthMD={Columns.Three}>
                   <Resources me={me} />
@@ -71,12 +59,9 @@ export class MePage extends PureComponent<StateProps> {
 }
 
 const mstp = (state: AppState): StateProps => {
-  const {
-    me,
-    orgs: {org},
-  } = state
+  const {me} = state
 
-  return {me, orgName: get(org, 'name', '')}
+  return {me}
 }
 
 export default connect<StateProps>(

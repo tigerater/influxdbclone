@@ -45,11 +45,9 @@ export const parseTables = (responseChunk: string): FluxTable[] => {
   const annotationLines: string = lines
     .filter(line => line.startsWith('#'))
     .join('\n')
-    .trim()
   const nonAnnotationLines: string = lines
     .filter(line => !line.startsWith('#'))
     .join('\n')
-    .trim()
 
   if (_.isEmpty(annotationLines)) {
     throw new Error('Unable to extract annotation data')

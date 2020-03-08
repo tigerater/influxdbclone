@@ -7,28 +7,23 @@ import {Page} from 'src/pageLayout'
 import SaveAsButton from 'src/dataExplorer/components/SaveAsButton'
 import VisOptionsButton from 'src/timeMachine/components/VisOptionsButton'
 import ViewTypeDropdown from 'src/timeMachine/components/view_options/ViewTypeDropdown'
-import PageTitleWithOrg from 'src/shared/components/PageTitleWithOrg'
-import GetResources, {ResourceTypes} from 'src/shared/components/GetResources'
 
-const DataExplorerPage: SFC = ({children}) => {
+const DataExplorerPage: SFC<{}> = () => {
   return (
     <Page titleTag="Data Explorer">
-      {children}
-      <GetResources resource={ResourceTypes.Variables}>
-        <Page.Header fullWidth={true}>
-          <Page.Header.Left>
-            <PageTitleWithOrg title="Data Explorer" />
-          </Page.Header.Left>
-          <Page.Header.Right>
-            <ViewTypeDropdown />
-            <VisOptionsButton />
-            <SaveAsButton />
-          </Page.Header.Right>
-        </Page.Header>
-        <Page.Contents fullWidth={true} scrollable={false}>
-          <DataExplorer />
-        </Page.Contents>
-      </GetResources>
+      <Page.Header fullWidth={true}>
+        <Page.Header.Left>
+          <Page.Title title="Data Explorer" />
+        </Page.Header.Left>
+        <Page.Header.Right>
+          <ViewTypeDropdown />
+          <VisOptionsButton />
+          <SaveAsButton />
+        </Page.Header.Right>
+      </Page.Header>
+      <Page.Contents fullWidth={true} scrollable={false}>
+        <DataExplorer />
+      </Page.Contents>
     </Page>
   )
 }

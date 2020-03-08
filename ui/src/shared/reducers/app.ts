@@ -1,6 +1,6 @@
 import {combineReducers} from 'redux'
 
-import {AUTOREFRESH_DEFAULT_INTERVAL} from 'src/shared/constants'
+import {AUTOREFRESH_DEFAULT} from 'src/shared/constants'
 import {ActionTypes, Action} from 'src/types/actions/app'
 
 export interface AppState {
@@ -18,7 +18,7 @@ const initialState: AppState = {
     inPresentationMode: false,
   },
   persisted: {
-    autoRefresh: AUTOREFRESH_DEFAULT_INTERVAL,
+    autoRefresh: AUTOREFRESH_DEFAULT,
     showTemplateControlBar: false,
   },
 }

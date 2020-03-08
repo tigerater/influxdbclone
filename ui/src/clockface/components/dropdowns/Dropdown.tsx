@@ -1,23 +1,25 @@
 // Libraries
-import React, {Component, MouseEvent} from 'react'
+import React, {Component, CSSProperties, MouseEvent} from 'react'
 import classnames from 'classnames'
+import {isUndefined, isNull} from 'lodash'
 
 // Components
 import {ClickOutside} from 'src/shared/components/ClickOutside'
 import DropdownDivider from 'src/clockface/components/dropdowns/DropdownDivider'
 import DropdownItem from 'src/clockface/components/dropdowns/DropdownItem'
 import DropdownButton from 'src/clockface/components/dropdowns/DropdownButton'
-import DapperScrollbars from 'src/shared/components/dapperScrollbars/DapperScrollbars'
+import FancyScrollbar from 'src/shared/components/fancy_scrollbar/FancyScrollbar'
 import WaitingText from 'src/shared/components/WaitingText'
 
 // Types
 import {
+  DropdownMenuColors,
   ComponentStatus,
   ComponentColor,
   ComponentSize,
   IconFont,
-} from '@influxdata/clockface'
-import {DropdownMenuColors, DropdownMenuPosition} from 'src/clockface/types'
+} from 'src/clockface/types'
+
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 export enum DropdownMode {
@@ -25,37 +27,25 @@ export enum DropdownMode {
   Radio = 'radio',
 }
 
-interface ThumbColors {
-  start: string
-  stop: string
-}
-
-interface PassedProps {
+export interface Props {
   children: JSX.Element[]
   onChange: (value: any) => void
   selectedID?: string
-  widthPixels?: number
-  menuWidthPixels?: number
-  menuHeader?: JSX.Element
-  icon?: IconFont
-  customClass?: string
-}
-
-export interface DefaultProps {
   buttonColor?: ComponentColor
   buttonSize?: ComponentSize
-  status?: ComponentStatus
-  maxMenuHeight?: number
   menuColor?: DropdownMenuColors
+  status?: ComponentStatus
+  widthPixels?: number
+  icon?: IconFont
+  wrapText?: boolean
+  customClass?: string
+  maxMenuHeight?: number
   mode?: DropdownMode
   titleText?: string
-  wrapMenuText?: boolean
-  testID?: string
-  buttonTestID?: string
-  menuPosition?: DropdownMenuPosition
+  menuHeader?: JSX.Element
+  testID: string
+  buttonTestID: string
 }
-
-export type Props = PassedProps & DefaultProps
 
 interface State {
   expanded: boolean
@@ -63,18 +53,15 @@ interface State {
 
 @ErrorHandling
 class Dropdown extends Component<Props, State> {
-  public static defaultProps: DefaultProps = {
+  public static defaultProps: Partial<Props> = {
     buttonColor: ComponentColor.Default,
     buttonSize: ComponentSize.Small,
     status: ComponentStatus.Default,
+    wrapText: false,
     maxMenuHeight: 250,
     menuColor: DropdownMenuColors.Sapphire,
     mode: DropdownMode.Radio,
     titleText: '',
-    wrapMenuText: false,
-    testID: 'dropdown',
-    buttonTestID: 'dropdown-button',
-    menuPosition: DropdownMenuPosition.Below,
   }
 
   public static Button = DropdownButton
@@ -92,6 +79,9 @@ class Dropdown extends Component<Props, State> {
   public render() {
     const {widthPixels} = this.props
     const width = widthPixels ? `${widthPixels}px` : '100%'
+
+    this.validateChildCount()
+    this.validateMode()
 
     return (
       <ClickOutside onClickOutside={this.collapseMenu}>
@@ -113,28 +103,14 @@ class Dropdown extends Component<Props, State> {
   }
 
   private get containerClassName(): string {
-    const {
-      buttonColor,
-      buttonSize,
-      status,
-      customClass,
-      mode,
-      wrapMenuText,
-      selectedID,
-      menuPosition,
-    } = this.props
+    const {buttonColor, buttonSize, status, wrapText, customClass} = this.props
 
     return classnames(
       `dropdown dropdown-${buttonSize} dropdown-${buttonColor}`,
       {
         disabled: status === ComponentStatus.Disabled,
-        'dropdown-wrap': wrapMenuText,
-        'dropdown-truncate': !wrapMenuText,
+        'dropdown-wrap': wrapText,
         [customClass]: customClass,
-        'dropdown--radio': mode === DropdownMode.Radio,
-        'dropdown--action': mode === DropdownMode.ActionList && !selectedID,
-        'dropdown--below': menuPosition === DropdownMenuPosition.Below,
-        'dropdown--above': menuPosition === DropdownMenuPosition.Above,
       }
     )
   }
@@ -146,29 +122,23 @@ class Dropdown extends Component<Props, State> {
       buttonColor,
       buttonSize,
       icon,
-      mode,
+      children,
       titleText,
       buttonTestID,
     } = this.props
-
     const {expanded} = this.state
-    const children: JSX.Element[] = this.props.children
 
     const selectedChild = children.find(child => child.props.id === selectedID)
     const isLoading = status === ComponentStatus.Loading
 
-    let resolvedStatus = status
     let dropdownLabel
 
     if (isLoading) {
       dropdownLabel = <WaitingText text="Loading" />
     } else if (selectedChild) {
       dropdownLabel = selectedChild.props.children
-    } else if (mode === DropdownMode.ActionList) {
-      dropdownLabel = titleText
     } else {
       dropdownLabel = titleText
-      resolvedStatus = ComponentStatus.Disabled
     }
 
     return (
@@ -178,7 +148,7 @@ class Dropdown extends Component<Props, State> {
         size={buttonSize}
         icon={icon}
         onClick={this.toggleMenu}
-        status={resolvedStatus}
+        status={status}
         title={titleText}
         testID={buttonTestID}
       >
@@ -191,100 +161,88 @@ class Dropdown extends Component<Props, State> {
     const {
       selectedID,
       maxMenuHeight,
-      widthPixels,
-      menuWidthPixels,
       menuHeader,
       menuColor,
       children,
       testID,
     } = this.props
-
     const {expanded} = this.state
 
-    if (!expanded) {
-      return null
-    }
-
-    let width = '100%'
-
-    if (widthPixels) {
-      width = `${widthPixels}px`
-    }
-
-    if (menuWidthPixels) {
-      width = `${menuWidthPixels}px`
-    }
-
-    const {start, stop} = this.thumbColorsFromTheme
-
-    return (
-      <div
-        className={`dropdown--menu-container dropdown--${menuColor}`}
-        style={{width}}
-      >
-        <DapperScrollbars
-          style={{
-            maxWidth: '100%',
-            maxHeight: `${maxMenuHeight}px`,
-          }}
-          autoSize={true}
-          autoHide={false}
-          thumbStartColor={start}
-          thumbStopColor={stop}
+    if (expanded) {
+      return (
+        <div
+          className={`dropdown--menu-container dropdown--${menuColor}`}
+          style={this.menuStyle}
         >
-          <div
-            className="dropdown--menu"
-            data-testid={`dropdown--menu ${testID}`}
+          <FancyScrollbar
+            autoHide={false}
+            autoHeight={true}
+            maxHeight={maxMenuHeight}
           >
-            {menuHeader && menuHeader}
-            {React.Children.map(children, (child: JSX.Element) => {
-              if (child.type === DropdownItem) {
-                return (
-                  <DropdownItem
-                    {...child.props}
-                    key={child.props.id}
-                    selected={child.props.id === selectedID}
-                    onClick={this.handleItemClick}
-                  >
-                    {child.props.children}
-                  </DropdownItem>
-                )
-              } else if (child.type === DropdownDivider) {
-                return <DropdownDivider {...child.props} key={child.props.id} />
-              } else {
-                throw new Error(
-                  'Expected children of type <Dropdown.Item /> or <Dropdown.Divider />'
-                )
-              }
-            })}
-          </div>
-        </DapperScrollbars>
-      </div>
-    )
+            <div
+              className="dropdown--menu"
+              data-testid={`dropdown--menu ${testID}`}
+            >
+              {menuHeader && menuHeader}
+              {React.Children.map(children, (child: JSX.Element) => {
+                if (this.childTypeIsValid(child)) {
+                  if (child.type === DropdownItem) {
+                    return (
+                      <DropdownItem
+                        {...child.props}
+                        key={child.props.id}
+                        selected={child.props.id === selectedID}
+                        onClick={this.handleItemClick}
+                      >
+                        {child.props.children}
+                      </DropdownItem>
+                    )
+                  }
+
+                  return (
+                    <DropdownDivider {...child.props} key={child.props.id} />
+                  )
+                } else {
+                  throw new Error(
+                    'Expected children of type <Dropdown.Item /> or <Dropdown.Divider />'
+                  )
+                }
+              })}
+            </div>
+          </FancyScrollbar>
+        </div>
+      )
+    }
+
+    return null
   }
 
-  private get thumbColorsFromTheme(): ThumbColors {
-    const {menuColor} = this.props
+  private get menuStyle(): CSSProperties {
+    const {wrapText, widthPixels} = this.props
 
-    switch (menuColor) {
-      case DropdownMenuColors.Amethyst:
-      case DropdownMenuColors.Sapphire:
-        return {
-          start: '#BEF0FF',
-          stop: '#6BDFFF',
-        }
-      case DropdownMenuColors.Malachite:
-        return {
-          start: '#BEF0FF',
-          stop: '#A5F3B4',
-        }
-      default:
-      case DropdownMenuColors.Onyx:
-        return {
-          start: '#22ADF6',
-          stop: '#9394FF',
-        }
+    let containerWidth = '100%'
+
+    if (widthPixels) {
+      containerWidth = `${widthPixels}px`
     }
+
+    if (wrapText && widthPixels) {
+      return {
+        width: containerWidth,
+      }
+    }
+
+    return {
+      minWidth: containerWidth,
+    }
+  }
+
+  private get shouldHaveChildren(): boolean {
+    const {status} = this.props
+
+    return (
+      status === ComponentStatus.Default || status === ComponentStatus.Valid
+    )
   }
 
   private handleItemClick = (value: any): void => {
@@ -292,6 +250,35 @@ class Dropdown extends Component<Props, State> {
     onChange(value)
     this.collapseMenu()
   }
+
+  private validateChildCount = (): void => {
+    const {children} = this.props
+
+    if (this.shouldHaveChildren && React.Children.count(children) === 0) {
+      throw new Error(
+        'Dropdowns require at least 1 child element. We recommend using Dropdown.Item and/or Dropdown.Divider.'
+      )
+    }
+  }
+
+  private validateMode = (): void => {
+    const {mode, selectedID, titleText} = this.props
+
+    if (mode === DropdownMode.ActionList && titleText === '') {
+      throw new Error('Dropdowns in ActionList mode require a titleText prop.')
+    }
+
+    if (
+      mode === DropdownMode.Radio &&
+      this.shouldHaveChildren &&
+      (isUndefined(selectedID) || isNull(selectedID))
+    ) {
+      throw new Error('Dropdowns in Radio mode require a selectedID prop.')
+    }
+  }
+
+  private childTypeIsValid = (child: JSX.Element): boolean =>
+    child.type === DropdownItem || child.type === DropdownDivider
 }
 
 export default Dropdown

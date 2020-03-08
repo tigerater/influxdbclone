@@ -11,7 +11,6 @@ import (
 	"github.com/influxdata/flux"
 	"github.com/influxdata/flux/csv"
 	"github.com/influxdata/flux/lang"
-	"github.com/influxdata/flux/repl"
 	platform "github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/query"
 	"github.com/influxdata/influxdb/query/influxql"
@@ -37,9 +36,9 @@ func newSourceResponse(s *platform.Source) *sourceResponse {
 			Source: s,
 			Links: map[string]interface{}{
 				"self":    fmt.Sprintf("%s/%s", sourceHTTPPath, s.ID.String()),
-				"query":   fmt.Sprintf("%s/%s/query", sourceHTTPPath, s.ID.String()),
-				"buckets": fmt.Sprintf("%s/%s/buckets", sourceHTTPPath, s.ID.String()),
-				"health":  fmt.Sprintf("%s/%s/health", sourceHTTPPath, s.ID.String()),
+				"query":   "/api/v2/query",
+				"buckets": "/api/v2/buckets",
+				"health":  "/api/v2/health",
 			},
 		}
 	}
@@ -78,53 +77,45 @@ func newSourcesResponse(srcs []*platform.Source) *sourcesResponse {
 // SourceBackend is all services and associated parameters required to construct
 // the SourceHandler.
 type SourceBackend struct {
-	platform.HTTPErrorHandler
 	Logger *zap.Logger
 
-	SourceService   platform.SourceService
-	LabelService    platform.LabelService
-	BucketService   platform.BucketService
-	NewQueryService func(s *platform.Source) (query.ProxyQueryService, error)
+	SourceService    platform.SourceService
+	NewBucketService func(s *platform.Source) (platform.BucketService, error)
+	NewQueryService  func(s *platform.Source) (query.ProxyQueryService, error)
 }
 
 // NewSourceBackend returns a new instance of SourceBackend.
 func NewSourceBackend(b *APIBackend) *SourceBackend {
 	return &SourceBackend{
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger.With(zap.String("handler", "source")),
+		Logger: b.Logger.With(zap.String("handler", "source")),
 
-		SourceService:   b.SourceService,
-		LabelService:    b.LabelService,
-		BucketService:   b.BucketService,
-		NewQueryService: b.NewQueryService,
+		SourceService:    b.SourceService,
+		NewBucketService: b.NewBucketService,
+		NewQueryService:  b.NewQueryService,
 	}
 }
 
 // SourceHandler is a handler for sources
 type SourceHandler struct {
 	*httprouter.Router
-	platform.HTTPErrorHandler
 	Logger        *zap.Logger
 	SourceService platform.SourceService
-	LabelService  platform.LabelService
-	BucketService platform.BucketService
 
 	// TODO(desa): this was done so in order to remove an import cycle and to allow
 	// for http mocking.
-	NewQueryService func(s *platform.Source) (query.ProxyQueryService, error)
+	NewBucketService func(s *platform.Source) (platform.BucketService, error)
+	NewQueryService  func(s *platform.Source) (query.ProxyQueryService, error)
 }
 
 // NewSourceHandler returns a new instance of SourceHandler.
 func NewSourceHandler(b *SourceBackend) *SourceHandler {
 	h := &SourceHandler{
-		Router:           NewRouter(b.HTTPErrorHandler),
-		HTTPErrorHandler: b.HTTPErrorHandler,
-		Logger:           b.Logger,
+		Router: NewRouter(),
+		Logger: b.Logger,
 
-		SourceService:   b.SourceService,
-		LabelService:    b.LabelService,
-		BucketService:   b.BucketService,
-		NewQueryService: b.NewQueryService,
+		SourceService:    b.SourceService,
+		NewBucketService: b.NewBucketService,
+		NewQueryService:  b.NewQueryService,
 	}
 
 	h.HandlerFunc("POST", "/api/v2/sources", h.handlePostSource)
@@ -169,8 +160,8 @@ func decodeSourceQueryRequest(r *http.Request) (*query.ProxyRequest, error) {
 		req.Request.Compiler = lang.FluxCompiler{
 			Query: request.Query,
 		}
-	case repl.CompilerType:
-		req.Request.Compiler = repl.Compiler{
+	case lang.SpecCompilerType:
+		req.Request.Compiler = lang.SpecCompiler{
 			Spec: request.Spec,
 		}
 	case influxql.CompilerType:
@@ -192,31 +183,31 @@ func (h *SourceHandler) handlePostSourceQuery(w http.ResponseWriter, r *http.Req
 	ctx := r.Context()
 	gsr, err := decodeGetSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	req, err := decodeSourceQueryRequest(r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	s, err := h.SourceService.FindSourceByID(ctx, gsr.SourceID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	querySvc, err := h.NewQueryService(s)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	_, err = querySvc.Query(ctx, w, req)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 }
@@ -227,23 +218,28 @@ func (h *SourceHandler) handleGetSourcesBuckets(w http.ResponseWriter, r *http.R
 
 	req, err := decodeGetSourceBucketsRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
-	_, err = h.SourceService.FindSourceByID(ctx, req.getSourceRequest.SourceID)
+	s, err := h.SourceService.FindSourceByID(ctx, req.SourceID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
-	bs, _, err := h.BucketService.FindBuckets(ctx, req.getBucketsRequest.filter)
+	bucketSvc, err := h.NewBucketService(s)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
+		return
+	}
+	bs, _, err := bucketSvc.FindBuckets(ctx, req.filter)
+	if err != nil {
+		EncodeError(ctx, err, w)
 		return
 	}
 
-	if err := encodeResponse(ctx, w, http.StatusOK, newBucketsResponse(ctx, req.opts, req.filter, bs, h.LabelService)); err != nil {
+	if err := encodeResponse(ctx, w, http.StatusOK, bs); err != nil {
 		logEncodingError(h.Logger, r, err)
 		return
 	}
@@ -275,12 +271,12 @@ func (h *SourceHandler) handlePostSource(w http.ResponseWriter, r *http.Request)
 
 	req, err := decodePostSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.SourceService.CreateSource(ctx, req.Source); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -313,13 +309,13 @@ func (h *SourceHandler) handleGetSource(w http.ResponseWriter, r *http.Request) 
 
 	req, err := decodeGetSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	s, err := h.SourceService.FindSourceByID(ctx, req.SourceID)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -335,16 +331,16 @@ func (h *SourceHandler) handleGetSource(w http.ResponseWriter, r *http.Request) 
 func (h *SourceHandler) handleGetSourceHealth(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	msg := `{"name":"sources","message":"source is %shealthy","status":"%s","checks":[]}`
+	msg := `{"name":"sources",message:"source is %shealthy","status":"%s","checks":[]}`
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
 
 	req, err := decodeGetSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	if _, err := h.SourceService.FindSourceByID(ctx, req.SourceID); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 	// todo(leodido) > check source is actually healthy and reply with 503 if not
@@ -386,12 +382,12 @@ func (h *SourceHandler) handleDeleteSource(w http.ResponseWriter, r *http.Reques
 
 	req, err := decodeDeleteSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	if err := h.SourceService.DeleteSource(ctx, req.SourceID); err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -429,13 +425,13 @@ func (h *SourceHandler) handleGetSources(w http.ResponseWriter, r *http.Request)
 
 	req, err := decodeGetSourcesRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	srcs, _, err := h.SourceService.FindSources(ctx, req.findOptions)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -462,13 +458,13 @@ func (h *SourceHandler) handlePatchSource(w http.ResponseWriter, r *http.Request
 
 	req, err := decodePatchSourceRequest(ctx, r)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
 	b, err := h.SourceService.UpdateSource(ctx, req.SourceID, req.Update)
 	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
+		EncodeError(ctx, err, w)
 		return
 	}
 
@@ -522,7 +518,7 @@ type SourceService struct {
 
 // FindSourceByID returns a single source by ID.
 func (s *SourceService) FindSourceByID(ctx context.Context, id platform.ID) (*platform.Source, error) {
-	u, err := NewURL(s.Addr, sourceIDPath(id))
+	u, err := newURL(s.Addr, sourceIDPath(id))
 	if err != nil {
 		return nil, err
 	}
@@ -533,7 +529,7 @@ func (s *SourceService) FindSourceByID(ctx context.Context, id platform.ID) (*pl
 	}
 	SetToken(s.Token, req)
 
-	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+	hc := newClient(u.Scheme, s.InsecureSkipVerify)
 	resp, err := hc.Do(req)
 	if err != nil {
 		return nil, err
@@ -555,7 +551,7 @@ func (s *SourceService) FindSourceByID(ctx context.Context, id platform.ID) (*pl
 // FindSources returns a list of sources that match filter and the total count of matching sources.
 // Additional options provide pagination & sorting.
 func (s *SourceService) FindSources(ctx context.Context, opt platform.FindOptions) ([]*platform.Source, int, error) {
-	u, err := NewURL(s.Addr, sourcePath)
+	u, err := newURL(s.Addr, sourcePath)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -567,7 +563,7 @@ func (s *SourceService) FindSources(ctx context.Context, opt platform.FindOption
 
 	SetToken(s.Token, req)
 
-	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+	hc := newClient(u.Scheme, s.InsecureSkipVerify)
 	resp, err := hc.Do(req)
 	if err != nil {
 		return nil, 0, err
@@ -588,7 +584,7 @@ func (s *SourceService) FindSources(ctx context.Context, opt platform.FindOption
 
 // CreateSource creates a new source and sets b.ID with the new identifier.
 func (s *SourceService) CreateSource(ctx context.Context, b *platform.Source) error {
-	u, err := NewURL(s.Addr, sourcePath)
+	u, err := newURL(s.Addr, sourcePath)
 	if err != nil {
 		return err
 	}
@@ -606,7 +602,7 @@ func (s *SourceService) CreateSource(ctx context.Context, b *platform.Source) er
 	req.Header.Set("Content-Type", "application/json")
 	SetToken(s.Token, req)
 
-	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+	hc := newClient(u.Scheme, s.InsecureSkipVerify)
 
 	resp, err := hc.Do(req)
 	if err != nil {
@@ -629,7 +625,7 @@ func (s *SourceService) CreateSource(ctx context.Context, b *platform.Source) er
 // UpdateSource updates a single source with changeset.
 // Returns the new source state after update.
 func (s *SourceService) UpdateSource(ctx context.Context, id platform.ID, upd platform.SourceUpdate) (*platform.Source, error) {
-	u, err := NewURL(s.Addr, sourceIDPath(id))
+	u, err := newURL(s.Addr, sourceIDPath(id))
 	if err != nil {
 		return nil, err
 	}
@@ -647,7 +643,7 @@ func (s *SourceService) UpdateSource(ctx context.Context, id platform.ID, upd pl
 	req.Header.Set("Content-Type", "application/json")
 	SetToken(s.Token, req)
 
-	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+	hc := newClient(u.Scheme, s.InsecureSkipVerify)
 
 	resp, err := hc.Do(req)
 	if err != nil {
@@ -669,7 +665,7 @@ func (s *SourceService) UpdateSource(ctx context.Context, id platform.ID, upd pl
 
 // DeleteSource removes a source by ID.
 func (s *SourceService) DeleteSource(ctx context.Context, id platform.ID) error {
-	u, err := NewURL(s.Addr, sourceIDPath(id))
+	u, err := newURL(s.Addr, sourceIDPath(id))
 	if err != nil {
 		return err
 	}
@@ -680,7 +676,7 @@ func (s *SourceService) DeleteSource(ctx context.Context, id platform.ID) error 
 	}
 	SetToken(s.Token, req)
 
-	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+	hc := newClient(u.Scheme, s.InsecureSkipVerify)
 	resp, err := hc.Do(req)
 	if err != nil {
 		return err

@@ -10,9 +10,11 @@ var _ platform.TelegrafConfigStore = new(Service)
 
 // FindTelegrafConfigByID returns a single telegraf config by ID.
 func (s *Service) FindTelegrafConfigByID(ctx context.Context, id platform.ID) (tc *platform.TelegrafConfig, err error) {
+	op := OpPrefix + platform.OpFindTelegrafConfigByID
 	var pErr *platform.Error
 	tc, pErr = s.findTelegrafConfigByID(ctx, id)
 	if pErr != nil {
+		pErr.Op = op
 		err = pErr
 	}
 	return tc, err
@@ -21,8 +23,8 @@ func (s *Service) FindTelegrafConfigByID(ctx context.Context, id platform.ID) (t
 func (s *Service) findTelegrafConfigByID(ctx context.Context, id platform.ID) (*platform.TelegrafConfig, *platform.Error) {
 	if !id.Valid() {
 		return nil, &platform.Error{
-			Code: platform.EInvalid,
-			Msg:  "provided telegraf configuration ID has invalid format",
+			Code: platform.EEmptyValue,
+			Err:  platform.ErrInvalidID,
 		}
 	}
 	result, found := s.telegrafConfigKV.Load(id)
@@ -35,6 +37,22 @@ func (s *Service) findTelegrafConfigByID(ctx context.Context, id platform.ID) (*
 	tc := new(platform.TelegrafConfig)
 	*tc = result.(platform.TelegrafConfig)
 	return tc, nil
+}
+
+// FindTelegrafConfig returns the first telegraf config that matches filter.
+func (s *Service) FindTelegrafConfig(ctx context.Context, filter platform.TelegrafConfigFilter) (*platform.TelegrafConfig, error) {
+	op := OpPrefix + platform.OpFindTelegrafConfig
+	tcs, n, err := s.FindTelegrafConfigs(ctx, filter, platform.FindOptions{Limit: 1})
+	if err != nil {
+		return nil, err
+	}
+	if n > 0 {
+		return tcs[0], nil
+	}
+	return nil, &platform.Error{
+		Code: platform.ENotFound,
+		Op:   op,
+	}
 }
 
 func (s *Service) findTelegrafConfigs(ctx context.Context, filter platform.TelegrafConfigFilter, opt ...platform.FindOptions) ([]*platform.TelegrafConfig, int, *platform.Error) {
@@ -58,7 +76,7 @@ func (s *Service) findTelegrafConfigs(ctx context.Context, filter platform.Teleg
 		}
 		if tc != nil {
 			// Restrict results by organization ID, if it has been provided
-			if filter.OrgID != nil && filter.OrgID.Valid() && tc.OrgID != *filter.OrgID {
+			if filter.OrganizationID != nil && filter.OrganizationID.Valid() && tc.OrganizationID != *filter.OrganizationID {
 				continue
 			}
 			tcs = append(tcs, tc)
@@ -88,10 +106,10 @@ func (s *Service) putTelegrafConfig(ctx context.Context, tc *platform.TelegrafCo
 			Err:  platform.ErrInvalidID,
 		}
 	}
-	if !tc.OrgID.Valid() {
+	if !tc.OrganizationID.Valid() {
 		return &platform.Error{
 			Code: platform.EEmptyValue,
-			Msg:  platform.ErrTelegrafConfigInvalidOrgID,
+			Msg:  platform.ErrTelegrafConfigInvalidOrganizationID,
 		}
 	}
 	s.telegrafConfigKV.Store(tc.ID, *tc)
@@ -135,7 +153,7 @@ func (s *Service) UpdateTelegrafConfig(ctx context.Context, id platform.ID, tc *
 	}
 	tc.ID = id
 	// OrganizationID can not be updated
-	tc.OrgID = current.OrgID
+	tc.OrganizationID = current.OrganizationID
 	pErr = s.putTelegrafConfig(ctx, tc)
 	if pErr != nil {
 		pErr.Op = op
@@ -151,8 +169,9 @@ func (s *Service) DeleteTelegrafConfig(ctx context.Context, id platform.ID) erro
 	var err error
 	if !id.Valid() {
 		return &platform.Error{
-			Msg:  "provided telegraf configuration ID has invalid format",
-			Code: platform.EInvalid,
+			Op:   op,
+			Code: platform.EEmptyValue,
+			Err:  platform.ErrInvalidID,
 		}
 	}
 	if _, pErr := s.findTelegrafConfigByID(ctx, id); pErr != nil {

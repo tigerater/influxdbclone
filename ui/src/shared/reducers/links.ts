@@ -1,5 +1,5 @@
 import {Action, ActionTypes} from 'src/shared/actions/links'
-import {Links} from 'src/types/links'
+import {Links} from 'src/types/v2/links'
 
 const initialState: Links = {
   authorizations: '',
@@ -11,6 +11,7 @@ const initialState: Links = {
   query: {
     self: '',
     ast: '',
+    spec: '',
     suggestions: '',
   },
   orgs: '',
@@ -22,7 +23,7 @@ const initialState: Links = {
   tasks: '',
   users: '',
   write: '',
-  variables: '',
+  macros: '',
   views: '',
   defaultDashboard: '',
   me: '',
@@ -33,6 +34,11 @@ const linksReducer = (state = initialState, action: Action): Links => {
     case ActionTypes.LinksGetCompleted: {
       const {links} = action.payload
       return {...links, defaultDashboard: '/v2/dashboards/029d13fda9c5b000'}
+    }
+
+    case ActionTypes.SetDefaultDashboardLink: {
+      const {defaultDashboard} = action.payload
+      return {...state, defaultDashboard}
     }
   }
 

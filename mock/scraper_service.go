@@ -11,8 +11,7 @@ var _ platform.ScraperTargetStoreService = &ScraperTargetStoreService{}
 // ScraperTargetStoreService is a mock implementation of a platform.ScraperTargetStoreService.
 type ScraperTargetStoreService struct {
 	UserResourceMappingService
-	OrganizationService
-	ListTargetsF   func(ctx context.Context, filter platform.ScraperTargetFilter) ([]platform.ScraperTarget, error)
+	ListTargetsF   func(ctx context.Context) ([]platform.ScraperTarget, error)
 	AddTargetF     func(ctx context.Context, t *platform.ScraperTarget, userID platform.ID) error
 	GetTargetByIDF func(ctx context.Context, id platform.ID) (*platform.ScraperTarget, error)
 	RemoveTargetF  func(ctx context.Context, id platform.ID) error
@@ -20,8 +19,8 @@ type ScraperTargetStoreService struct {
 }
 
 // ListTargets lists all the scraper targets.
-func (s *ScraperTargetStoreService) ListTargets(ctx context.Context, filter platform.ScraperTargetFilter) ([]platform.ScraperTarget, error) {
-	return s.ListTargetsF(ctx, filter)
+func (s *ScraperTargetStoreService) ListTargets(ctx context.Context) ([]platform.ScraperTarget, error) {
+	return s.ListTargetsF(ctx)
 }
 
 // AddTarget adds a scraper target.

@@ -1,6 +1,6 @@
 import {buildQuery} from 'src/timeMachine/utils/queryBuilder'
 
-import {BuilderConfig} from 'src/types'
+import {BuilderConfig} from 'src/types/v2'
 
 describe('buildQuery', () => {
   test('single tag', () => {
@@ -8,11 +8,10 @@ describe('buildQuery', () => {
       buckets: ['b0'],
       tags: [{key: '_measurement', values: ['m0']}],
       functions: [],
-      aggregateWindow: {period: 'auto'},
     }
 
     const expected = `from(bucket: "b0")
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> range(start: timeRangeStart)
   |> filter(fn: (r) => r._measurement == "m0")`
 
     const actual = buildQuery(config)
@@ -28,11 +27,10 @@ describe('buildQuery', () => {
         {key: '_field', values: ['f0', 'f1']},
       ],
       functions: [],
-      aggregateWindow: {period: 'auto'},
     }
 
     const expected = `from(bucket: "b0")
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> range(start: timeRangeStart)
   |> filter(fn: (r) => r._measurement == "m0" or r._measurement == "m1")
   |> filter(fn: (r) => r._field == "f0" or r._field == "f1")`
 
@@ -46,19 +44,23 @@ describe('buildQuery', () => {
       buckets: ['b0'],
       tags: [{key: '_measurement', values: ['m0']}],
       functions: [{name: 'mean'}, {name: 'median'}],
-      aggregateWindow: {period: 'auto'},
     }
 
     const expected = `from(bucket: "b0")
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> range(start: timeRangeStart)
   |> filter(fn: (r) => r._measurement == "m0")
-  |> aggregateWindow(every: v.windowPeriod, fn: mean)
+  |> window(period: windowPeriod)
+  |> mean()
+  |> group(columns: ["_value", "_time", "_start", "_stop"], mode: "except")
   |> yield(name: "mean")
 
 from(bucket: "b0")
-  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+  |> range(start: timeRangeStart)
   |> filter(fn: (r) => r._measurement == "m0")
-  |> aggregateWindow(every: v.windowPeriod, fn: median)
+  |> window(period: windowPeriod)
+  |> toFloat()
+  |> median()
+  |> group(columns: ["_value", "_time", "_start", "_stop"], mode: "except")
   |> yield(name: "median")`
 
     const actual = buildQuery(config)

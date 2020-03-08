@@ -91,20 +91,54 @@ func taskCreateF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("error parsing flux script: %s", err)
 	}
 
-	tc := platform.TaskCreate{
-		Flux:         flux,
-		Organization: taskCreateFlags.org,
-	}
-	if taskCreateFlags.orgID != "" {
-		oid, err := platform.IDFromString(taskCreateFlags.orgID)
-		if err != nil {
-			return fmt.Errorf("error parsing organization ID: %s", err)
-		}
-		tc.OrganizationID = *oid
+	t := &platform.Task{
+		Flux: flux,
 	}
 
-	t, err := s.CreateTask(context.Background(), tc)
-	if err != nil {
+	if taskCreateFlags.org != "" && taskCreateFlags.orgID == "" {
+		ow := &http.OrganizationService{
+			Addr:  flags.host,
+			Token: flags.token,
+		}
+
+		filter := platform.OrganizationFilter{
+			Name: &taskCreateFlags.org,
+		}
+
+		orgs, _, err := ow.FindOrganizations(context.Background(), filter)
+		if err != nil {
+			return err
+		}
+
+		if len(orgs) != 1 {
+			fmt.Println("Unable to find a single org matching that ID.")
+			w := internal.NewTabWriter(os.Stdout)
+			w.WriteHeaders(
+				"ID",
+				"Name",
+			)
+			for _, o := range orgs {
+				w.Write(map[string]interface{}{
+					"ID":   o.ID.String(),
+					"Name": o.Name,
+				})
+			}
+			w.Flush()
+		}
+
+		t.OrganizationID = orgs[0].ID
+		t.Organization = orgs[0].Name
+	}
+
+	if taskCreateFlags.orgID != "" {
+		id, err := platform.IDFromString(taskCreateFlags.orgID)
+		if err != nil {
+			return fmt.Errorf("error parsing organization id: %v", err)
+		}
+		t.OrganizationID = *id
+	}
+
+	if err := s.CreateTask(context.Background(), t); err != nil {
 		return err
 	}
 
@@ -114,20 +148,18 @@ func taskCreateF(cmd *cobra.Command, args []string) error {
 		"Name",
 		"OrganizationID",
 		"Organization",
-		"AuthorizationID",
 		"Status",
 		"Every",
 		"Cron",
 	)
 	w.Write(map[string]interface{}{
-		"ID":              t.ID.String(),
-		"Name":            t.Name,
-		"OrganizationID":  t.OrganizationID.String(),
-		"Organization":    t.Organization,
-		"AuthorizationID": t.AuthorizationID.String(),
-		"Status":          t.Status,
-		"Every":           t.Every,
-		"Cron":            t.Cron,
+		"ID":             t.ID.String(),
+		"Name":           t.Name,
+		"OrganizationID": t.OrganizationID.String(),
+		"Organization":   t.Organization,
+		"Status":         t.Status,
+		"Every":          t.Every,
+		"Cron":           t.Cron,
 	})
 	w.Flush()
 
@@ -138,7 +170,6 @@ func taskCreateF(cmd *cobra.Command, args []string) error {
 type TaskFindFlags struct {
 	user  string
 	id    string
-	org   string
 	orgID string
 	limit int
 }
@@ -154,7 +185,6 @@ func init() {
 
 	taskFindCmd.Flags().StringVarP(&taskFindFlags.id, "id", "i", "", "task ID")
 	taskFindCmd.Flags().StringVarP(&taskFindFlags.user, "user-id", "n", "", "task owner ID")
-	taskFindCmd.Flags().StringVarP(&taskFindFlags.org, "org", "", "", "task organization name")
 	taskFindCmd.Flags().StringVarP(&taskFindFlags.orgID, "org-id", "", "", "task organization ID")
 	taskFindCmd.Flags().IntVarP(&taskFindFlags.limit, "limit", "", platform.TaskDefaultPageSize, "the number of tasks to find")
 
@@ -176,15 +206,12 @@ func taskFindF(cmd *cobra.Command, args []string) error {
 		filter.User = id
 	}
 
-	if taskFindFlags.org != "" {
-		filter.Organization = taskFindFlags.org
-	}
 	if taskFindFlags.orgID != "" {
 		id, err := platform.IDFromString(taskFindFlags.orgID)
 		if err != nil {
 			return err
 		}
-		filter.OrganizationID = id
+		filter.Organization = id
 	}
 
 	if taskFindFlags.limit < 1 || taskFindFlags.limit > platform.TaskMaxPageSize {
@@ -220,21 +247,19 @@ func taskFindF(cmd *cobra.Command, args []string) error {
 		"Name",
 		"OrganizationID",
 		"Organization",
-		"AuthorizationID",
 		"Status",
 		"Every",
 		"Cron",
 	)
 	for _, t := range tasks {
 		w.Write(map[string]interface{}{
-			"ID":              t.ID.String(),
-			"Name":            t.Name,
-			"OrganizationID":  t.OrganizationID.String(),
-			"Organization":    t.Organization,
-			"AuthorizationID": t.AuthorizationID.String(),
-			"Status":          t.Status,
-			"Every":           t.Every,
-			"Cron":            t.Cron,
+			"ID":             t.ID.String(),
+			"Name":           t.Name,
+			"OrganizationID": t.OrganizationID.String(),
+			"Organization":   t.Organization,
+			"Status":         t.Status,
+			"Every":          t.Every,
+			"Cron":           t.Cron,
 		})
 	}
 	w.Flush()
@@ -299,20 +324,18 @@ func taskUpdateF(cmd *cobra.Command, args []string) error {
 		"Name",
 		"OrganizationID",
 		"Organization",
-		"AuthorizationID",
 		"Status",
 		"Every",
 		"Cron",
 	)
 	w.Write(map[string]interface{}{
-		"ID":              t.ID.String(),
-		"Name":            t.Name,
-		"OrganizationID":  t.OrganizationID.String(),
-		"Organization":    t.Organization,
-		"AuthorizationID": t.AuthorizationID.String(),
-		"Status":          t.Status,
-		"Every":           t.Every,
-		"Cron":            t.Cron,
+		"ID":             t.ID.String(),
+		"Name":           t.Name,
+		"OrganizationID": t.OrganizationID.String(),
+		"Organization":   t.Organization,
+		"Status":         t.Status,
+		"Every":          t.Every,
+		"Cron":           t.Cron,
 	})
 	w.Flush()
 
@@ -367,20 +390,18 @@ func taskDeleteF(cmd *cobra.Command, args []string) error {
 		"Name",
 		"OrganizationID",
 		"Organization",
-		"AuthorizationID",
 		"Status",
 		"Every",
 		"Cron",
 	)
 	w.Write(map[string]interface{}{
-		"ID":              t.ID.String(),
-		"Name":            t.Name,
-		"OrganizationID":  t.OrganizationID.String(),
-		"Organization":    t.Organization,
-		"AuthorizationID": t.AuthorizationID.String(),
-		"Status":          t.Status,
-		"Every":           t.Every,
-		"Cron":            t.Cron,
+		"ID":             t.ID.String(),
+		"Name":           t.Name,
+		"OrganizationID": t.OrganizationID.String(),
+		"Organization":   t.Organization,
+		"Status":         t.Status,
+		"Every":          t.Every,
+		"Cron":           t.Cron,
 	})
 	w.Flush()
 
@@ -391,6 +412,7 @@ func taskDeleteF(cmd *cobra.Command, args []string) error {
 type TaskLogFindFlags struct {
 	taskID string
 	runID  string
+	orgID  string
 }
 
 var taskLogFindFlags TaskLogFindFlags
@@ -404,6 +426,7 @@ func init() {
 
 	taskLogFindCmd.Flags().StringVarP(&taskLogFindFlags.taskID, "task-id", "", "", "task id (required)")
 	taskLogFindCmd.Flags().StringVarP(&taskLogFindFlags.runID, "run-id", "", "", "run id")
+	taskLogFindCmd.Flags().StringVarP(&taskLogFindFlags.orgID, "org-id", "", "", "organization id")
 	taskLogFindCmd.MarkFlagRequired("task-id")
 
 	logCmd.AddCommand(taskLogFindCmd)
@@ -420,7 +443,7 @@ func taskLogFindF(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	filter.Task = *id
+	filter.Task = id
 
 	if taskLogFindFlags.runID != "" {
 		id, err := platform.IDFromString(taskLogFindFlags.runID)
@@ -428,6 +451,14 @@ func taskLogFindF(cmd *cobra.Command, args []string) error {
 			return err
 		}
 		filter.Run = id
+	}
+
+	if taskLogFindFlags.orgID != "" {
+		id, err := platform.IDFromString(taskLogFindFlags.orgID)
+		if err != nil {
+			return err
+		}
+		filter.Org = id
 	}
 
 	ctx := context.TODO()
@@ -438,15 +469,11 @@ func taskLogFindF(cmd *cobra.Command, args []string) error {
 
 	w := internal.NewTabWriter(os.Stdout)
 	w.WriteHeaders(
-		"RunID",
-		"Time",
-		"Message",
+		"Log",
 	)
 	for _, log := range logs {
 		w.Write(map[string]interface{}{
-			"RunID":   log.RunID,
-			"Time":    log.Time,
-			"Message": log.Message,
+			"Log": *log,
 		})
 	}
 	w.Flush()
@@ -458,6 +485,7 @@ func taskLogFindF(cmd *cobra.Command, args []string) error {
 type TaskRunFindFlags struct {
 	runID      string
 	taskID     string
+	orgID      string
 	afterTime  string
 	beforeTime string
 	limit      int
@@ -474,11 +502,13 @@ func init() {
 
 	taskRunFindCmd.Flags().StringVarP(&taskRunFindFlags.taskID, "task-id", "", "", "task id (required)")
 	taskRunFindCmd.Flags().StringVarP(&taskRunFindFlags.runID, "run-id", "", "", "run id")
+	taskRunFindCmd.Flags().StringVarP(&taskRunFindFlags.orgID, "org-id", "", "", "organization id")
 	taskRunFindCmd.Flags().StringVarP(&taskRunFindFlags.afterTime, "after", "", "", "after time for filtering")
 	taskRunFindCmd.Flags().StringVarP(&taskRunFindFlags.beforeTime, "before", "", "", "before time for filtering")
 	taskRunFindCmd.Flags().IntVarP(&taskRunFindFlags.limit, "limit", "", 0, "limit the results")
 
 	taskRunFindCmd.MarkFlagRequired("task-id")
+	taskRunFindCmd.MarkFlagRequired("org-id")
 
 	runCmd.AddCommand(taskRunFindCmd)
 }
@@ -498,7 +528,13 @@ func taskRunFindF(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
-	filter.Task = *taskID
+	filter.Task = taskID
+
+	orgID, err := platform.IDFromString(taskRunFindFlags.orgID)
+	if err != nil {
+		return err
+	}
+	filter.Org = orgID
 
 	var runs []*platform.Run
 	if taskRunFindFlags.runID != "" {
@@ -506,7 +542,7 @@ func taskRunFindF(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		run, err := s.FindRunByID(context.Background(), filter.Task, *id)
+		run, err := s.FindRunByID(context.Background(), *filter.Org, *id)
 		if err != nil {
 			return err
 		}

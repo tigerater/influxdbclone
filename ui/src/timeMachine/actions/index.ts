@@ -1,39 +1,31 @@
 // Actions
 import {loadBuckets} from 'src/timeMachine/actions/queryBuilder'
-import {saveAndExecuteQueries} from 'src/timeMachine/actions/queries'
 
 // Types
 import {Dispatch} from 'redux-thunk'
 import {TimeMachineState} from 'src/timeMachine/reducers'
+import {Action as QueryBuilderAction} from 'src/timeMachine/actions/queryBuilder'
+import {TimeRange, ViewType} from 'src/types/v2'
 import {
-  reloadTagSelectors,
-  Action as QueryBuilderAction,
-} from 'src/timeMachine/actions/queryBuilder'
-import {Action as QueryResultsAction} from 'src/timeMachine/actions/queries'
-import {
-  TimeRange,
-  ViewType,
   Axes,
   DecimalPlaces,
   XYViewGeom,
   FieldOption,
   TableOptions,
-  TimeMachineTab,
-  AutoRefresh,
-} from 'src/types'
+} from 'src/types/v2/dashboards'
+import {TimeMachineTab} from 'src/types/v2/timeMachine'
 import {Color} from 'src/types/colors'
-import {HistogramPosition} from '@influxdata/giraffe'
+import {HistogramPosition} from 'src/minard'
 
 export type Action =
   | QueryBuilderAction
-  | QueryResultsAction
   | SetActiveTimeMachineAction
   | SetActiveTabAction
   | SetNameAction
   | SetTimeRangeAction
-  | SetAutoRefreshAction
   | SetTypeAction
   | SetActiveQueryText
+  | SubmitScriptAction
   | SetIsViewingRawDataAction
   | SetGeomAction
   | SetDecimalPlaces
@@ -43,35 +35,30 @@ export type Action =
   | SetStaticLegend
   | SetColors
   | SetYAxisLabel
-  | SetYAxisBounds
-  | SetAxisPrefix
-  | SetAxisSuffix
+  | SetYAxisMinBound
+  | SetYAxisMaxBound
+  | SetYAxisPrefix
+  | SetYAxisSuffix
   | SetYAxisBase
   | SetYAxisScale
   | SetPrefix
   | SetSuffix
+  | IncrementSubmitToken
   | SetActiveQueryIndexAction
   | AddQueryAction
   | RemoveQueryAction
   | ToggleQueryAction
   | EditActiveQueryAsFluxAction
+  | EditActiveQueryAsInfluxQLAction
   | EditActiveQueryWithBuilderAction
   | UpdateActiveQueryNameAction
   | SetFieldOptionsAction
   | SetTableOptionsAction
   | SetTimeFormatAction
-  | SetXColumnAction
-  | SetYColumnAction
-  | SetBinSizeAction
-  | SetColorHexesAction
-  | SetFillColumnsAction
-  | SetSymbolColumnsAction
+  | SetXAction
+  | SetFillAction
   | SetBinCountAction
   | SetHistogramPositionAction
-  | SetXDomainAction
-  | SetYDomainAction
-  | SetXAxisLabelAction
-  | SetShadeBelowAction
 
 interface SetActiveTimeMachineAction {
   type: 'SET_ACTIVE_TIME_MACHINE'
@@ -116,27 +103,9 @@ interface SetTimeRangeAction {
   payload: {timeRange: TimeRange}
 }
 
-const setTimeRangeSync = (timeRange: TimeRange): SetTimeRangeAction => ({
+export const setTimeRange = (timeRange: TimeRange): SetTimeRangeAction => ({
   type: 'SET_TIME_RANGE',
   payload: {timeRange},
-})
-
-export const setTimeRange = (timeRange: TimeRange) => dispatch => {
-  dispatch(setTimeRangeSync(timeRange))
-  dispatch(saveAndExecuteQueries())
-  dispatch(reloadTagSelectors())
-}
-
-interface SetAutoRefreshAction {
-  type: 'SET_AUTO_REFRESH'
-  payload: {autoRefresh: AutoRefresh}
-}
-
-export const setAutoRefresh = (
-  autoRefresh: AutoRefresh
-): SetAutoRefreshAction => ({
-  type: 'SET_AUTO_REFRESH',
-  payload: {autoRefresh},
 })
 
 interface SetTypeAction {
@@ -157,6 +126,14 @@ interface SetActiveQueryText {
 export const setActiveQueryText = (text: string): SetActiveQueryText => ({
   type: 'SET_ACTIVE_QUERY_TEXT',
   payload: {text},
+})
+
+interface SubmitScriptAction {
+  type: 'SUBMIT_SCRIPT'
+}
+
+export const submitScript = (): SubmitScriptAction => ({
+  type: 'SUBMIT_SCRIPT',
 })
 
 interface SetIsViewingRawDataAction {
@@ -193,50 +170,52 @@ export const setAxes = (axes: Axes): SetAxes => ({
 
 interface SetYAxisLabel {
   type: 'SET_Y_AXIS_LABEL'
-  payload: {yAxisLabel: string}
+  payload: {label: string}
 }
 
-export const setYAxisLabel = (yAxisLabel: string): SetYAxisLabel => ({
+export const setYAxisLabel = (label: string): SetYAxisLabel => ({
   type: 'SET_Y_AXIS_LABEL',
-  payload: {yAxisLabel},
+  payload: {label},
 })
 
-interface SetYAxisBounds {
-  type: 'SET_Y_AXIS_BOUNDS'
-  payload: {bounds: Axes['y']['bounds']}
+interface SetYAxisMinBound {
+  type: 'SET_Y_AXIS_MIN_BOUND'
+  payload: {min: string}
 }
 
-export const setYAxisBounds = (
-  bounds: Axes['y']['bounds']
-): SetYAxisBounds => ({
-  type: 'SET_Y_AXIS_BOUNDS',
-  payload: {bounds},
+export const setYAxisMinBound = (min: string): SetYAxisMinBound => ({
+  type: 'SET_Y_AXIS_MIN_BOUND',
+  payload: {min},
 })
 
-interface SetAxisPrefix {
-  type: 'SET_AXIS_PREFIX'
-  payload: {prefix: string; axis: 'x' | 'y'}
+interface SetYAxisMaxBound {
+  type: 'SET_Y_AXIS_MAX_BOUND'
+  payload: {max: string}
 }
 
-export const setAxisPrefix = (
-  prefix: string,
-  axis: 'x' | 'y'
-): SetAxisPrefix => ({
-  type: 'SET_AXIS_PREFIX',
-  payload: {prefix, axis},
+export const setYAxisMaxBound = (max: string): SetYAxisMaxBound => ({
+  type: 'SET_Y_AXIS_MAX_BOUND',
+  payload: {max},
 })
 
-interface SetAxisSuffix {
-  type: 'SET_AXIS_SUFFIX'
-  payload: {suffix: string; axis: 'x' | 'y'}
+interface SetYAxisPrefix {
+  type: 'SET_Y_AXIS_PREFIX'
+  payload: {prefix: string}
 }
 
-export const setAxisSuffix = (
-  suffix: string,
-  axis: 'x' | 'y'
-): SetAxisSuffix => ({
-  type: 'SET_AXIS_SUFFIX',
-  payload: {suffix, axis},
+export const setYAxisPrefix = (prefix: string): SetYAxisPrefix => ({
+  type: 'SET_Y_AXIS_PREFIX',
+  payload: {prefix},
+})
+
+interface SetYAxisSuffix {
+  type: 'SET_Y_AXIS_SUFFIX'
+  payload: {suffix: string}
+}
+
+export const setYAxisSuffix = (suffix: string): SetYAxisSuffix => ({
+  type: 'SET_Y_AXIS_SUFFIX',
+  payload: {suffix},
 })
 
 interface SetYAxisBase {
@@ -327,18 +306,21 @@ export const setTextThresholdColoring = (): SetTextThresholdColoringAction => ({
   type: 'SET_TEXT_THRESHOLD_COLORING',
 })
 
+interface IncrementSubmitToken {
+  type: 'INCREMENT_SUBMIT_TOKEN'
+}
+
+export const incrementSubmitToken = (): IncrementSubmitToken => ({
+  type: 'INCREMENT_SUBMIT_TOKEN',
+})
+
 interface EditActiveQueryWithBuilderAction {
   type: 'EDIT_ACTIVE_QUERY_WITH_BUILDER'
 }
 
-export const editActiveQueryWithBuilderSync = (): EditActiveQueryWithBuilderAction => ({
+export const editActiveQueryWithBuilder = (): EditActiveQueryWithBuilderAction => ({
   type: 'EDIT_ACTIVE_QUERY_WITH_BUILDER',
 })
-
-export const editActiveQueryWithBuilder = () => dispatch => {
-  dispatch(editActiveQueryWithBuilderSync())
-  dispatch(saveAndExecuteQueries())
-}
 
 interface EditActiveQueryAsFluxAction {
   type: 'EDIT_ACTIVE_QUERY_AS_FLUX'
@@ -346,6 +328,14 @@ interface EditActiveQueryAsFluxAction {
 
 export const editActiveQueryAsFlux = (): EditActiveQueryAsFluxAction => ({
   type: 'EDIT_ACTIVE_QUERY_AS_FLUX',
+})
+
+interface EditActiveQueryAsInfluxQLAction {
+  type: 'EDIT_ACTIVE_QUERY_AS_INFLUXQL'
+}
+
+export const editActiveQueryAsInfluxQL = (): EditActiveQueryAsInfluxQLAction => ({
+  type: 'EDIT_ACTIVE_QUERY_AS_INFLUXQL',
 })
 
 interface SetActiveQueryIndexAction {
@@ -405,14 +395,13 @@ export const removeQuery = (queryIndex: number) => (
 ) => {
   dispatch(removeQuerySync(queryIndex))
   dispatch(loadBuckets())
-  dispatch(saveAndExecuteQueries())
 }
 
 export const toggleQuery = (queryIndex: number) => (
   dispatch: Dispatch<Action>
 ) => {
   dispatch(toggleQuerySync(queryIndex))
-  dispatch(saveAndExecuteQueries())
+  dispatch(submitScript())
 }
 
 interface UpdateActiveQueryNameAction {
@@ -467,78 +456,24 @@ export const setTimeFormat = (timeFormat: string): SetTimeFormatAction => ({
   payload: {timeFormat},
 })
 
-interface SetXColumnAction {
-  type: 'SET_X_COLUMN'
-  payload: {xColumn: string}
+interface SetXAction {
+  type: 'SET_X'
+  payload: {x: string}
 }
 
-export const setXColumn = (xColumn: string): SetXColumnAction => ({
-  type: 'SET_X_COLUMN',
-  payload: {xColumn},
+export const setX = (x: string): SetXAction => ({
+  type: 'SET_X',
+  payload: {x},
 })
 
-interface SetYColumnAction {
-  type: 'SET_Y_COLUMN'
-  payload: {yColumn: string}
+interface SetFillAction {
+  type: 'SET_FILL'
+  payload: {fill: string}
 }
 
-export const setYColumn = (yColumn: string): SetYColumnAction => ({
-  type: 'SET_Y_COLUMN',
-  payload: {yColumn},
-})
-
-interface SetShadeBelowAction {
-  type: 'SET_SHADE_BELOW'
-  payload: {shadeBelow}
-}
-
-export const setShadeBelow = (shadeBelow: boolean): SetShadeBelowAction => ({
-  type: 'SET_SHADE_BELOW',
-  payload: {shadeBelow},
-})
-
-interface SetBinSizeAction {
-  type: 'SET_BIN_SIZE'
-  payload: {binSize: number}
-}
-
-export const setBinSize = (binSize: number): SetBinSizeAction => ({
-  type: 'SET_BIN_SIZE',
-  payload: {binSize},
-})
-
-interface SetColorHexesAction {
-  type: 'SET_COLOR_HEXES'
-  payload: {colors: string[]}
-}
-
-export const setColorHexes = (colors: string[]): SetColorHexesAction => ({
-  type: 'SET_COLOR_HEXES',
-  payload: {colors},
-})
-
-interface SetFillColumnsAction {
-  type: 'SET_FILL_COLUMNS'
-  payload: {fillColumns: string[]}
-}
-
-export const setFillColumns = (
-  fillColumns: string[]
-): SetFillColumnsAction => ({
-  type: 'SET_FILL_COLUMNS',
-  payload: {fillColumns},
-})
-
-interface SetSymbolColumnsAction {
-  type: 'SET_SYMBOL_COLUMNS'
-  payload: {symbolColumns: string[]}
-}
-
-export const setSymbolColumns = (
-  symbolColumns: string[]
-): SetSymbolColumnsAction => ({
-  type: 'SET_SYMBOL_COLUMNS',
-  payload: {symbolColumns},
+export const setFill = (fill: string): SetFillAction => ({
+  type: 'SET_FILL',
+  payload: {fill},
 })
 
 interface SetBinCountAction {
@@ -561,34 +496,4 @@ export const setHistogramPosition = (
 ): SetHistogramPositionAction => ({
   type: 'SET_HISTOGRAM_POSITION',
   payload: {position},
-})
-
-interface SetXDomainAction {
-  type: 'SET_VIEW_X_DOMAIN'
-  payload: {xDomain: [number, number]}
-}
-
-export const setXDomain = (xDomain: [number, number]): SetXDomainAction => ({
-  type: 'SET_VIEW_X_DOMAIN',
-  payload: {xDomain},
-})
-
-interface SetYDomainAction {
-  type: 'SET_VIEW_Y_DOMAIN'
-  payload: {yDomain: [number, number]}
-}
-
-export const setYDomain = (yDomain: [number, number]): SetYDomainAction => ({
-  type: 'SET_VIEW_Y_DOMAIN',
-  payload: {yDomain},
-})
-
-interface SetXAxisLabelAction {
-  type: 'SET_X_AXIS_LABEL'
-  payload: {xAxisLabel: string}
-}
-
-export const setXAxisLabel = (xAxisLabel: string): SetXAxisLabelAction => ({
-  type: 'SET_X_AXIS_LABEL',
-  payload: {xAxisLabel},
 })

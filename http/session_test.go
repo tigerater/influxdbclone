@@ -2,12 +2,11 @@ package http_test
 
 import (
 	"context"
+	"go.uber.org/zap"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
-
-	"go.uber.org/zap"
 
 	platform "github.com/influxdata/influxdb"
 	platformhttp "github.com/influxdata/influxdb/http"
@@ -20,13 +19,13 @@ func NewMockSessionBackend() *platformhttp.SessionBackend {
 		Logger: zap.NewNop().With(zap.String("handler", "session")),
 
 		SessionService:   mock.NewSessionService(),
-		PasswordsService: mock.NewPasswordsService("", ""),
+		BasicAuthService: mock.NewBasicAuthService("", ""),
 	}
 }
 
-func TestSessionHandler_handleSignin(t *testing.T) {
+func TestBasicAuthHandler_handleSignin(t *testing.T) {
 	type fields struct {
-		PasswordsService platform.PasswordsService
+		BasicAuthService platform.BasicAuthService
 		SessionService   platform.SessionService
 	}
 	type args struct {
@@ -58,7 +57,7 @@ func TestSessionHandler_handleSignin(t *testing.T) {
 						}, nil
 					},
 				},
-				PasswordsService: &mock.PasswordsService{
+				BasicAuthService: &mock.BasicAuthService{
 					ComparePasswordFn: func(context.Context, string, string) error {
 						return nil
 					},
@@ -78,7 +77,7 @@ func TestSessionHandler_handleSignin(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			b := NewMockSessionBackend()
-			b.PasswordsService = tt.fields.PasswordsService
+			b.BasicAuthService = tt.fields.BasicAuthService
 			b.SessionService = tt.fields.SessionService
 			h := platformhttp.NewSessionHandler(b)
 

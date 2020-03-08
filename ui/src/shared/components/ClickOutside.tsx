@@ -10,11 +10,11 @@ interface Props {
 @ErrorHandling
 export class ClickOutside extends PureComponent<Props> {
   public componentDidMount() {
-    document.addEventListener('mousedown', this.handleClickOutside, true)
+    document.addEventListener('click', this.handleClickOutside, true)
   }
 
   public componentWillUnmount() {
-    document.removeEventListener('mousedown', this.handleClickOutside, true)
+    document.removeEventListener('click', this.handleClickOutside, true)
   }
 
   public render() {

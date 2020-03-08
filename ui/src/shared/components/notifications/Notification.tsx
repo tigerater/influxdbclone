@@ -65,7 +65,6 @@ class Notification extends Component<Props, State> {
         <div
           className={this.notificationClassname}
           ref={this.handleNotificationRef}
-          data-testid={this.dataTestID}
         >
           <span className={`icon ${icon}`} />
           <div className="notification-message">{message}</div>
@@ -75,17 +74,12 @@ class Notification extends Component<Props, State> {
     )
   }
 
-  private get dataTestID(): string {
-    const {style} = this.props.notification
-    return `notification-${style}`
-  }
-
   private get notificationClassname(): string {
     const {
-      notification: {style},
+      notification: {type},
     } = this.props
 
-    return `notification notification-${style}`
+    return `notification notification-${type}`
   }
 
   private get containerClassname(): string {
@@ -98,7 +92,11 @@ class Notification extends Component<Props, State> {
   }
 
   private get notificationStyle(): CSSProperties {
-    return {height: '100%'}
+    const {height} = this.state
+
+    const NOTIFICATION_MARGIN = 4
+
+    return {height: height + NOTIFICATION_MARGIN}
   }
 
   private updateHeight = (): void => {

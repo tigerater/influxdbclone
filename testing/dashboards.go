@@ -31,10 +31,10 @@ var dashboardCmpOptions = cmp.Options{
 
 // DashboardFields will include the IDGenerator, and dashboards
 type DashboardFields struct {
-	IDGenerator   platform.IDGenerator
-	TimeGenerator platform.TimeGenerator
-	Dashboards    []*platform.Dashboard
-	Views         []*platform.View
+	IDGenerator platform.IDGenerator
+	NowFn       func() time.Time
+	Dashboards  []*platform.Dashboard
+	Views       []*platform.View
 }
 
 // DashboardService tests all the service functions.
@@ -125,7 +125,7 @@ func CreateDashboard(
 						return MustIDBase16(dashTwoID)
 					},
 				},
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				Dashboards: []*platform.Dashboard{
 					{
 						ID:             MustIDBase16(dashOneID),
@@ -168,7 +168,7 @@ func CreateDashboard(
 						return MustIDBase16(dashTwoID)
 					},
 				},
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				Dashboards: []*platform.Dashboard{
 					{
 						ID:             MustIDBase16(dashOneID),
@@ -253,7 +253,7 @@ func AddDashboardCell(
 						return MustIDBase16(dashTwoID)
 					},
 				},
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				Dashboards: []*platform.Dashboard{
 					{
 						ID:             MustIDBase16(dashOneID),
@@ -296,7 +296,7 @@ func AddDashboardCell(
 		{
 			name: "add cell with no id",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				IDGenerator: &mock.IDGenerator{
 					IDFn: func() platform.ID {
 						return MustIDBase16(dashTwoID)
@@ -342,7 +342,7 @@ func AddDashboardCell(
 		{
 			name: "add cell with id not exist",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				IDGenerator: &mock.IDGenerator{
 					IDFn: func() platform.ID {
 						return MustIDBase16(dashTwoID)
@@ -1059,7 +1059,7 @@ func UpdateDashboard(
 		{
 			name: "update name",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				Dashboards: []*platform.Dashboard{
 					{
 						ID:             MustIDBase16(dashOneID),
@@ -1091,7 +1091,7 @@ func UpdateDashboard(
 		{
 			name: "update description",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				Dashboards: []*platform.Dashboard{
 					{
 						ID:             MustIDBase16(dashOneID),
@@ -1124,7 +1124,7 @@ func UpdateDashboard(
 		{
 			name: "update description and name",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				Dashboards: []*platform.Dashboard{
 					{
 						ID:             MustIDBase16(dashOneID),
@@ -1158,7 +1158,7 @@ func UpdateDashboard(
 		{
 			name: "update with id not exist",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				Dashboards: []*platform.Dashboard{
 					{
 						ID:             MustIDBase16(dashOneID),
@@ -1234,7 +1234,7 @@ func RemoveDashboardCell(
 		{
 			name: "basic remove cell",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				IDGenerator: &mock.IDGenerator{
 					IDFn: func() platform.ID {
 						return MustIDBase16(dashTwoID)
@@ -1332,7 +1332,7 @@ func UpdateDashboardCell(
 		{
 			name: "basic update cell",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				IDGenerator: &mock.IDGenerator{
 					IDFn: func() platform.ID {
 						return MustIDBase16(dashTwoID)
@@ -1373,9 +1373,7 @@ func UpdateDashboardCell(
 						Cells: []*platform.Cell{
 							{
 								ID: MustIDBase16(dashTwoID),
-								CellProperty: platform.CellProperty{
-									X: 10,
-								},
+								X:  10,
 							},
 							{
 								ID: MustIDBase16(dashOneID),
@@ -1388,7 +1386,7 @@ func UpdateDashboardCell(
 		{
 			name: "invalid cell update without attribute",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				IDGenerator: &mock.IDGenerator{
 					IDFn: func() platform.ID {
 						return MustIDBase16(dashTwoID)
@@ -1441,7 +1439,7 @@ func UpdateDashboardCell(
 		{
 			name: "invalid cell update cell id not exist",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				IDGenerator: &mock.IDGenerator{
 					IDFn: func() platform.ID {
 						return MustIDBase16(dashTwoID)
@@ -1539,7 +1537,7 @@ func ReplaceDashboardCells(
 		{
 			name: "basic replace cells",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				IDGenerator: &mock.IDGenerator{
 					IDFn: func() platform.ID {
 						return MustIDBase16(dashTwoID)
@@ -1578,15 +1576,11 @@ func ReplaceDashboardCells(
 				cells: []*platform.Cell{
 					{
 						ID: MustIDBase16(dashTwoID),
-						CellProperty: platform.CellProperty{
-							X: 10,
-						},
+						X:  10,
 					},
 					{
 						ID: MustIDBase16(dashOneID),
-						CellProperty: platform.CellProperty{
-							Y: 11,
-						},
+						Y:  11,
 					},
 				},
 			},
@@ -1602,15 +1596,11 @@ func ReplaceDashboardCells(
 						Cells: []*platform.Cell{
 							{
 								ID: MustIDBase16(dashTwoID),
-								CellProperty: platform.CellProperty{
-									X: 10,
-								},
+								X:  10,
 							},
 							{
 								ID: MustIDBase16(dashOneID),
-								CellProperty: platform.CellProperty{
-									Y: 11,
-								},
+								Y:  11,
 							},
 						},
 					},
@@ -1620,7 +1610,7 @@ func ReplaceDashboardCells(
 		{
 			name: "try to add a cell that didn't previously exist",
 			fields: DashboardFields{
-				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC)},
+				NowFn: func() time.Time { return time.Date(2009, time.November, 10, 24, 0, 0, 0, time.UTC) },
 				IDGenerator: &mock.IDGenerator{
 					IDFn: func() platform.ID {
 						return MustIDBase16(dashTwoID)
@@ -1651,15 +1641,11 @@ func ReplaceDashboardCells(
 				cells: []*platform.Cell{
 					{
 						ID: MustIDBase16(dashTwoID),
-						CellProperty: platform.CellProperty{
-							X: 10,
-						},
+						X:  10,
 					},
 					{
 						ID: MustIDBase16(dashOneID),
-						CellProperty: platform.CellProperty{
-							Y: 11,
-						},
+						Y:  11,
 					},
 				},
 			},

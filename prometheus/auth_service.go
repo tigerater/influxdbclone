@@ -109,8 +109,9 @@ func (s *AuthorizationService) DeleteAuthorization(ctx context.Context, id platf
 	return s.AuthorizationService.DeleteAuthorization(ctx, id)
 }
 
-// UpdateAuthorization updates the status and description.
-func (s *AuthorizationService) UpdateAuthorization(ctx context.Context, id platform.ID, upd *platform.AuthorizationUpdate) (a *platform.Authorization, err error) {
+// SetAuthorizationStatus updates the status of the authorization. Useful
+// for setting an authorization to inactive or active.
+func (s *AuthorizationService) SetAuthorizationStatus(ctx context.Context, id platform.ID, status platform.Status) (err error) {
 	defer func(start time.Time) {
 		labels := prometheus.Labels{
 			"method": "setAuthorizationStatus",
@@ -120,7 +121,7 @@ func (s *AuthorizationService) UpdateAuthorization(ctx context.Context, id platf
 		s.requestDuration.With(labels).Observe(time.Since(start).Seconds())
 	}(time.Now())
 
-	return s.AuthorizationService.UpdateAuthorization(ctx, id, upd)
+	return s.AuthorizationService.SetAuthorizationStatus(ctx, id, status)
 }
 
 // PrometheusCollectors returns all authorization service prometheus collectors.

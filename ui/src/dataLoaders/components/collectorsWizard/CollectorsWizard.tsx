@@ -1,7 +1,6 @@
 // Libraries
 import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
-import {withRouter, WithRouterProps} from 'react-router'
 import _ from 'lodash'
 
 // Components
@@ -26,21 +25,29 @@ import {
 } from 'src/dataLoaders/actions/dataLoaders'
 
 // Types
-import {Links} from 'src/types/links'
-import {Substep, TelegrafPlugin} from 'src/types/dataLoaders'
-import {AppState} from 'src/types'
+import {Links} from 'src/types/v2/links'
+import {Substep, TelegrafPlugin} from 'src/types/v2/dataLoaders'
+import {Notification, NotificationFunc} from 'src/types'
+import {AppState} from 'src/types/v2'
 import {Bucket} from '@influxdata/influx'
 
 export interface CollectorsStepProps {
   currentStepIndex: number
   onIncrementCurrentStepIndex: () => void
   onDecrementCurrentStepIndex: () => void
-  notify: typeof notifyAction
+  notify: (message: Notification | NotificationFunc) => void
   onExit: () => void
 }
 
+interface OwnProps {
+  onCompleteSetup: () => void
+  visible: boolean
+  buckets: Bucket[]
+  startingStep?: number
+}
+
 interface DispatchProps {
-  notify: typeof notifyAction
+  notify: (message: Notification | NotificationFunc) => void
   onSetBucketInfo: typeof setBucketInfo
   onIncrementCurrentStepIndex: typeof incrementCurrentStepIndex
   onDecrementCurrentStepIndex: typeof decrementCurrentStepIndex
@@ -53,7 +60,6 @@ interface DispatchProps {
 
 interface StateProps {
   links: Links
-  buckets: Bucket[]
   telegrafPlugins: TelegrafPlugin[]
   currentStepIndex: number
   substep: Substep
@@ -61,34 +67,41 @@ interface StateProps {
   bucket: string
 }
 
-interface State {
-  buckets: Bucket[]
-}
-
-type Props = StateProps & DispatchProps
+type Props = OwnProps & StateProps & DispatchProps
 
 @ErrorHandling
-class CollectorsWizard extends PureComponent<Props & WithRouterProps, State> {
-  constructor(props) {
-    super(props)
-    this.state = {
-      buckets: [],
-    }
-  }
+class CollectorsWizard extends PureComponent<Props> {
   public componentDidMount() {
     this.handleSetBucketInfo()
-    this.props.onSetCurrentStepIndex(0)
+    this.handleSetStartingValues()
+  }
+
+  public componentDidUpdate(prevProps: Props) {
+    const hasBecomeVisible = !prevProps.visible && this.props.visible
+
+    if (hasBecomeVisible) {
+      this.handleSetBucketInfo()
+      this.handleSetStartingValues()
+    }
   }
 
   public render() {
-    const {buckets} = this.props
+    const {visible, buckets} = this.props
 
     return (
       <WizardOverlay
-        title="Create a Telegraf Config"
+        visible={visible}
+        title={'Create a Telegraf Config'}
         onDismiss={this.handleDismiss}
       >
-        <CollectorsStepSwitcher stepProps={this.stepProps} buckets={buckets} />
+        <div className="wizard-contents">
+          <div className="wizard-step--container">
+            <CollectorsStepSwitcher
+              stepProps={this.stepProps}
+              buckets={buckets}
+            />
+          </div>
+        </div>
       </WizardOverlay>
     )
   }
@@ -96,18 +109,26 @@ class CollectorsWizard extends PureComponent<Props & WithRouterProps, State> {
   private handleSetBucketInfo = () => {
     const {bucket, buckets} = this.props
     if (!bucket && (buckets && buckets.length)) {
-      const {orgID, name, id} = buckets[0]
+      const {organization, organizationID, name, id} = buckets[0]
 
-      this.props.onSetBucketInfo(orgID, name, id)
+      this.props.onSetBucketInfo(organization, organizationID, name, id)
+    }
+  }
+
+  private handleSetStartingValues = () => {
+    const {startingStep} = this.props
+
+    const hasStartingStep = startingStep || startingStep === 0
+
+    if (hasStartingStep) {
+      this.props.onSetCurrentStepIndex(startingStep)
     }
   }
 
   private handleDismiss = () => {
-    const {router, onClearDataLoaders, onClearSteps} = this.props
-
-    onClearDataLoaders()
-    onClearSteps()
-    router.goBack()
+    this.props.onCompleteSetup()
+    this.props.onClearDataLoaders()
+    this.props.onClearSteps()
   }
 
   private get stepProps(): CollectorsStepProps {
@@ -130,7 +151,6 @@ class CollectorsWizard extends PureComponent<Props & WithRouterProps, State> {
 
 const mstp = ({
   links,
-  buckets,
   dataLoading: {
     dataLoaders: {telegrafPlugins},
     steps: {currentStep, substep, bucket},
@@ -143,7 +163,6 @@ const mstp = ({
   substep,
   username: name,
   bucket,
-  buckets: buckets.list,
 })
 
 const mdtp: DispatchProps = {
@@ -158,7 +177,7 @@ const mdtp: DispatchProps = {
   onSetPluginConfiguration: setPluginConfiguration,
 }
 
-export default connect<StateProps, DispatchProps, {}>(
+export default connect<StateProps, DispatchProps, OwnProps>(
   mstp,
   mdtp
-)(withRouter<Props>(CollectorsWizard))
+)(CollectorsWizard)

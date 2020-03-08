@@ -3,6 +3,8 @@
   ------------------------------------------------------------------------------
 */
 
+@import 'src/style/modules';
+
 $rename-dash-title-padding: 5px;
 
 .editable-description {
@@ -60,6 +62,8 @@ $rename-dash-title-padding: 5px;
   &:hover {
     cursor: text;
     color: $g20-white;
+    // background-color: $g3-castle;
+    // border-color: $g3-castle;
   }
 }
 

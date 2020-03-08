@@ -63,7 +63,7 @@ func (c *Client) findLabelByID(ctx context.Context, tx *bolt.Tx, id influxdb.ID)
 	if len(v) == 0 {
 		return nil, &influxdb.Error{
 			Code: influxdb.ENotFound,
-			Msg:  influxdb.ErrLabelNotFound,
+			Err:  influxdb.ErrLabelNotFound,
 		}
 	}
 
@@ -339,10 +339,6 @@ func (c *Client) updateLabel(ctx context.Context, tx *bolt.Tx, id influxdb.ID, u
 		} else {
 			label.Properties[k] = v
 		}
-	}
-
-	if upd.Name != "" {
-		label.Name = upd.Name
 	}
 
 	if err := label.Validate(); err != nil {

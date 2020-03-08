@@ -42,7 +42,7 @@ describe('DataLoaders.Components.CollectorsWizard.Configure.ConfigFieldHandler',
           telegrafPluginsInfo[TelegrafPluginInputCpu.NameEnum.Cpu].fields,
       })
       const noConfig = wrapper.find({
-        'data-testid': 'no-config',
+        'data-test': 'no-config',
       })
 
       expect(wrapper.exists()).toBe(true)

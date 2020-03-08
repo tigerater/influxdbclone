@@ -4,38 +4,34 @@ import {Page} from 'src/pageLayout'
 
 // Components
 import {
-  SlideToggle,
+  Button,
+  ComponentColor,
+  IconFont,
   ComponentSize,
-  ComponentSpacer,
-  FlexDirection,
-  JustifyContent,
-} from '@influxdata/clockface'
-import {Tabs, ComponentStatus} from 'src/clockface'
-import AddResourceDropdown from 'src/shared/components/AddResourceDropdown'
-import PageTitleWithOrg from 'src/shared/components/PageTitleWithOrg'
+  SlideToggle,
+} from 'src/clockface'
+import SearchWidget from 'src/shared/components/search_widget/SearchWidget'
+import TaskOrgDropdown from 'src/tasks/components/TasksOrgDropdown'
 
-// Types
-import {LimitStatus} from 'src/cloud/actions/limits'
+import 'src/tasks/components/TasksPage.scss'
 
 interface Props {
   onCreateTask: () => void
+  setSearchTerm: (searchTerm: string) => void
   setShowInactive: () => void
   showInactive: boolean
-  onImportTask: () => void
+  toggleOverlay: () => void
   showOrgDropdown?: boolean
-  isFullPage?: boolean
-  filterComponent: () => JSX.Element
-  limitStatus: LimitStatus
-  onImportFromTemplate: () => void
+  showFilter?: boolean
 }
 
 export default class TasksHeader extends PureComponent<Props> {
   public static defaultProps: {
     showOrgDropdown: boolean
-    isFullPage: boolean
+    showFilter: boolean
   } = {
     showOrgDropdown: true,
-    isFullPage: true,
+    showFilter: true,
   }
 
   public render() {
@@ -43,60 +39,37 @@ export default class TasksHeader extends PureComponent<Props> {
       onCreateTask,
       setShowInactive,
       showInactive,
-      onImportTask,
-      isFullPage,
-      filterComponent,
-      onImportFromTemplate,
+      toggleOverlay,
     } = this.props
 
-    if (isFullPage) {
-      return (
-        <Page.Header fullWidth={false}>
-          <Page.Header.Left>
-            <PageTitleWithOrg title={this.pageTitle} />
-          </Page.Header.Left>
-          <Page.Header.Right>
-            <SlideToggle.Label text="Show Inactive" />
-            <SlideToggle
-              active={showInactive}
-              size={ComponentSize.ExtraSmall}
-              onChange={setShowInactive}
-            />
-            <AddResourceDropdown
-              canImportFromTemplate={true}
-              onSelectNew={onCreateTask}
-              onSelectImport={onImportTask}
-              onSelectTemplate={onImportFromTemplate}
-              resourceName="Task"
-              status={this.addResourceStatus}
-            />
-          </Page.Header.Right>
-        </Page.Header>
-      )
-    }
-
     return (
-      <Tabs.TabContentsHeader>
-        {filterComponent()}
-        <ComponentSpacer
-          margin={ComponentSize.Small}
-          direction={FlexDirection.Row}
-          justifyContent={JustifyContent.FlexEnd}
-        >
+      <Page.Header fullWidth={false}>
+        <Page.Header.Left>
+          <Page.Title title={this.pageTitle} />
+        </Page.Header.Left>
+        <Page.Header.Right>
           <SlideToggle.Label text="Show Inactive" />
           <SlideToggle
             active={showInactive}
             size={ComponentSize.ExtraSmall}
             onChange={setShowInactive}
-            testID="tasks-header--toggle-active"
           />
-          <AddResourceDropdown
-            onSelectNew={onCreateTask}
-            onSelectImport={onImportTask}
-            resourceName="Task"
+          {this.filterSearch}
+          {this.orgDropDown}
+          <Button
+            text="Import"
+            icon={IconFont.Import}
+            onClick={toggleOverlay}
           />
-        </ComponentSpacer>
-      </Tabs.TabContentsHeader>
+          <Button
+            color={ComponentColor.Primary}
+            onClick={onCreateTask}
+            icon={IconFont.Plus}
+            text="Create Task"
+            titleText="Create a new Task"
+          />
+        </Page.Header.Right>
+      </Page.Header>
     )
   }
 
@@ -109,11 +82,26 @@ export default class TasksHeader extends PureComponent<Props> {
     return ''
   }
 
-  private get addResourceStatus(): ComponentStatus {
-    const {limitStatus} = this.props
-    if (limitStatus === LimitStatus.EXCEEDED) {
-      return ComponentStatus.Disabled
+  private get filterSearch(): JSX.Element {
+    const {setSearchTerm, showFilter} = this.props
+
+    if (showFilter) {
+      return (
+        <SearchWidget
+          placeholderText="Filter tasks by name..."
+          onSearch={setSearchTerm}
+        />
+      )
     }
-    return ComponentStatus.Default
+    return <></>
+  }
+
+  private get orgDropDown(): JSX.Element {
+    const {showOrgDropdown} = this.props
+
+    if (showOrgDropdown) {
+      return <TaskOrgDropdown />
+    }
+    return <></>
   }
 }

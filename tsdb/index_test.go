@@ -2,7 +2,6 @@ package tsdb_test
 
 import (
 	"compress/gzip"
-	"context"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -87,7 +86,7 @@ func MustNewIndex(c tsi1.Config) *Index {
 	}
 
 	sfile := tsdb.NewSeriesFile(seriesPath)
-	if err := sfile.Open(context.Background()); err != nil {
+	if err := sfile.Open(); err != nil {
 		panic(err)
 	}
 
@@ -116,7 +115,7 @@ func MustOpenNewIndex(c tsi1.Config) *Index {
 
 // MustOpen opens the underlying index or panics.
 func (i *Index) MustOpen() {
-	if err := i.Index.Open(context.Background()); err != nil {
+	if err := i.Index.Open(); err != nil {
 		panic(err)
 	}
 }
@@ -132,13 +131,13 @@ func (i *Index) Reopen() error {
 	}
 
 	i.sfile = tsdb.NewSeriesFile(i.sfile.Path())
-	if err := i.sfile.Open(context.Background()); err != nil {
+	if err := i.sfile.Open(); err != nil {
 		return err
 	}
 
 	i.Index = tsi1.NewIndex(i.SeriesFile(), i.config,
 		tsi1.WithPath(filepath.Join(i.rootPath, "index")))
-	return i.Index.Open(context.Background())
+	return i.Index.Open()
 }
 
 // Close closes the index cleanly and removes all on-disk data.
@@ -186,7 +185,7 @@ func BenchmarkIndex_TagSets(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	points, err := models.ParsePoints(data, []byte("mm"))
+	points, err := models.ParsePoints(data)
 	if err != nil {
 		b.Fatal(err)
 	}
@@ -269,7 +268,7 @@ func BenchmarkIndex_ConcurrentWriteQuery(b *testing.B) {
 		b.Fatal(err)
 	}
 
-	points, err := models.ParsePoints(data, []byte("mm"))
+	points, err := models.ParsePoints(data)
 	if err != nil {
 		b.Fatal(err)
 	}

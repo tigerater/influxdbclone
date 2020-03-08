@@ -18,9 +18,13 @@ import {
 // Utils
 import {getActiveTimeMachine} from 'src/timeMachine/selectors'
 
+// Styles
+import 'src/timeMachine/components/QueryTab.scss'
+
 // Types
-import {AppState} from 'src/types'
-import {DashboardDraftQuery} from 'src/types/dashboards'
+import {AppState} from 'src/types/v2'
+import {DashboardDraftQuery} from 'src/types/v2/dashboards'
+import {QueriesState} from 'src/shared/components/TimeSeries'
 
 interface StateProps {
   activeQueryIndex: number
@@ -37,6 +41,7 @@ interface DispatchProps {
 interface OwnProps {
   queryIndex: number
   query: DashboardDraftQuery
+  queriesState: QueriesState
 }
 
 type Props = StateProps & DispatchProps & OwnProps
@@ -44,7 +49,6 @@ type Props = StateProps & DispatchProps & OwnProps
 interface State {
   isEditingName: boolean
 }
-
 class TimeMachineQueryTab extends PureComponent<Props, State> {
   public static getDerivedStateFromProps(props: Props): Partial<State> {
     if (props.queryIndex !== props.activeQueryIndex) {
@@ -84,16 +88,12 @@ class TimeMachineQueryTab extends PureComponent<Props, State> {
         </RightClick.Trigger>
         <RightClick.MenuContainer>
           <RightClick.Menu>
-            <RightClick.MenuItem
-              onClick={this.handleEditActiveQueryName}
-              testID="right-click--edit-tab"
-            >
+            <RightClick.MenuItem onClick={this.handleEditActiveQueryName}>
               Edit
             </RightClick.MenuItem>
             <RightClick.MenuItem
               onClick={this.handleRemove}
               disabled={!this.isRemovable}
-              testID="right-click--remove-tab"
             >
               Remove
             </RightClick.MenuItem>
@@ -131,10 +131,15 @@ class TimeMachineQueryTab extends PureComponent<Props, State> {
   }
 
   private get queriesTimer(): JSX.Element {
-    const {queryIndex, activeQueryIndex} = this.props
+    const {queriesState, queryIndex, activeQueryIndex} = this.props
 
     if (queryIndex === activeQueryIndex) {
-      return <TimeMachineQueriesTimer />
+      return (
+        <TimeMachineQueriesTimer
+          status={queriesState.loading}
+          duration={queriesState.duration}
+        />
+      )
     }
   }
 

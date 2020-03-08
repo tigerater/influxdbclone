@@ -1,7 +1,6 @@
 package tsdb
 
 import (
-	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -11,9 +10,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/influxdata/influxdb/kit/tracing"
 	"github.com/influxdata/influxdb/logger"
 	"github.com/influxdata/influxdb/models"
+	"github.com/influxdata/influxdb/pkg/fs"
 	"github.com/influxdata/influxdb/pkg/rhh"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
@@ -46,8 +45,7 @@ type SeriesPartition struct {
 	compacting          bool
 	compactionsDisabled int
 
-	CompactThreshold    int
-	LargeWriteThreshold int
+	CompactThreshold int
 
 	tracker *seriesPartitionTracker
 	Logger  *zap.Logger
@@ -56,14 +54,13 @@ type SeriesPartition struct {
 // NewSeriesPartition returns a new instance of SeriesPartition.
 func NewSeriesPartition(id int, path string) *SeriesPartition {
 	p := &SeriesPartition{
-		id:                  id,
-		path:                path,
-		closing:             make(chan struct{}),
-		CompactThreshold:    DefaultSeriesPartitionCompactThreshold,
-		LargeWriteThreshold: DefaultLargeSeriesWriteThreshold,
-		tracker:             newSeriesPartitionTracker(newSeriesFileMetrics(nil), nil),
-		Logger:              zap.NewNop(),
-		seq:                 uint64(id) + 1,
+		id:               id,
+		path:             path,
+		closing:          make(chan struct{}),
+		CompactThreshold: DefaultSeriesPartitionCompactThreshold,
+		tracker:          newSeriesPartitionTracker(newSeriesFileMetrics(nil), nil),
+		Logger:           zap.NewNop(),
+		seq:              uint64(id) + 1,
 	}
 	p.index = NewSeriesIndex(p.IndexPath())
 	return p
@@ -186,15 +183,14 @@ func (p *SeriesPartition) IndexPath() string { return filepath.Join(p.path, "ind
 // CreateSeriesListIfNotExists creates a list of series in bulk if they don't exist.
 // The ids parameter is modified to contain series IDs for all keys belonging to this partition.
 // If the type does not match the existing type for the key, a zero id is stored.
-func (p *SeriesPartition) CreateSeriesListIfNotExists(collection *SeriesCollection, keyPartitionIDs []int) error {
+func (p *SeriesPartition) CreateSeriesListIfNotExists(collection *SeriesCollection,
+	keyPartitionIDs []int) error {
+
 	p.mu.RLock()
 	if p.closed {
 		p.mu.RUnlock()
 		return ErrSeriesPartitionClosed
 	}
-
-	span, ctx := tracing.StartSpanFromContext(context.TODO())
-	defer span.Finish()
 
 	writeRequired := 0
 	for iter := collection.Iterator(); iter.Next(); {
@@ -230,13 +226,6 @@ func (p *SeriesPartition) CreateSeriesListIfNotExists(collection *SeriesCollecti
 	// Preallocate the space we'll need before grabbing the lock.
 	newKeyRanges := make([]keyRange, 0, writeRequired)
 	newIDs := make(map[string]SeriesIDTyped, writeRequired)
-
-	// Pre-grow index for large writes.
-	if writeRequired >= p.LargeWriteThreshold {
-		p.mu.Lock()
-		p.index.GrowBy(writeRequired)
-		p.mu.Unlock()
-	}
 
 	// Obtain write lock to create new series.
 	p.mu.Lock()
@@ -307,7 +296,7 @@ func (p *SeriesPartition) CreateSeriesListIfNotExists(collection *SeriesCollecti
 	// Check if we've crossed the compaction threshold.
 	if p.compactionsEnabled() && !p.compacting && p.CompactThreshold != 0 && p.index.InMemCount() >= uint64(p.CompactThreshold) {
 		p.compacting = true
-		log, logEnd := logger.NewOperation(ctx, p.Logger, "Series partition compaction", "series_partition_compaction", zap.String("path", p.path))
+		log, logEnd := logger.NewOperation(p.Logger, "Series partition compaction", "series_partition_compaction", zap.String("path", p.path))
 
 		p.wg.Add(1)
 		p.tracker.IncCompactionsActive()
@@ -739,7 +728,7 @@ func (c *SeriesPartitionCompactor) Compact(p *SeriesPartition) (time.Duration, e
 		// Reopen index with new file.
 		if err := p.index.Close(); err != nil {
 			return err
-		} else if err := os.Rename(indexPath, index.path); err != nil {
+		} else if err := fs.RenameFileWithReplacement(indexPath, index.path); err != nil {
 			return err
 		} else if err := p.index.Open(); err != nil {
 			return err
@@ -816,7 +805,7 @@ func (c *SeriesPartitionCompactor) compactIndexTo(index *SeriesIndex, seriesN ui
 	}
 
 	// Open file handler.
-	f, err := os.Create(path)
+	f, err := fs.CreateFile(path)
 	if err != nil {
 		return err
 	}
@@ -858,11 +847,11 @@ func (c *SeriesPartitionCompactor) insertKeyIDMap(dst []byte, capacity int64, se
 		elem := dst[(pos * SeriesIndexElemSize):]
 
 		// If empty slot found or matching offset, insert and exit.
-		elemOffset := int64(binary.BigEndian.Uint64(elem[:SeriesOffsetSize]))
-		elemID := NewSeriesIDTyped(binary.BigEndian.Uint64(elem[SeriesOffsetSize:]))
+		elemOffset := int64(binary.BigEndian.Uint64(elem[:8]))
+		elemID := NewSeriesIDTyped(binary.BigEndian.Uint64(elem[8:]))
 		if elemOffset == 0 || elemOffset == offset {
-			binary.BigEndian.PutUint64(elem[:SeriesOffsetSize], uint64(offset))
-			binary.BigEndian.PutUint64(elem[SeriesOffsetSize:], id.RawID())
+			binary.BigEndian.PutUint64(elem[:8], uint64(offset))
+			binary.BigEndian.PutUint64(elem[8:], id.RawID())
 			return nil
 		}
 
@@ -874,8 +863,8 @@ func (c *SeriesPartitionCompactor) insertKeyIDMap(dst []byte, capacity int64, se
 		// existing elem, and keep going to find another slot for that elem.
 		if d := rhh.Dist(elemHash, pos, capacity); d < dist {
 			// Insert current values.
-			binary.BigEndian.PutUint64(elem[:SeriesOffsetSize], uint64(offset))
-			binary.BigEndian.PutUint64(elem[SeriesOffsetSize:], id.RawID())
+			binary.BigEndian.PutUint64(elem[:8], uint64(offset))
+			binary.BigEndian.PutUint64(elem[8:], id.RawID())
 
 			// Swap with values in that position.
 			hash, key, offset, id = elemHash, elemKey, elemOffset, elemID
@@ -896,11 +885,11 @@ func (c *SeriesPartitionCompactor) insertIDOffsetMap(dst []byte, capacity int64,
 		elem := dst[(pos * SeriesIndexElemSize):]
 
 		// If empty slot found or matching id, insert and exit.
-		elemID := NewSeriesID(binary.BigEndian.Uint64(elem[:SeriesIDSize]))
-		elemOffset := int64(binary.BigEndian.Uint64(elem[SeriesIDSize:]))
+		elemID := NewSeriesID(binary.BigEndian.Uint64(elem[:8]))
+		elemOffset := int64(binary.BigEndian.Uint64(elem[8:]))
 		if elemOffset == 0 || elemOffset == offset {
-			binary.BigEndian.PutUint64(elem[:SeriesIDSize], id.RawID())
-			binary.BigEndian.PutUint64(elem[SeriesIDSize:], uint64(offset))
+			binary.BigEndian.PutUint64(elem[:8], id.RawID())
+			binary.BigEndian.PutUint64(elem[8:], uint64(offset))
 			return
 		}
 
@@ -911,8 +900,8 @@ func (c *SeriesPartitionCompactor) insertIDOffsetMap(dst []byte, capacity int64,
 		// existing elem, and keep going to find another slot for that elem.
 		if d := rhh.Dist(elemHash, pos, capacity); d < dist {
 			// Insert current values.
-			binary.BigEndian.PutUint64(elem[:SeriesIDSize], id.RawID())
-			binary.BigEndian.PutUint64(elem[SeriesIDSize:], uint64(offset))
+			binary.BigEndian.PutUint64(elem[:8], id.RawID())
+			binary.BigEndian.PutUint64(elem[8:], uint64(offset))
 
 			// Swap with values in that position.
 			hash, id, offset = elemHash, elemID, elemOffset
