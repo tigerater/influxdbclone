@@ -16,7 +16,7 @@ const SlackMessage: FC<Props> = ({channel, messageTemplate, onChange}) => {
       <Form.Element label="Channel">
         <Input value={channel} name="channel" onChange={onChange} />
       </Form.Element>
-      <Form.Element label="Message Template">
+      <Form.Element label="Message">
         <TextArea
           name="messageTemplate"
           value={messageTemplate}

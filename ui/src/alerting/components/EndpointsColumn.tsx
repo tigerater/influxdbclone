@@ -8,19 +8,18 @@ import AlertsColumn from 'src/alerting/components/AlertsColumn'
 const EndpointsColumn: FunctionComponent = () => {
   return (
     <AlertsColumn
-      title="Notification Endpoints"
+      title="Endpoints"
       testID="create-endpoint"
       onCreate={() => {}}
     >
-      <EmptyState size={ComponentSize.Small} className="alert-column--empty">
+      <EmptyState
+        size={ComponentSize.ExtraSmall}
+        className="alert-column--empty"
+      >
         <EmptyState.Text
-          text="A Notification  Endpoint  stores the information to connect to a third party service that can receive notifications like Slack, PagerDuty, or an HTTP server"
-          highlightWords={['Notification', 'Endpoint']}
+          text="Looks like you don’t have any Endpoints , why not create one?"
+          highlightWords={['Endpoints']}
         />
-        <br />
-        <a href="#" target="_blank">
-          Documentation
-        </a>
       </EmptyState>
     </AlertsColumn>
   )

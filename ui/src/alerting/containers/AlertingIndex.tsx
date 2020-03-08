@@ -13,10 +13,10 @@ import GetResources, {ResourceTypes} from 'src/shared/components/GetResources'
 const AlertingIndex: FunctionComponent = ({children}) => {
   return (
     <>
-      <Page titleTag="Monitoring & Alerting" className="alerting-index">
+      <Page titleTag="Alerting" className="alerting-index">
         <Page.Header fullWidth={false}>
           <Page.Header.Left>
-            <PageTitleWithOrg title="Monitoring & Alerting" />
+            <PageTitleWithOrg title="Alerting" />
           </Page.Header.Left>
           <Page.Header.Right />
         </Page.Header>

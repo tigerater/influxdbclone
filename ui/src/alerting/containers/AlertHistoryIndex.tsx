@@ -38,12 +38,12 @@ const AlertHistoryIndex: FC = () => {
     <EventViewer loadRows={loadRows}>
       {props => (
         <Page
-          titleTag="Check Statuses | InfluxDB 2.0"
+          titleTag="Alerting History | InfluxDB 2.0"
           className="alert-history-page"
         >
           <Page.Header fullWidth={true}>
             <div className="alert-history-page--header">
-              <Page.Title title="Check Statuses" />
+              <Page.Title title="Alerting History" />
               <AlertHistoryControls
                 historyType={historyType}
                 onSetHistoryType={setHistoryType}

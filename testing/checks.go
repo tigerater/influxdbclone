@@ -17,13 +17,13 @@ import (
 	"github.com/influxdata/influxdb/notification/check"
 )
 
-func mustDuration(d string) *notification.Duration {
+func mustDuration(d string) *check.Duration {
 	dur, err := parser.ParseDuration(d)
 	if err != nil {
 		panic(err)
 	}
 
-	return (*notification.Duration)(dur)
+	return (*check.Duration)(dur)
 }
 
 const (

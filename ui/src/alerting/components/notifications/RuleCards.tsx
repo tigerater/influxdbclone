@@ -27,15 +27,11 @@ const NotificationRuleCards: FunctionComponent<Props> = ({rules}) => {
 
 const EmptyNotificationRulesList: FunctionComponent = () => {
   return (
-    <EmptyState size={ComponentSize.Small} className="alert-column--empty">
+    <EmptyState size={ComponentSize.ExtraSmall} className="alert-column--empty">
       <EmptyState.Text
-        text="A Notification  Rule  will query statuses written by Checks  to determine if a notification should be sent to a Notification  Endpoint"
-        highlightWords={['Notification', 'Rule', 'Endpoint', 'Checks']}
+        text="Looks like you don’t have any Notification  Rules , why not create one?"
+        highlightWords={['Notification', 'Rules']}
       />
-      <br />
-      <a href="#" target="_blank">
-        Documentation
-      </a>
     </EmptyState>
   )
 }

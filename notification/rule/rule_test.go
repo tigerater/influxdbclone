@@ -22,12 +22,11 @@ const (
 )
 
 var goodBase = rule.Base{
-	ID:         influxTesting.MustIDBase16(id1),
-	Name:       "name1",
-	OwnerID:    influxTesting.MustIDBase16(id2),
-	OrgID:      influxTesting.MustIDBase16(id3),
-	Status:     influxdb.Inactive,
-	EndpointID: 1,
+	ID:      influxTesting.MustIDBase16(id1),
+	Name:    "name1",
+	OwnerID: influxTesting.MustIDBase16(id2),
+	OrgID:   influxTesting.MustIDBase16(id3),
+	Status:  influxdb.Inactive,
 }
 
 func TestValidRule(t *testing.T) {
@@ -91,7 +90,7 @@ func TestValidRule(t *testing.T) {
 					Name:       "name1",
 					OwnerID:    influxTesting.MustIDBase16(id2),
 					OrgID:      influxTesting.MustIDBase16(id3),
-					EndpointID: 0,
+					EndpointID: influxTesting.IDPtr(influxdb.InvalidID()),
 				},
 			},
 			err: &influxdb.Error{
@@ -103,11 +102,10 @@ func TestValidRule(t *testing.T) {
 			name: "invalid status",
 			src: &rule.Slack{
 				Base: rule.Base{
-					ID:         influxTesting.MustIDBase16(id1),
-					Name:       "name1",
-					OwnerID:    influxTesting.MustIDBase16(id2),
-					OrgID:      influxTesting.MustIDBase16(id3),
-					EndpointID: 1,
+					ID:      influxTesting.MustIDBase16(id1),
+					Name:    "name1",
+					OwnerID: influxTesting.MustIDBase16(id2),
+					OrgID:   influxTesting.MustIDBase16(id3),
 				},
 			},
 			err: &influxdb.Error{
@@ -140,12 +138,11 @@ func TestValidRule(t *testing.T) {
 			name: "bad tag rule",
 			src: &rule.PagerDuty{
 				Base: rule.Base{
-					ID:         influxTesting.MustIDBase16(id1),
-					OwnerID:    influxTesting.MustIDBase16(id2),
-					Name:       "name1",
-					OrgID:      influxTesting.MustIDBase16(id3),
-					EndpointID: 1,
-					Status:     influxdb.Active,
+					ID:      influxTesting.MustIDBase16(id1),
+					OwnerID: influxTesting.MustIDBase16(id2),
+					Name:    "name1",
+					OrgID:   influxTesting.MustIDBase16(id3),
+					Status:  influxdb.Active,
 					TagRules: []notification.TagRule{
 						{
 							Tag: notification.Tag{
@@ -167,12 +164,11 @@ func TestValidRule(t *testing.T) {
 			name: "bad limit",
 			src: &rule.PagerDuty{
 				Base: rule.Base{
-					ID:         influxTesting.MustIDBase16(id1),
-					OwnerID:    influxTesting.MustIDBase16(id2),
-					OrgID:      influxTesting.MustIDBase16(id3),
-					EndpointID: 1,
-					Name:       "name1",
-					Status:     influxdb.Active,
+					ID:      influxTesting.MustIDBase16(id1),
+					OwnerID: influxTesting.MustIDBase16(id2),
+					OrgID:   influxTesting.MustIDBase16(id3),
+					Name:    "name1",
+					Status:  influxdb.Active,
 					TagRules: []notification.TagRule{
 						{
 							Tag: notification.Tag{
@@ -195,10 +191,8 @@ func TestValidRule(t *testing.T) {
 		},
 	}
 	for _, c := range cases {
-		t.Run(c.name, func(t *testing.T) {
-			got := c.src.Valid()
-			influxTesting.ErrorsEqual(t, got, c.err)
-		})
+		got := c.src.Valid()
+		influxTesting.ErrorsEqual(t, got, c.err)
 	}
 }
 
@@ -222,7 +216,7 @@ func TestJSON(t *testing.T) {
 					Status:      influxdb.Active,
 					RunbookLink: "runbooklink1",
 					SleepUntil:  &time3,
-					Every:       mustDuration("1h"),
+					Every:       influxdb.Duration{Duration: time.Hour},
 					TagRules: []notification.TagRule{
 						{
 							Tag: notification.Tag{
@@ -259,7 +253,7 @@ func TestJSON(t *testing.T) {
 					Status:      influxdb.Active,
 					RunbookLink: "runbooklink1",
 					SleepUntil:  &time3,
-					Every:       mustDuration("1h"),
+					Every:       influxdb.Duration{Duration: time.Hour},
 					TagRules: []notification.TagRule{
 						{
 							Tag: notification.Tag{
@@ -295,7 +289,7 @@ func TestJSON(t *testing.T) {
 					Status:      influxdb.Active,
 					RunbookLink: "runbooklink1",
 					SleepUntil:  &time3,
-					Every:       mustDuration("1h"),
+					Every:       influxdb.Duration{Duration: time.Hour},
 					TagRules: []notification.TagRule{
 						{
 							Tag: notification.Tag{

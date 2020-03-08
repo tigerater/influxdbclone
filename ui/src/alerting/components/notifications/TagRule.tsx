@@ -11,7 +11,6 @@ import {
   ComponentSize,
   FlexDirection,
   ComponentColor,
-  InfluxColors,
 } from '@influxdata/clockface'
 
 import TagRuleOperatorDropdown, {
@@ -69,16 +68,11 @@ const TagRule: FC<Props> = ({tagRule}) => {
       <DismissButton onClick={onDelete} color={ComponentColor.Default} />
       <Panel.Body>
         <FlexBox direction={FlexDirection.Row} margin={ComponentSize.Small}>
-          <TextBlock
-            text="AND"
-            textColor={InfluxColors.Honeydew}
-            backgroundColor={InfluxColors.Pepper}
-          />
-          <TextBlock text="When" />
+          <TextBlock text="When tag" />
           <FlexBox.FlexChild grow={1}>
             <Input
               testID="tag-rule-key--input"
-              placeholder="Tag"
+              placeholder="Key"
               value={key}
               name="key"
               onChange={onChange}

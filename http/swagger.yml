@@ -9030,7 +9030,6 @@ components:
         - $ref: "#/components/schemas/SlackNotificationRule"
         - $ref: "#/components/schemas/SMTPNotificationRule"
         - $ref: "#/components/schemas/PagerDutyNotificationRule"
-        - $ref: "#/components/schemas/HTTPNotificationRule"
     NotificationRules:
       properties:
         notificationRules:
@@ -9139,19 +9138,10 @@ components:
         operation:
           type: string
           enum: ["equal", "notequal"]
-    HTTPNotificationRuleBase:
-      type: object
-      required: [type, url]
-      properties:
-        type:
-          type: string
-          enum: [http]
-        url:
-          type: string
-    HTTPNotificationRule:
+    SlackNotificationRule:
       allOf:
         - $ref: "#/components/schemas/NotificationRuleBase"
-        - $ref: "#/components/schemas/HTTPNotificationRuleBase"
+        - $ref: "#/components/schemas/SlackNotificationRuleBase"
     SlackNotificationRuleBase:
       type: object
       required: [type, messageTemplate]
@@ -9163,10 +9153,6 @@ components:
           type: string
         messageTemplate:
           type: string
-    SlackNotificationRule:
-      allOf:
-        - $ref: "#/components/schemas/NotificationRuleBase"
-        - $ref: "#/components/schemas/SlackNotificationRuleBase"
     SMTPNotificationRule:
       allOf:
         - $ref: "#/components/schemas/NotificationRuleBase"

@@ -3,7 +3,7 @@ import React, {FunctionComponent} from 'react'
 import {connect} from 'react-redux'
 
 // Components
-import {Button, ComponentColor, IconFont} from '@influxdata/clockface'
+import {Button} from '@influxdata/clockface'
 
 // Actions
 import {convertFromCheckView} from 'src/timeMachine/actions'
@@ -24,8 +24,6 @@ const RemoveButton: FunctionComponent<Props> = ({onConvertFromCheckView}) => {
       titleText="Remove Check from Cell"
       text="Remove Check from Cell"
       onClick={handleClick}
-      icon={IconFont.Remove}
-      color={ComponentColor.Danger}
     />
   )
 }

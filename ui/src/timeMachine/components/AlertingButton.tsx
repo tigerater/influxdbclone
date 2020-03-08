@@ -34,8 +34,8 @@ const AlertingButton: FunctionComponent<Props> = ({activeTab, onClick}) => {
       <Button
         icon={IconFont.BellSolid}
         color={color}
-        titleText="Add a Check to monitor this data"
-        text="Monitoring & Alerting"
+        titleText="Add alerting to this query"
+        text="Alerting"
         onClick={onClick}
       />
     </FeatureFlag>

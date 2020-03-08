@@ -141,7 +141,7 @@ const CheckMetaCard: FC<Props> = ({
           minLength={5}
           name=""
           onChange={handleChangeMessage}
-          placeholder="Example: {tags.cpu} exceeded threshold: {value}%"
+          placeholder="Placeholder Text"
           readOnly={false}
           required={false}
           size={ComponentSize.Medium}
@@ -210,7 +210,7 @@ const CheckMetaCard: FC<Props> = ({
             size={ComponentSize.Small}
             spellCheck={false}
             testID="input-field"
-            titleText="Name of the check"
+            titleText="Title Text"
             type={InputType.Text}
             value={check.every}
           />
@@ -227,7 +227,7 @@ const CheckMetaCard: FC<Props> = ({
             size={ComponentSize.Small}
             spellCheck={false}
             testID="input-field"
-            titleText="Offset check interval"
+            titleText="Title Text"
             type={InputType.Text}
             value={check.offset}
           />
@@ -244,7 +244,7 @@ const CheckMetaCard: FC<Props> = ({
             size={ComponentSize.Small}
             spellCheck={false}
             testID="input-field"
-            titleText="Use cron format to specify interval"
+            titleText="Title Text"
             type={InputType.Text}
             value={check.cron}
           />
