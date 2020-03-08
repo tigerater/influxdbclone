@@ -20,6 +20,7 @@ type NotificationEndpointFields struct {
 	NotificationEndpoints []influxdb.NotificationEndpoint
 	Orgs                  []*influxdb.Organization
 	UserResourceMappings  []*influxdb.UserResourceMapping
+	Secrets               []Secret
 }
 
 var timeGen1 = mock.TimeGenerator{FakeValue: time.Date(2006, time.July, 13, 4, 19, 10, 0, time.UTC)}
@@ -105,6 +106,14 @@ func CreateNotificationEndpoint(
 				TimeGenerator: fakeGenerator,
 				Orgs: []*influxdb.Organization{
 					{ID: MustIDBase16(fourID), Name: "org1"},
+				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token": "slack-secret-1",
+						},
+					},
 				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
@@ -194,6 +203,90 @@ func CreateNotificationEndpoint(
 				},
 			},
 		},
+		{
+			name: "secret not found",
+			fields: NotificationEndpointFields{
+				IDGenerator:   mock.NewIDGenerator(twoID, t),
+				TimeGenerator: fakeGenerator,
+				Orgs: []*influxdb.Organization{
+					{ID: MustIDBase16(fourID), Name: "org1"},
+				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token": "slack-secret-1",
+						},
+					},
+				},
+				NotificationEndpoints: []influxdb.NotificationEndpoint{
+					&endpoint.Slack{
+						Base: endpoint.Base{
+							ID:     MustIDBase16(oneID),
+							Name:   "name1",
+							OrgID:  MustIDBase16(fourID),
+							Status: influxdb.Active,
+							CRUDLog: influxdb.CRUDLog{
+								CreatedAt: timeGen1.Now(),
+								UpdatedAt: timeGen2.Now(),
+							},
+						},
+						URL:   "example-slack.com",
+						Token: influxdb.SecretField{Key: oneID + "-token"},
+					},
+				},
+				UserResourceMappings: []*influxdb.UserResourceMapping{
+					{
+						ResourceID:   MustIDBase16(oneID),
+						ResourceType: influxdb.NotificationEndpointResourceType,
+						UserID:       MustIDBase16(sixID),
+						UserType:     influxdb.Member,
+					},
+				},
+			},
+			args: args{
+				userID: MustIDBase16(sixID),
+				notificationEndpoint: &endpoint.PagerDuty{
+					Base: endpoint.Base{
+						Name:   "name2",
+						OrgID:  MustIDBase16(fourID),
+						Status: influxdb.Active,
+					},
+					URL:        "example-pagerduty.com",
+					RoutingKey: influxdb.SecretField{Key: twoID + "-routing-key"},
+				},
+			},
+			wants: wants{
+				err: &influxdb.Error{
+					Code: influxdb.EInvalid,
+					Msg:  "Unable to locate secret key: " + twoID + "-routing-key",
+				},
+				notificationEndpoints: []influxdb.NotificationEndpoint{
+					&endpoint.Slack{
+						Base: endpoint.Base{
+							ID:     MustIDBase16(oneID),
+							Name:   "name1",
+							OrgID:  MustIDBase16(fourID),
+							Status: influxdb.Active,
+							CRUDLog: influxdb.CRUDLog{
+								CreatedAt: timeGen1.Now(),
+								UpdatedAt: timeGen2.Now(),
+							},
+						},
+						URL:   "example-slack.com",
+						Token: influxdb.SecretField{Key: oneID + "-token"},
+					},
+				},
+				userResourceMapping: []*influxdb.UserResourceMapping{
+					{
+						ResourceID:   MustIDBase16(oneID),
+						ResourceType: influxdb.NotificationEndpointResourceType,
+						UserID:       MustIDBase16(sixID),
+						UserType:     influxdb.Member,
+					},
+				},
+			},
+		},
 	}
 
 	for _, tt := range tests {
@@ -265,6 +358,15 @@ func FindNotificationEndpointByID(
 						ResourceType: influxdb.NotificationEndpointResourceType,
 					},
 				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
+					},
+				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
@@ -323,6 +425,15 @@ func FindNotificationEndpointByID(
 						ResourceType: influxdb.NotificationEndpointResourceType,
 					},
 				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
+					},
+				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
@@ -379,6 +490,15 @@ func FindNotificationEndpointByID(
 						UserID:       MustIDBase16(sixID),
 						UserType:     influxdb.Member,
 						ResourceType: influxdb.NotificationEndpointResourceType,
+					},
+				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
 					},
 				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
@@ -482,6 +602,15 @@ func FindNotificationEndpoints(
 		{
 			name: "find all notification endpoints",
 			fields: NotificationEndpointFields{
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
+					},
+				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
@@ -552,6 +681,21 @@ func FindNotificationEndpoints(
 		{
 			name: "filter by organization id only",
 			fields: NotificationEndpointFields{
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
+					},
+					{
+						OrganizationID: MustIDBase16(oneID),
+						Env: map[string]string{
+							fourID + "-routing-key": "pager-duty-secret-3",
+						},
+					},
+				},
 				Orgs: []*influxdb.Organization{
 					{
 						ID:   MustIDBase16(oneID),
@@ -618,6 +762,20 @@ func FindNotificationEndpoints(
 		{
 			name: "filter by organization name only",
 			fields: NotificationEndpointFields{
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token": "slack-secret-1",
+						},
+					},
+					{
+						OrganizationID: MustIDBase16(oneID),
+						Env: map[string]string{
+							fourID + "-routing-key": "pager-duty-secret-2",
+						},
+					},
+				},
 				Orgs: []*influxdb.Organization{
 					{
 						ID:   MustIDBase16(oneID),
@@ -696,6 +854,20 @@ func FindNotificationEndpoints(
 		{
 			name: "find by id",
 			fields: NotificationEndpointFields{
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token": "slack-secret-1",
+						},
+					},
+					{
+						OrganizationID: MustIDBase16(oneID),
+						Env: map[string]string{
+							fourID + "-routing-key": "pager-duty-secret-2",
+						},
+					},
+				},
 				Orgs: []*influxdb.Organization{
 					{
 						ID:   MustIDBase16(oneID),
@@ -763,6 +935,15 @@ func FindNotificationEndpoints(
 		{
 			name: "look for organization not bound to any notification endpoint",
 			fields: NotificationEndpointFields{
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":         "slack-secret-1",
+							threeID + "-routing-key": "pager-duty-secret-2",
+						},
+					},
+				},
 				Orgs: []*influxdb.Organization{
 					{
 						ID:   MustIDBase16(oneID),
@@ -818,6 +999,15 @@ func FindNotificationEndpoints(
 		{
 			name: "find nothing",
 			fields: NotificationEndpointFields{
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":         "slack-secret-1",
+							threeID + "-routing-key": "pager-duty-secret-2",
+						},
+					},
+				},
 				Orgs: []*influxdb.Organization{
 					{
 						ID:   MustIDBase16(oneID),
@@ -903,6 +1093,7 @@ func UpdateNotificationEndpoint(
 
 	type wants struct {
 		notificationEndpoint influxdb.NotificationEndpoint
+		secret               *Secret
 		err                  error
 	}
 	tests := []struct {
@@ -927,6 +1118,15 @@ func UpdateNotificationEndpoint(
 						UserID:       MustIDBase16(sixID),
 						UserType:     influxdb.Member,
 						ResourceType: influxdb.NotificationEndpointResourceType,
+					},
+				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
 					},
 				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
@@ -999,6 +1199,15 @@ func UpdateNotificationEndpoint(
 						ResourceType: influxdb.NotificationEndpointResourceType,
 					},
 				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
+					},
+				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
@@ -1044,6 +1253,12 @@ func UpdateNotificationEndpoint(
 				},
 			},
 			wants: wants{
+				secret: &Secret{
+					OrganizationID: MustIDBase16(fourID),
+					Env: map[string]string{
+						twoID + "-routing-key": "pager-duty-secret-2",
+					},
+				},
 				notificationEndpoint: &endpoint.PagerDuty{
 					Base: endpoint.Base{
 						ID:     MustIDBase16(twoID),
@@ -1076,6 +1291,15 @@ func UpdateNotificationEndpoint(
 						UserID:       MustIDBase16(sixID),
 						UserType:     influxdb.Member,
 						ResourceType: influxdb.NotificationEndpointResourceType,
+					},
+				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
 					},
 				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
@@ -1127,6 +1351,12 @@ func UpdateNotificationEndpoint(
 				},
 			},
 			wants: wants{
+				secret: &Secret{
+					OrganizationID: MustIDBase16(fourID),
+					Env: map[string]string{
+						twoID + "-routing-key": "pager-duty-value2",
+					},
+				},
 				notificationEndpoint: &endpoint.PagerDuty{
 					Base: endpoint.Base{
 						ID:     MustIDBase16(twoID),
@@ -1161,6 +1391,20 @@ func UpdateNotificationEndpoint(
 			}
 			if err != nil {
 				return
+			}
+			scrt := &Secret{
+				OrganizationID: tt.args.orgID,
+				Env:            make(map[string]string),
+			}
+			for _, fld := range edp.SecretFields() {
+				scrtValue, err := s.LoadSecret(ctx, tt.args.orgID, fld.Key)
+				if err != nil {
+					t.Fatalf("failed to retrieve keys")
+				}
+				scrt.Env[fld.Key] = scrtValue
+			}
+			if diff := cmp.Diff(scrt, tt.wants.secret, secretCmpOptions); diff != "" {
+				t.Errorf("secret is different -got/+want\ndiff %s", diff)
 			}
 		})
 	}
@@ -1207,6 +1451,15 @@ func PatchNotificationEndpoint(
 						UserID:       MustIDBase16(sixID),
 						UserType:     influxdb.Member,
 						ResourceType: influxdb.NotificationEndpointResourceType,
+					},
+				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
 					},
 				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
@@ -1270,6 +1523,15 @@ func PatchNotificationEndpoint(
 						UserID:       MustIDBase16(sixID),
 						UserType:     influxdb.Member,
 						ResourceType: influxdb.NotificationEndpointResourceType,
+					},
+				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
 					},
 				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
@@ -1357,8 +1619,7 @@ func DeleteNotificationEndpoint(
 	type wants struct {
 		notificationEndpoints []influxdb.NotificationEndpoint
 		userResourceMappings  []*influxdb.UserResourceMapping
-		secretFlds            []influxdb.SecretField
-		orgID                 influxdb.ID
+		secrets               []string
 		err                   error
 	}
 	tests := []struct {
@@ -1382,6 +1643,15 @@ func DeleteNotificationEndpoint(
 						UserID:       MustIDBase16(sixID),
 						UserType:     influxdb.Member,
 						ResourceType: influxdb.NotificationEndpointResourceType,
+					},
+				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
 					},
 				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
@@ -1424,6 +1694,10 @@ func DeleteNotificationEndpoint(
 				err: &influxdb.Error{
 					Code: influxdb.EInvalid,
 					Msg:  "provided notification endpoint ID has invalid format",
+				},
+				secrets: []string{
+					oneID + "-token",
+					twoID + "-routing-key",
 				},
 				userResourceMappings: []*influxdb.UserResourceMapping{
 					{
@@ -1487,6 +1761,15 @@ func DeleteNotificationEndpoint(
 						ResourceType: influxdb.NotificationEndpointResourceType,
 					},
 				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
+					},
+				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
@@ -1526,6 +1809,10 @@ func DeleteNotificationEndpoint(
 				err: &influxdb.Error{
 					Code: influxdb.ENotFound,
 					Msg:  "notification endpoint not found",
+				},
+				secrets: []string{
+					oneID + "-token",
+					twoID + "-routing-key",
 				},
 				userResourceMappings: []*influxdb.UserResourceMapping{
 					{
@@ -1590,6 +1877,15 @@ func DeleteNotificationEndpoint(
 						ResourceType: influxdb.NotificationEndpointResourceType,
 					},
 				},
+				Secrets: []Secret{
+					{
+						OrganizationID: MustIDBase16(fourID),
+						Env: map[string]string{
+							oneID + "-token":       "slack-secret-1",
+							twoID + "-routing-key": "pager-duty-secret-2",
+						},
+					},
+				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
@@ -1627,10 +1923,9 @@ func DeleteNotificationEndpoint(
 				userID: MustIDBase16(sixID),
 			},
 			wants: wants{
-				secretFlds: []influxdb.SecretField{
-					{Key: twoID + "-routing-key"},
+				secrets: []string{
+					oneID + "-token",
 				},
-				orgID: MustIDBase16(fourID),
 				userResourceMappings: []*influxdb.UserResourceMapping{
 					{
 						ResourceID:   MustIDBase16(oneID),
@@ -1663,16 +1958,8 @@ func DeleteNotificationEndpoint(
 			s, done := init(tt.fields, t)
 			defer done()
 			ctx := context.Background()
-			flds, orgID, err := s.DeleteNotificationEndpoint(ctx, tt.args.id)
+			err := s.DeleteNotificationEndpoint(ctx, tt.args.id)
 			ErrorsEqual(t, err, tt.wants.err)
-			if err != nil {
-				if diff := cmp.Diff(flds, tt.wants.secretFlds); diff != "" {
-					t.Errorf("delete notification endpoint secret fields are different -got/+want\ndiff %s", diff)
-				}
-				if diff := cmp.Diff(orgID, tt.wants.orgID); diff != "" {
-					t.Errorf("delete notification endpoint org id is different -got/+want\ndiff %s", diff)
-				}
-			}
 
 			filter := influxdb.NotificationEndpointFilter{}
 			edps, n, err := s.FindNotificationEndpoints(ctx, filter)
@@ -1702,6 +1989,13 @@ func DeleteNotificationEndpoint(
 			}
 			if diff := cmp.Diff(urms, tt.wants.userResourceMappings, userResourceMappingCmpOptions...); diff != "" {
 				t.Errorf("user resource mappings are different -got/+want\ndiff %s", diff)
+			}
+			scrtKeys, err := s.GetSecretKeys(ctx, tt.args.orgID)
+			if err != nil {
+				t.Fatalf("failed to retrieve secret keys: %v", err)
+			}
+			if diff := cmp.Diff(scrtKeys, tt.wants.secrets, secretCmpOptions...); diff != "" {
+				t.Errorf("secret keys are different -got/+want\ndiff %s", diff)
 			}
 		})
 	}

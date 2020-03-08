@@ -25,7 +25,6 @@ type NotificationEndpointBackend struct {
 	LabelService                influxdb.LabelService
 	UserService                 influxdb.UserService
 	OrganizationService         influxdb.OrganizationService
-	SecretService               influxdb.SecretService
 }
 
 // NewNotificationEndpointBackend returns a new instance of NotificationEndpointBackend.
@@ -39,7 +38,6 @@ func NewNotificationEndpointBackend(b *APIBackend) *NotificationEndpointBackend 
 		LabelService:                b.LabelService,
 		UserService:                 b.UserService,
 		OrganizationService:         b.OrganizationService,
-		SecretService:               b.SecretService,
 	}
 }
 
@@ -54,7 +52,6 @@ type NotificationEndpointHandler struct {
 	LabelService                influxdb.LabelService
 	UserService                 influxdb.UserService
 	OrganizationService         influxdb.OrganizationService
-	SecretService               influxdb.SecretService
 }
 
 const (
@@ -80,7 +77,6 @@ func NewNotificationEndpointHandler(b *NotificationEndpointBackend) *Notificatio
 		LabelService:                b.LabelService,
 		UserService:                 b.UserService,
 		OrganizationService:         b.OrganizationService,
-		SecretService:               b.SecretService,
 	}
 	h.HandlerFunc("POST", notificationEndpointsPath, h.handlePostNotificationEndpoint)
 	h.HandlerFunc("GET", notificationEndpointsPath, h.handleGetNotificationEndpoints)
@@ -399,19 +395,6 @@ func (h *NotificationEndpointHandler) handlePostNotificationEndpoint(w http.Resp
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	for _, fld := range edp.SecretFields() {
-		if fld.Value != nil {
-			if err := h.SecretService.PutSecret(ctx, edp.GetOrgID(),
-				fld.Key, *fld.Value); err != nil {
-				h.HandleHTTPError(ctx, &influxdb.Error{
-					Op:  "http/handlePostNotificationEndpoint",
-					Err: err,
-				}, w)
-				return
-			}
-		}
-	}
-
 	h.Logger.Debug("notificationEndpoint created", zap.String("notificationEndpoint", fmt.Sprint(edp)))
 
 	if err := encodeResponse(ctx, w, http.StatusCreated, newNotificationEndpointResponse(edp, []*influxdb.Label{})); err != nil {
@@ -440,19 +423,6 @@ func (h *NotificationEndpointHandler) handlePutNotificationEndpoint(w http.Respo
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
-	}
-
-	for _, fld := range edp.SecretFields() {
-		if fld.Value != nil {
-			if err := h.SecretService.PutSecret(ctx, edp.GetOrgID(),
-				fld.Key, *fld.Value); err != nil {
-				h.HandleHTTPError(ctx, &influxdb.Error{
-					Op:  "http/handlePutNotificationEndpoint",
-					Err: err,
-				}, w)
-				return
-			}
-		}
 	}
 
 	labels, err := h.LabelService.FindResourceLabels(ctx, influxdb.LabelMappingFilter{ResourceID: edp.GetID()})
@@ -507,27 +477,8 @@ func (h *NotificationEndpointHandler) handleDeleteNotificationEndpoint(w http.Re
 		return
 	}
 
-	flds, orgID, err := h.NotificationEndpointService.DeleteNotificationEndpoint(ctx, i)
-	if err != nil {
+	if err = h.NotificationEndpointService.DeleteNotificationEndpoint(ctx, i); err != nil {
 		h.HandleHTTPError(ctx, err, w)
-		return
-	}
-	keys := make([]string, len(flds))
-	for k, fld := range flds {
-		if fld.Key == "" {
-			h.HandleHTTPError(ctx, &influxdb.Error{
-				Op:  "http/handleDeleteNotificationEndpoint",
-				Msg: "Bad Secret Key in endpoint " + i.String(),
-			}, w)
-			return
-		}
-		keys[k] = fld.Key
-	}
-	if err := h.SecretService.DeleteSecret(ctx, orgID, keys...); err != nil {
-		h.HandleHTTPError(ctx, &influxdb.Error{
-			Op:  "http/handleDeleteNotificationEndpoint",
-			Err: err,
-		}, w)
 		return
 	}
 	h.Logger.Debug("notificationEndpoint deleted", zap.String("notificationEndpointID", fmt.Sprint(i)))

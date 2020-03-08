@@ -171,7 +171,7 @@ func NewAPIHandler(b *APIBackend) *APIHandler {
 
 	notificationEndpointBackend := NewNotificationEndpointBackend(b)
 	notificationEndpointBackend.NotificationEndpointService = authorizer.NewNotificationEndpointService(b.NotificationEndpointService,
-		b.UserResourceMappingService, b.OrganizationService)
+		b.UserResourceMappingService, b.OrganizationService, b.SecretService)
 	h.NotificationEndpointHandler = NewNotificationEndpointHandler(notificationEndpointBackend)
 
 	checkBackend := NewCheckBackend(b)

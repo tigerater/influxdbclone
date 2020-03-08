@@ -10,8 +10,6 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/google/go-cmp/cmp"
-
 	"github.com/influxdata/influxdb"
 	pcontext "github.com/influxdata/influxdb/context"
 	"github.com/influxdata/influxdb/mock"
@@ -31,7 +29,6 @@ func NewMockNotificationEndpointBackend() *NotificationEndpointBackend {
 		LabelService:                mock.NewLabelService(),
 		UserService:                 mock.NewUserService(),
 		OrganizationService:         mock.NewOrganizationService(),
-		SecretService:               mock.NewSecretService(),
 	}
 }
 
@@ -391,22 +388,17 @@ func TestService_handleGetNotificationEndpoint(t *testing.T) {
 
 func TestService_handlePostNotificationEndpoint(t *testing.T) {
 	type fields struct {
-		Secrets                     map[string]string
-		SecretService               influxdb.SecretService
 		NotificationEndpointService influxdb.NotificationEndpointService
 		OrganizationService         influxdb.OrganizationService
 	}
 	type args struct {
-		endpoint interface{}
+		endpoint influxdb.NotificationEndpoint
 	}
 	type wants struct {
 		statusCode  int
 		contentType string
 		body        string
-		secrets     map[string]string
 	}
-
-	var secrets map[string]string
 
 	tests := []struct {
 		name   string
@@ -417,17 +409,9 @@ func TestService_handlePostNotificationEndpoint(t *testing.T) {
 		{
 			name: "create a new notification endpoint",
 			fields: fields{
-				Secrets: map[string]string{},
-				SecretService: &mock.SecretService{
-					PutSecretFn: func(ctx context.Context, orgID influxdb.ID, k string, v string) error {
-						secrets[orgID.String()+"-"+k] = v
-						return nil
-					},
-				},
 				NotificationEndpointService: &mock.NotificationEndpointService{
 					CreateNotificationEndpointF: func(ctx context.Context, edp influxdb.NotificationEndpoint, userID influxdb.ID) error {
 						edp.SetID(influxTesting.MustIDBase16("020f755c3c082000"))
-						edp.BackfillSecretKeys()
 						return nil
 					},
 				},
@@ -438,25 +422,22 @@ func TestService_handlePostNotificationEndpoint(t *testing.T) {
 				},
 			},
 			args: args{
-				endpoint: map[string]interface{}{
-					"name":            "hello",
-					"type":            "http",
-					"orgID":           "6f626f7274697320",
-					"description":     "desc1",
-					"status":          "active",
-					"url":             "example.com",
-					"username":        "user1",
-					"password":        "password1",
-					"authMethod":      "basic",
-					"method":          "POST",
-					"contentTemplate": "template",
+				endpoint: &endpoint.HTTP{
+					Base: endpoint.Base{
+						Name:        "hello",
+						OrgID:       influxTesting.MustIDBase16("6f626f7274697320"),
+						Description: "desc1",
+						Status:      influxdb.Active,
+					},
+					URL:             "example.com",
+					Username:        influxdb.SecretField{Key: "http-user-key"},
+					Password:        influxdb.SecretField{Key: "http-password-key"},
+					AuthMethod:      "basic",
+					Method:          "POST",
+					ContentTemplate: "template",
 				},
 			},
 			wants: wants{
-				secrets: map[string]string{
-					"6f626f7274697320-020f755c3c082000-password": "password1",
-					"6f626f7274697320-020f755c3c082000-username": "user1",
-				},
 				statusCode:  http.StatusCreated,
 				contentType: "application/json; charset=utf-8",
 				body: `
@@ -469,8 +450,8 @@ func TestService_handlePostNotificationEndpoint(t *testing.T) {
   },
   "url": "example.com",
   "status": "active",
-  "username": "secret: 020f755c3c082000-username",
-  "password": "secret: 020f755c3c082000-password",
+  "username": "secret: http-user-key",
+  "password": "secret: http-password-key",
   "token":"",
   "authMethod": "basic",
   "contentTemplate": "template",
@@ -491,11 +472,9 @@ func TestService_handlePostNotificationEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			secrets = tt.fields.Secrets
 			notificationEndpointBackend := NewMockNotificationEndpointBackend()
 			notificationEndpointBackend.NotificationEndpointService = tt.fields.NotificationEndpointService
 			notificationEndpointBackend.OrganizationService = tt.fields.OrganizationService
-			notificationEndpointBackend.SecretService = tt.fields.SecretService
 			h := NewNotificationEndpointHandler(notificationEndpointBackend)
 
 			b, err := json.Marshal(tt.args.endpoint)
@@ -525,25 +504,18 @@ func TestService_handlePostNotificationEndpoint(t *testing.T) {
 					t.Errorf("%q. handlePostNotificationEndpoint() = ***%s***", tt.name, diff)
 				}
 			}
-			if diff := cmp.Diff(secrets, tt.wants.secrets); diff != "" {
-				t.Errorf("%q. handlePostNotificationEndpoint secrets are different ***%s***", tt.name, diff)
-			}
 		})
 	}
 }
 
 func TestService_handleDeleteNotificationEndpoint(t *testing.T) {
-	var secrets map[string]string
 	type fields struct {
-		Secrets                     map[string]string
-		SecretService               influxdb.SecretService
 		NotificationEndpointService influxdb.NotificationEndpointService
 	}
 	type args struct {
 		id string
 	}
 	type wants struct {
-		secrets     map[string]string
 		statusCode  int
 		contentType string
 		body        string
@@ -558,27 +530,13 @@ func TestService_handleDeleteNotificationEndpoint(t *testing.T) {
 		{
 			name: "remove a notification endpoint by id",
 			fields: fields{
-				Secrets: map[string]string{
-					"020f755c3c082001-k1": "v1",
-					"020f755c3c082001-k2": "v2",
-				},
-				SecretService: &mock.SecretService{
-					DeleteSecretFn: func(ctx context.Context, orgID influxdb.ID, ks ...string) error {
-						for _, k := range ks {
-							delete(secrets, orgID.String()+"-"+k)
-						}
-						return nil
-					},
-				},
-				NotificationEndpointService: &mock.NotificationEndpointService{
-					DeleteNotificationEndpointF: func(ctx context.Context, id influxdb.ID) ([]influxdb.SecretField, influxdb.ID, error) {
+				&mock.NotificationEndpointService{
+					DeleteNotificationEndpointF: func(ctx context.Context, id influxdb.ID) error {
 						if id == influxTesting.MustIDBase16("020f755c3c082000") {
-							return []influxdb.SecretField{
-								{Key: "k1"},
-							}, influxTesting.MustIDBase16("020f755c3c082001"), nil
+							return nil
 						}
 
-						return nil, 0, fmt.Errorf("wrong id")
+						return fmt.Errorf("wrong id")
 					},
 				},
 			},
@@ -586,18 +544,15 @@ func TestService_handleDeleteNotificationEndpoint(t *testing.T) {
 				id: "020f755c3c082000",
 			},
 			wants: wants{
-				secrets: map[string]string{
-					"020f755c3c082001-k2": "v2",
-				},
 				statusCode: http.StatusNoContent,
 			},
 		},
 		{
 			name: "notification endpoint not found",
 			fields: fields{
-				NotificationEndpointService: &mock.NotificationEndpointService{
-					DeleteNotificationEndpointF: func(ctx context.Context, id influxdb.ID) ([]influxdb.SecretField, influxdb.ID, error) {
-						return nil, 0, &influxdb.Error{
+				&mock.NotificationEndpointService{
+					DeleteNotificationEndpointF: func(ctx context.Context, id influxdb.ID) error {
+						return &influxdb.Error{
 							Code: influxdb.ENotFound,
 							Msg:  "notification endpoint not found",
 						}
@@ -615,12 +570,9 @@ func TestService_handleDeleteNotificationEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			secrets = tt.fields.Secrets
-
 			notificationEndpointBackend := NewMockNotificationEndpointBackend()
 			notificationEndpointBackend.HTTPErrorHandler = ErrorHandler(0)
 			notificationEndpointBackend.NotificationEndpointService = tt.fields.NotificationEndpointService
-			notificationEndpointBackend.SecretService = tt.fields.SecretService
 			h := NewNotificationEndpointHandler(notificationEndpointBackend)
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
@@ -655,10 +607,6 @@ func TestService_handleDeleteNotificationEndpoint(t *testing.T) {
 				} else if !eq {
 					t.Errorf("%q. handleDeleteNotificationEndpoint() = ***%s***", tt.name, diff)
 				}
-			}
-
-			if diff := cmp.Diff(secrets, tt.wants.secrets); diff != "" {
-				t.Errorf("%q. handlePostNotificationEndpoint secrets are different ***%s***", tt.name, diff)
 			}
 		})
 	}
@@ -819,18 +767,14 @@ func TestService_handlePatchNotificationEndpoint(t *testing.T) {
 }
 
 func TestService_handleUpdateNotificationEndpoint(t *testing.T) {
-	var secrets map[string]string
 	type fields struct {
-		Secrets                     map[string]string
-		SecretService               influxdb.SecretService
 		NotificationEndpointService influxdb.NotificationEndpointService
 	}
 	type args struct {
 		id  string
-		edp map[string]interface{}
+		edp influxdb.NotificationEndpoint
 	}
 	type wants struct {
-		secrets     map[string]string
 		statusCode  int
 		contentType string
 		body        string
@@ -845,21 +789,23 @@ func TestService_handleUpdateNotificationEndpoint(t *testing.T) {
 		{
 			name: "update a notification endpoint name",
 			fields: fields{
-				Secrets: map[string]string{
-					"020f755c3c082001-020f755c3c082000-token": "tok-0",
-				},
-				SecretService: &mock.SecretService{
-					PutSecretFn: func(ctx context.Context, orgID influxdb.ID, k string, v string) error {
-						secrets[orgID.String()+"-"+k] = v
-						return nil
-					},
-				},
-				NotificationEndpointService: &mock.NotificationEndpointService{
+				&mock.NotificationEndpointService{
 					UpdateNotificationEndpointF: func(ctx context.Context, id influxdb.ID, edp influxdb.NotificationEndpoint, userID influxdb.ID) (influxdb.NotificationEndpoint, error) {
 						if id == influxTesting.MustIDBase16("020f755c3c082000") {
-							edp.SetID(id)
-							edp.BackfillSecretKeys()
-							return edp, nil
+							d := &endpoint.Slack{
+								Base: endpoint.Base{
+									ID:     influxTesting.MustIDBase16("020f755c3c082000"),
+									Name:   "hello",
+									Status: influxdb.Inactive,
+									OrgID:  influxTesting.MustIDBase16("020f755c3c082000"),
+								},
+							}
+
+							d = edp.(*endpoint.Slack)
+							d.SetID(influxTesting.MustIDBase16("020f755c3c082000"))
+							d.SetOrgID(influxTesting.MustIDBase16("020f755c3c082000"))
+
+							return d, nil
 						}
 
 						return nil, fmt.Errorf("not found")
@@ -868,19 +814,16 @@ func TestService_handleUpdateNotificationEndpoint(t *testing.T) {
 			},
 			args: args{
 				id: "020f755c3c082000",
-				edp: map[string]interface{}{
-					"name":   "example",
-					"status": "active",
-					"orgID":  "020f755c3c082001",
-					"type":   "slack",
-					"url":    "example.com",
-					"token":  "token-2",
+				edp: &endpoint.Slack{
+					Base: endpoint.Base{
+						Name:   "example",
+						Status: influxdb.Active,
+					},
+					URL:   "example.com",
+					Token: influxdb.SecretField{Key: "user-key"},
 				},
 			},
 			wants: wants{
-				secrets: map[string]string{
-					"020f755c3c082001-020f755c3c082000-token": "token-2",
-				},
 				statusCode:  http.StatusOK,
 				contentType: "application/json; charset=utf-8",
 				body: `
@@ -894,10 +837,10 @@ func TestService_handleUpdateNotificationEndpoint(t *testing.T) {
 		  "createdAt": "0001-01-01T00:00:00Z",
 		  "updatedAt": "0001-01-01T00:00:00Z",
 		  "id": "020f755c3c082000",
-		  "orgID": "020f755c3c082001",
+		  "orgID": "020f755c3c082000",
 		  "name": "example",
 		  "url": "example.com",
-		  "token": "secret: 020f755c3c082000-token",
+		  "token": "secret: user-key",
           "type": "slack",
 		  "status": "active",
           "labels": []
@@ -908,8 +851,7 @@ func TestService_handleUpdateNotificationEndpoint(t *testing.T) {
 		{
 			name: "notification endpoint not found",
 			fields: fields{
-				Secrets: map[string]string{},
-				NotificationEndpointService: &mock.NotificationEndpointService{
+				&mock.NotificationEndpointService{
 					UpdateNotificationEndpointF: func(ctx context.Context, id influxdb.ID, edp influxdb.NotificationEndpoint, userID influxdb.ID) (influxdb.NotificationEndpoint, error) {
 						return nil, &influxdb.Error{
 							Code: influxdb.ENotFound,
@@ -920,13 +862,13 @@ func TestService_handleUpdateNotificationEndpoint(t *testing.T) {
 			},
 			args: args{
 				id: "020f755c3c082000",
-				edp: map[string]interface{}{
-					"type": "slack",
-					"name": "example",
+				edp: &endpoint.Slack{
+					Base: endpoint.Base{
+						Name: "example",
+					},
 				},
 			},
 			wants: wants{
-				secrets:    map[string]string{},
 				statusCode: http.StatusNotFound,
 			},
 		},
@@ -934,11 +876,9 @@ func TestService_handleUpdateNotificationEndpoint(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			secrets = tt.fields.Secrets
 			notificationEndpointBackend := NewMockNotificationEndpointBackend()
 			notificationEndpointBackend.HTTPErrorHandler = ErrorHandler(0)
 			notificationEndpointBackend.NotificationEndpointService = tt.fields.NotificationEndpointService
-			notificationEndpointBackend.SecretService = tt.fields.SecretService
 			h := NewNotificationEndpointHandler(notificationEndpointBackend)
 
 			b, err := json.Marshal(tt.args.edp)
@@ -977,9 +917,6 @@ func TestService_handleUpdateNotificationEndpoint(t *testing.T) {
 				} else if !eq {
 					t.Errorf("%q. handlePutNotificationEndpoint() = ***%s***", tt.name, diff)
 				}
-			}
-			if diff := cmp.Diff(secrets, tt.wants.secrets); diff != "" {
-				t.Errorf("%q. handlePostNotificationEndpoint secrets are different ***%s***", tt.name, diff)
 			}
 		})
 	}

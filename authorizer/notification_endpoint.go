@@ -14,6 +14,7 @@ type NotificationEndpointService struct {
 	s influxdb.NotificationEndpointService
 	influxdb.UserResourceMappingService
 	influxdb.OrganizationService
+	influxdb.SecretService
 }
 
 // NewNotificationEndpointService constructs an instance of an authorizing notification endpoint serivce.
@@ -21,11 +22,13 @@ func NewNotificationEndpointService(
 	s influxdb.NotificationEndpointService,
 	urm influxdb.UserResourceMappingService,
 	org influxdb.OrganizationService,
+	srt influxdb.SecretService,
 ) *NotificationEndpointService {
 	return &NotificationEndpointService{
 		s:                          s,
 		UserResourceMappingService: urm,
 		OrganizationService:        org,
+		SecretService:              srt,
 	}
 }
 
@@ -122,14 +125,14 @@ func (s *NotificationEndpointService) PatchNotificationEndpoint(ctx context.Cont
 }
 
 // DeleteNotificationEndpoint checks to see if the authorizer on context has write access to the notification endpoint provided.
-func (s *NotificationEndpointService) DeleteNotificationEndpoint(ctx context.Context, id influxdb.ID) ([]influxdb.SecretField, influxdb.ID, error) {
+func (s *NotificationEndpointService) DeleteNotificationEndpoint(ctx context.Context, id influxdb.ID) error {
 	edp, err := s.FindNotificationEndpointByID(ctx, id)
 	if err != nil {
-		return nil, 0, err
+		return err
 	}
 
 	if err := authorizeWriteOrg(ctx, edp.GetOrgID()); err != nil {
-		return nil, 0, err
+		return err
 	}
 
 	return s.s.DeleteNotificationEndpoint(ctx, id)

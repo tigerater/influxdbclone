@@ -97,6 +97,8 @@ type NotificationEndpointService interface {
 	UserResourceMappingService
 	// OrganizationService is needed for search filter
 	OrganizationService
+	// SecretService is needed to check if the secret key exists.
+	SecretService
 
 	// FindNotificationEndpointByID returns a single notification endpoint by ID.
 	FindNotificationEndpointByID(ctx context.Context, id ID) (NotificationEndpoint, error)
@@ -116,6 +118,6 @@ type NotificationEndpointService interface {
 	// Returns the new notification endpoint state after update.
 	PatchNotificationEndpoint(ctx context.Context, id ID, upd NotificationEndpointUpdate) (NotificationEndpoint, error)
 
-	// DeleteNotificationEndpoint removes a notification endpoint by ID, returns secret fields, orgID for further deletion.
-	DeleteNotificationEndpoint(ctx context.Context, id ID) (flds []SecretField, orgID ID, err error)
+	// DeleteNotificationEndpoint removes a notification endpoint by ID.
+	DeleteNotificationEndpoint(ctx context.Context, id ID) error
 }

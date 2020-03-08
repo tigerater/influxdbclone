@@ -56,6 +56,14 @@ func initNotificationEndpointService(s kv.Store, f influxdbtesting.NotificationE
 		t.Fatalf("error initializing user service: %v", err)
 	}
 
+	for _, s := range f.Secrets {
+		for k, v := range s.Env {
+			if err := svc.PutSecret(ctx, s.OrganizationID, k, v); err != nil {
+				t.Fatalf("failed to populate secrets")
+			}
+		}
+	}
+
 	for _, edp := range f.NotificationEndpoints {
 		if err := svc.PutNotificationEndpoint(ctx, edp); err != nil {
 			t.Fatalf("failed to populate notification endpoint: %v", err)
@@ -76,7 +84,7 @@ func initNotificationEndpointService(s kv.Store, f influxdbtesting.NotificationE
 
 	return svc, func() {
 		for _, edp := range f.NotificationEndpoints {
-			if _, _, err := svc.DeleteNotificationEndpoint(ctx, edp.GetID()); err != nil {
+			if err := svc.DeleteNotificationEndpoint(ctx, edp.GetID()); err != nil {
 				t.Logf("failed to remove notification endpoint: %v", err)
 			}
 		}
@@ -89,6 +97,14 @@ func initNotificationEndpointService(s kv.Store, f influxdbtesting.NotificationE
 		for _, urm := range f.UserResourceMappings {
 			if err := svc.DeleteUserResourceMapping(ctx, urm.ResourceID, urm.UserID); err != nil && influxdb.ErrorCode(err) != influxdb.ENotFound {
 				t.Logf("failed to remove urm rule: %v", err)
+			}
+		}
+
+		for _, s := range f.Secrets {
+			for k, v := range s.Env {
+				if err := svc.DeleteSecret(ctx, s.OrganizationID, k, v); err != nil && influxdb.ErrorCode(err) != influxdb.ENotFound {
+					t.Fatalf("failed to populate secrets")
+				}
 			}
 		}
 	}
