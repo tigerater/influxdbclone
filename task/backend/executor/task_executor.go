@@ -245,15 +245,11 @@ type workerMaker struct {
 }
 
 func (wm *workerMaker) new() interface{} {
-	return &worker{wm.te, exhaustResultIterators}
+	return &worker{wm.te}
 }
 
 type worker struct {
 	te *TaskExecutor
-
-	// exhaustResultIterators is used to exhaust the result
-	// of a flux query
-	exhaustResultIterators func(res flux.Result) error
 }
 
 func (w *worker) work() {
@@ -380,21 +376,16 @@ func (w *worker) executeQuery(p *Promise) {
 		return
 	}
 
-	var runErr error
 	// Drain the result iterator.
 	for it.More() {
 		// Consume the full iterator so that we don't leak outstanding iterators.
 		res := it.Next()
-		if runErr = w.exhaustResultIterators(res); runErr != nil {
-			w.te.logger.Info("Error exhausting result iterator", zap.Error(runErr), zap.String("name", res.Name()))
+		if err := exhaustResultIterators(res); err != nil {
+			w.te.logger.Info("Error exhausting result iterator", zap.Error(err), zap.String("name", res.Name()))
 		}
 	}
 
 	it.Release()
-
-	if runErr == nil {
-		runErr = it.Err()
-	}
 
 	// log the statistics on the run
 	stats := it.Statistics()
@@ -404,7 +395,7 @@ func (w *worker) executeQuery(p *Promise) {
 		w.te.tcs.AddRunLog(p.ctx, p.task.ID, p.run.ID, time.Now(), string(b))
 	}
 
-	w.finish(p, backend.RunSuccess, runErr)
+	w.finish(p, backend.RunSuccess, it.Err())
 }
 
 // Promise represents a promise the executor makes to finish a run's execution asynchronously.

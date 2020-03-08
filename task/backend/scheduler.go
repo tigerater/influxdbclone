@@ -294,7 +294,7 @@ func (s *TickScheduler) ClaimTask(authCtx context.Context, task *platform.Task) 
 		// do nothing and allow ticks
 	}
 
-	defer func() { s.metrics.ClaimTask(err == nil) }()
+	defer s.metrics.ClaimTask(err == nil)
 
 	ts, err := newTaskScheduler(s.ctx, authCtx, s.wg, s, task, s.metrics)
 	if err != nil {
@@ -303,8 +303,7 @@ func (s *TickScheduler) ClaimTask(authCtx context.Context, task *platform.Task) 
 
 	_, ok := s.taskSchedulers[task.ID]
 	if ok {
-		err = &platform.ErrTaskAlreadyClaimed
-		return err
+		return &platform.ErrTaskAlreadyClaimed
 	}
 
 	s.taskSchedulers[task.ID] = ts
@@ -315,7 +314,7 @@ func (s *TickScheduler) ClaimTask(authCtx context.Context, task *platform.Task) 
 		return err
 	}
 	if len(runs) > 0 {
-		if err = ts.WorkCurrentlyRunning(runs); err != nil {
+		if err := ts.WorkCurrentlyRunning(runs); err != nil {
 			return err
 		}
 	}
