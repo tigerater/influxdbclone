@@ -26,7 +26,7 @@ func TestThreshold_GenerateFlux(t *testing.T) {
 		wants wants
 	}{
 		{
-			name: "all levels with yield and stop",
+			name: "all levels",
 			args: args{
 				threshold: check.Threshold{
 					Base: check.Base{
@@ -39,7 +39,7 @@ func TestThreshold_GenerateFlux(t *testing.T) {
 						Every:                 mustDuration("1h"),
 						StatusMessageTemplate: "whoa! {check.yeah}",
 						Query: influxdb.DashboardQuery{
-							Text: `from(bucket: "foo") |> range(start: -1d, stop: now()) |> aggregateWindow(every: 1m, fn: mean) |> yield()`,
+							Text: `data = from(bucket: "foo") |> range(start: -1d)`,
 						},
 					},
 					Thresholds: []check.ThresholdConfig{
@@ -77,20 +77,13 @@ func TestThreshold_GenerateFlux(t *testing.T) {
 			wants: wants{
 				script: `package main
 import "influxdata/influxdb/alerts"
-import "influxdata/influxdb/v1"
 
 data = from(bucket: "foo")
-	|> range(start: -1h)
-	|> aggregateWindow(every: 1h, fn: mean)
+	|> range(start: -1d)
 
 option task = {name: "moo", every: 1h}
 
-check = {
-	_check_id: "000000000000000a",
-	_check_name: "moo",
-	_check_type: "threshold",
-	tags: {aaa: "vaaa", bbb: "vbbb"},
-}
+check = {checkID: "000000000000000a", tags: {aaa: "vaaa", bbb: "vbbb"}}
 ok = (r) =>
 	(r._value > 10.0)
 info = (r) =>
@@ -103,9 +96,8 @@ messageFn = (r, check) =>
 	("whoa! {check.yeah}")
 
 data
-	|> v1.fieldsAsCols()
 	|> alerts.check(
-		data: check,
+		check: check,
 		messageFn: messageFn,
 		ok: ok,
 		info: info,
@@ -115,7 +107,7 @@ data
 			},
 		},
 		{
-			name: "all levels with yield",
+			name: "crit and warn",
 			args: args{
 				threshold: check.Threshold{
 					Base: check.Base{
@@ -126,39 +118,25 @@ data
 							{Key: "bbb", Value: "vbbb"},
 						},
 						Every:                 mustDuration("1h"),
+						Offset:                mustDuration("10m"),
 						StatusMessageTemplate: "whoa! {check.yeah}",
 						Query: influxdb.DashboardQuery{
-							Text: `from(bucket: "foo") |> range(start: -1d) |> aggregateWindow(every: 1m, fn: mean) |> yield()`,
+							Text: `data = from(bucket: "foo") |> range(start: -1d)`,
 						},
 					},
 					Thresholds: []check.ThresholdConfig{
-						check.Greater{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Ok,
-							},
-							Value: l,
-						},
 						check.Lesser{
 							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Info,
+
+								Level: notification.Warn,
 							},
 							Value: u,
 						},
-						check.Range{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Warn,
-							},
-							Min:    l,
-							Max:    u,
-							Within: true,
-						},
-						check.Range{
+						check.Greater{
 							ThresholdConfigBase: check.ThresholdConfigBase{
 								Level: notification.Critical,
 							},
-							Min:    l,
-							Max:    u,
-							Within: true,
+							Value: u,
 						},
 					},
 				},
@@ -166,45 +144,31 @@ data
 			wants: wants{
 				script: `package main
 import "influxdata/influxdb/alerts"
-import "influxdata/influxdb/v1"
 
 data = from(bucket: "foo")
-	|> range(start: -1h)
-	|> aggregateWindow(every: 1h, fn: mean)
+	|> range(start: -1d)
 
-option task = {name: "moo", every: 1h}
+option task = {name: "moo", every: 1h, offset: 10m}
 
-check = {
-	_check_id: "000000000000000a",
-	_check_name: "moo",
-	_check_type: "threshold",
-	tags: {aaa: "vaaa", bbb: "vbbb"},
-}
-ok = (r) =>
-	(r._value > 10.0)
-info = (r) =>
-	(r._value < 40.0)
+check = {checkID: "000000000000000a", tags: {aaa: "vaaa", bbb: "vbbb"}}
 warn = (r) =>
-	(r._value < 40.0 and r._value > 10.0)
+	(r._value < 40.0)
 crit = (r) =>
-	(r._value < 40.0 and r._value > 10.0)
+	(r._value > 40.0)
 messageFn = (r, check) =>
 	("whoa! {check.yeah}")
 
 data
-	|> v1.fieldsAsCols()
 	|> alerts.check(
-		data: check,
+		check: check,
 		messageFn: messageFn,
-		ok: ok,
-		info: info,
 		warn: warn,
 		crit: crit,
 	)`,
 			},
 		},
 		{
-			name: "all levels without yield",
+			name: "no levels",
 			args: args{
 				threshold: check.Threshold{
 					Base: check.Base{
@@ -214,82 +178,110 @@ data
 							{Key: "aaa", Value: "vaaa"},
 							{Key: "bbb", Value: "vbbb"},
 						},
-						Every:                 mustDuration("1h"),
 						StatusMessageTemplate: "whoa! {check.yeah}",
 						Query: influxdb.DashboardQuery{
-							Text: `from(bucket: "foo") |> range(start: -1d) |> aggregateWindow(every: 1m, fn: mean)`,
+							Text: `data = from(bucket: "foo") |> range(start: -1d)`,
 						},
 					},
-					Thresholds: []check.ThresholdConfig{
-						check.Greater{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Ok,
-							},
-							Value: l,
-						},
-						check.Lesser{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Info,
-							},
-							Value: u,
-						},
-						check.Range{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Warn,
-							},
-							Min:    l,
-							Max:    u,
-							Within: true,
-						},
-						check.Range{
-							ThresholdConfigBase: check.ThresholdConfigBase{
-								Level: notification.Critical,
-							},
-							Min:    l,
-							Max:    u,
-							Within: true,
-						},
-					},
+					Thresholds: []check.ThresholdConfig{},
 				},
 			},
 			wants: wants{
 				script: `package main
 import "influxdata/influxdb/alerts"
-import "influxdata/influxdb/v1"
 
 data = from(bucket: "foo")
-	|> range(start: -1h)
-	|> aggregateWindow(every: 1h, fn: mean)
+	|> range(start: -1d)
 
-option task = {name: "moo", every: 1h}
+option task = {name: "moo"}
 
-check = {
-	_check_id: "000000000000000a",
-	_check_name: "moo",
-	_check_type: "threshold",
-	tags: {aaa: "vaaa", bbb: "vbbb"},
-}
-ok = (r) =>
-	(r._value > 10.0)
-info = (r) =>
-	(r._value < 40.0)
-warn = (r) =>
-	(r._value < 40.0 and r._value > 10.0)
-crit = (r) =>
-	(r._value < 40.0 and r._value > 10.0)
+check = {checkID: "000000000000000a", tags: {aaa: "vaaa", bbb: "vbbb"}}
 messageFn = (r, check) =>
 	("whoa! {check.yeah}")
 
 data
-	|> v1.fieldsAsCols()
-	|> alerts.check(
-		data: check,
-		messageFn: messageFn,
-		ok: ok,
-		info: info,
-		warn: warn,
-		crit: crit,
-	)`,
+	|> alerts.check(check: check, messageFn: messageFn)`,
+			},
+		},
+		{
+			name: "no tags",
+			args: args{
+				threshold: check.Threshold{
+					Base: check.Base{
+						ID:                    10,
+						Name:                  "moo",
+						Cron:                  "5 4 * * *",
+						Tags:                  []notification.Tag{},
+						StatusMessageTemplate: "whoa! {check.yeah}",
+						Query: influxdb.DashboardQuery{
+							Text: `data = from(bucket: "foo") |> range(start: -1d)`,
+						},
+					},
+					Thresholds: []check.ThresholdConfig{},
+				},
+			},
+			wants: wants{
+				script: `package main
+import "influxdata/influxdb/alerts"
+
+data = from(bucket: "foo")
+	|> range(start: -1d)
+
+option task = {name: "moo", cron: "5 4 * * *"}
+
+check = {checkID: "000000000000000a", tags: {}}
+messageFn = (r, check) =>
+	("whoa! {check.yeah}")
+
+data
+	|> alerts.check(check: check, messageFn: messageFn)`,
+			},
+		},
+		{
+			name: "many tags",
+			args: args{
+				threshold: check.Threshold{
+					Base: check.Base{
+						ID:   10,
+						Name: "foo",
+						Tags: []notification.Tag{
+							{Key: "a", Value: "b"},
+							{Key: "b", Value: "c"},
+							{Key: "c", Value: "d"},
+							{Key: "d", Value: "e"},
+							{Key: "e", Value: "f"},
+							{Key: "f", Value: "g"},
+						},
+						StatusMessageTemplate: "whoa! {check.yeah}",
+						Query: influxdb.DashboardQuery{
+							Text: `data = from(bucket: "foo") |> range(start: -1d)`,
+						},
+					},
+					Thresholds: []check.ThresholdConfig{},
+				},
+			},
+			wants: wants{
+				script: `package main
+import "influxdata/influxdb/alerts"
+
+data = from(bucket: "foo")
+	|> range(start: -1d)
+
+option task = {name: "foo"}
+
+check = {checkID: "000000000000000a", tags: {
+	a: "b",
+	b: "c",
+	c: "d",
+	d: "e",
+	e: "f",
+	f: "g",
+}}
+messageFn = (r, check) =>
+	("whoa! {check.yeah}")
+
+data
+	|> alerts.check(check: check, messageFn: messageFn)`,
 			},
 		},
 	}
