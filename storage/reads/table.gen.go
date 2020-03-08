@@ -44,7 +44,6 @@ func newFloatTable(
 		cur:   cur,
 	}
 	t.readTags(tags)
-	t.advance()
 
 	return t
 }
@@ -73,26 +72,43 @@ func (t *floatTable) Statistics() cursors.CursorStats {
 }
 
 func (t *floatTable) Do(f func(flux.ColReader) error) error {
-	return t.do(f, t.advance)
+	t.mu.Lock()
+	defer func() {
+		t.closeDone()
+		t.mu.Unlock()
+	}()
+
+	for !t.isCancelled() && t.err == nil {
+		cr := t.advance()
+		if cr == nil {
+			break
+		}
+		t.err = f(cr)
+		cr.Release()
+	}
+
+	return t.err
 }
 
-func (t *floatTable) advance() bool {
+func (t *floatTable) Done() {}
+
+func (t *floatTable) advance() *colReader {
 	a := t.cur.Next()
 	l := a.Len()
 	if l == 0 {
-		return false
+		return nil
 	}
 
 	// Retrieve the buffer for the data to avoid allocating
 	// additional slices. If the buffer is still being used
 	// because the references were retained, then we will
 	// allocate a new buffer.
-	cr := t.allocateBuffer(l)
+	cr := t.getBuffer(l)
 	cr.cols[timeColIdx] = arrow.NewInt(a.Timestamps, t.alloc)
 	cr.cols[valueColIdx] = t.toArrowBuffer(a.Values)
 	t.appendTags(cr)
 	t.appendBounds(cr)
-	return true
+	return cr
 }
 
 // group table
@@ -121,7 +137,6 @@ func newFloatGroupTable(
 		cur:   cur,
 	}
 	t.readTags(tags)
-	t.advance()
 
 	return t
 }
@@ -140,10 +155,27 @@ func (t *floatGroupTable) Close() {
 }
 
 func (t *floatGroupTable) Do(f func(flux.ColReader) error) error {
-	return t.do(f, t.advance)
+	t.mu.Lock()
+	defer func() {
+		t.closeDone()
+		t.mu.Unlock()
+	}()
+
+	for !t.isCancelled() && t.err == nil {
+		cr := t.advance()
+		if cr == nil {
+			break
+		}
+		t.err = f(cr)
+		cr.Release()
+	}
+
+	return t.err
 }
 
-func (t *floatGroupTable) advance() bool {
+func (t *floatGroupTable) Done() {}
+
+func (t *floatGroupTable) advance() *colReader {
 RETRY:
 	a := t.cur.Next()
 	l := a.Len()
@@ -152,19 +184,19 @@ RETRY:
 			goto RETRY
 		}
 
-		return false
+		return nil
 	}
 
 	// Retrieve the buffer for the data to avoid allocating
 	// additional slices. If the buffer is still being used
 	// because the references were retained, then we will
 	// allocate a new buffer.
-	cr := t.allocateBuffer(l)
+	cr := t.getBuffer(l)
 	cr.cols[timeColIdx] = arrow.NewInt(a.Timestamps, t.alloc)
 	cr.cols[valueColIdx] = t.toArrowBuffer(a.Values)
 	t.appendTags(cr)
 	t.appendBounds(cr)
-	return true
+	return cr
 }
 
 func (t *floatGroupTable) advanceCursor() bool {
@@ -227,7 +259,6 @@ func newIntegerTable(
 		cur:   cur,
 	}
 	t.readTags(tags)
-	t.advance()
 
 	return t
 }
@@ -256,26 +287,43 @@ func (t *integerTable) Statistics() cursors.CursorStats {
 }
 
 func (t *integerTable) Do(f func(flux.ColReader) error) error {
-	return t.do(f, t.advance)
+	t.mu.Lock()
+	defer func() {
+		t.closeDone()
+		t.mu.Unlock()
+	}()
+
+	for !t.isCancelled() && t.err == nil {
+		cr := t.advance()
+		if cr == nil {
+			break
+		}
+		t.err = f(cr)
+		cr.Release()
+	}
+
+	return t.err
 }
 
-func (t *integerTable) advance() bool {
+func (t *integerTable) Done() {}
+
+func (t *integerTable) advance() *colReader {
 	a := t.cur.Next()
 	l := a.Len()
 	if l == 0 {
-		return false
+		return nil
 	}
 
 	// Retrieve the buffer for the data to avoid allocating
 	// additional slices. If the buffer is still being used
 	// because the references were retained, then we will
 	// allocate a new buffer.
-	cr := t.allocateBuffer(l)
+	cr := t.getBuffer(l)
 	cr.cols[timeColIdx] = arrow.NewInt(a.Timestamps, t.alloc)
 	cr.cols[valueColIdx] = t.toArrowBuffer(a.Values)
 	t.appendTags(cr)
 	t.appendBounds(cr)
-	return true
+	return cr
 }
 
 // group table
@@ -304,7 +352,6 @@ func newIntegerGroupTable(
 		cur:   cur,
 	}
 	t.readTags(tags)
-	t.advance()
 
 	return t
 }
@@ -323,10 +370,27 @@ func (t *integerGroupTable) Close() {
 }
 
 func (t *integerGroupTable) Do(f func(flux.ColReader) error) error {
-	return t.do(f, t.advance)
+	t.mu.Lock()
+	defer func() {
+		t.closeDone()
+		t.mu.Unlock()
+	}()
+
+	for !t.isCancelled() && t.err == nil {
+		cr := t.advance()
+		if cr == nil {
+			break
+		}
+		t.err = f(cr)
+		cr.Release()
+	}
+
+	return t.err
 }
 
-func (t *integerGroupTable) advance() bool {
+func (t *integerGroupTable) Done() {}
+
+func (t *integerGroupTable) advance() *colReader {
 RETRY:
 	a := t.cur.Next()
 	l := a.Len()
@@ -335,19 +399,19 @@ RETRY:
 			goto RETRY
 		}
 
-		return false
+		return nil
 	}
 
 	// Retrieve the buffer for the data to avoid allocating
 	// additional slices. If the buffer is still being used
 	// because the references were retained, then we will
 	// allocate a new buffer.
-	cr := t.allocateBuffer(l)
+	cr := t.getBuffer(l)
 	cr.cols[timeColIdx] = arrow.NewInt(a.Timestamps, t.alloc)
 	cr.cols[valueColIdx] = t.toArrowBuffer(a.Values)
 	t.appendTags(cr)
 	t.appendBounds(cr)
-	return true
+	return cr
 }
 
 func (t *integerGroupTable) advanceCursor() bool {
@@ -410,7 +474,6 @@ func newUnsignedTable(
 		cur:   cur,
 	}
 	t.readTags(tags)
-	t.advance()
 
 	return t
 }
@@ -439,26 +502,43 @@ func (t *unsignedTable) Statistics() cursors.CursorStats {
 }
 
 func (t *unsignedTable) Do(f func(flux.ColReader) error) error {
-	return t.do(f, t.advance)
+	t.mu.Lock()
+	defer func() {
+		t.closeDone()
+		t.mu.Unlock()
+	}()
+
+	for !t.isCancelled() && t.err == nil {
+		cr := t.advance()
+		if cr == nil {
+			break
+		}
+		t.err = f(cr)
+		cr.Release()
+	}
+
+	return t.err
 }
 
-func (t *unsignedTable) advance() bool {
+func (t *unsignedTable) Done() {}
+
+func (t *unsignedTable) advance() *colReader {
 	a := t.cur.Next()
 	l := a.Len()
 	if l == 0 {
-		return false
+		return nil
 	}
 
 	// Retrieve the buffer for the data to avoid allocating
 	// additional slices. If the buffer is still being used
 	// because the references were retained, then we will
 	// allocate a new buffer.
-	cr := t.allocateBuffer(l)
+	cr := t.getBuffer(l)
 	cr.cols[timeColIdx] = arrow.NewInt(a.Timestamps, t.alloc)
 	cr.cols[valueColIdx] = t.toArrowBuffer(a.Values)
 	t.appendTags(cr)
 	t.appendBounds(cr)
-	return true
+	return cr
 }
 
 // group table
@@ -487,7 +567,6 @@ func newUnsignedGroupTable(
 		cur:   cur,
 	}
 	t.readTags(tags)
-	t.advance()
 
 	return t
 }
@@ -506,10 +585,27 @@ func (t *unsignedGroupTable) Close() {
 }
 
 func (t *unsignedGroupTable) Do(f func(flux.ColReader) error) error {
-	return t.do(f, t.advance)
+	t.mu.Lock()
+	defer func() {
+		t.closeDone()
+		t.mu.Unlock()
+	}()
+
+	for !t.isCancelled() && t.err == nil {
+		cr := t.advance()
+		if cr == nil {
+			break
+		}
+		t.err = f(cr)
+		cr.Release()
+	}
+
+	return t.err
 }
 
-func (t *unsignedGroupTable) advance() bool {
+func (t *unsignedGroupTable) Done() {}
+
+func (t *unsignedGroupTable) advance() *colReader {
 RETRY:
 	a := t.cur.Next()
 	l := a.Len()
@@ -518,19 +614,19 @@ RETRY:
 			goto RETRY
 		}
 
-		return false
+		return nil
 	}
 
 	// Retrieve the buffer for the data to avoid allocating
 	// additional slices. If the buffer is still being used
 	// because the references were retained, then we will
 	// allocate a new buffer.
-	cr := t.allocateBuffer(l)
+	cr := t.getBuffer(l)
 	cr.cols[timeColIdx] = arrow.NewInt(a.Timestamps, t.alloc)
 	cr.cols[valueColIdx] = t.toArrowBuffer(a.Values)
 	t.appendTags(cr)
 	t.appendBounds(cr)
-	return true
+	return cr
 }
 
 func (t *unsignedGroupTable) advanceCursor() bool {
@@ -593,7 +689,6 @@ func newStringTable(
 		cur:   cur,
 	}
 	t.readTags(tags)
-	t.advance()
 
 	return t
 }
@@ -622,26 +717,43 @@ func (t *stringTable) Statistics() cursors.CursorStats {
 }
 
 func (t *stringTable) Do(f func(flux.ColReader) error) error {
-	return t.do(f, t.advance)
+	t.mu.Lock()
+	defer func() {
+		t.closeDone()
+		t.mu.Unlock()
+	}()
+
+	for !t.isCancelled() && t.err == nil {
+		cr := t.advance()
+		if cr == nil {
+			break
+		}
+		t.err = f(cr)
+		cr.Release()
+	}
+
+	return t.err
 }
 
-func (t *stringTable) advance() bool {
+func (t *stringTable) Done() {}
+
+func (t *stringTable) advance() *colReader {
 	a := t.cur.Next()
 	l := a.Len()
 	if l == 0 {
-		return false
+		return nil
 	}
 
 	// Retrieve the buffer for the data to avoid allocating
 	// additional slices. If the buffer is still being used
 	// because the references were retained, then we will
 	// allocate a new buffer.
-	cr := t.allocateBuffer(l)
+	cr := t.getBuffer(l)
 	cr.cols[timeColIdx] = arrow.NewInt(a.Timestamps, t.alloc)
 	cr.cols[valueColIdx] = t.toArrowBuffer(a.Values)
 	t.appendTags(cr)
 	t.appendBounds(cr)
-	return true
+	return cr
 }
 
 // group table
@@ -670,7 +782,6 @@ func newStringGroupTable(
 		cur:   cur,
 	}
 	t.readTags(tags)
-	t.advance()
 
 	return t
 }
@@ -689,10 +800,27 @@ func (t *stringGroupTable) Close() {
 }
 
 func (t *stringGroupTable) Do(f func(flux.ColReader) error) error {
-	return t.do(f, t.advance)
+	t.mu.Lock()
+	defer func() {
+		t.closeDone()
+		t.mu.Unlock()
+	}()
+
+	for !t.isCancelled() && t.err == nil {
+		cr := t.advance()
+		if cr == nil {
+			break
+		}
+		t.err = f(cr)
+		cr.Release()
+	}
+
+	return t.err
 }
 
-func (t *stringGroupTable) advance() bool {
+func (t *stringGroupTable) Done() {}
+
+func (t *stringGroupTable) advance() *colReader {
 RETRY:
 	a := t.cur.Next()
 	l := a.Len()
@@ -701,19 +829,19 @@ RETRY:
 			goto RETRY
 		}
 
-		return false
+		return nil
 	}
 
 	// Retrieve the buffer for the data to avoid allocating
 	// additional slices. If the buffer is still being used
 	// because the references were retained, then we will
 	// allocate a new buffer.
-	cr := t.allocateBuffer(l)
+	cr := t.getBuffer(l)
 	cr.cols[timeColIdx] = arrow.NewInt(a.Timestamps, t.alloc)
 	cr.cols[valueColIdx] = t.toArrowBuffer(a.Values)
 	t.appendTags(cr)
 	t.appendBounds(cr)
-	return true
+	return cr
 }
 
 func (t *stringGroupTable) advanceCursor() bool {
@@ -776,7 +904,6 @@ func newBooleanTable(
 		cur:   cur,
 	}
 	t.readTags(tags)
-	t.advance()
 
 	return t
 }
@@ -805,26 +932,43 @@ func (t *booleanTable) Statistics() cursors.CursorStats {
 }
 
 func (t *booleanTable) Do(f func(flux.ColReader) error) error {
-	return t.do(f, t.advance)
+	t.mu.Lock()
+	defer func() {
+		t.closeDone()
+		t.mu.Unlock()
+	}()
+
+	for !t.isCancelled() && t.err == nil {
+		cr := t.advance()
+		if cr == nil {
+			break
+		}
+		t.err = f(cr)
+		cr.Release()
+	}
+
+	return t.err
 }
 
-func (t *booleanTable) advance() bool {
+func (t *booleanTable) Done() {}
+
+func (t *booleanTable) advance() *colReader {
 	a := t.cur.Next()
 	l := a.Len()
 	if l == 0 {
-		return false
+		return nil
 	}
 
 	// Retrieve the buffer for the data to avoid allocating
 	// additional slices. If the buffer is still being used
 	// because the references were retained, then we will
 	// allocate a new buffer.
-	cr := t.allocateBuffer(l)
+	cr := t.getBuffer(l)
 	cr.cols[timeColIdx] = arrow.NewInt(a.Timestamps, t.alloc)
 	cr.cols[valueColIdx] = t.toArrowBuffer(a.Values)
 	t.appendTags(cr)
 	t.appendBounds(cr)
-	return true
+	return cr
 }
 
 // group table
@@ -853,7 +997,6 @@ func newBooleanGroupTable(
 		cur:   cur,
 	}
 	t.readTags(tags)
-	t.advance()
 
 	return t
 }
@@ -872,10 +1015,27 @@ func (t *booleanGroupTable) Close() {
 }
 
 func (t *booleanGroupTable) Do(f func(flux.ColReader) error) error {
-	return t.do(f, t.advance)
+	t.mu.Lock()
+	defer func() {
+		t.closeDone()
+		t.mu.Unlock()
+	}()
+
+	for !t.isCancelled() && t.err == nil {
+		cr := t.advance()
+		if cr == nil {
+			break
+		}
+		t.err = f(cr)
+		cr.Release()
+	}
+
+	return t.err
 }
 
-func (t *booleanGroupTable) advance() bool {
+func (t *booleanGroupTable) Done() {}
+
+func (t *booleanGroupTable) advance() *colReader {
 RETRY:
 	a := t.cur.Next()
 	l := a.Len()
@@ -884,19 +1044,19 @@ RETRY:
 			goto RETRY
 		}
 
-		return false
+		return nil
 	}
 
 	// Retrieve the buffer for the data to avoid allocating
 	// additional slices. If the buffer is still being used
 	// because the references were retained, then we will
 	// allocate a new buffer.
-	cr := t.allocateBuffer(l)
+	cr := t.getBuffer(l)
 	cr.cols[timeColIdx] = arrow.NewInt(a.Timestamps, t.alloc)
 	cr.cols[valueColIdx] = t.toArrowBuffer(a.Values)
 	t.appendTags(cr)
 	t.appendBounds(cr)
-	return true
+	return cr
 }
 
 func (t *booleanGroupTable) advanceCursor() bool {
