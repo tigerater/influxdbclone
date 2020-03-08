@@ -1,9 +1,13 @@
 package check
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
+	"github.com/influxdata/flux/ast"
+	"github.com/influxdata/flux/parser"
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/notification"
 )
@@ -13,20 +17,51 @@ type Base struct {
 	ID                    influxdb.ID             `json:"id,omitempty"`
 	Name                  string                  `json:"name"`
 	Description           string                  `json:"description,omitempty"`
-	AuthorizationID       influxdb.ID             `json:"authorizationID,omitempty"`
+	OwnerID               influxdb.ID             `json:"ownerID,omitempty"`
 	OrgID                 influxdb.ID             `json:"orgID,omitempty"`
 	Status                influxdb.Status         `json:"status"`
 	Query                 influxdb.DashboardQuery `json:"query"`
 	StatusMessageTemplate string                  `json:"statusMessageTemplate"`
 
-	Cron  string            `json:"cron,omitempty"`
-	Every influxdb.Duration `json:"every,omitempty"`
+	// Care should be taken to prevent TaskID from being exposed publicly.
+	TaskID influxdb.ID `json:"taskID,omitempty"`
+
+	Cron  string    `json:"cron,omitempty"`
+	Every *Duration `json:"every,omitempty"`
 	// Offset represents a delay before execution.
 	// It gets marshalled from a string duration, i.e.: "10s" is 10 seconds
-	Offset influxdb.Duration `json:"offset,omitempty"`
+	Offset *Duration `json:"offset,omitempty"`
 
 	Tags []notification.Tag `json:"tags"`
 	influxdb.CRUDLog
+}
+
+// Duration is a custom type used for generating flux compatible durations.
+type Duration ast.DurationLiteral
+
+// MarshalJSON turns a Duration into a JSON-ified string.
+func (d Duration) MarshalJSON() ([]byte, error) {
+	var b bytes.Buffer
+	b.WriteByte('"')
+	for _, d := range d.Values {
+		b.WriteString(strconv.Itoa(int(d.Magnitude)))
+		b.WriteString(d.Unit)
+	}
+	b.WriteByte('"')
+
+	return b.Bytes(), nil
+}
+
+// UnmarshalJSON turns a flux duration literal into a Duration.
+func (d *Duration) UnmarshalJSON(b []byte) error {
+	dur, err := parser.ParseDuration(string(b[1 : len(b)-1]))
+	if err != nil {
+		return err
+	}
+
+	*d = *(*Duration)(dur)
+
+	return nil
 }
 
 // Valid returns err if the check is invalid.
@@ -43,10 +78,10 @@ func (b Base) Valid() error {
 			Msg:  "Check Name can't be empty",
 		}
 	}
-	if !b.AuthorizationID.Valid() {
+	if !b.OwnerID.Valid() {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
-			Msg:  "Check AuthorizationID is invalid",
+			Msg:  "Check OwnerID is invalid",
 		}
 	}
 	if !b.OrgID.Valid() {
@@ -80,9 +115,19 @@ func (b Base) GetOrgID() influxdb.ID {
 	return b.OrgID
 }
 
+// GetTaskID retrieves the task ID for a check.
+func (b Base) GetTaskID() influxdb.ID {
+	return b.TaskID
+}
+
 // GetCRUDLog implements influxdb.Getter interface.
 func (b Base) GetCRUDLog() influxdb.CRUDLog {
 	return b.CRUDLog
+}
+
+// GetOwnerID gets the authID for a check
+func (b Base) GetOwnerID() influxdb.ID {
+	return b.OwnerID
 }
 
 // GetName implements influxdb.Getter interface.
@@ -108,6 +153,21 @@ func (b *Base) SetID(id influxdb.ID) {
 // SetOrgID will set the org key.
 func (b *Base) SetOrgID(id influxdb.ID) {
 	b.OrgID = id
+}
+
+// SetOwnerID will set the org key.
+func (b *Base) SetOwnerID(id influxdb.ID) {
+	b.OwnerID = id
+}
+
+// ClearPrivateData remove any data that we don't want to be exposed publicly.
+func (b *Base) ClearPrivateData() {
+	b.TaskID = 0
+}
+
+// SetTaskID sets the taskID for a check.
+func (b *Base) SetTaskID(id influxdb.ID) {
+	b.TaskID = id
 }
 
 // SetName implements influxdb.Updator interface.

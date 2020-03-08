@@ -22,10 +22,6 @@ type NotificationRuleFields struct {
 	UserResourceMappings []*influxdb.UserResourceMapping
 }
 
-var timeGen1 = mock.TimeGenerator{FakeValue: time.Date(2006, time.July, 13, 4, 19, 10, 0, time.UTC)}
-var timeGen2 = mock.TimeGenerator{FakeValue: time.Date(2006, time.July, 14, 5, 23, 53, 10, time.UTC)}
-var time3 = time.Date(2006, time.July, 15, 5, 23, 53, 10, time.UTC)
-
 var notificationRuleCmpOptions = cmp.Options{
 	cmp.Transformer("Sort", func(in []influxdb.NotificationRule) []influxdb.NotificationRule {
 		out := append([]influxdb.NotificationRule(nil), in...)
@@ -106,14 +102,14 @@ func CreateNotificationRule(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							AuthorizationID: MustIDBase16(threeID),
-							Name:            "name1",
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							TagRules: []notification.TagRule{
 								{
 									Tag: notification.Tag{
@@ -150,16 +146,16 @@ func CreateNotificationRule(
 			},
 			args: args{
 				userID: MustIDBase16(sixID),
-				notificationRule: &rule.SMTP{
+				notificationRule: &rule.PagerDuty{
 					Base: rule.Base{
-						AuthorizationID: MustIDBase16(threeID),
-						Name:            "name2",
-						OrgID:           MustIDBase16(fourID),
-						EndpointID:      IDPtr(MustIDBase16(fiveID)),
-						Status:          influxdb.Active,
-						RunbookLink:     "runbooklink1",
-						SleepUntil:      &time3,
-						Every:           influxdb.Duration{Duration: time.Hour},
+						OwnerID:     MustIDBase16(sixID),
+						Name:        "name2",
+						OrgID:       MustIDBase16(fourID),
+						EndpointID:  IDPtr(MustIDBase16(fiveID)),
+						Status:      influxdb.Active,
+						RunbookLink: "runbooklink1",
+						SleepUntil:  &time3,
+						Every:       influxdb.Duration{Duration: time.Hour},
 						TagRules: []notification.TagRule{
 							{
 								Tag: notification.Tag{
@@ -177,23 +173,21 @@ func CreateNotificationRule(
 							},
 						},
 					},
-					SubjectTemp: "subject1",
-					To:          "example@host.com",
-					BodyTemp:    "msg1",
+					MessageTemp: "msg1",
 				},
 			},
 			wants: wants{
 				notificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							TagRules: []notification.TagRule{
 								{
 									Tag: notification.Tag{
@@ -218,17 +212,17 @@ func CreateNotificationRule(
 						Channel:         "channel1",
 						MessageTemplate: "msg1",
 					},
-					&rule.SMTP{
+					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							EndpointID:      IDPtr(MustIDBase16(fiveID)),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							EndpointID:  IDPtr(MustIDBase16(fiveID)),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							TagRules: []notification.TagRule{
 								{
 									Tag: notification.Tag{
@@ -250,9 +244,7 @@ func CreateNotificationRule(
 								UpdatedAt: fakeDate,
 							},
 						},
-						SubjectTemp: "subject1",
-						To:          "example@host.com",
-						BodyTemp:    "msg1",
+						MessageTemp: "msg1",
 					},
 				},
 				userResourceMapping: []*influxdb.UserResourceMapping{
@@ -358,14 +350,14 @@ func FindNotificationRuleByID(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -376,14 +368,14 @@ func FindNotificationRuleByID(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -423,14 +415,14 @@ func FindNotificationRuleByID(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -441,14 +433,14 @@ func FindNotificationRuleByID(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -488,14 +480,14 @@ func FindNotificationRuleByID(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -506,14 +498,14 @@ func FindNotificationRuleByID(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -529,14 +521,14 @@ func FindNotificationRuleByID(
 			wants: wants{
 				notificationRule: &rule.PagerDuty{
 					Base: rule.Base{
-						ID:              MustIDBase16(twoID),
-						Name:            "name2",
-						AuthorizationID: MustIDBase16(threeID),
-						OrgID:           MustIDBase16(fourID),
-						Status:          influxdb.Active,
-						RunbookLink:     "runbooklink2",
-						SleepUntil:      &time3,
-						Every:           influxdb.Duration{Duration: time.Hour},
+						ID:          MustIDBase16(twoID),
+						Name:        "name2",
+						OwnerID:     MustIDBase16(sixID),
+						OrgID:       MustIDBase16(fourID),
+						Status:      influxdb.Active,
+						RunbookLink: "runbooklink2",
+						SleepUntil:  &time3,
+						Every:       influxdb.Duration{Duration: time.Hour},
 						CRUDLog: influxdb.CRUDLog{
 							CreatedAt: timeGen1.Now(),
 							UpdatedAt: timeGen2.Now(),
@@ -618,14 +610,14 @@ func FindNotificationRules(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -636,14 +628,14 @@ func FindNotificationRules(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -665,14 +657,14 @@ func FindNotificationRules(
 				notificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -683,14 +675,14 @@ func FindNotificationRules(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -721,14 +713,14 @@ func FindNotificationRules(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -739,14 +731,14 @@ func FindNotificationRules(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -769,14 +761,14 @@ func FindNotificationRules(
 				notificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -824,34 +816,32 @@ func FindNotificationRules(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr1",
+							ID:      MustIDBase16(oneID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr1",
 						},
 						Channel:         "ch1",
 						MessageTemplate: "msg1",
 					},
-					&rule.SMTP{
+					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr2",
+							ID:      MustIDBase16(twoID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr2",
 						},
-						SubjectTemp: "subject2",
-						To:          "astA@fadac.com",
-						BodyTemp:    "body2",
+						MessageTemp: "body2",
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(fourID),
-							OrgID:           MustIDBase16(oneID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr3",
+							ID:      MustIDBase16(fourID),
+							OrgID:   MustIDBase16(oneID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr3",
 						},
 						MessageTemp: "msg",
 					},
@@ -866,11 +856,11 @@ func FindNotificationRules(
 				notificationRules: []influxdb.NotificationRule{
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(fourID),
-							OrgID:           MustIDBase16(oneID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr3",
+							ID:      MustIDBase16(fourID),
+							OrgID:   MustIDBase16(oneID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr3",
 						},
 						MessageTemp: "msg",
 					},
@@ -913,34 +903,32 @@ func FindNotificationRules(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr1",
+							ID:      MustIDBase16(oneID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr1",
 						},
 						Channel:         "ch1",
 						MessageTemplate: "msg1",
 					},
-					&rule.SMTP{
+					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr2",
+							ID:      MustIDBase16(twoID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr2",
 						},
-						SubjectTemp: "subject2",
-						To:          "astA@fadac.com",
-						BodyTemp:    "body2",
+						MessageTemp: "body2",
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(fourID),
-							OrgID:           MustIDBase16(oneID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr3",
+							ID:      MustIDBase16(fourID),
+							OrgID:   MustIDBase16(oneID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr3",
 						},
 						MessageTemp: "msg",
 					},
@@ -955,26 +943,24 @@ func FindNotificationRules(
 				notificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr1",
+							ID:      MustIDBase16(oneID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr1",
 						},
 						Channel:         "ch1",
 						MessageTemplate: "msg1",
 					},
-					&rule.SMTP{
+					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr2",
+							ID:      MustIDBase16(twoID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr2",
 						},
-						SubjectTemp: "subject2",
-						To:          "astA@fadac.com",
-						BodyTemp:    "body2",
+						MessageTemp: "body2",
 					},
 				},
 			},
@@ -1015,34 +1001,32 @@ func FindNotificationRules(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr1",
+							ID:      MustIDBase16(oneID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr1",
 						},
 						Channel:         "ch1",
 						MessageTemplate: "msg1",
 					},
-					&rule.SMTP{
+					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr2",
+							ID:      MustIDBase16(twoID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr2",
 						},
-						SubjectTemp: "subject2",
-						To:          "astA@fadac.com",
-						BodyTemp:    "body2",
+						MessageTemp: "body2",
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(fourID),
-							OrgID:           MustIDBase16(oneID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr3",
+							ID:      MustIDBase16(fourID),
+							OrgID:   MustIDBase16(oneID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr3",
 						},
 						MessageTemp: "msg",
 					},
@@ -1062,11 +1046,11 @@ func FindNotificationRules(
 				notificationRules: []influxdb.NotificationRule{
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(fourID),
-							OrgID:           MustIDBase16(oneID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr3",
+							ID:      MustIDBase16(fourID),
+							OrgID:   MustIDBase16(oneID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr3",
 						},
 						MessageTemp: "msg",
 					},
@@ -1109,34 +1093,32 @@ func FindNotificationRules(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr1",
+							ID:      MustIDBase16(oneID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr1",
 						},
 						Channel:         "ch1",
 						MessageTemplate: "msg1",
 					},
-					&rule.SMTP{
+					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr2",
+							ID:      MustIDBase16(twoID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr2",
 						},
-						SubjectTemp: "subject2",
-						To:          "astA@fadac.com",
-						BodyTemp:    "body2",
+						MessageTemp: "body2",
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(fourID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr3",
+							ID:      MustIDBase16(fourID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr3",
 						},
 						MessageTemp: "msg",
 					},
@@ -1187,34 +1169,32 @@ func FindNotificationRules(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr1",
+							ID:      MustIDBase16(oneID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr1",
 						},
 						Channel:         "ch1",
 						MessageTemplate: "msg1",
 					},
-					&rule.SMTP{
+					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr2",
+							ID:      MustIDBase16(twoID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr2",
 						},
-						SubjectTemp: "subject2",
-						To:          "astA@fadac.com",
-						BodyTemp:    "body2",
+						MessageTemp: "body2",
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(fourID),
-							OrgID:           MustIDBase16(fourID),
-							AuthorizationID: MustIDBase16(threeID),
-							Status:          influxdb.Active,
-							Name:            "nr3",
+							ID:      MustIDBase16(fourID),
+							OrgID:   MustIDBase16(fourID),
+							OwnerID: MustIDBase16(sixID),
+							Status:  influxdb.Active,
+							Name:    "nr3",
 						},
 						MessageTemp: "msg",
 					},
@@ -1293,14 +1273,14 @@ func UpdateNotificationRule(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1311,14 +1291,14 @@ func UpdateNotificationRule(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1333,14 +1313,14 @@ func UpdateNotificationRule(
 				id:     MustIDBase16(fourID),
 				notificationRule: &rule.PagerDuty{
 					Base: rule.Base{
-						ID:              MustIDBase16(twoID),
-						Name:            "name2",
-						AuthorizationID: MustIDBase16(threeID),
-						OrgID:           MustIDBase16(fourID),
-						Status:          influxdb.Inactive,
-						RunbookLink:     "runbooklink3",
-						SleepUntil:      &time3,
-						Every:           influxdb.Duration{Duration: time.Hour * 2},
+						ID:          MustIDBase16(twoID),
+						Name:        "name2",
+						OwnerID:     MustIDBase16(sixID),
+						OrgID:       MustIDBase16(fourID),
+						Status:      influxdb.Inactive,
+						RunbookLink: "runbooklink3",
+						SleepUntil:  &time3,
+						Every:       influxdb.Duration{Duration: time.Hour * 2},
 					},
 					MessageTemp: "msg2",
 				},
@@ -1373,14 +1353,14 @@ func UpdateNotificationRule(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1391,14 +1371,14 @@ func UpdateNotificationRule(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1413,13 +1393,13 @@ func UpdateNotificationRule(
 				id:     MustIDBase16(twoID),
 				notificationRule: &rule.PagerDuty{
 					Base: rule.Base{
-						AuthorizationID: MustIDBase16(threeID),
-						Name:            "name3",
-						OrgID:           MustIDBase16(fourID),
-						Status:          influxdb.Inactive,
-						RunbookLink:     "runbooklink3",
-						SleepUntil:      &time3,
-						Every:           influxdb.Duration{Duration: time.Hour * 2},
+						OwnerID:     MustIDBase16(sixID),
+						Name:        "name3",
+						OrgID:       MustIDBase16(fourID),
+						Status:      influxdb.Inactive,
+						RunbookLink: "runbooklink3",
+						SleepUntil:  &time3,
+						Every:       influxdb.Duration{Duration: time.Hour * 2},
 					},
 					MessageTemp: "msg2",
 				},
@@ -1427,14 +1407,14 @@ func UpdateNotificationRule(
 			wants: wants{
 				notificationRule: &rule.PagerDuty{
 					Base: rule.Base{
-						ID:              MustIDBase16(twoID),
-						Name:            "name3",
-						AuthorizationID: MustIDBase16(threeID),
-						OrgID:           MustIDBase16(fourID),
-						Status:          influxdb.Inactive,
-						RunbookLink:     "runbooklink3",
-						SleepUntil:      &time3,
-						Every:           influxdb.Duration{Duration: time.Hour * 2},
+						ID:          MustIDBase16(twoID),
+						Name:        "name3",
+						OwnerID:     MustIDBase16(sixID),
+						OrgID:       MustIDBase16(fourID),
+						Status:      influxdb.Inactive,
+						RunbookLink: "runbooklink3",
+						SleepUntil:  &time3,
+						Every:       influxdb.Duration{Duration: time.Hour * 2},
 						CRUDLog: influxdb.CRUDLog{
 							CreatedAt: timeGen1.Now(),
 							UpdatedAt: fakeDate,
@@ -1507,14 +1487,14 @@ func PatchNotificationRule(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1525,14 +1505,14 @@ func PatchNotificationRule(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1577,14 +1557,14 @@ func PatchNotificationRule(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							Status:          influxdb.Active,
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							Status:      influxdb.Active,
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1595,14 +1575,14 @@ func PatchNotificationRule(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							Status:          influxdb.Active,
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							Status:      influxdb.Active,
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1622,14 +1602,14 @@ func PatchNotificationRule(
 			wants: wants{
 				notificationRule: &rule.PagerDuty{
 					Base: rule.Base{
-						ID:              MustIDBase16(twoID),
-						Name:            name3,
-						Status:          status3,
-						AuthorizationID: MustIDBase16(threeID),
-						OrgID:           MustIDBase16(fourID),
-						RunbookLink:     "runbooklink2",
-						SleepUntil:      &time3,
-						Every:           influxdb.Duration{Duration: time.Hour},
+						ID:          MustIDBase16(twoID),
+						Name:        name3,
+						Status:      status3,
+						OwnerID:     MustIDBase16(sixID),
+						OrgID:       MustIDBase16(fourID),
+						RunbookLink: "runbooklink2",
+						SleepUntil:  &time3,
+						Every:       influxdb.Duration{Duration: time.Hour},
 						CRUDLog: influxdb.CRUDLog{
 							CreatedAt: timeGen1.Now(),
 							UpdatedAt: fakeDate,
@@ -1696,14 +1676,14 @@ func DeleteNotificationRule(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1714,14 +1694,14 @@ func DeleteNotificationRule(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1757,14 +1737,14 @@ func DeleteNotificationRule(
 				notificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1775,14 +1755,14 @@ func DeleteNotificationRule(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1813,14 +1793,14 @@ func DeleteNotificationRule(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1831,14 +1811,14 @@ func DeleteNotificationRule(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1874,14 +1854,14 @@ func DeleteNotificationRule(
 				notificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1892,14 +1872,14 @@ func DeleteNotificationRule(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1930,14 +1910,14 @@ func DeleteNotificationRule(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1948,14 +1928,14 @@ func DeleteNotificationRule(
 					},
 					&rule.PagerDuty{
 						Base: rule.Base{
-							ID:              MustIDBase16(twoID),
-							Name:            "name2",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink2",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink2",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1981,14 +1961,14 @@ func DeleteNotificationRule(
 				notificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:              MustIDBase16(oneID),
-							Name:            "name1",
-							AuthorizationID: MustIDBase16(threeID),
-							OrgID:           MustIDBase16(fourID),
-							Status:          influxdb.Active,
-							RunbookLink:     "runbooklink1",
-							SleepUntil:      &time3,
-							Every:           influxdb.Duration{Duration: time.Hour},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
+							Status:      influxdb.Active,
+							RunbookLink: "runbooklink1",
+							SleepUntil:  &time3,
+							Every:       influxdb.Duration{Duration: time.Hour},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
