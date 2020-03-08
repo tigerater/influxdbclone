@@ -5,33 +5,23 @@ import {
   SlackNotificationRuleBase,
   SMTPNotificationRuleBase,
   PagerDutyNotificationRuleBase,
-  NotificationRule,
 } from 'src/client'
 
-type Omit<T, U> = Pick<T, Exclude<keyof T, U>>
-type Overwrite<T, U> = Omit<T, keyof U> & U
-
-interface WithClientID<T> {
+export interface WithClientID<T> {
   cid: string
   value: T
 }
 
 export type StatusRuleDraft = WithClientID<StatusRule>
-
 export type TagRuleDraft = WithClientID<TagRule>
 
-// TODO: Spec this out in the OpenAPI spec instead. It should be whatever the
-// server accepts as the request body for a `POST /api/v2/notificationRules`
-export type NewNotificationRule = Omit<NotificationRule, 'id'>
+type ExcludeKeys<T> = Pick<T, Exclude<keyof T, 'statusRules' | 'tagRules'>>
 
-export type NotificationRuleBaseDraft = Overwrite<
-  NotificationRuleBase,
-  {
-    id?: string
-    statusRules: StatusRuleDraft[]
-    tagRules: TagRuleDraft[]
-  }
->
+export interface NotificationRuleBaseDraft
+  extends ExcludeKeys<NotificationRuleBase> {
+  statusRules: StatusRuleDraft[]
+  tagRules: TagRuleDraft[]
+}
 
 export type NotificationRuleDraft = SlackRule | SMTPRule | PagerDutyRule
 

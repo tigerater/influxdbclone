@@ -7,7 +7,7 @@ import RuleEndpointDropdown from 'src/alerting/components/notifications/RuleEndp
 import RuleMessageContents from 'src/alerting/components/notifications/RuleMessageContents'
 
 // Utils
-import {getRuleVariantDefaults} from 'src/alerting/components/notifications/utils'
+import {getEndpointBase} from 'src/alerting/components/notifications/utils'
 import {useRuleDispatch} from './RuleOverlay.reducer'
 
 // Types
@@ -20,13 +20,14 @@ interface Props {
 
 const RuleMessage: FC<Props> = ({endpoints, rule}) => {
   const dispatch = useRuleDispatch()
-
   const onSelectEndpoint = notifyEndpointID => {
+    const endpoint = getEndpointBase(endpoints, notifyEndpointID)
+
     dispatch({
       type: 'UPDATE_RULE',
       rule: {
         ...rule,
-        ...getRuleVariantDefaults(endpoints, notifyEndpointID),
+        ...endpoint,
         notifyEndpointID,
       },
     })

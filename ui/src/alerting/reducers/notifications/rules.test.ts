@@ -1,19 +1,14 @@
 import rulesReducer, {
   defaultNotificationRulesState,
 } from 'src/alerting/reducers/notifications/rules'
-
 import {
   setAllNotificationRules,
   setRule,
   setCurrentRule,
   removeRule,
 } from 'src/alerting/actions/notifications/rules'
-
-import {initRuleDraft} from 'src/alerting/components/notifications/utils'
-
 import {RemoteDataState} from 'src/types'
-
-const NEW_RULE_DRAFT = initRuleDraft('')
+import {NEW_RULE_DRAFT} from 'src/alerting/constants'
 
 describe('rulesReducer', () => {
   describe('setAllNotificationRules', () => {
