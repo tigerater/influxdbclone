@@ -14,20 +14,11 @@ import (
 	"github.com/influxdata/influxql"
 )
 
-// cancelCheckInterval represents the period at which TagKeys and TagValues
-// will check for a canceled context. Specifically after every 64 series
-// scanned, the query context will be checked for cancellation, and if canceled,
-// the calls will immediately return.
-const cancelCheckInterval = 64
-
 // TagValues returns an iterator which enumerates the values for the specific
 // tagKey in the given bucket matching the predicate within the
 // time range (start, end].
 //
 // TagValues will always return a StringIterator if there is no error.
-//
-// If the context is canceled before TagValues has finished processing, a non-nil
-// error will be returned along with a partial result of the already scanned values.
 func (e *Engine) TagValues(ctx context.Context, orgID, bucketID influxdb.ID, tagKey string, start, end int64, predicate influxql.Expr) (cursors.StringIterator, error) {
 	encoded := tsdb.EncodeName(orgID, bucketID)
 
@@ -49,16 +40,8 @@ func (e *Engine) tagValuesNoPredicate(ctx context.Context, orgBucket, tagKeyByte
 	// TODO(sgc): extend prefix when filtering by \x00 == <measurement>
 
 	var stats cursors.CursorStats
-	var canceled bool
 
 	e.FileStore.ForEachFile(func(f TSMFile) bool {
-		// Check the context before accessing each tsm file
-		select {
-		case <-ctx.Done():
-			canceled = true
-			return false
-		default:
-		}
 		if f.OverlapsTimeRange(start, end) && f.OverlapsKeyPrefixRange(prefix, prefix) {
 			// TODO(sgc): create f.TimeRangeIterator(minKey, maxKey, start, end)
 			iter := f.TimeRangeIterator(prefix, start, end)
@@ -89,12 +72,6 @@ func (e *Engine) tagValuesNoPredicate(ctx context.Context, orgBucket, tagKeyByte
 		return true
 	})
 
-	if canceled {
-		return cursors.NewStringSliceIteratorWithStats(nil, stats), ctx.Err()
-	}
-
-	// With performance in mind, we explicitly do not check the context
-	// while scanning the entries in the cache.
 	_ = e.Cache.ApplyEntryFn(func(sfkey []byte, entry *entry) error {
 		if !bytes.HasPrefix(sfkey, prefix) {
 			return nil
@@ -136,7 +113,7 @@ func (e *Engine) tagValuesPredicate(ctx context.Context, orgBucket, tagKeyBytes 
 
 	keys, err := e.findCandidateKeys(ctx, orgBucket, predicate)
 	if err != nil {
-		return cursors.EmptyStringIterator, err
+		return nil, err
 	}
 
 	if len(keys) == 0 {
@@ -154,16 +131,8 @@ func (e *Engine) tagValuesPredicate(ctx context.Context, orgBucket, tagKeyBytes 
 	// TODO(edd): we need to clean up how we're encoding the prefix so that we
 	// don't have to remember to get it right everywhere we need to touch TSM data.
 	prefix := models.EscapeMeasurement(orgBucket)
-	var canceled bool
 
 	e.FileStore.ForEachFile(func(f TSMFile) bool {
-		// Check the context before accessing each tsm file
-		select {
-		case <-ctx.Done():
-			canceled = true
-			return false
-		default:
-		}
 		if f.OverlapsTimeRange(start, end) && f.OverlapsKeyPrefixRange(prefix, prefix) {
 			f.Ref()
 			files = append(files, f)
@@ -172,13 +141,6 @@ func (e *Engine) tagValuesPredicate(ctx context.Context, orgBucket, tagKeyBytes 
 		return true
 	})
 
-	var stats cursors.CursorStats
-
-	if canceled {
-		stats = statsFromIters(stats, iters)
-		return cursors.NewStringSliceIteratorWithStats(nil, stats), ctx.Err()
-	}
-
 	tsmValues := make(map[string]struct{})
 
 	// reusable buffers
@@ -186,19 +148,10 @@ func (e *Engine) tagValuesPredicate(ctx context.Context, orgBucket, tagKeyBytes 
 		tags   models.Tags
 		keybuf []byte
 		sfkey  []byte
+		stats  cursors.CursorStats
 	)
 
 	for i := range keys {
-		// to keep cache scans fast, check context every 'cancelCheckInterval' iteratons
-		if i%cancelCheckInterval == 0 {
-			select {
-			case <-ctx.Done():
-				stats = statsFromIters(stats, iters)
-				return cursors.NewStringSliceIteratorWithStats(nil, stats), ctx.Err()
-			default:
-			}
-		}
-
 		_, tags = tsdb.ParseSeriesKeyInto(keys[i], tags[:0])
 		curVal := tags.Get(tagKeyBytes)
 		if len(curVal) == 0 {
@@ -222,7 +175,6 @@ func (e *Engine) tagValuesPredicate(ctx context.Context, orgBucket, tagKeyBytes 
 		}
 
 		for _, iter := range iters {
-
 			if exact, _ := iter.Seek(sfkey); !exact {
 				continue
 			}
@@ -234,14 +186,17 @@ func (e *Engine) tagValuesPredicate(ctx context.Context, orgBucket, tagKeyBytes 
 		}
 	}
 
+	for _, iter := range iters {
+		stats.Add(iter.Stats())
+	}
+
 	vals := make([]string, 0, len(tsmValues))
 	for val := range tsmValues {
 		vals = append(vals, val)
 	}
 	sort.Strings(vals)
 
-	stats = statsFromIters(stats, iters)
-	return cursors.NewStringSliceIteratorWithStats(vals, stats), err
+	return cursors.NewStringSliceIteratorWithStats(vals, stats), nil
 }
 
 func (e *Engine) findCandidateKeys(ctx context.Context, orgBucket []byte, predicate influxql.Expr) ([][]byte, error) {
@@ -255,17 +210,7 @@ func (e *Engine) findCandidateKeys(ctx context.Context, orgBucket []byte, predic
 	defer sitr.Close()
 
 	var keys [][]byte
-	for i := 0; ; i++ {
-		// to keep series file index scans fast,
-		// check context every 'cancelCheckInterval' iteratons
-		if i%cancelCheckInterval == 0 {
-			select {
-			case <-ctx.Done():
-				return keys, ctx.Err()
-			default:
-			}
-		}
-
+	for {
 		elem, err := sitr.Next()
 		if err != nil {
 			return nil, err
@@ -287,9 +232,6 @@ func (e *Engine) findCandidateKeys(ctx context.Context, orgBucket []byte, predic
 // bucket matching the predicate within the time range (start, end].
 //
 // TagKeys will always return a StringIterator if there is no error.
-//
-// If the context is canceled before TagKeys has finished processing, a non-nil
-// error will be returned along with a partial result of the already scanned keys.
 func (e *Engine) TagKeys(ctx context.Context, orgID, bucketID influxdb.ID, start, end int64, predicate influxql.Expr) (cursors.StringIterator, error) {
 	encoded := tsdb.EncodeName(orgID, bucketID)
 
@@ -312,16 +254,8 @@ func (e *Engine) tagKeysNoPredicate(ctx context.Context, orgBucket []byte, start
 	// TODO(sgc): extend prefix when filtering by \x00 == <measurement>
 
 	var stats cursors.CursorStats
-	var canceled bool
 
 	e.FileStore.ForEachFile(func(f TSMFile) bool {
-		// Check the context before touching each tsm file
-		select {
-		case <-ctx.Done():
-			canceled = true
-			return false
-		default:
-		}
 		if f.OverlapsTimeRange(start, end) && f.OverlapsKeyPrefixRange(prefix, prefix) {
 			// TODO(sgc): create f.TimeRangeIterator(minKey, maxKey, start, end)
 			iter := f.TimeRangeIterator(prefix, start, end)
@@ -347,12 +281,6 @@ func (e *Engine) tagKeysNoPredicate(ctx context.Context, orgBucket []byte, start
 		return true
 	})
 
-	if canceled {
-		return cursors.NewStringSliceIteratorWithStats(nil, stats), ctx.Err()
-	}
-
-	// With performance in mind, we explicitly do not check the context
-	// while scanning the entries in the cache.
 	_ = e.Cache.ApplyEntryFn(func(sfkey []byte, entry *entry) error {
 		if !bytes.HasPrefix(sfkey, prefix) {
 			return nil
@@ -383,7 +311,7 @@ func (e *Engine) tagKeysPredicate(ctx context.Context, orgBucket []byte, start, 
 
 	keys, err := e.findCandidateKeys(ctx, orgBucket, predicate)
 	if err != nil {
-		return cursors.EmptyStringIterator, err
+		return nil, err
 	}
 
 	if len(keys) == 0 {
@@ -401,16 +329,8 @@ func (e *Engine) tagKeysPredicate(ctx context.Context, orgBucket []byte, start, 
 	// TODO(edd): we need to clean up how we're encoding the prefix so that we
 	// don't have to remember to get it right everywhere we need to touch TSM data.
 	prefix := models.EscapeMeasurement(orgBucket)
-	var canceled bool
 
 	e.FileStore.ForEachFile(func(f TSMFile) bool {
-		// Check the context before touching each tsm file
-		select {
-		case <-ctx.Done():
-			canceled = true
-			return false
-		default:
-		}
 		if f.OverlapsTimeRange(start, end) && f.OverlapsKeyPrefixRange(prefix, prefix) {
 			f.Ref()
 			files = append(files, f)
@@ -419,13 +339,6 @@ func (e *Engine) tagKeysPredicate(ctx context.Context, orgBucket []byte, start, 
 		return true
 	})
 
-	var stats cursors.CursorStats
-
-	if canceled {
-		stats = statsFromIters(stats, iters)
-		return cursors.NewStringSliceIteratorWithStats(nil, stats), ctx.Err()
-	}
-
 	var keyset models.TagKeysSet
 
 	// reusable buffers
@@ -433,19 +346,10 @@ func (e *Engine) tagKeysPredicate(ctx context.Context, orgBucket []byte, start, 
 		tags   models.Tags
 		keybuf []byte
 		sfkey  []byte
+		stats  cursors.CursorStats
 	)
 
 	for i := range keys {
-		// to keep cache scans fast, check context every 'cancelCheckInterval' iteratons
-		if i%cancelCheckInterval == 0 {
-			select {
-			case <-ctx.Done():
-				stats = statsFromIters(stats, iters)
-				return cursors.NewStringSliceIteratorWithStats(nil, stats), ctx.Err()
-			default:
-			}
-		}
-
 		_, tags = tsdb.ParseSeriesKeyInto(keys[i], tags[:0])
 		if keyset.IsSupersetKeys(tags) {
 			continue
@@ -464,7 +368,6 @@ func (e *Engine) tagKeysPredicate(ctx context.Context, orgBucket []byte, start, 
 		}
 
 		for _, iter := range iters {
-
 			if exact, _ := iter.Seek(sfkey); !exact {
 				continue
 			}
@@ -476,15 +379,11 @@ func (e *Engine) tagKeysPredicate(ctx context.Context, orgBucket []byte, start, 
 		}
 	}
 
-	stats = statsFromIters(stats, iters)
-	return cursors.NewStringSliceIteratorWithStats(keyset.Keys(), stats), err
-}
-
-func statsFromIters(stats cursors.CursorStats, iters []*TimeRangeIterator) cursors.CursorStats {
 	for _, iter := range iters {
 		stats.Add(iter.Stats())
 	}
-	return stats
+
+	return cursors.NewStringSliceIteratorWithStats(keyset.Keys(), stats), nil
 }
 
 var errUnexpectedTagComparisonOperator = errors.New("unexpected tag comparison operator")

@@ -19,7 +19,7 @@ import {viewableLabels} from 'src/labels/selectors'
 import {validateLabelUniqueness} from 'src/labels/utils/'
 
 // Types
-import {AppState, Label} from 'src/types'
+import {AppState} from 'src/types'
 import {ILabel} from '@influxdata/influx'
 import {
   IconFont,
@@ -53,7 +53,7 @@ interface DispatchProps {
 
 type Props = DispatchProps & StateProps
 
-type SortKey = keyof Label
+type SortKey = keyof ILabel
 
 @ErrorHandling
 class Labels extends PureComponent<Props, State> {
@@ -99,7 +99,7 @@ class Labels extends PureComponent<Props, State> {
             testID="button-create"
           />
         </TabbedPageHeader>
-        <FilterList<Label>
+        <FilterList<ILabel>
           list={labels}
           searchKeys={['name', 'properties.description']}
           searchTerm={searchTerm}
@@ -148,12 +148,12 @@ class Labels extends PureComponent<Props, State> {
     this.setState({searchTerm: e.target.value})
   }
 
-  private handleCreateLabel = (label: Label) => {
+  private handleCreateLabel = (label: ILabel) => {
     this.props.createLabel(label.name, label.properties)
   }
 
-  private handleUpdateLabel = (label: Label) => {
-    this.props.updateLabel(label.id, label as ILabel)
+  private handleUpdateLabel = (label: ILabel) => {
+    this.props.updateLabel(label.id, label)
   }
 
   private handleDelete = async (id: string) => {

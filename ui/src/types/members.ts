@@ -1,3 +1,3 @@
-import {ResourceMember, ResourceOwner} from 'src/client'
+import {ResourceMember, ResourceOwner} from '@influxdata/influx'
 
 export type Member = ResourceMember | ResourceOwner

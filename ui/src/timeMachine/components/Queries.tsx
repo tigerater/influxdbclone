@@ -35,6 +35,7 @@ import {getActiveTimeMachine, getActiveQuery} from 'src/timeMachine/selectors'
 import {
   AppState,
   DashboardQuery,
+  QueryEditMode,
   TimeRange,
   AutoRefresh,
   AutoRefreshStatus,
@@ -129,9 +130,9 @@ class TimeMachineQueries extends PureComponent<Props> {
   private get queryEditor(): JSX.Element {
     const {activeQuery} = this.props
 
-    if (activeQuery.editMode === 'builder') {
+    if (activeQuery.editMode === QueryEditMode.Builder) {
       return <TimeMachineQueryBuilder />
-    } else if (activeQuery.editMode === 'advanced') {
+    } else if (activeQuery.editMode === QueryEditMode.Advanced) {
       return <TimeMachineFluxEditor />
     } else {
       return null

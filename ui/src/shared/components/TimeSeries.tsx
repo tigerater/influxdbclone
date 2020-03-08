@@ -1,24 +1,20 @@
 // Library
 import {Component} from 'react'
-import {isEqual} from 'lodash'
+import {isEqual, get} from 'lodash'
 import {connect} from 'react-redux'
 import {withRouter, WithRouterProps} from 'react-router'
 import {fromFlux, FromFluxResult} from '@influxdata/giraffe'
 
 // API
-import {
-  runQuery,
-  RunQueryResult,
-  RunQuerySuccessResult,
-} from 'src/shared/apis/query'
+import {executeQueryWithVars} from 'src/shared/apis/query'
 
 // Utils
 import {checkQueryResult} from 'src/shared/utils/checkQueryResult'
-import {getWindowVars} from 'src/variables/utils/getWindowVars'
-import {buildVarsOption} from 'src/variables/utils/buildVarsOption'
 
 // Constants
-import {rateLimitReached, resultTooLarge} from 'src/shared/copy/notifications'
+import {RATE_LIMIT_ERROR_STATUS} from 'src/cloud/constants/index'
+import {rateLimitReached} from 'src/shared/copy/notifications'
+import {RATE_LIMIT_ERROR_TEXT} from 'src/cloud/constants'
 
 // Actions
 import {notify as notifyAction} from 'src/shared/actions/notifications'
@@ -82,7 +78,7 @@ class TimeSeries extends Component<Props & WithRouterProps, State> {
 
   public state: State = defaultState()
 
-  private pendingResults: Array<CancelBox<RunQueryResult>> = []
+  private pendingResults: Array<CancelBox<string>> = []
 
   public async componentDidMount() {
     this.reload()
@@ -138,37 +134,16 @@ class TimeSeries extends Component<Props & WithRouterProps, State> {
       this.pendingResults.forEach(({cancel}) => cancel())
 
       // Issue new queries
-      this.pendingResults = queries.map(({text}) => {
-        const windowVars = getWindowVars(text, variables)
-        const extern = buildVarsOption([...variables, ...windowVars])
-
-        return runQuery(orgID, text, extern)
-      })
+      this.pendingResults = queries.map(({text}) =>
+        executeQueryWithVars(orgID, text, variables)
+      )
 
       // Wait for new queries to complete
-      const results = await Promise.all(this.pendingResults.map(r => r.promise))
+      const files = await Promise.all(this.pendingResults.map(r => r.promise))
       const duration = Date.now() - startTime
-
-      for (const result of results) {
-        if (result.type === 'UNKNOWN_ERROR') {
-          throw new Error(result.message)
-        }
-
-        if (result.type === 'RATE_LIMIT_ERROR') {
-          notify(rateLimitReached(result.retryAfter))
-
-          throw new Error(result.message)
-        }
-
-        if (result.didTruncate) {
-          notify(resultTooLarge(result.bytesRead))
-        }
-
-        checkQueryResult(result.csv)
-      }
-
-      const files = (results as RunQuerySuccessResult[]).map(r => r.csv)
       const giraffeResult = fromFlux(files.join('\n\n'))
+
+      files.forEach(checkQueryResult)
 
       this.setState({
         giraffeResult,
@@ -181,10 +156,17 @@ class TimeSeries extends Component<Props & WithRouterProps, State> {
         return
       }
 
-      console.error(error)
+      let errorMessage = get(error, 'message', '')
+
+      if (get(error, 'status') === RATE_LIMIT_ERROR_STATUS) {
+        const retryAfter = get(error, 'headers.Retry-After')
+
+        notify(rateLimitReached(retryAfter))
+        errorMessage = RATE_LIMIT_ERROR_TEXT
+      }
 
       this.setState({
-        errorMessage: error.message,
+        errorMessage,
         giraffeResult: null,
         loading: RemoteDataState.Error,
       })

@@ -11,11 +11,11 @@ import GreaterThresholdMarker from 'src/shared/components/GreaterThresholdMarker
 import {clamp} from 'src/shared/utils/vis'
 
 // Types
-import {Threshold} from 'src/types'
+import {CheckThreshold, ThresholdType} from 'src/types'
 
 interface Props {
-  thresholds: Threshold[]
-  onSetThresholds: (newThresholds: Threshold[]) => void
+  thresholds: CheckThreshold[]
+  onSetThresholds: (newThresholds: CheckThreshold[]) => void
   yScale: Scale<number, number>
   yDomain: number[]
 }
@@ -31,13 +31,13 @@ const ThresholdMarkers: FunctionComponent<Props> = ({
   const handleDrag = (index: number, field: string, y: number) => {
     const yRelative = y - originRef.current.getBoundingClientRect().top
     const yValue = clamp(yScale.invert(yRelative), yDomain)
-    const nextThreshold: Threshold = {
+    const nextThreshold: CheckThreshold = {
       ...thresholds[index],
       [field]: yValue,
     }
 
     if (
-      nextThreshold.type === 'range' &&
+      nextThreshold.type === ThresholdType.Range &&
       nextThreshold.min > nextThreshold.max
     ) {
       // If the user drags the min past the max or vice versa, we swap the
@@ -63,7 +63,7 @@ const ThresholdMarkers: FunctionComponent<Props> = ({
         const onChangeMinPos = ({y}) => handleDrag(index, 'minValue', y)
 
         switch (threshold.type) {
-          case 'greater':
+          case ThresholdType.Greater:
             return (
               <GreaterThresholdMarker
                 key={index}
@@ -73,7 +73,7 @@ const ThresholdMarkers: FunctionComponent<Props> = ({
                 onChangePos={onChangePos}
               />
             )
-          case 'lesser':
+          case ThresholdType.Lesser:
             return (
               <LessThresholdMarker
                 key={index}
@@ -83,7 +83,7 @@ const ThresholdMarkers: FunctionComponent<Props> = ({
                 onChangePos={onChangePos}
               />
             )
-          case 'range':
+          case ThresholdType.Range:
             return (
               <RangeThresholdMarkers
                 key={index}

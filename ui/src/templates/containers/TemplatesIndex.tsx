@@ -12,7 +12,8 @@ import TabbedPageSection from 'src/shared/components/tabbed_page/TabbedPageSecti
 import TemplatesPage from 'src/templates/components/TemplatesPage'
 
 // Types
-import {AppState, Organization} from 'src/types'
+import {Organization} from '@influxdata/influx'
+import {AppState} from 'src/types'
 import GetResources, {ResourceTypes} from 'src/shared/components/GetResources'
 
 interface StateProps {

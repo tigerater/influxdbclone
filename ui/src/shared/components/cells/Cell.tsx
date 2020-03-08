@@ -8,14 +8,20 @@ import CellHeader from 'src/shared/components/cells/CellHeader'
 import CellContext from 'src/shared/components/cells/CellContext'
 import ViewComponent from 'src/shared/components/cells/View'
 import {ErrorHandling} from 'src/shared/decorators/errors'
-import {SpinnerContainer} from '@influxdata/clockface'
-import EmptyGraphMessage from 'src/shared/components/EmptyGraphMessage'
+import {SpinnerContainer, TechnoSpinner} from '@influxdata/clockface'
 
 // Utils
 import {getView} from 'src/dashboards/selectors'
 
 // Types
-import {AppState, View, Cell, TimeRange, RemoteDataState} from 'src/types'
+import {
+  AppState,
+  ViewType,
+  View,
+  Cell,
+  TimeRange,
+  RemoteDataState,
+} from 'src/types'
 
 interface StateProps {
   viewsStatus: RemoteDataState
@@ -101,7 +107,7 @@ class CellComponent extends Component<Props, State> {
   private get viewName(): string {
     const {view} = this.props
 
-    if (view && view.properties.type !== 'markdown') {
+    if (view && view.properties.type !== ViewType.Markdown) {
       return view.name
     }
 
@@ -115,7 +121,7 @@ class CellComponent extends Component<Props, State> {
       return ''
     }
 
-    const isMarkdownView = view.properties.type === 'markdown'
+    const isMarkdownView = view.properties.type === ViewType.Markdown
     const showNoteWhenEmpty = get(view, 'properties.showNoteWhenEmpty')
 
     if (isMarkdownView || showNoteWhenEmpty) {
@@ -131,7 +137,7 @@ class CellComponent extends Component<Props, State> {
     return (
       <SpinnerContainer
         loading={viewsStatus}
-        spinnerComponent={<EmptyGraphMessage message="Loading..." />}
+        spinnerComponent={<TechnoSpinner />}
       >
         <ViewComponent
           view={view}

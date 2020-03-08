@@ -28,7 +28,8 @@ import {
 // Types
 import {Links} from 'src/types/links'
 import {Substep, TelegrafPlugin} from 'src/types/dataLoaders'
-import {AppState, Bucket} from 'src/types'
+import {AppState} from 'src/types'
+import {Bucket} from '@influxdata/influx'
 
 export interface CollectorsStepProps {
   currentStepIndex: number

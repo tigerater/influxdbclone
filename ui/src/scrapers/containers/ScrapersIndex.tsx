@@ -15,7 +15,8 @@ import Scrapers from 'src/scrapers/components/Scrapers'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 // Types
-import {AppState, Organization} from 'src/types'
+import {Organization} from '@influxdata/influx'
+import {AppState} from 'src/types'
 
 interface StateProps {
   org: Organization

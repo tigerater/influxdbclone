@@ -16,8 +16,9 @@ import {FeatureFlag} from 'src/shared/utils/featureFlag'
 import {getNavItemActivation} from 'src/pageLayout/utils'
 
 // Types
-import {AppState, Organization} from 'src/types'
+import {AppState} from 'src/types'
 import {IconFont} from '@influxdata/clockface'
+import {Organization} from '@influxdata/influx'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'

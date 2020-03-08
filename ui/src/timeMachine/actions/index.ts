@@ -15,7 +15,7 @@ import {
   ViewType,
   Axes,
   DecimalPlaces,
-  XYGeom,
+  XYViewGeom,
   FieldOption,
   TableOptions,
   TimeMachineTab,
@@ -23,7 +23,6 @@ import {
 } from 'src/types'
 import {Color} from 'src/types/colors'
 import {HistogramPosition} from '@influxdata/giraffe'
-import {TimeMachineEnum} from 'src/timeMachine/constants'
 
 export type Action =
   | QueryBuilderAction
@@ -77,13 +76,13 @@ export type Action =
 interface SetActiveTimeMachineAction {
   type: 'SET_ACTIVE_TIME_MACHINE'
   payload: {
-    activeTimeMachineID: TimeMachineEnum
+    activeTimeMachineID: string
     initialState: Partial<TimeMachineState>
   }
 }
 
 export const setActiveTimeMachine = (
-  activeTimeMachineID: TimeMachineEnum,
+  activeTimeMachineID: string,
   initialState: Partial<TimeMachineState> = {}
 ): SetActiveTimeMachineAction => ({
   type: 'SET_ACTIVE_TIME_MACHINE',
@@ -174,10 +173,10 @@ export const setIsViewingRawData = (
 
 interface SetGeomAction {
   type: 'SET_GEOM'
-  payload: {geom: XYGeom}
+  payload: {geom: XYViewGeom}
 }
 
-export const setGeom = (geom: XYGeom): SetGeomAction => ({
+export const setGeom = (geom: XYViewGeom): SetGeomAction => ({
   type: 'SET_GEOM',
   payload: {geom},
 })

@@ -1,6 +1,7 @@
 // Libraries
 import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
+import {AppState} from 'src/types'
 
 // Components
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -13,7 +14,7 @@ import TabbedPageSection from 'src/shared/components/tabbed_page/TabbedPageSecti
 import GetResources, {ResourceTypes} from 'src/shared/components/GetResources'
 
 // Types
-import {AppState, Organization} from 'src/types'
+import {Organization} from '@influxdata/influx'
 
 interface StateProps {
   org: Organization

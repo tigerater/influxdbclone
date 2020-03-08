@@ -1,8 +1,8 @@
-import {AxisScale, Base} from 'src/types'
+import {Scale} from 'src/types'
 
 export const AXES_SCALE_OPTIONS = {
-  LINEAR: 'linear' as AxisScale,
-  LOG: 'log' as AxisScale,
-  BASE_2: '2' as Base,
-  BASE_10: '10' as Base,
+  LINEAR: Scale.Linear,
+  LOG: Scale.Log,
+  BASE_2: '2',
+  BASE_10: '10',
 }

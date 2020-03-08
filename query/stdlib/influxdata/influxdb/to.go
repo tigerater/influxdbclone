@@ -30,7 +30,6 @@ const ToKind = influxdb.ToKind
 // TODO(jlapacik) remove this once we have execute.DefaultFieldColLabel
 const defaultFieldColLabel = "_field"
 const DefaultMeasurementColLabel = "_measurement"
-const DefaultBufferSize = 1 << 14
 
 // ToOpSpec is the flux.OperationSpec for the `to` flux function.
 type ToOpSpec struct {
@@ -275,7 +274,6 @@ type ToTransformation struct {
 	spec               *ToProcedureSpec
 	implicitTagColumns bool
 	deps               ToDependencies
-	buf                *storage.BufferedPointsWriter
 }
 
 // RetractTable retracts the table for the transformation for the `to` flux function.
@@ -302,7 +300,6 @@ func NewToTransformation(ctx context.Context, d execute.Dataset, cache execute.T
 		spec:               spec,
 		implicitTagColumns: spec.Spec.TagColumns == nil,
 		deps:               deps,
-		buf:                storage.NewBufferedPointsWriter(DefaultBufferSize, deps.PointsWriter),
 	}, nil
 }
 
@@ -406,9 +403,6 @@ func (t *ToTransformation) UpdateProcessingTime(id execute.DatasetID, pt execute
 
 // Finish is called after the `to` flux function's transformation is done processing.
 func (t *ToTransformation) Finish(id execute.DatasetID, err error) {
-	if err == nil {
-		err = t.buf.Flush(t.ctx)
-	}
 	t.d.Finish(err)
 }
 
@@ -660,7 +654,7 @@ func writeTable(ctx context.Context, t *ToTransformation, tbl flux.Table) error 
 				return err
 			}
 		}
-		return t.buf.WritePoints(ctx, points)
+		return d.PointsWriter.WritePoints(ctx, points)
 	})
 }
 

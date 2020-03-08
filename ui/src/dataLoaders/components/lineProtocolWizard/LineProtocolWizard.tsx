@@ -23,7 +23,7 @@ import {clearDataLoaders} from 'src/dataLoaders/actions/dataLoaders'
 
 // Types
 import {AppState} from 'src/types'
-import {Bucket} from 'src/types'
+import {Bucket} from '@influxdata/influx'
 
 export interface LineProtocolStepProps {
   currentStepIndex: number

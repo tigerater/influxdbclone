@@ -11,7 +11,7 @@ import {ClickOutside} from 'src/shared/components/ClickOutside'
 import {ADD_NEW_LABEL_ITEM_ID} from 'src/shared/components/inlineLabels/InlineLabelsEditor'
 
 // Types
-import {Label} from 'src/types'
+import {ILabel} from '@influxdata/influx'
 import {IconFont} from '@influxdata/clockface'
 
 // Decorators
@@ -30,7 +30,7 @@ interface Props {
   onDismiss: () => void
   onStartCreatingLabel: () => void
   onInputChange: (e: ChangeEvent<HTMLInputElement>) => void
-  filteredLabels: Label[]
+  filteredLabels: ILabel[]
   onAddLabel: (labelID: string) => void
 }
 

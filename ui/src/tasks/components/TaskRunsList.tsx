@@ -3,7 +3,8 @@ import React, {PureComponent} from 'react'
 import memoizeOne from 'memoize-one'
 
 // Components
-import {EmptyState, IndexList} from '@influxdata/clockface'
+import {EmptyState} from '@influxdata/clockface'
+import {IndexList} from 'src/clockface'
 import TaskRunsRow from 'src/tasks/components/TaskRunsRow'
 
 // Types

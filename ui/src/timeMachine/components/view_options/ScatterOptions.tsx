@@ -83,8 +83,8 @@ interface OwnProps {
   yColumn: string
   fillColumns: string[]
   symbolColumns: string[]
-  xDomain: number[]
-  yDomain: number[]
+  xDomain: [number, number]
+  yDomain: [number, number]
   xAxisLabel: string
   yAxisLabel: string
   xPrefix: string
@@ -216,7 +216,7 @@ const ScatterOptions: SFC<Props> = props => {
         />
       </Grid.Row>
       <AutoDomainInput
-        domain={yDomain as [number, number]}
+        domain={yDomain}
         onSetDomain={onSetYDomain}
         label="Y Axis Domain"
       />

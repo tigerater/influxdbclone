@@ -2841,19 +2841,19 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-  '/query/suggestions/{name}':
+  /query/suggestions/{name}:
+    parameters:
+      - $ref: '#/components/parameters/TraceSpan'
+      - in: path
+        name: name
+        schema:
+          type: string
+        required: true
+        description: name of branching suggestion
     get:
       operationId: GetQuerySuggestionsName
       tags:
         - Query
-      parameters:
-        - $ref: '#/components/parameters/TraceSpan'
-        - in: path
-          name: name
-          schema:
-            type: string
-          required: true
-          description: name of branching suggestion
       responses:
         '200':
           description: Suggestions for next functions in call chain
@@ -3074,16 +3074,6 @@ paths:
       parameters:
         - $ref: '#/components/parameters/TraceSpan'
         - in: header
-          name: Accept-Encoding
-          description: The Accept-Encoding request HTTP header advertises which content encoding, usually a compression algorithm, the client is able to understand.
-          schema:
-            type: string
-            description: specifies that the query response in the body should be encoded with gzip or not encoded with identity.
-            default: identity
-            enum:
-              - gzip
-              - identity
-        - in: header
           name: Content-Type
           schema:
             type: string
@@ -3112,16 +3102,6 @@ paths:
       responses:
           '200':
             description: query results
-            headers:
-              Content-Encoding:
-                description: The Content-Encoding entity header is used to compress the media-type.  When present, its value indicates which encodings were applied to the entity-body
-                schema:
-                    type: string
-                    description: specifies that the response in the body is encoded with gzip or not encoded with identity.
-                    default: identity
-                    enum:
-                    - gzip
-                    - identity
             content:
               text/csv:
                 schema:
@@ -3157,14 +3137,6 @@ paths:
                 schema:
                     type: string
                     format: binary
-          '429':
-            description: token is temporarily over quota. The Retry-After header describes when to try the read again.
-            headers:
-              Retry-After:
-                description: A non-negative decimal integer indicating the seconds to delay after the response is received.
-                schema:
-                  type: integer
-                  format: int32
           default:
             description: internal server error
             headers:
@@ -5378,45 +5350,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-    patch:
-      operationId: PatchNotificationRulesID
-      tags:
-        - NotificationRules
-      summary: Update a notification rule
-      requestBody:
-        description: notification rule update to apply
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/NotificationRuleUpdate"
-      parameters:
-        - $ref: '#/components/parameters/TraceSpan'
-        - in: path
-          name: ruleID
-          schema:
-            type: string
-          required: true
-          description: ID of notification rule
-      responses:
-        '200':
-          description: An updated notification rule
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/NotificationRule"
-        '404':
-          description: The notification rule was not found
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        default:
-          description: unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
     delete:
       operationId: DeleteNotificationRulesID
       tags:
@@ -6970,7 +6903,8 @@ components:
             The extents of an axis in the form [lower, upper]. Clients determine
             whether bounds are to be inclusive or exclusive of their limits
           items:
-            type: string
+            type: integer
+            format: int64
         label:
           description: label is a description of this Axis
           type: string
@@ -6983,17 +6917,15 @@ components:
         base:
           description: Base represents the radix for formatting axis values.
           type: string
-          enum: ['', '2', '10']
         scale:
-          $ref: '#/components/schemas/AxisScale'
-    AxisScale:
+          $ref: '#/components/schemas/AxisScaleType'
+    AxisScaleType:
       description: 'Scale is the axis formatting scale. Supported: "log", "linear"'
       type: string
       enum: ['log', 'linear']
     DashboardColor:
       type: object
       description: Color defines an encoding of data value into color space
-      required: [id, type, hex, name, value]
       properties:
         id:
           description: ID is the unique id of the view color
@@ -7005,9 +6937,6 @@ components:
             - min
             - max
             - threshold
-            - scale
-            - text
-            - background
         hex:
           description: Hex is the hex number of the color
           type: string
@@ -7034,363 +6963,94 @@ components:
         visible:
           description: Indicates whether this field should be visible on the table
           type: boolean
-    XYViewProperties:
+    LogViewProperties:
+      description: Contains the configuration for the log viewer
       type: object
       required:
-        - type
-        - geom
-        - queries
-        - shape
-        - axes
-        - colors
-        - legend
-        - note
-        - showNoteWhenEmpty
+      - columns
+      - shape
+      - type
       properties:
-        type:
-          type: string
-          enum: [xy]
-        queries:
+        columns:
+          description: Defines the order, names, and visibility of columns in the log
+            viewer table
           type: array
           items:
-            $ref: "#/components/schemas/DashboardQuery"
-        colors:
-          description: Colors define color encoding of data into a visualization
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardColor"
-        shape:
-          type: string
-          enum: ['chronograf-v2']
-        note:
-          type: string
-        showNoteWhenEmpty:
-          description: if true, will display note when empty
-          type: boolean
-        axes:
-          $ref: '#/components/schemas/Axes'
-        legend:
-          $ref: '#/components/schemas/Legend'
-        xColumn:
-          type: string
-        yColumn:
-          type: string
-        shadeBelow:
-          type: boolean
-        geom:
-          $ref: '#/components/schemas/XYGeom'
-    XYGeom:
-      type: string
-      enum: [line, step, stacked, bar, monotoneX]
-    LinePlusSingleStatProperties:
+            "$ref": "#/components/schemas/LogViewerColumn"
+      example:
+        columns:
+        - name: severity
+          position: 0
+          settings:
+          - type: label
+            value: icon
+          - type: label
+            value: text
+          - type: visibility
+            value: visible
+          - type: color
+            name: ruby
+            value: emergency
+          - type: color
+            name: rainforest
+            value: info
+          - type: displayName
+            value: Log Severity!
+        - name: messages
+          position: 1
+          settings:
+          - type: visibility
+            value: hidden
+    LogViewerColumn:
+      description: Contains a specific column's settings.
       type: object
       required:
-        - type
-        - queries
-        - shape
-        - axes
-        - colors
-        - legend
-        - note
-        - showNoteWhenEmpty
-        - prefix
-        - suffix
-        - decimalPlaces
+      - name
+      - position
+      - settings
       properties:
-        type:
-          type: string
-          enum: [line-plus-single-stat]
-        queries:
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardQuery"
-        colors:
-          description: Colors define color encoding of data into a visualization
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardColor"
-        shape:
-          type: string
-          enum: ['chronograf-v2']
-        note:
-          type: string
-        showNoteWhenEmpty:
-          description: if true, will display note when empty
-          type: boolean
-        axes:
-          $ref: '#/components/schemas/Axes'
-        legend:
-          $ref: '#/components/schemas/Legend'
-        xColumn:
-          type: string
-        yColumn:
-          type: string
-        shadeBelow:
-          type: boolean
-        prefix:
-          type: string
-        suffix:
-          type: string
-        decimalPlaces:
-          $ref: '#/components/schemas/DecimalPlaces'
-    ScatterViewProperties:
-      type: object
-      required:
-        - type
-        - queries
-        - colors
-        - shape
-        - note
-        - showNoteWhenEmpty
-        - xColumn
-        - yColumn
-        - fillColumns
-        - symbolColumns
-        - xDomain
-        - yDomain
-        - xAxisLabel
-        - yAxisLabel
-        - xPrefix
-        - yPrefix
-        - xSuffix
-        - ySuffix
-      properties:
-        type:
-          type: string
-          enum: [scatter]
-        queries:
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardQuery"
-        colors:
-          description: Colors define color encoding of data into a visualization
-          type: array
-          items:
-            type: string
-        shape:
-          type: string
-          enum: ['chronograf-v2']
-        note:
-          type: string
-        showNoteWhenEmpty:
-          description: if true, will display note when empty
-          type: boolean
-        xColumn:
-          type: string
-        yColumn:
-          type: string
-        fillColumns:
-          type: array
-          items:
-            type: string
-        symbolColumns:
-          type: array
-          items:
-            type: string
-        xDomain:
-          type: array
-          items:
-            type: number
-          maxItems: 2
-        yDomain:
-          type: array
-          items:
-            type: number
-          maxItems: 2
-        xAxisLabel:
-          type: string
-        yAxisLabel:
-          type: string
-        xPrefix:
-          type: string
-        xSuffix:
-          type: string
-        yPrefix:
-          type: string
-        ySuffix:
-          type: string
-    HeatmapViewProperties:
-      type: object
-      required:
-        - type
-        - queries
-        - colors
-        - shape
-        - note
-        - showNoteWhenEmpty
-        - xColumn
-        - yColumn
-        - xDomain
-        - yDomain
-        - xAxisLabel
-        - yAxisLabel
-        - xPrefix
-        - yPrefix
-        - xSuffix
-        - ySuffix
-        - binSize
-      properties:
-        type:
-          type: string
-          enum: [heatmap]
-        queries:
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardQuery"
-        colors:
-          description: Colors define color encoding of data into a visualization
-          type: array
-          items:
-            type: string
-        shape:
-          type: string
-          enum: ['chronograf-v2']
-        note:
-          type: string
-        showNoteWhenEmpty:
-          description: if true, will display note when empty
-          type: boolean
-        xColumn:
-          type: string
-        yColumn:
-          type: string
-        xDomain:
-          type: array
-          items:
-            type: number
-          maxItems: 2
-        yDomain:
-          type: array
-          items:
-            type: number
-          maxItems: 2
-        xAxisLabel:
-          type: string
-        yAxisLabel:
-          type: string
-        xPrefix:
-          type: string
-        xSuffix:
-          type: string
-        yPrefix:
-          type: string
-        ySuffix:
-          type: string
-        binSize:
-          type: number
-    SingleStatViewProperties:
-      type: object
-      required:
-        - type
-        - queries
-        - colors
-        - shape
-        - note
-        - showNoteWhenEmpty
-        - prefix
-        - suffix
-        - legend
-        - decimalPlaces
-      properties:
-        type:
-          type: string
-          enum: [single-stat]
-        queries:
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardQuery"
-        colors:
-          description: Colors define color encoding of data into a visualization
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardColor"
-        shape:
-          type: string
-          enum: ['chronograf-v2']
-        note:
-          type: string
-        showNoteWhenEmpty:
-          description: if true, will display note when empty
-          type: boolean
-        prefix:
-          type: string
-        suffix:
-          type: string
-        legend:
-          $ref: '#/components/schemas/Legend'
-        decimalPlaces:
-          $ref: "#/components/schemas/DecimalPlaces"
-    HistogramViewProperties:
-      type: object
-      required:
-        - type
-        - queries
-        - colors
-        - shape
-        - note
-        - showNoteWhenEmpty
-        - xColumn
-        - fillColumns
-        - xDomain
-        - xAxisLabel
-        - position
-        - binCount
-      properties:
-        type:
-          type: string
-          enum: [histogram]
-        queries:
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardQuery"
-        colors:
-          description: Colors define color encoding of data into a visualization
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardColor"
-        shape:
-          type: string
-          enum: ['chronograf-v2']
-        note:
-          type: string
-        showNoteWhenEmpty:
-          description: if true, will display note when empty
-          type: boolean
-        xColumn:
-          type: string
-        fillColumns:
-          type: array
-          items:
-            type: string
-        xDomain:
-          type: array
-          items:
-            type: number
-            format: float
-        xAxisLabel:
+        name:
+          description: Unique identifier name of the column
           type: string
         position:
-          type: string
-          enum: [overlaid, stacked]
-        binCount:
           type: integer
-    GaugeViewProperties:
-      type: object
-      required:
-        - type
-        - queries
-        - colors
-        - shape
-        - note
-        - showNoteWhenEmpty
-        - prefix
-        - suffix
-        - legend
-        - decimalPlaces
+          format: int32
+        settings:
+          description: Composable settings options for the column
+          type: array
+          items:
+            description: Type and value and optional name of a setting.
+            type: object
+            required:
+            - type
+            - value
+            properties:
+              type:
+                type: string
+              value:
+                type: string
+              name:
+                type: string
+      example:
+        name: severity
+        position: 0
+        settings:
+        - type: label
+          value: icon
+        - type: label
+          value: text
+        - type: visibility
+          value: visible
+        - type: color
+          name: ruby
+          value: emergency
+        - type: color
+          name: rainforest
+          value: info
+        - type: displayName
+          value: Log Severity!
+    ViewProperties:
       properties:
-        type:
-          type: string
-          enum: [gauge]
         queries:
           type: array
           items:
@@ -7405,127 +7065,238 @@ components:
           enum: ['chronograf-v2']
         note:
           type: string
-        showNoteWhenEmpty:
-          description: if true, will display note when empty
-          type: boolean
-        prefix:
-          type: string
-        suffix:
-          type: string
-        legend:
-          $ref: '#/components/schemas/Legend'
-        decimalPlaces:
-          $ref: "#/components/schemas/DecimalPlaces"
-    TableViewProperties:
-      type: object
-      required:
-        - type
-        - queries
-        - colors
-        - shape
-        - note
-        - showNoteWhenEmpty
-        - tableOptions
-        - fieldOptions
-        - timeFormat
-        - decimalPlaces
-      properties:
         type:
-          type: string
-          enum: [table]
-        queries:
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardQuery"
-        colors:
-          description: Colors define color encoding of data into a visualization
-          type: array
-          items:
-            $ref: "#/components/schemas/DashboardColor"
-        shape:
-          type: string
-          enum: ['chronograf-v2']
-        note:
-          type: string
+          $ref: "#/components/schemas/ViewType"
         showNoteWhenEmpty:
           description: if true, will display note when empty
           type: boolean
-        tableOptions:
+      required: [type]
+    LinePlusSingleStatProperties:
+      allOf:
+        - $ref: '#/components/schemas/ViewProperties'
+        - type: object
           properties:
-            verticalTimeAxis:
-              description: >-
-                verticalTimeAxis describes the orientation of the table by
-                indicating whether the time axis will be displayed vertically
-              type: boolean
-            sortBy:
-              $ref: "#/components/schemas/RenamableField"
-            wrapping:
-              description: wrapping describes the text wrapping style to be used in table views
+            axes:
+              $ref: '#/components/schemas/Axes'
+            legend:
+              $ref: '#/components/schemas/Legend'
+            prefix:
               type: string
-              enum:
-                - truncate
-                - wrap
-                - single-line
-            fixFirstColumn:
-              description: >-
-                fixFirstColumn indicates whether the first column of the table
-                should be locked
+            suffix:
+              type: string
+            decimalPlaces:
+              $ref: '#/components/schemas/DecimalPlaces'
+    XYViewProperties:
+      allOf:
+        - $ref: '#/components/schemas/ViewProperties'
+        - type: object
+          properties:
+            axes:
+              $ref: '#/components/schemas/Axes'
+            legend:
+              $ref: '#/components/schemas/Legend'
+            xColumn:
+              type: string
+            yColumn:
+              type: string
+            ShadeBelow:
               type: boolean
-        fieldOptions:
-          description: >-
-            fieldOptions represent the fields retrieved by the query with
-            customization options
-          type: array
-          items:
-            $ref: '#/components/schemas/RenamableField'
-        timeFormat:
-          description: >-
-            timeFormat describes the display format for time values according to
-            moment.js date formatting
-          type: string
-        decimalPlaces:
-          $ref: '#/components/schemas/DecimalPlaces'
+            geom:
+              $ref: '#/components/schemas/XYGeomType'
+    XYGeomType:
+      type: string
+      enum: ["line", "step", "stacked", "bar", "monotoneX"]
+    ScatterViewProperties:
+      allOf:
+        - $ref: '#/components/schemas/ViewProperties'
+        - type: object
+          properties:
+            xColumn:
+              type: string
+            yColumn:
+              type: string
+            fillColumns:
+              type: array
+              items:
+                type: string
+            symbolColumns:
+              type: array
+              items:
+                type: string
+            xDomain:
+              type: array
+              items:
+                type: number
+              maxItems: 2
+            yDomain:
+              type: array
+              items:
+                type: number
+              maxItems: 2
+            xAxisLabel:
+              type: string
+            yAxisLabel:
+              type: string
+            xPrefix:
+              type: string
+            xSuffix:
+              type: string
+            yPrefix:
+              type: string
+            ySuffix:
+              type: string
+    HeatmapViewProperties:
+      allOf:
+        - $ref: '#/components/schemas/ViewProperties'
+        - type: object
+          properties:
+            xColumn:
+              type: string
+            yColumn:
+              type: string
+            xDomain:
+              type: array
+              items:
+                type: number
+              maxItems: 2
+            yDomain:
+              type: array
+              items:
+                type: number
+              maxItems: 2
+            xAxisLabel:
+              type: string
+            yAxisLabel:
+              type: string
+            xPrefix:
+              type: string
+            xSuffix:
+              type: string
+            yPrefix:
+              type: string
+            ySuffix:
+              type: string
+            binSize:
+              type: number
+    SingleStatViewProperties:
+      allOf:
+        - $ref: '#/components/schemas/ViewProperties'
+        - type: object
+          properties:
+            prefix:
+              type: string
+            suffix:
+              type: string
+            legend:
+              $ref: '#/components/schemas/Legend'
+            decimalPlaces:
+              $ref: "#/components/schemas/DecimalPlaces"
+    HistogramViewProperties:
+      allOf:
+        - $ref: '#/components/schemas/ViewProperties'
+        - type: object
+          properties:
+            xColumn:
+              type: string
+            fillColumns:
+              type: array
+              items:
+                type: string
+            xDomain:
+              type: array
+              items:
+                type: number
+                format: float
+            xAxisLabel:
+              type: string
+            position:
+              type: string
+            binCount:
+              type: integer
+    GaugeViewProperties:
+      allOf:
+        - $ref: '#/components/schemas/ViewProperties'
+        - type: object
+          properties:
+            prefix:
+              type: string
+            suffix:
+              type: string
+            legend:
+              $ref: '#/components/schemas/Legend'
+            decimalPlaces:
+              $ref: '#/components/schemas/DecimalPlaces'
+    TableViewProperties:
+      allOf:
+        - $ref: '#/components/schemas/ViewProperties'
+        - type: object
+          properties:
+            tableOptions:
+              properties:
+                verticalTimeAxis:
+                  description: >-
+                    verticalTimeAxis describes the orientation of the table by
+                    indicating whether the time axis will be displayed vertically
+                  type: boolean
+                sortBy:
+                  $ref: "#/components/schemas/RenamableField"
+                wrapping:
+                  description: wrapping describes the text wrapping style to be used in table views
+                  type: string
+                  enum:
+                    - truncate
+                    - wrap
+                    - single-line
+                fixFirstColumn:
+                  description: >-
+                    fixFirstColumn indicates whether the first column of the table
+                    should be locked
+                  type: boolean
+            fieldOptions:
+              description: >-
+                fieldOptions represent the fields retrieved by the query with
+                customization options
+              type: array
+              items:
+                $ref: '#/components/schemas/RenamableField'
+            timeFormat:
+              description: >-
+                timeFormat describes the display format for time values according to
+                moment.js date formatting
+              type: string
+            decimalPlaces:
+              $ref: '#/components/schemas/DecimalPlaces'
     MarkdownViewProperties:
       type: object
-      required:
-        - type
-        - shape
-        - note
       properties:
-        type:
-          type: string
-          enum: [markdown]
-        shape:
-          type: string
-          enum: ['chronograf-v2']
         note:
           type: string
-    CheckViewProperties:
-      type: object
-      required:
-        - type
-        - shape
-        - checkID
-        - check
+        type:
+          type: string
+          enum: ["markdown"]
+    EmptyViewProperties:
       properties:
         type:
           type: string
-          enum: [check]
-        shape:
-          type: string
-          enum: ['chronograf-v2']
-        checkID:
-          type: string
-        check:
-          $ref: '#/components/schemas/Check'
+          enum: ["empty"]
+    CheckViewProperties:
+      allOf:
+        - $ref: '#/components/schemas/ViewProperties'
+        - type: object
+          properties:
+            checkID:
+              type: string
+            check:
+              $ref: '#/components/schemas/Check'
     Axes:
       description: The viewport for a View's visualizations
       type: object
-      required: ['x', 'y']
       properties:
         x:
           $ref: '#/components/schemas/Axis'
         "y": # Quoted to prevent YAML parser from interpreting y as shorthand for true.
+          $ref: '#/components/schemas/Axis'
+        y2:
           $ref: '#/components/schemas/Axis'
     Legend:
       description: Legend define encoding of data into a view's legend
@@ -7561,7 +7332,7 @@ components:
       properties:
         type:
           type: string
-          enum: [constant]
+          enum: ["constant"]
         values:
           type: array
           items:
@@ -7570,7 +7341,7 @@ components:
       properties:
         type:
           type: string
-          enum: [map]
+          enum: ["map"]
         values:
           type: object
           additionalProperties:
@@ -7579,7 +7350,7 @@ components:
       properties:
         type:
           type: string
-          enum: [query]
+          enum: ["query"]
         values:
           type: object
           properties:
@@ -7673,22 +7444,7 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Variable"
-    ViewProperties:
-      oneOf:
-        - $ref: "#/components/schemas/LinePlusSingleStatProperties"
-        - $ref: "#/components/schemas/XYViewProperties"
-        - $ref: "#/components/schemas/SingleStatViewProperties"
-        - $ref: "#/components/schemas/HistogramViewProperties"
-        - $ref: "#/components/schemas/GaugeViewProperties"
-        - $ref: "#/components/schemas/TableViewProperties"
-        - $ref: "#/components/schemas/MarkdownViewProperties"
-        - $ref: "#/components/schemas/CheckViewProperties"
-        - $ref: "#/components/schemas/ScatterViewProperties"
-        - $ref: "#/components/schemas/HeatmapViewProperties"
     View:
-      required:
-        - name
-        - properties
       properties:
         links:
           type: object
@@ -7702,7 +7458,36 @@ components:
         name:
           type: string
         properties:
-          $ref: '#/components/schemas/ViewProperties'
+          oneOf:
+            - $ref: "#/components/schemas/LinePlusSingleStatProperties"
+            - $ref: "#/components/schemas/XYViewProperties"
+            - $ref: "#/components/schemas/SingleStatViewProperties"
+            - $ref: "#/components/schemas/HistogramViewProperties"
+            - $ref: "#/components/schemas/GaugeViewProperties"
+            - $ref: "#/components/schemas/TableViewProperties"
+            - $ref: "#/components/schemas/MarkdownViewProperties"
+            - $ref: "#/components/schemas/LogViewProperties"
+            - $ref: "#/components/schemas/EmptyViewProperties"
+            - $ref: "#/components/schemas/CheckViewProperties"
+            - $ref: "#/components/schemas/ScatterViewProperties"
+            - $ref: "#/components/schemas/HeatmapViewProperties"
+          discriminator:
+            propertyName: type
+            mapping:
+              line-plus-single-stat: "#/components/schemas/LinePlusSingleStatProperties"
+              xy: "#/components/schemas/XYViewProperties"
+              single-stat: "#/components/schemas/SingleStatViewProperties"
+              histogram: "#/components/schemas/HistogramViewProperties"
+              gauge: "#/components/schemas/GaugeViewProperties"
+              table: "#/components/schemas/TableViewProperties"
+              markdown: "#/components/schemas/MarkdownViewProperties"
+              log-viewer: "#/components/schemas/LogViewProperties"
+              check: "#/components/schemas/CheckViewProperties"
+              scatter: "#/components/schemas/ScatterViewProperties"
+              heatmap: "#/components/schemas/HeatmapViewProperties"
+    ViewType:
+      type: string
+      enum: ['xy', 'line-plus-single-stat', 'single-stat', 'gauge', 'table', 'markdown', 'log-viewer', 'histogram', 'heatmap', 'scatter', 'check', 'empty']
     Views:
       type: object
       properties:
@@ -8808,7 +8593,12 @@ components:
           description: The name of the organization that owns this Task.
           type: string
         status:
-          $ref: "#/components/schemas/TaskStatusType"
+          description: Starting state of the task. 'inactive' tasks are not run until they are updated to 'active'
+          default: active
+          type: string
+          enum:
+            - active
+            - inactive
         flux:
           description: The Flux script to run for this task.
           type: string
@@ -8820,7 +8610,12 @@ components:
       type: object
       properties:
         status:
-          $ref: "#/components/schemas/TaskStatusType"
+          description: Starting state of the task. 'inactive' tasks are not run until they are updated to 'active'
+          default: active
+          type: string
+          enum:
+            - active
+            - inactive
         flux:
           description: The Flux script to run for this task.
           type: string
@@ -8843,6 +8638,14 @@ components:
       oneOf:
         - $ref: "#/components/schemas/DeadmanCheck"
         - $ref: "#/components/schemas/ThresholdCheck"
+      discriminator:
+        propertyName: type
+        mapping:
+          deadman: "#/components/schemas/DeadmanCheck"
+          threshold: "#/components/schemas/ThresholdCheck"
+    CheckType:
+      type: string
+      enum: [deadman, threshold]
     Checks:
       properties:
         checks:
@@ -8856,6 +8659,9 @@ components:
         id:
           readOnly: true
           type: string
+        type:
+          type: string
+          $ref: "#/components/schemas/CheckType"
         name:
           type: string
         orgID:
@@ -8910,21 +8716,24 @@ components:
         - $ref: "#/components/schemas/CheckBase"
         - type: object
           properties:
-            type:
-              type: string
-              enum: [threshold]
             thresholds:
               type: array
               items:
-                $ref: "#/components/schemas/Threshold"
+                oneOf:
+                  - $ref: "#/components/schemas/GreaterThreshold"
+                  - $ref: "#/components/schemas/LesserThreshold"
+                  - $ref: "#/components/schemas/RangeThreshold"
+                discriminator:
+                  propertyName: type
+                  mapping:
+                    greater: "#/components/schemas/GreaterThreshold"
+                    lesser: "#/components/schemas/LesserThreshold"
+                    range: "#/components/schemas/RangeThreshold"
     DeadmanCheck:
       allOf:
         - $ref: "#/components/schemas/CheckBase"
         - type: object
           properties:
-            type:
-              type: string
-              enum: [deadman]
             timeSince:
               description: seconds before deadman triggers
               type: integer
@@ -8933,40 +8742,63 @@ components:
               type: boolean
             level:
               $ref: "#/components/schemas/CheckStatusLevel"
-    Threshold:
+    ThresholdBase:
       properties:
         level:
          $ref: "#/components/schemas/CheckStatusLevel"
         allValues:
           description: if true, only alert if all values meet threshold
           type: boolean
-        lowerBound:
-          type: number
-          format: float
-        upperBound:
-          type: number
-          format: float
+        type:
+          $ref: "#/components/schemas/ThresholdType"
+      required: [type]
+    GreaterThreshold:
+      allOf:
+        - $ref: "#/components/schemas/ThresholdBase"
+        - type: object
+          properties:
+            value:
+              type: number
+              format: float
+    LesserThreshold:
+      allOf:
+        - $ref: "#/components/schemas/ThresholdBase"
+        - type: object
+          properties:
+            value:
+              type: number
+              format: float
+    RangeThreshold:
+      allOf:
+        - $ref: "#/components/schemas/ThresholdBase"
+        - type: object
+          properties:
+            min:
+              type: number
+              format: float
+            max:
+              type: number
+              format: float
+            within:
+              type: boolean
+    ThresholdType:
+      type: string
+      enum: [greater, lesser, range]
     CheckStatusLevel:
       description: the state to record if check matches a criteria
       type: string
       enum: ["UNKNOWN", "OK", "INFO", "CRIT", "WARN"]
-    NotificationRuleUpdate:
-      type: object
-      properties:
-        name:
-          type: string
-        description:
-          type: string
-        status:
-          type: string
-          enum:
-            - active
-            - inactive
     NotificationRule:
       oneOf:
         - $ref: "#/components/schemas/SlackNotificationRule"
         - $ref: "#/components/schemas/SMTPNotificationRule"
         - $ref: "#/components/schemas/PagerDutyNotificationRule"
+      discriminator:
+        propertyName: type
+        mapping:
+          slack: "#/components/schemas/SlackNotificationRule"
+          smtp: "#/components/schemas/SMTPNotificationRule"
+          pagerduty:  "#/components/schemas/PagerDutyNotificationRule"
     NotificationRules:
       properties:
         notificationRules:
@@ -8977,13 +8809,6 @@ components:
           $ref: "#/components/schemas/Links"
     NotificationRuleBase:
       type: object
-      required:
-        - id
-        - orgid
-        - status
-        - name
-        - tagRules
-        - statusRules
       properties:
         id:
           readOnly: true
@@ -9011,6 +8836,8 @@ components:
         name:
           description: human-readable name describing the notification rule
           type: string
+        type:
+          $ref: "#/components/schemas/NotificationRuleType"
         sleepUntil:
           type: string
         every:
@@ -9046,6 +8873,7 @@ components:
             $ref: "#/components/schemas/StatusRule"
         labels:
           $ref: "#/components/schemas/Labels"
+      required: [type]
     TagRule:
       type: object
       properties:
@@ -9079,11 +8907,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/NotificationRuleBase"
         - type: object
-          required: [type, messageTemplate]
           properties:
-            type:
-              type: string
-              enum: [slack]
             channel:
               type: string
             messageTemplate:
@@ -9092,11 +8916,7 @@ components:
       allOf:
         - $ref: "#/components/schemas/NotificationRuleBase"
         - type: object
-          required: [type, subjectTemplate, to]
           properties:
-            type:
-              type: string
-              enum: [smtp]
             subjectTemplate:
               type: string
             bodyTemplate:
@@ -9107,13 +8927,12 @@ components:
       allOf:
         - $ref: "#/components/schemas/NotificationRuleBase"
         - type: object
-          required: [type, messageTemplate]
           properties:
-            type:
-              type: string
-              enum: [pagerduty]
             messageTemplate:
               type: string
+    NotificationRuleType:
+      type: string
+      enum: ['slack', 'smtp', 'pagerduty']
     NotificationEndpoint:
       oneOf:
         - $ref: "#/components/schemas/SlackNotificationEndpoint"

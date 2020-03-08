@@ -1,5 +1,5 @@
 import {Doc} from 'codemirror'
-import {Organization} from '../../src/types'
+import {Organization} from '@influxdata/influx'
 import {
   FROM,
   RANGE,

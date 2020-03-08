@@ -1,4 +1,4 @@
-import {Organization} from '../../src/types'
+import {Organization} from '@influxdata/influx'
 
 const newLabelName = 'click-me'
 const dashboardName = 'Bee Happy'

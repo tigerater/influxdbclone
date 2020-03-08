@@ -3,7 +3,6 @@ import {useState} from 'react'
 import {render, fireEvent, wait} from 'react-testing-library'
 import ThresholdsSettings from 'src/shared/components/ThresholdsSettings'
 import {BASE_THRESHOLD_ID} from 'src/shared/constants/thresholds'
-import {Color} from 'src/types'
 
 describe('ThresholdSettings', () => {
   const getErrorMessage = (container, thresholdID) => {
@@ -20,7 +19,7 @@ describe('ThresholdSettings', () => {
     )
 
   test('making then correcting an error', () => {
-    const thresholds: Color[] = [
+    const thresholds = [
       {
         id: BASE_THRESHOLD_ID,
         type: 'threshold',
@@ -61,7 +60,7 @@ describe('ThresholdSettings', () => {
   })
 
   test('entering value less than min threshold shows error', () => {
-    const thresholds: Color[] = [
+    const thresholds = [
       {id: '0', type: 'min', name: 'thunder', hex: '', value: 20},
       {id: '1', type: 'threshold', name: 'fire', hex: '', value: 30},
       {id: '2', type: 'max', name: 'ruby', hex: '', value: 60},
@@ -86,7 +85,7 @@ describe('ThresholdSettings', () => {
   })
 
   test('entering value greater than max threshold shows error', () => {
-    const thresholds: Color[] = [
+    const thresholds = [
       {id: '0', type: 'min', name: 'thunder', hex: '', value: 20},
       {id: '1', type: 'threshold', name: 'fire', hex: '', value: 30},
       {id: '2', type: 'max', name: 'ruby', hex: '', value: 60},
@@ -114,7 +113,7 @@ describe('ThresholdSettings', () => {
     const handleSetThresholdsSpy = jest.fn()
 
     const TestWrapper = () => {
-      const [thresholds, setThresholds] = useState<Color[]>([
+      const [thresholds, setThresholds] = useState([
         {id: '0', type: 'min', name: 'thunder', hex: '', value: 20},
         {id: '1', type: 'threshold', name: 'fire', hex: '', value: 30},
         {id: '2', type: 'max', name: 'ruby', hex: '', value: 60},

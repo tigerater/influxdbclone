@@ -13,7 +13,8 @@ import GetResources, {ResourceTypes} from 'src/shared/components/GetResources'
 import TokensTab from 'src/authorizations/components/TokensTab'
 
 // Types
-import {AppState, Organization} from 'src/types'
+import {Organization} from '@influxdata/influx'
+import {AppState} from 'src/types'
 
 interface StateProps {
   org: Organization

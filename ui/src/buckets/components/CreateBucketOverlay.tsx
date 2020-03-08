@@ -6,7 +6,7 @@ import {Overlay, ComponentStatus} from '@influxdata/clockface'
 import BucketOverlayForm from 'src/buckets/components/BucketOverlayForm'
 
 // Types
-import {Organization, Bucket} from 'src/types'
+import {Bucket, BucketRetentionRules, Organization} from '@influxdata/influx'
 
 interface Props {
   org: Organization
@@ -16,7 +16,7 @@ interface Props {
 
 interface State {
   bucket: Bucket
-  ruleType: 'expire'
+  ruleType: BucketRetentionRules.TypeEnum
   nameInputStatus: ComponentStatus
   nameErrorMessage: string
 }
@@ -67,7 +67,9 @@ export default class CreateBucketOverlay extends PureComponent<Props, State> {
   }
 
   private get retentionSeconds(): number {
-    const rule = this.state.bucket.retentionRules.find(r => r.type === 'expire')
+    const rule = this.state.bucket.retentionRules.find(
+      r => r.type === BucketRetentionRules.TypeEnum.Expire
+    )
 
     if (!rule) {
       return 3600
@@ -79,7 +81,9 @@ export default class CreateBucketOverlay extends PureComponent<Props, State> {
   private handleChangeRetentionRule = (everySeconds: number): void => {
     const bucket = {
       ...this.state.bucket,
-      retentionRules: [{type: 'expire' as 'expire', everySeconds}],
+      retentionRules: [
+        {type: BucketRetentionRules.TypeEnum.Expire, everySeconds},
+      ],
     }
 
     this.setState({bucket})
