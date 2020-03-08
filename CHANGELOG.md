@@ -1,7 +1,6 @@
 ## v2.0.0-alpha.17 [unreleased]
 
 ### Features
-1. [14495](https://github.com/influxdata/influxdb/pull/14495): optional gzip compression of the query CSV response.
 
 ### UI Improvements
 
