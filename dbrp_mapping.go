@@ -2,6 +2,7 @@ package influxdb
 
 import (
 	"context"
+	"errors"
 	"strconv"
 	"strings"
 	"unicode"
@@ -38,34 +39,19 @@ type DBRPMapping struct {
 // Validate reports any validation errors for the mapping.
 func (m DBRPMapping) Validate() error {
 	if !validName(m.Cluster) {
-		return &Error{
-			Code: EInvalid,
-			Msg:  "cluster must contain at least one character and only be letters, numbers, '_', '-', and '.'",
-		}
+		return errors.New("cluster must contain at least one character and only be letters, numbers, '_', '-', and '.'")
 	}
 	if !validName(m.Database) {
-		return &Error{
-			Code: EInvalid,
-			Msg:  "database must contain at least one character and only be letters, numbers, '_', '-', and '.'",
-		}
+		return errors.New("database must contain at least one character and only be letters, numbers, '_', '-', and '.'")
 	}
 	if !validName(m.RetentionPolicy) {
-		return &Error{
-			Code: EInvalid,
-			Msg:  "retentionPolicy must contain at least one character and only be letters, numbers, '_', '-', and '.'",
-		}
+		return errors.New("retentionPolicy must contain at least one character and only be letters, numbers, '_', '-', and '.'")
 	}
 	if !m.OrganizationID.Valid() {
-		return &Error{
-			Code: EInvalid,
-			Msg:  "organizationID is required",
-		}
+		return errors.New("organizationID is required")
 	}
 	if !m.BucketID.Valid() {
-		return &Error{
-			Code: EInvalid,
-			Msg:  "bucketID is required",
-		}
+		return errors.New("bucketID is required")
 	}
 	return nil
 }

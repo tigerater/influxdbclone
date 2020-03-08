@@ -14,7 +14,6 @@ import (
 	"github.com/influxdata/influxdb/kit/tracing"
 	"github.com/influxdata/influxdb/logger"
 	"github.com/influxdata/influxdb/models"
-	"github.com/influxdata/influxdb/pkg/fs"
 	"github.com/influxdata/influxdb/pkg/rhh"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
@@ -740,7 +739,7 @@ func (c *SeriesPartitionCompactor) Compact(p *SeriesPartition) (time.Duration, e
 		// Reopen index with new file.
 		if err := p.index.Close(); err != nil {
 			return err
-		} else if err := fs.RenameFileWithReplacement(indexPath, index.path); err != nil {
+		} else if err := os.Rename(indexPath, index.path); err != nil {
 			return err
 		} else if err := p.index.Open(); err != nil {
 			return err
@@ -817,7 +816,7 @@ func (c *SeriesPartitionCompactor) compactIndexTo(index *SeriesIndex, seriesN ui
 	}
 
 	// Open file handler.
-	f, err := fs.CreateFile(path)
+	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}

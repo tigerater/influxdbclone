@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"github.com/influxdata/influxdb/logger"
-	"github.com/influxdata/influxdb/pkg/fs"
 	"github.com/influxdata/influxdb/tsdb/tsm1"
 )
 
@@ -2441,7 +2440,7 @@ func TestFileStore_Replace(t *testing.T) {
 
 	// Replace requires assumes new files have a .tmp extension
 	replacement := fmt.Sprintf("%s.%s", files[2], tsm1.TmpTSMFileExtension)
-	fs.RenameFile(files[2], replacement)
+	os.Rename(files[2], replacement)
 
 	fs := tsm1.NewFileStore(dir)
 	if err := fs.Open(context.Background()); err != nil {
@@ -2641,25 +2640,25 @@ func TestFileStore_Stats(t *testing.T) {
 		fatal(t, "creating test files", err)
 	}
 
-	filestore := tsm1.NewFileStore(dir)
-	if err := filestore.Open(context.Background()); err != nil {
+	fs := tsm1.NewFileStore(dir)
+	if err := fs.Open(context.Background()); err != nil {
 		fatal(t, "opening file store", err)
 	}
-	defer filestore.Close()
+	defer fs.Close()
 
-	stats := filestore.Stats()
+	stats := fs.Stats()
 	if got, exp := len(stats), 3; got != exp {
 		t.Fatalf("file count mismatch: got %v, exp %v", got, exp)
 	}
 
 	// Another call should result in the same stats being returned.
-	if got, exp := filestore.Stats(), stats; !reflect.DeepEqual(got, exp) {
+	if got, exp := fs.Stats(), stats; !reflect.DeepEqual(got, exp) {
 		t.Fatalf("got %v, exp %v", got, exp)
 	}
 
 	// Removing one of the files should invalidate the cache.
-	filestore.Replace(files[0:1], nil)
-	if got, exp := len(filestore.Stats()), 2; got != exp {
+	fs.Replace(files[0:1], nil)
+	if got, exp := len(fs.Stats()), 2; got != exp {
 		t.Fatalf("file count mismatch: got %v, exp %v", got, exp)
 	}
 
@@ -2669,16 +2668,16 @@ func TestFileStore_Stats(t *testing.T) {
 	})
 
 	replacement := fmt.Sprintf("%s.%s.%s", files[2], tsm1.TmpTSMFileExtension, tsm1.TSMFileExtension) // Assumes new files have a .tmp extension
-	if err := fs.RenameFile(newFile, replacement); err != nil {
+	if err := os.Rename(newFile, replacement); err != nil {
 		t.Fatalf("rename: %v", err)
 	}
 	// Replace 3 w/ 1
-	if err := filestore.Replace(files, []string{replacement}); err != nil {
+	if err := fs.Replace(files, []string{replacement}); err != nil {
 		t.Fatalf("replace: %v", err)
 	}
 
 	var found bool
-	stats = filestore.Stats()
+	stats = fs.Stats()
 	for _, stat := range stats {
 		if strings.HasSuffix(stat.Path, fmt.Sprintf("%s.%s.%s", tsm1.TSMFileExtension, tsm1.TmpTSMFileExtension, tsm1.TSMFileExtension)) {
 			found = true
@@ -2694,8 +2693,8 @@ func TestFileStore_Stats(t *testing.T) {
 	})
 
 	// Adding some files should invalidate the cache.
-	filestore.Replace(nil, []string{newFile})
-	if got, exp := len(filestore.Stats()), 2; got != exp {
+	fs.Replace(nil, []string{newFile})
+	if got, exp := len(fs.Stats()), 2; got != exp {
 		t.Fatalf("file count mismatch: got %v, exp %v", got, exp)
 	}
 }
@@ -2881,7 +2880,7 @@ func newFileDir(dir string, values ...keyValues) ([]string, error) {
 			return nil, err
 		}
 		newName := filepath.Join(filepath.Dir(f.Name()), tsm1.DefaultFormatFileName(id, 1)+".tsm")
-		if err := fs.RenameFile(f.Name(), newName); err != nil {
+		if err := os.Rename(f.Name(), newName); err != nil {
 			return nil, err
 		}
 		id++
@@ -2916,7 +2915,7 @@ func newFiles(dir string, values ...keyValues) ([]string, error) {
 		}
 
 		newName := filepath.Join(filepath.Dir(f.Name()), tsm1.DefaultFormatFileName(id, 1)+".tsm")
-		if err := fs.RenameFile(f.Name(), newName); err != nil {
+		if err := os.Rename(f.Name(), newName); err != nil {
 			return nil, err
 		}
 		id++

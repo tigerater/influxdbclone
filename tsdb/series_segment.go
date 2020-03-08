@@ -11,7 +11,6 @@ import (
 	"regexp"
 	"strconv"
 
-	"github.com/influxdata/influxdb/pkg/fs"
 	"github.com/influxdata/influxdb/pkg/mmap"
 )
 
@@ -59,7 +58,7 @@ func NewSeriesSegment(id uint16, path string) *SeriesSegment {
 // CreateSeriesSegment generates an empty segment at path.
 func CreateSeriesSegment(id uint16, path string) (*SeriesSegment, error) {
 	// Generate segment in temp location.
-	f, err := fs.CreateFile(path + ".initializing")
+	f, err := os.Create(path + ".initializing")
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +77,7 @@ func CreateSeriesSegment(id uint16, path string) (*SeriesSegment, error) {
 	}
 
 	// Swap with target path.
-	if err := fs.RenameFile(f.Name(), path); err != nil {
+	if err := os.Rename(f.Name(), path); err != nil {
 		return nil, err
 	}
 

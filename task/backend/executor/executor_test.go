@@ -1,4 +1,4 @@
-package executor
+package executor_test
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"github.com/influxdata/influxdb/query"
 	_ "github.com/influxdata/influxdb/query/builtin"
 	"github.com/influxdata/influxdb/task/backend"
+	"github.com/influxdata/influxdb/task/backend/executor"
 	"go.uber.org/zap"
 )
 
@@ -95,15 +96,8 @@ func (s *fakeQueryService) SucceedQuery(script string) {
 	defer s.mu.Unlock()
 
 	// Unblock the flux.
-	ast := makeAST(script)
-	spec := makeASTString(ast)
-	fq, ok := s.queries[spec]
-	if !ok {
-		ast.Now = ast.Now.UTC()
-		spec = makeASTString(ast)
-		fq = s.queries[spec]
-	}
-	close(fq.wait)
+	spec := makeASTString(makeAST(script))
+	close(s.queries[spec].wait)
 	delete(s.queries, spec)
 }
 
@@ -113,16 +107,9 @@ func (s *fakeQueryService) FailQuery(script string, forced error) {
 	defer s.mu.Unlock()
 
 	// Unblock the flux.
-	ast := makeAST(script)
-	spec := makeASTString(ast)
-	fq, ok := s.queries[spec]
-	if !ok {
-		ast.Now = ast.Now.UTC()
-		spec = makeASTString(ast)
-		fq = s.queries[spec]
-	}
-	fq.forcedError = forced
-	close(fq.wait)
+	spec := makeASTString(makeAST(script))
+	s.queries[spec].forcedError = forced
+	close(s.queries[spec].wait)
 	delete(s.queries, spec)
 }
 
@@ -138,11 +125,7 @@ func (s *fakeQueryService) WaitForQueryLive(t *testing.T, script string) {
 	t.Helper()
 
 	const attempts = 10
-	ast := makeAST(script)
-	astUTC := makeAST(script)
-	astUTC.Now = ast.Now.UTC()
-	spec := makeASTString(ast)
-	specUTC := makeASTString(astUTC)
+	spec := makeASTString(makeAST(script))
 	for i := 0; i < attempts; i++ {
 		if i != 0 {
 			time.Sleep(5 * time.Millisecond)
@@ -154,13 +137,6 @@ func (s *fakeQueryService) WaitForQueryLive(t *testing.T, script string) {
 		if ok {
 			return
 		}
-		s.mu.Lock()
-		_, ok = s.queries[specUTC]
-		s.mu.Unlock()
-		if ok {
-			return
-		}
-
 	}
 
 	t.Fatalf("Did not see live query %q in time", script)
@@ -277,7 +253,7 @@ func createAsyncSystem() *system {
 		name: "AsyncExecutor",
 		svc:  svc,
 		ts:   i,
-		ex:   NewAsyncQueryServiceExecutor(zap.NewNop(), svc, i, i),
+		ex:   executor.NewAsyncQueryServiceExecutor(zap.NewNop(), svc, i, i),
 		i:    i,
 	}
 }
@@ -293,7 +269,7 @@ func createSyncSystem() *system {
 		name: "SynchronousExecutor",
 		svc:  svc,
 		ts:   i,
-		ex: NewQueryServiceExecutor(
+		ex: executor.NewQueryServiceExecutor(
 			zap.NewNop(),
 			query.QueryServiceBridge{
 				AsyncQueryService: svc,
