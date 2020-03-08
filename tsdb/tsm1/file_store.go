@@ -309,6 +309,7 @@ type fileTracker struct {
 	metrics   *fileMetrics
 	labels    prometheus.Labels
 	diskBytes uint64
+	levels    uint64
 }
 
 func newFileTracker(metrics *fileMetrics, defaultLabels prometheus.Labels) *fileTracker {
@@ -333,7 +334,7 @@ func (t *fileTracker) SetBytes(bytes map[int]uint64) {
 	total := uint64(0)
 	labels := t.Labels()
 	for k, v := range bytes {
-		labels["level"] = formatLevel(uint64(k))
+		labels["level"] = fmt.Sprintf("%d", k)
 		t.metrics.DiskSize.With(labels).Set(float64(v))
 	}
 	atomic.StoreUint64(&t.diskBytes, total)
@@ -344,33 +345,31 @@ func (t *fileTracker) AddBytes(bytes uint64, level int) {
 	atomic.AddUint64(&t.diskBytes, bytes)
 
 	labels := t.Labels()
-	labels["level"] = formatLevel(uint64(level))
+	labels["level"] = fmt.Sprintf("%d", level)
 	t.metrics.DiskSize.With(labels).Add(float64(bytes))
 }
 
 // SetFileCount sets the number of files in the FileStore.
 func (t *fileTracker) SetFileCount(files map[int]uint64) {
 	labels := t.Labels()
+	level := uint64(0)
 	for k, v := range files {
-		labels["level"] = formatLevel(uint64(k))
+		labels["level"] = fmt.Sprintf("%d", k)
+		if uint64(k) > level {
+			level = uint64(k)
+		}
 		t.metrics.Files.With(labels).Set(float64(v))
 	}
+	atomic.StoreUint64(&t.levels, level)
 }
 
 func (t *fileTracker) ClearFileCounts() {
 	labels := t.Labels()
-	for i := uint64(0); i <= 4; i++ {
-		labels["level"] = formatLevel(i)
+	for i := uint64(0); i <= atomic.LoadUint64(&t.levels); i++ {
+		labels["level"] = fmt.Sprintf("%d", i)
 		t.metrics.Files.With(labels).Set(float64(0))
 	}
-}
-
-func formatLevel(level uint64) string {
-	if level >= 4 {
-		return "4+"
-	} else {
-		return fmt.Sprintf("%d", level)
-	}
+	atomic.StoreUint64(&t.levels, uint64(0))
 }
 
 // Count returns the number of TSM files currently loaded.
@@ -666,6 +665,11 @@ func (f *FileStore) Open(ctx context.Context) error {
 
 	var lm int64
 	counts := make(map[int]uint64, 5)
+	sizes := make(map[int]uint64, 5)
+	for i := 0; i <= 5; i++ {
+		counts[i] = 0
+		sizes[i] = 0
+	}
 	for range files {
 		res := <-readerC
 		if res.err != nil {
@@ -686,7 +690,7 @@ func (f *FileStore) Open(ctx context.Context) error {
 		for _, ts := range res.r.TombstoneFiles() {
 			totalSize += uint64(ts.Size)
 		}
-		f.tracker.AddBytes(totalSize, seq)
+		sizes[seq] += totalSize
 
 		// Re-initialize the lastModified time for the file store
 		if res.r.LastModified() > lm {
@@ -698,6 +702,7 @@ func (f *FileStore) Open(ctx context.Context) error {
 	close(readerC)
 
 	sort.Sort(tsmReaders(f.files))
+	f.tracker.SetBytes(sizes)
 	f.tracker.SetFileCount(counts)
 	return nil
 }
@@ -1001,6 +1006,7 @@ func (f *FileStore) replace(oldFiles, newFiles []string, updatedFn func(r []TSMF
 
 	// Recalculate the disk size stat
 	sizes := make(map[int]uint64, 5)
+	counts := make(map[int]uint64, 5)
 	for _, file := range f.files {
 		size := uint64(file.Size())
 		for _, ts := range file.TombstoneFiles() {
@@ -1011,8 +1017,10 @@ func (f *FileStore) replace(oldFiles, newFiles []string, updatedFn func(r []TSMF
 			return err
 		}
 		sizes[seq] += size
+		counts[seq]++
 	}
 	f.tracker.SetBytes(sizes)
+	f.tracker.SetFileCount(counts)
 
 	return nil
 }
