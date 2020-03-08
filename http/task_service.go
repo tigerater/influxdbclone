@@ -362,10 +362,6 @@ func decodeGetTasksRequest(ctx context.Context, r *http.Request, orgs platform.O
 		req.filter.Type = &ttype
 	}
 
-	if name := qp.Get("name"); name != "" {
-		req.filter.Name = &name
-	}
-
 	return req, nil
 }
 
