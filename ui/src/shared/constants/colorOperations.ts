@@ -3,7 +3,7 @@ import chroma from 'chroma-js'
 
 import {
   THRESHOLD_COLORS,
-  BASE_THRESHOLD_ID,
+  THRESHOLD_TYPE_BASE,
   THRESHOLD_TYPE_TEXT,
 } from 'src/shared/constants/thresholds'
 
@@ -52,7 +52,7 @@ export const generateThresholdsListHexs = ({
   }
 
   // baseColor is expected in all cases
-  const baseColor = colors.find(color => color.id === BASE_THRESHOLD_ID) || {
+  const baseColor = colors.find(color => color.id === THRESHOLD_TYPE_BASE) || {
     hex: defaultColoring.textColor,
   }
 

@@ -11,8 +11,7 @@ export const COLOR_TYPE_THRESHOLD = 'threshold'
 
 export const THRESHOLD_TYPE_TEXT = 'text'
 export const THRESHOLD_TYPE_BG = 'background'
-
-export const BASE_THRESHOLD_ID = 'base'
+export const THRESHOLD_TYPE_BASE = 'base'
 
 export const THRESHOLD_COLORS = [
   {
@@ -114,7 +113,7 @@ export const DEFAULT_THRESHOLDS_LIST_COLORS = [
   {
     type: THRESHOLD_TYPE_TEXT,
     hex: THRESHOLD_COLORS[11].hex,
-    id: BASE_THRESHOLD_ID,
+    id: THRESHOLD_TYPE_BASE,
     name: THRESHOLD_COLORS[11].name,
     value: 0,
   },
