@@ -6,7 +6,7 @@ import {withRouter, WithRouterProps} from 'react-router'
 import {
   Button,
   ComponentSize,
-  FlexBox,
+  ComponentSpacer,
   FlexDirection,
   JustifyContent,
 } from '@influxdata/clockface'
@@ -143,7 +143,7 @@ class TemplateCard extends PureComponent<Props & WithRouterProps> {
       onDelete,
     } = this.props
     return (
-      <FlexBox
+      <ComponentSpacer
         margin={ComponentSize.Medium}
         direction={FlexDirection.Row}
         justifyContent={JustifyContent.FlexEnd}
@@ -174,7 +174,7 @@ class TemplateCard extends PureComponent<Props & WithRouterProps> {
             />
           </Context.Menu>
         </Context>
-      </FlexBox>
+      </ComponentSpacer>
     )
   }
 

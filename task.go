@@ -26,23 +26,21 @@ const (
 
 // Task is a task. 🎊
 type Task struct {
-	ID              ID             `json:"id"`
-	Type            string         `json:"type,omitempty"`
-	OrganizationID  ID             `json:"orgID"`
-	Organization    string         `json:"org"`
-	AuthorizationID ID             `json:"-"`
-	Authorization   *Authorization `json:"-"`
-	OwnerID         ID             `json:"ownerID"`
-	Name            string         `json:"name"`
-	Description     string         `json:"description,omitempty"`
-	Status          string         `json:"status"`
-	Flux            string         `json:"flux"`
-	Every           string         `json:"every,omitempty"`
-	Cron            string         `json:"cron,omitempty"`
-	Offset          string         `json:"offset,omitempty"`
-	LatestCompleted string         `json:"latestCompleted,omitempty"`
-	CreatedAt       string         `json:"createdAt,omitempty"`
-	UpdatedAt       string         `json:"updatedAt,omitempty"`
+	ID              ID     `json:"id"`
+	Type            string `json:"type,omitempty"`
+	OrganizationID  ID     `json:"orgID"`
+	Organization    string `json:"org"`
+	AuthorizationID ID     `json:"authorizationID"`
+	Name            string `json:"name"`
+	Description     string `json:"description,omitempty"`
+	Status          string `json:"status"`
+	Flux            string `json:"flux"`
+	Every           string `json:"every,omitempty"`
+	Cron            string `json:"cron,omitempty"`
+	Offset          string `json:"offset,omitempty"`
+	LatestCompleted string `json:"latestCompleted,omitempty"`
+	CreatedAt       string `json:"createdAt,omitempty"`
+	UpdatedAt       string `json:"updatedAt,omitempty"`
 }
 
 // EffectiveCron returns the effective cron string of the options.
@@ -145,8 +143,7 @@ type TaskCreate struct {
 	Status         string `json:"status,omitempty"`
 	OrganizationID ID     `json:"orgID,omitempty"`
 	Organization   string `json:"org,omitempty"`
-	Token          string `json:"-"`
-	OwnerID        ID     `json:"-"`
+	Token          string `json:"token,omitempty"`
 }
 
 func (t TaskCreate) Validate() error {

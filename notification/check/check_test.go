@@ -6,8 +6,6 @@ import (
 	"time"
 
 	"github.com/google/go-cmp/cmp"
-	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/influxdata/flux/parser"
 	"github.com/influxdata/influxdb/notification"
 
 	"github.com/influxdata/influxdb/mock"
@@ -23,10 +21,16 @@ const (
 	id3 = "020f755c3c082002"
 )
 
+func numPtr(f float64) *float64 {
+	p := new(float64)
+	*p = f
+	return p
+}
+
 var goodBase = check.Base{
 	ID:                    influxTesting.MustIDBase16(id1),
 	Name:                  "name1",
-	OwnerID:               influxTesting.MustIDBase16(id2),
+	AuthorizationID:       influxTesting.MustIDBase16(id2),
 	OrgID:                 influxTesting.MustIDBase16(id3),
 	Status:                influxdb.Active,
 	StatusMessageTemplate: "temp1",
@@ -63,7 +67,7 @@ func TestValidCheck(t *testing.T) {
 			},
 		},
 		{
-			name: "invalid owner id",
+			name: "invalid auth id",
 			src: &check.Threshold{
 				Base: check.Base{
 					ID:   influxTesting.MustIDBase16(id1),
@@ -72,16 +76,16 @@ func TestValidCheck(t *testing.T) {
 			},
 			err: &influxdb.Error{
 				Code: influxdb.EInvalid,
-				Msg:  "Check OwnerID is invalid",
+				Msg:  "Check AuthorizationID is invalid",
 			},
 		},
 		{
 			name: "invalid org id",
 			src: &check.Threshold{
 				Base: check.Base{
-					ID:      influxTesting.MustIDBase16(id1),
-					Name:    "name1",
-					OwnerID: influxTesting.MustIDBase16(id2),
+					ID:              influxTesting.MustIDBase16(id1),
+					Name:            "name1",
+					AuthorizationID: influxTesting.MustIDBase16(id2),
 				},
 			},
 			err: &influxdb.Error{
@@ -93,10 +97,10 @@ func TestValidCheck(t *testing.T) {
 			name: "invalid status",
 			src: &check.Deadman{
 				Base: check.Base{
-					ID:      influxTesting.MustIDBase16(id1),
-					Name:    "name1",
-					OwnerID: influxTesting.MustIDBase16(id2),
-					OrgID:   influxTesting.MustIDBase16(id3),
+					ID:              influxTesting.MustIDBase16(id1),
+					Name:            "name1",
+					AuthorizationID: influxTesting.MustIDBase16(id2),
+					OrgID:           influxTesting.MustIDBase16(id3),
 				},
 			},
 			err: &influxdb.Error{
@@ -110,7 +114,7 @@ func TestValidCheck(t *testing.T) {
 				Base: check.Base{
 					ID:                    influxTesting.MustIDBase16(id1),
 					Name:                  "name1",
-					OwnerID:               influxTesting.MustIDBase16(id2),
+					AuthorizationID:       influxTesting.MustIDBase16(id2),
 					OrgID:                 influxTesting.MustIDBase16(id3),
 					Status:                influxdb.Active,
 					StatusMessageTemplate: "temp1",
@@ -125,14 +129,12 @@ func TestValidCheck(t *testing.T) {
 		{
 			name: "bad thredshold",
 			src: &check.Threshold{
-				Base: goodBase,
-				Thresholds: []check.ThresholdConfig{
-					&check.Range{Min: 200, Max: 100},
-				},
+				Base:       goodBase,
+				Thresholds: []check.ThresholdConfig{{}},
 			},
 			err: &influxdb.Error{
 				Code: influxdb.EInvalid,
-				Msg:  "range threshold min can't be larger than max",
+				Msg:  "threshold must have at least one lowerBound or upperBound value",
 			},
 		},
 	}
@@ -145,15 +147,6 @@ func TestValidCheck(t *testing.T) {
 var timeGen1 = mock.TimeGenerator{FakeValue: time.Date(2006, time.July, 13, 4, 19, 10, 0, time.UTC)}
 var timeGen2 = mock.TimeGenerator{FakeValue: time.Date(2006, time.July, 14, 5, 23, 53, 10, time.UTC)}
 
-func mustDuration(d string) *check.Duration {
-	dur, err := parser.ParseDuration(d)
-	if err != nil {
-		panic(err)
-	}
-
-	return (*check.Duration)(dur)
-}
-
 func TestJSON(t *testing.T) {
 	cases := []struct {
 		name string
@@ -163,12 +156,12 @@ func TestJSON(t *testing.T) {
 			name: "simple Deadman",
 			src: &check.Deadman{
 				Base: check.Base{
-					ID:      influxTesting.MustIDBase16(id1),
-					OwnerID: influxTesting.MustIDBase16(id2),
-					Name:    "name1",
-					OrgID:   influxTesting.MustIDBase16(id3),
-					Status:  influxdb.Active,
-					Every:   mustDuration("1h"),
+					ID:              influxTesting.MustIDBase16(id1),
+					AuthorizationID: influxTesting.MustIDBase16(id2),
+					Name:            "name1",
+					OrgID:           influxTesting.MustIDBase16(id3),
+					Status:          influxdb.Active,
+					Every:           influxdb.Duration{Duration: time.Hour},
 					Tags: []notification.Tag{
 						{
 							Key:   "k1",
@@ -193,12 +186,12 @@ func TestJSON(t *testing.T) {
 			name: "simple threshold",
 			src: &check.Threshold{
 				Base: check.Base{
-					ID:      influxTesting.MustIDBase16(id1),
-					Name:    "name1",
-					OwnerID: influxTesting.MustIDBase16(id2),
-					OrgID:   influxTesting.MustIDBase16(id3),
-					Status:  influxdb.Active,
-					Every:   mustDuration("1h"),
+					ID:              influxTesting.MustIDBase16(id1),
+					Name:            "name1",
+					AuthorizationID: influxTesting.MustIDBase16(id2),
+					OrgID:           influxTesting.MustIDBase16(id3),
+					Status:          influxdb.Active,
+					Every:           influxdb.Duration{Duration: time.Hour},
 					Tags: []notification.Tag{
 						{
 							Key:   "k1",
@@ -215,9 +208,8 @@ func TestJSON(t *testing.T) {
 					},
 				},
 				Thresholds: []check.ThresholdConfig{
-					&check.Greater{ThresholdConfigBase: check.ThresholdConfigBase{AllValues: true}, Value: -1.36},
-					&check.Range{Min: -10000, Max: 500},
-					&check.Lesser{ThresholdConfigBase: check.ThresholdConfigBase{Level: notification.Critical}},
+					{AllValues: true, LowerBound: numPtr(-1.36)},
+					{LowerBound: numPtr(10000), UpperBound: numPtr(500)},
 				},
 			},
 		},
@@ -231,7 +223,7 @@ func TestJSON(t *testing.T) {
 		if err != nil {
 			t.Fatalf("%s unmarshal failed, err: %s", c.name, err.Error())
 		}
-		if diff := cmp.Diff(got, c.src, cmpopts.IgnoreFields(check.Duration{}, "BaseNode")); diff != "" {
+		if diff := cmp.Diff(got, c.src); diff != "" {
 			t.Errorf("failed %s, Check are different -got/+want\ndiff %s", c.name, diff)
 		}
 	}

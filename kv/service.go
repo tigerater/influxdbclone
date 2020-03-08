@@ -134,10 +134,6 @@ func (s *Service) Initialize(ctx context.Context) error {
 			return err
 		}
 
-		if err := s.initializeNotificationEndpoint(ctx, tx); err != nil {
-			return err
-		}
-
 		return s.initializeUsers(ctx, tx)
 	})
 }

@@ -43,14 +43,14 @@ exports[`TaskForm rendering renders 1`] = `
           label="Schedule Task"
           testID="form--element"
         >
-          <FlexBox
+          <ComponentSpacer
             alignItems="flex-start"
             direction="column"
             justifyContent="flex-start"
             margin="sm"
             stretchToFitHeight={false}
             stretchToFitWidth={false}
-            testID="flex-box"
+            testID="component-spacer"
           >
             <Radio
               color="primary"
@@ -83,7 +83,7 @@ exports[`TaskForm rendering renders 1`] = `
                 Cron
               </RadioButton>
             </Radio>
-          </FlexBox>
+          </ComponentSpacer>
         </FormElement>
       </GridColumn>
       <TaskScheduleFormFields

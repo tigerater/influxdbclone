@@ -7,7 +7,7 @@ import {
   Panel,
   DismissButton,
   TextBlock,
-  FlexBox,
+  ComponentSpacer,
   ComponentSize,
   FlexDirection,
   ComponentColor,
@@ -67,9 +67,12 @@ const TagRule: FC<Props> = ({tagRule}) => {
     <Panel testID="tag-rule" size={ComponentSize.ExtraSmall}>
       <DismissButton onClick={onDelete} color={ComponentColor.Default} />
       <Panel.Body>
-        <FlexBox direction={FlexDirection.Row} margin={ComponentSize.Small}>
+        <ComponentSpacer
+          direction={FlexDirection.Row}
+          margin={ComponentSize.Small}
+        >
           <TextBlock text="When tag" />
-          <FlexBox.FlexChild grow={1}>
+          <ComponentSpacer.FlexChild grow={1}>
             <Input
               testID="tag-rule-key--input"
               placeholder="Key"
@@ -77,14 +80,14 @@ const TagRule: FC<Props> = ({tagRule}) => {
               name="key"
               onChange={onChange}
             />
-          </FlexBox.FlexChild>
-          <FlexBox.FlexChild grow={0} basis={60}>
+          </ComponentSpacer.FlexChild>
+          <ComponentSpacer.FlexChild grow={0} basis={60}>
             <TagRuleOperatorDropdown
               selectedOperator={operator}
               onSelect={onSelectOperator}
             />
-          </FlexBox.FlexChild>
-          <FlexBox.FlexChild grow={1}>
+          </ComponentSpacer.FlexChild>
+          <ComponentSpacer.FlexChild grow={1}>
             <Input
               testID="tag-rule-key--input"
               placeholder="Value"
@@ -92,8 +95,8 @@ const TagRule: FC<Props> = ({tagRule}) => {
               name="value"
               onChange={onChange}
             />
-          </FlexBox.FlexChild>
-        </FlexBox>
+          </ComponentSpacer.FlexChild>
+        </ComponentSpacer>
       </Panel.Body>
     </Panel>
   )

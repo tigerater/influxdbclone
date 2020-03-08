@@ -35,7 +35,7 @@ const RuleCard: FunctionComponent<Props> = ({
   router,
 }) => {
   const onUpdateName = (name: string) => {
-    updateRule({...rule, name})
+    updateRule({id: rule.id, name})
   }
 
   const onDelete = () => {
@@ -49,7 +49,7 @@ const RuleCard: FunctionComponent<Props> = ({
   const onToggle = () => {
     const status = rule.status === 'active' ? 'inactive' : 'active'
 
-    updateRule({...rule, status})
+    updateRule({id: rule.id, status})
   }
 
   const onRuleClick = () => {

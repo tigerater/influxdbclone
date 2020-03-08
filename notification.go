@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 )
 
-// Updater is general interface to embed
+// Updator is general interface to embed
 // with any domain level interface to do crud related ops.
-type Updater interface {
+type Updator interface {
 	CRUDLogSetter
 	SetID(id ID)
 	SetOrgID(id ID)
@@ -34,10 +34,8 @@ type NotificationRule interface {
 	Valid() error
 	Type() string
 	json.Marshaler
-	Updater
+	Updator
 	Getter
-	SetOwnerID(id ID)
-	GetOwnerID() ID
 	GetLimit() *Limit
 }
 
@@ -71,14 +69,12 @@ func (f NotificationRuleFilter) QueryParams() map[string][]string {
 	return qp
 }
 
-// NotificationRuleUpdate is the set of upgrade fields for patch request.
 type NotificationRuleUpdate struct {
 	Name        *string `json:"name,omitempty"`
 	Description *string `json:"description,omitempty"`
 	Status      *Status `json:"status,omitempty"`
 }
 
-// Valid will verify if the NotificationRuleUpdate is valid.
 func (n *NotificationRuleUpdate) Valid() error {
 	if n.Name != nil && *n.Name == "" {
 		return &Error{

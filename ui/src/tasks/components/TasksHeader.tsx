@@ -6,7 +6,7 @@ import {Page} from 'src/pageLayout'
 import {
   SlideToggle,
   ComponentSize,
-  FlexBox,
+  ComponentSpacer,
   FlexDirection,
   JustifyContent,
 } from '@influxdata/clockface'
@@ -78,7 +78,7 @@ export default class TasksHeader extends PureComponent<Props> {
     return (
       <Tabs.TabContentsHeader>
         {filterComponent()}
-        <FlexBox
+        <ComponentSpacer
           margin={ComponentSize.Small}
           direction={FlexDirection.Row}
           justifyContent={JustifyContent.FlexEnd}
@@ -95,7 +95,7 @@ export default class TasksHeader extends PureComponent<Props> {
             onSelectImport={onImportTask}
             resourceName="Task"
           />
-        </FlexBox>
+        </ComponentSpacer>
       </Tabs.TabContentsHeader>
     )
   }

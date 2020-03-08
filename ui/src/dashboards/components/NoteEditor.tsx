@@ -6,7 +6,7 @@ import {connect} from 'react-redux'
 import {
   SlideToggle,
   ComponentSize,
-  FlexBox,
+  ComponentSpacer,
   FlexDirection,
   JustifyContent,
 } from '@influxdata/clockface'
@@ -81,7 +81,7 @@ class NoteEditor extends PureComponent<Props, State> {
     const {showNoteWhenEmpty, onToggleShowNoteWhenEmpty} = this.props
 
     return (
-      <FlexBox
+      <ComponentSpacer
         direction={FlexDirection.Row}
         justifyContent={JustifyContent.FlexEnd}
       >
@@ -91,7 +91,7 @@ class NoteEditor extends PureComponent<Props, State> {
           size={ComponentSize.ExtraSmall}
           onChange={onToggleShowNoteWhenEmpty}
         />
-      </FlexBox>
+      </ComponentSpacer>
     )
   }
 

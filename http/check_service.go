@@ -8,7 +8,6 @@ import (
 	"net/http"
 
 	"github.com/influxdata/influxdb"
-	pctx "github.com/influxdata/influxdb/context"
 	"github.com/influxdata/influxdb/notification/check"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
@@ -161,9 +160,6 @@ type checksResponse struct {
 }
 
 func newCheckResponse(chk influxdb.Check, labels []*influxdb.Label) *checkResponse {
-	// Ensure that we don't expose that this creates a task behind the scene
-	chk.ClearPrivateData()
-
 	res := &checkResponse{
 		Check: chk,
 		Links: checkLinks{
@@ -388,13 +384,7 @@ func (h *CheckHandler) handlePostCheck(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := pctx.GetAuthorizer(ctx)
-	if err != nil {
-		h.HandleHTTPError(ctx, err, w)
-		return
-	}
-
-	if err := h.CheckService.CreateCheck(ctx, chk, auth.GetUserID()); err != nil {
+	if err := h.CheckService.CreateCheck(ctx, chk); err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}

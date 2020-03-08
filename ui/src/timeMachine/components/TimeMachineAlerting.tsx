@@ -6,7 +6,7 @@ import {connect} from 'react-redux'
 import TimeMachineAlertBuilder from 'src/alerting/components/builder/AlertBuilder'
 import {
   ComponentSize,
-  FlexBox,
+  ComponentSpacer,
   FlexDirection,
   JustifyContent,
 } from '@influxdata/clockface'
@@ -26,14 +26,14 @@ const TimeMachineAlerting: FunctionComponent<StateProps> = ({isInVEO}) => {
       <div className="time-machine-queries--controls">
         <div className="time-machine--editor-title">Check Builder</div>
         <div className="time-machine-queries--buttons">
-          <FlexBox
+          <ComponentSpacer
             direction={FlexDirection.Row}
             justifyContent={JustifyContent.FlexEnd}
             margin={ComponentSize.Small}
           >
             <HelpButton />
             {isInVEO && <RemoveButton />}
-          </FlexBox>
+          </ComponentSpacer>
         </div>
       </div>
       <div className="time-machine-queries--body">

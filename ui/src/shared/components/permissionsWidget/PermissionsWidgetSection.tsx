@@ -5,7 +5,7 @@ import React, {Component} from 'react'
 import {
   Button,
   ComponentSize,
-  FlexBox,
+  ComponentSpacer,
   FlexDirection,
   JustifyContent,
 } from '@influxdata/clockface'
@@ -61,7 +61,7 @@ class PermissionsWidgetSection extends Component<Props> {
 
     if (mode === PermissionsWidgetMode.Write) {
       return (
-        <FlexBox
+        <ComponentSpacer
           margin={ComponentSize.Small}
           direction={FlexDirection.Row}
           justifyContent={JustifyContent.FlexEnd}
@@ -78,7 +78,7 @@ class PermissionsWidgetSection extends Component<Props> {
             titleText={`Deselect all permissions within ${title}`}
             onClick={this.handleDeselectAll}
           />
-        </FlexBox>
+        </ComponentSpacer>
       )
     }
   }

@@ -3,7 +3,7 @@ import React, {FunctionComponent} from 'react'
 
 // Components
 import {
-  FlexBox,
+  ComponentSpacer,
   FlexDirection,
   AlignItems,
   ComponentColor,
@@ -13,7 +13,7 @@ import DashedButton from 'src/shared/components/dashed_button/DashedButton'
 
 const CheckThresholdsCard: FunctionComponent = () => {
   return (
-    <FlexBox
+    <ComponentSpacer
       direction={FlexDirection.Column}
       alignItems={AlignItems.Stretch}
       margin={ComponentSize.Medium}
@@ -36,7 +36,7 @@ const CheckThresholdsCard: FunctionComponent = () => {
         size={ComponentSize.Large}
         onClick={() => {}}
       />
-    </FlexBox>
+    </ComponentSpacer>
   )
 }
 

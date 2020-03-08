@@ -8884,8 +8884,8 @@ components:
         orgID:
           description: the ID of the organization that owns this check.
           type: string
-        ownerID:
-          description: The ID of creator used to create this check.
+        authorizationID:
+          description: The ID of the authorization used to create this check.
           type: string
           readOnly: true
         createdAt:
@@ -9042,7 +9042,7 @@ components:
       type: object
       required:
         - id
-        - orgID
+        - orgid
         - status
         - name
         - tagRules
@@ -9057,8 +9057,8 @@ components:
         orgID:
           description: the ID of the organization that owns this notification rule.
           type: string
-        ownerID:
-          description: The ID of creator used to create this notification rule.
+        authorizationID:
+          description: The ID of the authorization used to create this notification rule.
           type: string
           readOnly: true
         createdAt:

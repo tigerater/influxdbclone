@@ -18,7 +18,7 @@ import {SortTypes} from 'src/shared/utils/sort'
 import {
   Sort,
   Radio,
-  FlexBox,
+  ComponentSpacer,
   AlignItems,
   FlexDirection,
   JustifyContent,
@@ -82,7 +82,7 @@ class TemplatesPage extends PureComponent<Props, State> {
           isFullPage={false}
           filterComponent={() => this.filterComponent}
         />
-        <FlexBox
+        <ComponentSpacer
           direction={FlexDirection.Row}
           alignItems={AlignItems.Center}
           justifyContent={JustifyContent.Center}
@@ -108,7 +108,7 @@ class TemplatesPage extends PureComponent<Props, State> {
               User Templates
             </Radio.Button>
           </Radio>
-        </FlexBox>
+        </ComponentSpacer>
         {this.templatesList}
       </>
     )

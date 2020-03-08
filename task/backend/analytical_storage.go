@@ -189,9 +189,8 @@ func (as *AnalyticalStorage) FindRuns(ctx context.Context, filter influxdb.RunFi
 	// so we are faking a read only permission to the org's system bucket
 	runSystemBucketID := taskSystemBucketID
 	runAuth := &influxdb.Authorization{
-		Status: influxdb.Active,
-		ID:     taskSystemBucketID,
-		OrgID:  task.OrganizationID,
+		ID:    taskSystemBucketID,
+		OrgID: task.OrganizationID,
 		Permissions: []influxdb.Permission{
 			influxdb.Permission{
 				Action: influxdb.ReadAction,

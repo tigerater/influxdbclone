@@ -89,7 +89,6 @@ func TestTaskHandler_handleGetTasks(t *testing.T) {
 								Name:            "task1",
 								Description:     "A little Task",
 								OrganizationID:  1,
-								OwnerID:         1,
 								Organization:    "test",
 								AuthorizationID: 0x100,
 							},
@@ -97,7 +96,6 @@ func TestTaskHandler_handleGetTasks(t *testing.T) {
 								ID:              2,
 								Name:            "task2",
 								OrganizationID:  2,
-								OwnerID:         2,
 								Organization:    "test",
 								AuthorizationID: 0x200,
 							},
@@ -151,9 +149,9 @@ func TestTaskHandler_handleGetTasks(t *testing.T) {
         }
       ],
       "orgID": "0000000000000001",
-      "ownerID": "0000000000000001",
       "org": "test",
       "status": "",
+			"authorizationID": "0000000000000100",
       "flux": ""
     },
     {
@@ -177,9 +175,9 @@ func TestTaskHandler_handleGetTasks(t *testing.T) {
         }
       ],
 	  "orgID": "0000000000000002",
-	  "ownerID": "0000000000000002",
 	  "org": "test",
       "status": "",
+			"authorizationID": "0000000000000200",
       "flux": ""
     }
   ]
@@ -197,7 +195,6 @@ func TestTaskHandler_handleGetTasks(t *testing.T) {
 								ID:              2,
 								Name:            "task2",
 								OrganizationID:  2,
-								OwnerID:         2,
 								Organization:    "test",
 								AuthorizationID: 0x200,
 							},
@@ -250,10 +247,10 @@ func TestTaskHandler_handleGetTasks(t *testing.T) {
           }
         }
       ],
-	  "orgID": "0000000000000002",
-	  "ownerID": "0000000000000002",
+      "orgID": "0000000000000002",
       "org": "test",
       "status": "",
+			"authorizationID": "0000000000000200",
       "flux": ""
     }
   ]
@@ -271,7 +268,6 @@ func TestTaskHandler_handleGetTasks(t *testing.T) {
 								ID:              2,
 								Name:            "task2",
 								OrganizationID:  2,
-								OwnerID:         2,
 								Organization:    "test2",
 								AuthorizationID: 0x200,
 							},
@@ -324,9 +320,9 @@ func TestTaskHandler_handleGetTasks(t *testing.T) {
         }
       ],
 	  "orgID": "0000000000000002",
-	  "ownerID": "0000000000000002",
 	  "org": "test2",
       "status": "",
+			"authorizationID": "0000000000000200",
       "flux": ""
     }
   ]
@@ -344,7 +340,6 @@ func TestTaskHandler_handleGetTasks(t *testing.T) {
 								ID:              1,
 								Name:            "task1",
 								OrganizationID:  1,
-								OwnerID:         1,
 								Organization:    "test2",
 								AuthorizationID: 0x100,
 							},
@@ -352,7 +347,6 @@ func TestTaskHandler_handleGetTasks(t *testing.T) {
 								ID:              2,
 								Name:            "task2",
 								OrganizationID:  2,
-								OwnerID:         2,
 								Organization:    "test2",
 								AuthorizationID: 0x200,
 							},
@@ -456,13 +450,13 @@ func TestTaskHandler_handlePostTasks(t *testing.T) {
 				taskService: &mock.TaskService{
 					CreateTaskFn: func(ctx context.Context, tc platform.TaskCreate) (*platform.Task, error) {
 						return &platform.Task{
-							ID:             1,
-							Name:           "task1",
-							Description:    "Brand New Task",
-							OrganizationID: 1,
-							OwnerID:        1,
-							Organization:   "test",
-							Flux:           "abc",
+							ID:              1,
+							Name:            "task1",
+							Description:     "Brand New Task",
+							OrganizationID:  1,
+							Organization:    "test",
+							AuthorizationID: 0x100,
+							Flux:            "abc",
 						}, nil
 					},
 				},
@@ -485,9 +479,9 @@ func TestTaskHandler_handlePostTasks(t *testing.T) {
   "description": "Brand New Task",
   "labels": [],
   "orgID": "0000000000000001",
-  "ownerID": "0000000000000001",
   "org": "test",
   "status": "",
+	"authorizationID": "0000000000000100",
   "flux": "abc"
 }
 `,
@@ -1245,8 +1239,11 @@ func TestTaskHandler_CreateTaskWithOrgName(t *testing.T) {
 			if tc.OrganizationID != o.ID {
 				t.Fatalf("expected task to be created with org ID %s, got %s", o.ID, tc.OrganizationID)
 			}
+			if tc.Token != authz.Token {
+				t.Fatalf("expected task to be created with previous token %s, got %s", authz.Token, tc.Token)
+			}
 
-			return &platform.Task{ID: 9, OrganizationID: o.ID, OwnerID: o.ID, AuthorizationID: authz.ID, Name: "x", Flux: tc.Flux}, nil
+			return &platform.Task{ID: 9, OrganizationID: o.ID, AuthorizationID: authz.ID, Name: "x", Flux: tc.Flux}, nil
 		},
 	}
 

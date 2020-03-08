@@ -335,7 +335,7 @@ func testExecutorQuerySuccess(t *testing.T, fn createSysFn) {
 
 		script := fmt.Sprintf(fmtTestScript, t.Name())
 		ctx := icontext.SetAuthorizer(context.Background(), tc.Auth)
-		task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, OwnerID: tc.Auth.GetUserID(), Flux: script})
+		task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, Token: tc.Auth.Token, Flux: script})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -379,6 +379,15 @@ func testExecutorQuerySuccess(t *testing.T, fn createSysFn) {
 		if !reflect.DeepEqual(res, res2) {
 			t.Fatalf("second call to wait returned a different result: %#v", res2)
 		}
+
+		// The query must have received the appropriate authorizer.
+		qa, err := icontext.GetAuthorizer(sys.svc.mostRecentCtx)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if qa.Identifier() != tc.Auth.ID {
+			t.Fatalf("expected query authorizer to have ID %v, got %v", tc.Auth.ID, qa.Identifier())
+		}
 	})
 }
 
@@ -389,7 +398,7 @@ func testExecutorQueryFailure(t *testing.T, fn createSysFn) {
 		t.Parallel()
 		script := fmt.Sprintf(fmtTestScript, t.Name())
 		ctx := icontext.SetAuthorizer(context.Background(), tc.Auth)
-		task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, OwnerID: tc.Auth.GetUserID(), Flux: script})
+		task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, Token: tc.Auth.Token, Flux: script})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -419,7 +428,7 @@ func testExecutorPromiseCancel(t *testing.T, fn createSysFn) {
 		t.Parallel()
 		script := fmt.Sprintf(fmtTestScript, t.Name())
 		ctx := icontext.SetAuthorizer(context.Background(), tc.Auth)
-		task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, OwnerID: tc.Auth.GetUserID(), Flux: script})
+		task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, Token: tc.Auth.Token, Flux: script})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -448,7 +457,7 @@ func testExecutorServiceError(t *testing.T, fn createSysFn) {
 		t.Parallel()
 		script := fmt.Sprintf(fmtTestScript, t.Name())
 		ctx := icontext.SetAuthorizer(context.Background(), tc.Auth)
-		task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, OwnerID: tc.Auth.GetUserID(), Flux: script})
+		task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, Token: tc.Auth.Token, Flux: script})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -516,7 +525,7 @@ func testExecutorWait(t *testing.T, createSys createSysFn) {
 
 			script := fmt.Sprintf(fmtTestScript, t.Name())
 			ctx = icontext.SetAuthorizer(ctx, tc.Auth)
-			task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, OwnerID: tc.Auth.GetUserID(), Flux: script})
+			task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, Token: tc.Auth.Token, Flux: script})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -556,7 +565,7 @@ func testExecutorWait(t *testing.T, createSys createSysFn) {
 			ctx := icontext.SetAuthorizer(context.Background(), tc.Auth)
 
 			script := fmt.Sprintf(fmtTestScript, t.Name())
-			task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, OwnerID: tc.Auth.GetUserID(), Flux: script})
+			task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, Token: tc.Auth.Token, Flux: script})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -597,7 +606,7 @@ func testExecutorWait(t *testing.T, createSys createSysFn) {
 			ctx := icontext.SetAuthorizer(context.Background(), tc.Auth)
 
 			script := fmt.Sprintf(fmtTestScript, t.Name())
-			task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, OwnerID: tc.Auth.GetUserID(), Flux: script})
+			task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, Token: tc.Auth.Token, Flux: script})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -637,7 +646,7 @@ func testExecutorWait(t *testing.T, createSys createSysFn) {
 
 			script := fmt.Sprintf(fmtTestScript, t.Name())
 			ctx := icontext.SetAuthorizer(context.Background(), tc.Auth)
-			task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, OwnerID: tc.Auth.GetUserID(), Flux: script})
+			task, err := sys.ts.CreateTask(ctx, platform.TaskCreate{OrganizationID: tc.OrgID, Token: tc.Auth.Token, Flux: script})
 			if err != nil {
 				t.Fatal(err)
 			}

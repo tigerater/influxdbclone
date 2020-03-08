@@ -11,7 +11,7 @@ import {
   ButtonShape,
   ComponentColor,
   IconFont,
-  FlexBox,
+  ComponentSpacer,
   AlignItems,
   FlexDirection,
 } from '@influxdata/clockface'
@@ -44,7 +44,7 @@ export default class BucketContextMenu extends PureComponent<Props> {
     return (
       <>
         <Context align={Alignment.Center}>
-          <FlexBox
+          <ComponentSpacer
             alignItems={AlignItems.Center}
             direction={FlexDirection.Row}
             margin={ComponentSize.Small}
@@ -101,7 +101,7 @@ export default class BucketContextMenu extends PureComponent<Props> {
                 />
               </CloudExclude>
             </Context.Menu>
-          </FlexBox>
+          </ComponentSpacer>
         </Context>
       </>
     )

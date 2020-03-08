@@ -3,7 +3,7 @@ import React, {FC} from 'react'
 
 // Components
 import {
-  FlexBox,
+  ComponentSpacer,
   TextBlock,
   FlexDirection,
   ComponentSize,
@@ -36,29 +36,29 @@ const StatusLevels: FC<Props> = ({status}) => {
   }
 
   return (
-    <FlexBox direction={FlexDirection.Row} margin={ComponentSize.Small}>
+    <ComponentSpacer direction={FlexDirection.Row} margin={ComponentSize.Small}>
       <TextBlock text="When status" />
-      <FlexBox.FlexChild grow={0} basis={140}>
+      <ComponentSpacer.FlexChild grow={0} basis={140}>
         <StatusChangeDropdown status={status} />
-      </FlexBox.FlexChild>
+      </ComponentSpacer.FlexChild>
       {!!previousLevel && (
-        <FlexBox.FlexChild grow={0} basis={140}>
+        <ComponentSpacer.FlexChild grow={0} basis={140}>
           <LevelsDropdown
             type="previousLevel"
             selectedLevel={previousLevel.level}
             onClickLevel={onClickLevel}
           />
-        </FlexBox.FlexChild>
+        </ComponentSpacer.FlexChild>
       )}
       {!!previousLevel && <TextBlock text="to" />}
-      <FlexBox.FlexChild grow={0} basis={140}>
+      <ComponentSpacer.FlexChild grow={0} basis={140}>
         <LevelsDropdown
           type="currentLevel"
           selectedLevel={currentLevel.level}
           onClickLevel={onClickLevel}
         />
-      </FlexBox.FlexChild>
-    </FlexBox>
+      </ComponentSpacer.FlexChild>
+    </ComponentSpacer>
   )
 }
 

@@ -213,12 +213,17 @@ func (e *TaskExecutor) createPromise(ctx context.Context, run *influxdb.Run) (*P
 		return nil, err
 	}
 
+	auth, err := e.as.FindAuthorizationByID(ctx, t.AuthorizationID)
+	if err != nil {
+		return nil, err
+	}
+
 	ctx, cancel := context.WithCancel(ctx)
 	// create promise
 	p := &Promise{
 		run:        run,
 		task:       t,
-		auth:       t.Authorization,
+		auth:       auth,
 		done:       make(chan struct{}),
 		ctx:        ctx,
 		cancelFunc: cancel,

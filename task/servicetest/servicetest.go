@@ -160,12 +160,13 @@ type System struct {
 
 func testTaskCRUD(t *testing.T, sys *System) {
 	cr := creds(t, sys)
+	authzID := cr.AuthorizationID
 
 	// Create a task.
 	tc := influxdb.TaskCreate{
 		OrganizationID: cr.OrgID,
 		Flux:           fmt.Sprintf(scriptFmt, 0),
-		OwnerID:        cr.UserID,
+		Token:          cr.Token,
 	}
 
 	authorizedCtx := icontext.SetAuthorizer(sys.Ctx, cr.Authorizer())
@@ -187,18 +188,17 @@ func testTaskCRUD(t *testing.T, sys *System) {
 		return nil, fmt.Errorf("failed to find task by id %s", id)
 	}
 
-	// TODO: replace with ErrMissingOwner test
-	// // should not be able to create a task without a token
-	// noToken := influxdb.TaskCreate{
-	// 	OrganizationID: cr.OrgID,
-	// 	Flux:           fmt.Sprintf(scriptFmt, 0),
-	// 	// OwnerID:          cr.UserID, // should fail
-	// }
-	// _, err = sys.TaskService.CreateTask(authorizedCtx, noToken)
+	// should not be able to create a task without a token
+	noToken := influxdb.TaskCreate{
+		OrganizationID: cr.OrgID,
+		Flux:           fmt.Sprintf(scriptFmt, 0),
+		// Token:          cr.Token, // should fail
+	}
+	_, err = sys.TaskService.CreateTask(authorizedCtx, noToken)
 
-	// if err != influxdb.ErrMissingToken {
-	// 	t.Fatalf("expected error missing token, got: %v", err)
-	// }
+	if err != influxdb.ErrMissingToken {
+		t.Fatalf("expected error missing token, got: %v", err)
+	}
 
 	// Look up a task the different ways we can.
 	// Map of method name to found task.
@@ -239,9 +239,7 @@ func testTaskCRUD(t *testing.T, sys *System) {
 		LatestCompleted: tsk.LatestCompleted,
 		OrganizationID:  cr.OrgID,
 		Organization:    cr.Org,
-		AuthorizationID: tsk.AuthorizationID,
-		Authorization:   tsk.Authorization,
-		OwnerID:         tsk.OwnerID,
+		AuthorizationID: authzID,
 		Name:            "task #0",
 		Cron:            "* * * * *",
 		Offset:          "5s",
@@ -259,7 +257,7 @@ func testTaskCRUD(t *testing.T, sys *System) {
 	tc2 := influxdb.TaskCreate{
 		OrganizationID: cr.OrgID,
 		Flux:           fmt.Sprintf(scriptFmt, 1),
-		OwnerID:        cr.UserID,
+		Token:          cr.Token,
 	}
 
 	if _, err := sys.TaskService.CreateTask(authorizedCtx, tc2); err != nil {
@@ -383,32 +381,32 @@ func testTaskCRUD(t *testing.T, sys *System) {
 		t.Fatalf("expected task status to be active, got %q", f.Status)
 	}
 
-	// // Update task: use a new token on the context and modify some other option.
-	// // Ensure the authorization doesn't change -- it did change at one time, which was bug https://github.com/influxdata/influxdb/issues/12218.
-	// newAuthz := &influxdb.Authorization{OrgID: cr.OrgID, UserID: cr.UserID, Permissions: influxdb.OperPermissions()}
-	// if err := sys.I.CreateAuthorization(sys.Ctx, newAuthz); err != nil {
-	// 	t.Fatal(err)
-	// }
-	// newAuthorizedCtx := icontext.SetAuthorizer(sys.Ctx, newAuthz)
-	// f, err = sys.TaskService.UpdateTask(newAuthorizedCtx, origID, influxdb.TaskUpdate{Options: options.Options{Name: "foo"}})
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// if f.Name != "foo" {
-	// 	t.Fatalf("expected name to update to foo, got %s", f.Name)
-	// }
-	// if f.AuthorizationID != authzID {
-	// 	t.Fatalf("expected authorization ID to remain %v, got %v", authzID, f.AuthorizationID)
-	// }
+	// Update task: use a new token on the context and modify some other option.
+	// Ensure the authorization doesn't change -- it did change at one time, which was bug https://github.com/influxdata/influxdb/issues/12218.
+	newAuthz := &influxdb.Authorization{OrgID: cr.OrgID, UserID: cr.UserID, Permissions: influxdb.OperPermissions()}
+	if err := sys.I.CreateAuthorization(sys.Ctx, newAuthz); err != nil {
+		t.Fatal(err)
+	}
+	newAuthorizedCtx := icontext.SetAuthorizer(sys.Ctx, newAuthz)
+	f, err = sys.TaskService.UpdateTask(newAuthorizedCtx, origID, influxdb.TaskUpdate{Options: options.Options{Name: "foo"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.Name != "foo" {
+		t.Fatalf("expected name to update to foo, got %s", f.Name)
+	}
+	if f.AuthorizationID != authzID {
+		t.Fatalf("expected authorization ID to remain %v, got %v", authzID, f.AuthorizationID)
+	}
 
-	// // Now actually update to use the new token, from the original authorization context.
-	// f, err = sys.TaskService.UpdateTask(authorizedCtx, origID, influxdb.TaskUpdate{Token: newAuthz.Token})
-	// if err != nil {
-	// 	t.Fatal(err)
-	// }
-	// if f.AuthorizationID != newAuthz.ID {
-	// 	t.Fatalf("expected authorization ID %v, got %v", newAuthz.ID, f.AuthorizationID)
-	// }
+	// Now actually update to use the new token, from the original authorization context.
+	f, err = sys.TaskService.UpdateTask(authorizedCtx, origID, influxdb.TaskUpdate{Token: newAuthz.Token})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if f.AuthorizationID != newAuthz.ID {
+		t.Fatalf("expected authorization ID %v, got %v", newAuthz.ID, f.AuthorizationID)
+	}
 
 	// Delete task.
 	if err := sys.TaskService.DeleteTask(sys.Ctx, origID); err != nil {
@@ -443,7 +441,7 @@ from(bucket: "b")
 	ct := influxdb.TaskCreate{
 		OrganizationID: cr.OrgID,
 		Flux:           script,
-		OwnerID:        cr.UserID,
+		Token:          cr.Token,
 	}
 	authorizedCtx := icontext.SetAuthorizer(sys.Ctx, cr.Authorizer())
 	task, err := sys.TaskService.CreateTask(authorizedCtx, ct)
@@ -502,12 +500,10 @@ func testUpdate(t *testing.T, sys *System) {
 	cr := creds(t, sys)
 
 	now := time.Now()
-	earliestCA := now.Add(-time.Second)
-
 	ct := influxdb.TaskCreate{
 		OrganizationID: cr.OrgID,
 		Flux:           fmt.Sprintf(scriptFmt, 0),
-		OwnerID:        cr.UserID,
+		Token:          cr.Token,
 	}
 	authorizedCtx := icontext.SetAuthorizer(sys.Ctx, cr.Authorizer())
 	task, err := sys.TaskService.CreateTask(authorizedCtx, ct)
@@ -521,6 +517,7 @@ func testUpdate(t *testing.T, sys *System) {
 	}
 
 	after := time.Now()
+	earliestCA := now.Add(-time.Second)
 	latestCA := after.Add(time.Second)
 
 	ca, err := time.Parse(time.RFC3339, st.CreatedAt)
@@ -611,7 +608,7 @@ func testTaskRuns(t *testing.T, sys *System) {
 		ct := influxdb.TaskCreate{
 			OrganizationID: cr.OrgID,
 			Flux:           fmt.Sprintf(scriptFmt, 0),
-			OwnerID:        cr.UserID,
+			Token:          cr.Token,
 		}
 		task, err := sys.TaskService.CreateTask(icontext.SetAuthorizer(sys.Ctx, cr.Authorizer()), ct)
 		if err != nil {
@@ -726,7 +723,7 @@ func testTaskRuns(t *testing.T, sys *System) {
 		ct := influxdb.TaskCreate{
 			OrganizationID: cr.OrgID,
 			Flux:           fmt.Sprintf(scriptFmt, 0),
-			OwnerID:        cr.UserID,
+			Token:          cr.Token,
 		}
 		task, err := sys.TaskService.CreateTask(icontext.SetAuthorizer(sys.Ctx, cr.Authorizer()), ct)
 		if err != nil {
@@ -756,7 +753,7 @@ func testTaskRuns(t *testing.T, sys *System) {
 		ct := influxdb.TaskCreate{
 			OrganizationID: cr.OrgID,
 			Flux:           fmt.Sprintf(scriptFmt, 0),
-			OwnerID:        cr.UserID,
+			Token:          cr.Token,
 		}
 		task, err := sys.TaskService.CreateTask(icontext.SetAuthorizer(sys.Ctx, cr.Authorizer()), ct)
 		if err != nil {
@@ -992,7 +989,7 @@ func testTaskConcurrency(t *testing.T, sys *System) {
 		createTaskCh <- influxdb.TaskCreate{
 			OrganizationID: cr.OrgID,
 			Flux:           fmt.Sprintf(scriptFmt, i),
-			OwnerID:        cr.UserID,
+			Token:          cr.Token,
 		}
 	}
 
@@ -1009,7 +1006,7 @@ func testManualRun(t *testing.T, s *System) {
 	tc := influxdb.TaskCreate{
 		OrganizationID: cr.OrgID,
 		Flux:           fmt.Sprintf(scriptFmt, 0),
-		OwnerID:        cr.UserID,
+		Token:          cr.Token,
 	}
 
 	authorizedCtx := icontext.SetAuthorizer(s.Ctx, cr.Authorizer())
@@ -1053,7 +1050,7 @@ func testRunStorage(t *testing.T, sys *System) {
 	ct := influxdb.TaskCreate{
 		OrganizationID: cr.OrgID,
 		Flux:           fmt.Sprintf(scriptFmt, 0),
-		OwnerID:        cr.UserID,
+		Token:          cr.Token,
 	}
 	task, err := sys.TaskService.CreateTask(icontext.SetAuthorizer(sys.Ctx, cr.Authorizer()), ct)
 	if err != nil {
@@ -1231,7 +1228,7 @@ func testRetryAcrossStorage(t *testing.T, sys *System) {
 	ct := influxdb.TaskCreate{
 		OrganizationID: cr.OrgID,
 		Flux:           fmt.Sprintf(scriptFmt, 0),
-		OwnerID:        cr.UserID,
+		Token:          cr.Token,
 	}
 	task, err := sys.TaskService.CreateTask(icontext.SetAuthorizer(sys.Ctx, cr.Authorizer()), ct)
 	if err != nil {
@@ -1301,7 +1298,7 @@ func testLogsAcrossStorage(t *testing.T, sys *System) {
 	ct := influxdb.TaskCreate{
 		OrganizationID: cr.OrgID,
 		Flux:           fmt.Sprintf(scriptFmt, 0),
-		OwnerID:        cr.UserID,
+		Token:          cr.Token,
 	}
 	task, err := sys.TaskService.CreateTask(icontext.SetAuthorizer(sys.Ctx, cr.Authorizer()), ct)
 	if err != nil {
@@ -1483,7 +1480,7 @@ func testTaskType(t *testing.T, sys *System) {
 	ts := influxdb.TaskCreate{
 		OrganizationID: cr.OrgID,
 		Flux:           fmt.Sprintf(scriptFmt, 0),
-		OwnerID:        cr.UserID,
+		Token:          cr.Token,
 	}
 
 	tsk, err := sys.TaskService.CreateTask(authorizedCtx, ts)
@@ -1498,7 +1495,7 @@ func testTaskType(t *testing.T, sys *System) {
 		Type:           "cows",
 		OrganizationID: cr.OrgID,
 		Flux:           fmt.Sprintf(scriptFmt, 0),
-		OwnerID:        cr.UserID,
+		Token:          cr.Token,
 	}
 
 	tskCow, err := sys.TaskService.CreateTask(authorizedCtx, tc)
@@ -1513,7 +1510,7 @@ func testTaskType(t *testing.T, sys *System) {
 		Type:           "pigs",
 		OrganizationID: cr.OrgID,
 		Flux:           fmt.Sprintf(scriptFmt, 0),
-		OwnerID:        cr.UserID,
+		Token:          cr.Token,
 	}
 
 	tskPig, err := sys.TaskService.CreateTask(authorizedCtx, tp)

@@ -1,9 +1,8 @@
 // Libraries
 import React, {FC} from 'react'
-import {get} from 'lodash'
 
 // Components
-import {Dropdown, ComponentStatus} from '@influxdata/clockface'
+import {Dropdown} from '@influxdata/clockface'
 
 // Types
 import {NotificationEndpoint} from 'src/types'
@@ -19,18 +18,6 @@ const RuleEndpointDropdown: FC<Props> = ({
   selectedEndpointID,
   onSelectEndpoint,
 }) => {
-  if (!endpoints.length) {
-    const button = () => (
-      <Dropdown.Button status={ComponentStatus.Disabled} onClick={() => {}}>
-        No Endpoints Found
-      </Dropdown.Button>
-    )
-
-    const menu = () => null
-
-    return <Dropdown button={button} widthPixels={160} menu={menu} />
-  }
-
   const items = endpoints.map(({id, type, name}) => (
     <Dropdown.Item
       key={id}
@@ -43,8 +30,7 @@ const RuleEndpointDropdown: FC<Props> = ({
     </Dropdown.Item>
   ))
 
-  const selectedEndpoint =
-    endpoints.find(e => e.id === selectedEndpointID) || endpoints[0]
+  const selectedEndpoint = endpoints.find(e => e.id === selectedEndpointID)
 
   const button = (active, onClick) => (
     <Dropdown.Button
@@ -52,7 +38,7 @@ const RuleEndpointDropdown: FC<Props> = ({
       active={active}
       onClick={onClick}
     >
-      {get(selectedEndpoint, 'name')}
+      {selectedEndpoint.name}
     </Dropdown.Button>
   )
 

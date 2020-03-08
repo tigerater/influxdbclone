@@ -7,9 +7,6 @@ import {connect} from 'react-redux'
 import {Overlay} from '@influxdata/clockface'
 import RuleOverlayContents from 'src/alerting/components/notifications/RuleOverlayContents'
 
-// Actions
-import {updateRule} from 'src/alerting/actions/notifications/rules'
-
 // Utils
 import {RuleOverlayProvider} from './RuleOverlay.reducer'
 
@@ -20,30 +17,15 @@ interface StateProps {
   stateRule: NotificationRuleDraft
 }
 
-interface DispatchProps {
-  onUpdateRule: (rule: NotificationRuleDraft) => Promise<void>
-}
+type Props = WithRouterProps & StateProps
 
-type Props = WithRouterProps & StateProps & DispatchProps
-
-const EditRuleOverlay: FC<Props> = ({
-  params: {orgID},
-  router,
-  stateRule,
-  onUpdateRule,
-}) => {
+const EditRuleOverlay: FC<Props> = ({params, router, stateRule}) => {
   if (!stateRule) {
     return null
   }
 
   const handleDismiss = () => {
-    router.push(`/orgs/${orgID}/alerting`)
-  }
-
-  const handleUpdateRule = async (rule: NotificationRuleDraft) => {
-    await onUpdateRule(rule)
-
-    handleDismiss()
+    router.push(`/orgs/${params.orgID}/alerting`)
   }
 
   return (
@@ -55,10 +37,7 @@ const EditRuleOverlay: FC<Props> = ({
             onDismiss={handleDismiss}
           />
           <Overlay.Body>
-            <RuleOverlayContents
-              saveButtonText="Save Changes"
-              onSave={handleUpdateRule}
-            />
+            <RuleOverlayContents />
           </Overlay.Body>
         </Overlay.Container>
       </Overlay>
@@ -74,11 +53,4 @@ const mstp = ({rules}: AppState, {params}: Props): StateProps => {
   }
 }
 
-const mdtp = {
-  onUpdateRule: updateRule as any,
-}
-
-export default connect<StateProps, DispatchProps>(
-  mstp,
-  mdtp
-)(withRouter<Props>(EditRuleOverlay))
+export default connect<StateProps>(mstp)(withRouter<Props>(EditRuleOverlay))

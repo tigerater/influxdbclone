@@ -3,7 +3,14 @@ import _ from 'lodash'
 import React, {PureComponent, ChangeEvent} from 'react'
 
 // Components
-import {Form, Radio, Input, Button, FlexBox, Grid} from '@influxdata/clockface'
+import {
+  Form,
+  Radio,
+  Input,
+  Button,
+  ComponentSpacer,
+  Grid,
+} from '@influxdata/clockface'
 import TaskScheduleFormField from 'src/tasks/components/TaskScheduleFormField'
 import TaskOptionsBucketDropdown from 'src/tasks/components/TasksOptionsBucketDropdown'
 import GetResources, {ResourceTypes} from 'src/shared/components/GetResources'
@@ -92,7 +99,7 @@ export default class TaskForm extends PureComponent<Props, State> {
             </Grid.Column>
             <Grid.Column>
               <Form.Element label="Schedule Task">
-                <FlexBox
+                <ComponentSpacer
                   direction={FlexDirection.Column}
                   alignItems={AlignItems.FlexStart}
                   margin={ComponentSize.Small}
@@ -118,7 +125,7 @@ export default class TaskForm extends PureComponent<Props, State> {
                     </Radio.Button>
                   </Radio>
                   {this.cronHelper}
-                </FlexBox>
+                </ComponentSpacer>
               </Form.Element>
             </Grid.Column>
             <TaskScheduleFormField

@@ -56,8 +56,13 @@ func (e *queryServiceExecutor) Execute(ctx context.Context, run backend.QueuedRu
 		return nil, err
 	}
 
+	auth, err := e.as.FindAuthorizationByID(ctx, influxdb.ID(t.AuthorizationID))
+	if err != nil {
+		return nil, err
+	}
+
 	// TODO(goller): remove need for context authorization.
-	return newSyncRunPromise(icontext.SetAuthorizer(ctx, t.Authorization), t.Authorization, run, e, t), nil
+	return newSyncRunPromise(icontext.SetAuthorizer(ctx, auth), auth, run, e, t), nil
 }
 
 func (e *queryServiceExecutor) Wait() {
@@ -228,13 +233,18 @@ func (e *asyncQueryServiceExecutor) Execute(ctx context.Context, run backend.Que
 		return nil, err
 	}
 
+	auth, err := e.as.FindAuthorizationByID(ctx, influxdb.ID(t.AuthorizationID))
+	if err != nil {
+		return nil, err
+	}
+
 	pkg, err := flux.Parse(t.Flux)
 	if err != nil {
 		return nil, err
 	}
 
 	req := &query.Request{
-		Authorization:  t.Authorization,
+		Authorization:  auth,
 		OrganizationID: t.OrganizationID,
 		Compiler: lang.ASTCompiler{
 			AST: pkg,
@@ -242,7 +252,7 @@ func (e *asyncQueryServiceExecutor) Execute(ctx context.Context, run backend.Que
 		},
 	}
 	// Only set the authorizer on the context where we need it here.
-	q, err := e.qs.Query(icontext.SetAuthorizer(ctx, t.Authorization), req)
+	q, err := e.qs.Query(icontext.SetAuthorizer(ctx, auth), req)
 	if err != nil {
 		return nil, err
 	}

@@ -9,8 +9,9 @@ import (
 	"github.com/influxdata/influxdb/notification"
 )
 
-var typeToRule = map[string](func() influxdb.NotificationRule){
+var typToRule = map[string](func() influxdb.NotificationRule){
 	"slack":     func() influxdb.NotificationRule { return &Slack{} },
+	"smtp":      func() influxdb.NotificationRule { return &SMTP{} },
 	"pagerduty": func() influxdb.NotificationRule { return &PagerDuty{} },
 }
 
@@ -26,7 +27,7 @@ func UnmarshalJSON(b []byte) (influxdb.NotificationRule, error) {
 			Msg: "unable to detect the notification type from json",
 		}
 	}
-	convertedFunc, ok := typeToRule[raw.Typ]
+	convertedFunc, ok := typToRule[raw.Typ]
 	if !ok {
 		return nil, &influxdb.Error{
 			Msg: fmt.Sprintf("invalid notification type %s", raw.Typ),
@@ -39,13 +40,13 @@ func UnmarshalJSON(b []byte) (influxdb.NotificationRule, error) {
 
 // Base is the embed struct of every notification rule.
 type Base struct {
-	ID          influxdb.ID     `json:"id,omitempty"`
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
-	EndpointID  *influxdb.ID    `json:"endpointID,omitempty"`
-	OrgID       influxdb.ID     `json:"orgID,omitempty"`
-	OwnerID     influxdb.ID     `json:"ownerID,omitempty"`
-	Status      influxdb.Status `json:"status"`
+	ID              influxdb.ID     `json:"id,omitempty"`
+	Name            string          `json:"name"`
+	Description     string          `json:"description,omitempty"`
+	EndpointID      *influxdb.ID    `json:"endpointID,omitempty"`
+	OrgID           influxdb.ID     `json:"orgID,omitempty"`
+	AuthorizationID influxdb.ID     `json:"authorizationID,omitempty"`
+	Status          influxdb.Status `json:"status"`
 	// SleepUntil is an optional sleeptime to start a task.
 	SleepUntil *time.Time        `json:"sleepUntil,omitempty"`
 	Cron       string            `json:"cron,omitempty"`
@@ -73,10 +74,10 @@ func (b Base) valid() error {
 			Msg:  "Notification Rule Name can't be empty",
 		}
 	}
-	if !b.OwnerID.Valid() {
+	if !b.AuthorizationID.Valid() {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
-			Msg:  "Notification Rule OwnerID is invalid",
+			Msg:  "Notification Rule AuthorizationID is invalid",
 		}
 	}
 	if !b.OrgID.Valid() {
@@ -124,11 +125,6 @@ func (b Base) GetOrgID() influxdb.ID {
 	return b.OrgID
 }
 
-// GetOwnerID returns the owner id.
-func (b Base) GetOwnerID() influxdb.ID {
-	return b.OwnerID
-}
-
 // GetCRUDLog implements influxdb.Getter interface.
 func (b Base) GetCRUDLog() influxdb.CRUDLog {
 	return b.CRUDLog
@@ -162,11 +158,6 @@ func (b *Base) SetID(id influxdb.ID) {
 // SetOrgID will set the org key.
 func (b *Base) SetOrgID(id influxdb.ID) {
 	b.OrgID = id
-}
-
-// SetOwnerID will set the owner id.
-func (b *Base) SetOwnerID(id influxdb.ID) {
-	b.OwnerID = id
 }
 
 // SetName implements influxdb.Updator interface.

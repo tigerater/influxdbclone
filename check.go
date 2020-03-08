@@ -15,14 +15,8 @@ const (
 type Check interface {
 	Valid() error
 	Type() string
-	ClearPrivateData()
-	SetTaskID(ID)
-	GetTaskID() ID
-	GenerateFlux() (string, error)
-	GetOwnerID() ID
-	SetOwnerID(id ID)
 	json.Marshaler
-	Updater
+	Updator
 	Getter
 }
 
@@ -43,7 +37,6 @@ type CheckService interface {
 	UserResourceMappingService
 	// OrganizationService is needed for search filter
 	OrganizationService
-	TaskService
 
 	// FindCheckByID returns a single check by ID.
 	FindCheckByID(ctx context.Context, id ID) (Check, error)
@@ -56,7 +49,7 @@ type CheckService interface {
 	FindChecks(ctx context.Context, filter CheckFilter, opt ...FindOptions) ([]Check, int, error)
 
 	// CreateCheck creates a new check and sets b.ID with the new identifier.
-	CreateCheck(ctx context.Context, c Check, userID ID) error
+	CreateCheck(ctx context.Context, c Check) error
 
 	// UpdateCheck updates the whole check.
 	// Returns the new check state after update.

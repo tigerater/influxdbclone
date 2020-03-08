@@ -5,7 +5,7 @@ import React, {FC} from 'react'
 import {
   Grid,
   Columns,
-  FlexBox,
+  ComponentSpacer,
   FlexDirection,
   ComponentSize,
   ComponentColor,
@@ -51,7 +51,7 @@ const RuleConditions: FC<Props> = ({rule}) => {
     <Grid.Row>
       <Grid.Column widthSM={Columns.Two}>Conditions</Grid.Column>
       <Grid.Column widthSM={Columns.Ten}>
-        <FlexBox
+        <ComponentSpacer
           direction={FlexDirection.Column}
           margin={ComponentSize.Small}
           alignItems={AlignItems.Stretch}
@@ -64,7 +64,7 @@ const RuleConditions: FC<Props> = ({rule}) => {
             color={ComponentColor.Primary}
             size={ComponentSize.Small}
           />
-        </FlexBox>
+        </ComponentSpacer>
       </Grid.Column>
       <Grid.Column>
         <hr />
