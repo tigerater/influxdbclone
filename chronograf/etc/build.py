@@ -11,7 +11,6 @@ import re
 import logging
 import argparse
 import json
-import fs
 
 ################
 #### Chronograf Variables
