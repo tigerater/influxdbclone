@@ -85,14 +85,9 @@ func NewHandlerFromRegistry(name string, reg *prom.Registry) *Handler {
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var span opentracing.Span
 	span, r = tracing.ExtractFromHTTPRequest(r, h.name)
-	ua := userAgent(r)
-	span.LogKV("user_agent", ua, "referer", r.Referer(), "remote_addr", r.RemoteAddr)
-	for k, v := range r.Header {
-		if len(v) == 0 {
-			continue
-		}
-		// If header has multiple values, only the first value will be logged on the trace.
-		span.LogKV(k, v[0])
+	userAgent := r.Header.Get("User-Agent")
+	if userAgent == "" {
+		userAgent = "unknown"
 	}
 
 	defer span.Finish()
@@ -110,14 +105,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			"method":     r.Method,
 			"path":       r.URL.Path,
 			"status":     statusClass,
-			"user_agent": ua,
+			"user_agent": userAgent,
 		}).Inc()
 		h.requestDur.With(prometheus.Labels{
 			"handler":    h.name,
 			"method":     r.Method,
 			"path":       r.URL.Path,
 			"status":     statusClass,
-			"user_agent": ua,
+			"user_agent": userAgent,
 		}).Observe(duration.Seconds())
 	}(time.Now())
 
