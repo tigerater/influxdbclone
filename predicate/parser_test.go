@@ -117,8 +117,11 @@ func TestParseTagRule(t *testing.T) {
 			node: TagRuleNode{Tag: influxdb.Tag{Key: "abc", Value: "-1221"}},
 		},
 		{
-			str:  ` abc != "opq"`,
-			node: TagRuleNode{Tag: influxdb.Tag{Key: "abc", Value: "opq"}, Operator: influxdb.NotEqual},
+			str: ` abc != "opq"`,
+			err: &influxdb.Error{
+				Code: influxdb.EInvalid,
+				Msg:  `operator: "!=" at position: 5 is not supported yet`,
+			},
 		},
 		{
 			str:  `abc=123`,

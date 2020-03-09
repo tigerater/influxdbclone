@@ -50,9 +50,7 @@ func TestView_MarshalJSON(t *testing.T) {
     "showNoteWhenEmpty": false,
     "xColumn": "",
     "yColumn": "",
-    "shadeBelow": false,
-		"position": "",
-		"timeFormat": ""
+    "shadeBelow": false
   }
 }
 `,

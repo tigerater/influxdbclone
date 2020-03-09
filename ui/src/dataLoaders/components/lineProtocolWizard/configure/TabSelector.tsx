@@ -1,6 +1,6 @@
 import React, {PureComponent} from 'react'
 
-import {SelectGroup, ButtonShape} from '@influxdata/clockface'
+import {Radio, ButtonShape} from '@influxdata/clockface'
 import {LineProtocolTab} from 'src/types'
 
 import Tab from 'src/dataLoaders/components/lineProtocolWizard/configure/Tab'
@@ -15,7 +15,7 @@ export default class extends PureComponent<Props> {
   public render() {
     const {tabs, activeLPTab} = this.props
     return (
-      <SelectGroup shape={ButtonShape.Default}>
+      <Radio shape={ButtonShape.Default}>
         {tabs.map(t => (
           <Tab
             tab={t}
@@ -24,7 +24,7 @@ export default class extends PureComponent<Props> {
             onClick={this.handleTabClick}
           />
         ))}
-      </SelectGroup>
+      </Radio>
     )
   }
 

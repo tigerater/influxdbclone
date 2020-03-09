@@ -1,10 +1,9 @@
 // Libraries
 import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
-import {capitalize} from 'lodash'
 
 // Components
-import {Grid, Form, Dropdown} from '@influxdata/clockface'
+import {Grid} from '@influxdata/clockface'
 import Geom from 'src/timeMachine/components/view_options/Geom'
 import YAxisTitle from 'src/timeMachine/components/view_options/YAxisTitle'
 import AxisAffixes from 'src/timeMachine/components/view_options/AxisAffixes'
@@ -13,7 +12,6 @@ import AutoDomainInput from 'src/shared/components/AutoDomainInput'
 import YAxisBase from 'src/timeMachine/components/view_options/YAxisBase'
 import ColumnSelector from 'src/shared/components/ColumnSelector'
 import Checkbox from 'src/shared/components/Checkbox'
-import TimeFormat from 'src/timeMachine/components/view_options/TimeFormat'
 
 // Actions
 import {
@@ -27,8 +25,6 @@ import {
   setXColumn,
   setYColumn,
   setShadeBelow,
-  setLinePosition,
-  setTimeFormat,
 } from 'src/timeMachine/actions'
 
 // Utils
@@ -37,20 +33,11 @@ import {
   getXColumnSelection,
   getYColumnSelection,
   getNumericColumns,
-  getActiveTimeMachine,
 } from 'src/timeMachine/selectors'
 
 // Types
-import {
-  AppState,
-  XYGeom,
-  Axes,
-  Color,
-  NewView,
-  XYViewProperties,
-  ViewType,
-} from 'src/types'
-import {LinePosition} from '@influxdata/giraffe'
+import {ViewType} from 'src/types'
+import {AppState, XYGeom, Axes, Color} from 'src/types'
 
 interface OwnProps {
   type: ViewType
@@ -58,14 +45,12 @@ interface OwnProps {
   geom?: XYGeom
   colors: Color[]
   shadeBelow?: boolean
-  position: LinePosition
 }
 
 interface StateProps {
   xColumn: string
   yColumn: string
   numericColumns: string[]
-  timeFormat: string
 }
 
 interface DispatchProps {
@@ -79,8 +64,6 @@ interface DispatchProps {
   onSetXColumn: typeof setXColumn
   onSetYColumn: typeof setYColumn
   onSetGeom: typeof setGeom
-  onSetPosition: typeof setLinePosition
-  onSetTimeFormat: typeof setTimeFormat
 }
 
 type Props = OwnProps & DispatchProps & StateProps
@@ -94,8 +77,6 @@ class LineOptions extends PureComponent<Props> {
       colors,
       geom,
       shadeBelow,
-      position,
-      onSetPosition,
       onUpdateColors,
       onUpdateYAxisLabel,
       onUpdateAxisPrefix,
@@ -108,8 +89,6 @@ class LineOptions extends PureComponent<Props> {
       onSetXColumn,
       xColumn,
       numericColumns,
-      onSetTimeFormat,
-      timeFormat,
     } = this.props
 
     return (
@@ -129,12 +108,6 @@ class LineOptions extends PureComponent<Props> {
             availableColumns={numericColumns}
             axisName="y"
           />
-          <Form.Element label="Time Format">
-            <TimeFormat
-              timeFormat={timeFormat}
-              onTimeFormatChange={onSetTimeFormat}
-            />
-          </Form.Element>
           <h5 className="view-options--header">Options</h5>
         </Grid.Column>
         {geom && <Geom geom={geom} onSetGeom={onSetGeom} />}
@@ -167,35 +140,6 @@ class LineOptions extends PureComponent<Props> {
             onSetDomain={this.handleSetYDomain}
             label="Y Axis Domain"
           />
-          <Form.Element label="Positioning">
-            <Dropdown
-              button={(active, onClick) => (
-                <Dropdown.Button active={active} onClick={onClick}>
-                  {capitalize(position)}
-                </Dropdown.Button>
-              )}
-              menu={onCollapse => (
-                <Dropdown.Menu onCollapse={onCollapse}>
-                  <Dropdown.Item
-                    id="overlaid"
-                    value="overlaid"
-                    onClick={onSetPosition}
-                    selected={position === 'overlaid'}
-                  >
-                    Overlaid
-                  </Dropdown.Item>
-                  <Dropdown.Item
-                    id="stacked"
-                    value="stacked"
-                    onClick={onSetPosition}
-                    selected={position === 'stacked'}
-                  >
-                    Stacked
-                  </Dropdown.Item>
-                </Dropdown.Menu>
-              )}
-            />
-          </Form.Element>
         </Grid.Column>
       </>
     )
@@ -222,9 +166,8 @@ const mstp = (state: AppState) => {
   const xColumn = getXColumnSelection(state)
   const yColumn = getYColumnSelection(state)
   const numericColumns = getNumericColumns(state)
-  const view = getActiveTimeMachine(state).view as NewView<XYViewProperties>
-  const {timeFormat} = view.properties
-  return {xColumn, yColumn, numericColumns, timeFormat}
+
+  return {xColumn, yColumn, numericColumns}
 }
 
 const mdtp: DispatchProps = {
@@ -238,8 +181,6 @@ const mdtp: DispatchProps = {
   onSetShadeBelow: setShadeBelow,
   onUpdateColors: setColors,
   onSetGeom: setGeom,
-  onSetPosition: setLinePosition,
-  onSetTimeFormat: setTimeFormat,
 }
 
 export default connect<StateProps, DispatchProps, OwnProps>(

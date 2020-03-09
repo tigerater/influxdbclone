@@ -12,26 +12,16 @@ import (
 	"github.com/influxdata/influxdb/storage"
 	"github.com/influxdata/influxdb/storage/reads"
 	"github.com/influxdata/influxdb/storage/reads/datatypes"
-	"github.com/influxdata/influxdb/tsdb"
 	"github.com/influxdata/influxdb/tsdb/cursors"
 	"github.com/influxdata/influxql"
 )
 
-// Viewer is used by the store to query data from time-series files.
-type Viewer interface {
-	CreateCursorIterator(ctx context.Context) (tsdb.CursorIterator, error)
-	CreateSeriesCursor(ctx context.Context, req storage.SeriesCursorRequest, cond influxql.Expr) (storage.SeriesCursor, error)
-	TagKeys(ctx context.Context, orgID, bucketID influxdb.ID, start, end int64, predicate influxql.Expr) (cursors.StringIterator, error)
-	TagValues(ctx context.Context, orgID, bucketID influxdb.ID, tagKey string, start, end int64, predicate influxql.Expr) (cursors.StringIterator, error)
-}
-
 type store struct {
-	viewer Viewer
+	engine *storage.Engine
 }
 
-// NewStore creates a store used to query time-series data.
-func NewStore(viewer Viewer) reads.Store {
-	return &store{viewer: viewer}
+func NewStore(engine *storage.Engine) reads.Store {
+	return &store{engine: engine}
 }
 
 func (s *store) ReadFilter(ctx context.Context, req *datatypes.ReadFilterRequest) (reads.ResultSet, error) {
@@ -45,7 +35,7 @@ func (s *store) ReadFilter(ctx context.Context, req *datatypes.ReadFilterRequest
 	}
 
 	var cur reads.SeriesCursor
-	if ic, err := newIndexSeriesCursor(ctx, &source, req.Predicate, s.viewer); err != nil {
+	if ic, err := newIndexSeriesCursor(ctx, &source, req.Predicate, s.engine); err != nil {
 		return nil, err
 	} else if ic == nil {
 		return nil, nil
@@ -67,7 +57,7 @@ func (s *store) ReadGroup(ctx context.Context, req *datatypes.ReadGroupRequest) 
 	}
 
 	newCursor := func() (reads.SeriesCursor, error) {
-		cur, err := newIndexSeriesCursor(ctx, &source, req.Predicate, s.viewer)
+		cur, err := newIndexSeriesCursor(ctx, &source, req.Predicate, s.engine)
 		if cur == nil || err != nil {
 			return nil, err
 		}
@@ -113,7 +103,7 @@ func (s *store) TagKeys(ctx context.Context, req *datatypes.TagKeysRequest) (cur
 	if err != nil {
 		return nil, err
 	}
-	return s.viewer.TagKeys(ctx, influxdb.ID(readSource.OrganizationID), influxdb.ID(readSource.BucketID), req.Range.Start, req.Range.End, expr)
+	return s.engine.TagKeys(ctx, influxdb.ID(readSource.OrganizationID), influxdb.ID(readSource.BucketID), req.Range.Start, req.Range.End, expr)
 }
 
 func (s *store) TagValues(ctx context.Context, req *datatypes.TagValuesRequest) (cursors.StringIterator, error) {
@@ -156,7 +146,7 @@ func (s *store) TagValues(ctx context.Context, req *datatypes.TagValuesRequest) 
 	if err != nil {
 		return nil, err
 	}
-	return s.viewer.TagValues(ctx, influxdb.ID(readSource.OrganizationID), influxdb.ID(readSource.BucketID), req.TagKey, req.Range.Start, req.Range.End, expr)
+	return s.engine.TagValues(ctx, influxdb.ID(readSource.OrganizationID), influxdb.ID(readSource.BucketID), req.TagKey, req.Range.Start, req.Range.End, expr)
 }
 
 // this is easier than fooling around with .proto files.

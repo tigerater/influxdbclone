@@ -36,7 +36,6 @@ class PrecisionDropdown extends PureComponent<Props> {
         <Dropdown
           style={{width: '200px'}}
           className="wizard-step--lp-precision"
-          testID="wizard-step--lp-precision--dropdown"
           button={(active, onClick) => (
             <Dropdown.Button active={active} onClick={onClick}>
               {makePrecisionReadable[precision]}
@@ -50,7 +49,6 @@ class PrecisionDropdown extends PureComponent<Props> {
                   value={value}
                   id={value}
                   onClick={setPrecision}
-                  testID={`wizard-step--lp-precision-${value}`}
                   selected={`${value}` === `${precision}`}
                 >
                   {makePrecisionReadable[value]}

@@ -5,17 +5,18 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/influxdata/influxdb/notification"
+	"go.uber.org/zap"
+
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/mock"
-	"github.com/influxdata/influxdb/notification"
 	"github.com/influxdata/influxdb/notification/rule"
 	influxTesting "github.com/influxdata/influxdb/testing"
-	"go.uber.org/zap/zaptest"
 )
 
-func NewMockNotificationRuleBackend(t *testing.T) *NotificationRuleBackend {
+func NewMockNotificationRuleBackend() *NotificationRuleBackend {
 	return &NotificationRuleBackend{
-		log: zaptest.NewLogger(t),
+		Logger: zap.NewNop().With(zap.String("handler", "check")),
 
 		UserResourceMappingService: mock.NewUserResourceMappingService(),
 		LabelService:               mock.NewLabelService(),
@@ -114,7 +115,6 @@ func Test_newNotificationRuleResponses(t *testing.T) {
         "labels": "/api/v2/notificationRules/0000000000000001/labels",
         "members": "/api/v2/notificationRules/0000000000000001/members",
         "owners": "/api/v2/notificationRules/0000000000000001/owners",
-        "query": "/api/v2/notificationRules/0000000000000001/query",
         "self": "/api/v2/notificationRules/0000000000000001"
       },
       "messageTemplate": "message 1{var1}",
@@ -160,7 +160,6 @@ func Test_newNotificationRuleResponses(t *testing.T) {
         "labels": "/api/v2/notificationRules/000000000000000b/labels",
         "members": "/api/v2/notificationRules/000000000000000b/members",
         "owners": "/api/v2/notificationRules/000000000000000b/owners",
-        "query": "/api/v2/notificationRules/000000000000000b/query",
         "self": "/api/v2/notificationRules/000000000000000b"
       },
       "messageTemplate": "body 2{var2}",
@@ -176,7 +175,7 @@ func Test_newNotificationRuleResponses(t *testing.T) {
 }`,
 		},
 	}
-	handler := NewNotificationRuleHandler(zaptest.NewLogger(t), NewMockNotificationRuleBackend(t))
+	handler := NewNotificationRuleHandler(NewMockNotificationRuleBackend())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			ctx := context.Background()
@@ -254,7 +253,6 @@ func Test_newNotificationRuleResponse(t *testing.T) {
    "labels": "/api/v2/notificationRules/0000000000000001/labels",
    "members": "/api/v2/notificationRules/0000000000000001/members",
    "owners": "/api/v2/notificationRules/0000000000000001/owners",
-   "query": "/api/v2/notificationRules/0000000000000001/query",
    "self": "/api/v2/notificationRules/0000000000000001"
  },
  "messageTemplate": "message 1{var1}",
@@ -291,7 +289,7 @@ func Test_newNotificationRuleResponse(t *testing.T) {
 }`,
 		},
 	}
-	handler := NewNotificationRuleHandler(zaptest.NewLogger(t), NewMockNotificationRuleBackend(t))
+	handler := NewNotificationRuleHandler(NewMockNotificationRuleBackend())
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			res, err := handler.newNotificationRuleResponse(context.Background(), tt.args.nr, []*influxdb.Label{})

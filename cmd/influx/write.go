@@ -83,16 +83,14 @@ func fluxWriteF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid precision")
 	}
 
-	httpClient, err := newHTTPClient()
-	if err != nil {
-		return err
-	}
-
 	bs := &http.BucketService{
-		Client: httpClient,
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
-	var filter platform.BucketFilter
+	var err error
+	filter := platform.BucketFilter{}
+
 	if writeFlags.BucketID != "" {
 		filter.ID, err = platform.IDFromString(writeFlags.BucketID)
 		if err != nil {
@@ -146,10 +144,9 @@ func fluxWriteF(cmd *cobra.Command, args []string) error {
 
 	s := write.Batcher{
 		Service: &http.WriteService{
-			Addr:               flags.host,
-			Token:              flags.token,
-			Precision:          writeFlags.Precision,
-			InsecureSkipVerify: flags.skipVerify,
+			Addr:      flags.host,
+			Token:     flags.token,
+			Precision: writeFlags.Precision,
 		},
 	}
 

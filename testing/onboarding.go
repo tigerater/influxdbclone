@@ -181,10 +181,6 @@ func Generate(
 						Description: "admin's Token",
 						OrgID:       MustIDBase16(twoID),
 						Permissions: platform.OperPermissions(),
-						CRUDLog: platform.CRUDLog{
-							CreatedAt: time.Date(2006, 5, 4, 1, 2, 3, 0, time.UTC),
-							UpdatedAt: time.Date(2006, 5, 4, 1, 2, 3, 0, time.UTC),
-						},
 					},
 				},
 			},
@@ -210,7 +206,7 @@ func Generate(
 				t.Errorf("onboarding results are different -got/+want\ndiff %s", diff)
 			}
 			if results != nil {
-				if err = s.ComparePassword(ctx, results.User.ID, tt.wants.password); err != nil {
+				if err = s.ComparePassword(ctx, results.User.Name, tt.wants.password); err != nil {
 					t.Errorf("onboarding set password is wrong")
 				}
 			}

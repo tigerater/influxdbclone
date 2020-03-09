@@ -15,6 +15,7 @@ interface Props {
 
 const FluxTablesTransform: FunctionComponent<Props> = ({files, children}) => {
   const tables = useMemo(() => flatMap(files, parseResponse), [files])
+
   return children(tables)
 }
 

@@ -287,7 +287,7 @@ func (s *Service) CreateDashboard(ctx context.Context, d *influxdb.Dashboard) er
 		for _, cell := range d.Cells {
 			cell.ID = s.IDGenerator.ID()
 
-			if err := s.createCellView(ctx, tx, d.ID, cell.ID, cell.View); err != nil {
+			if err := s.createCellView(ctx, tx, d.ID, cell.ID, nil); err != nil {
 				return err
 			}
 		}
@@ -308,7 +308,7 @@ func (s *Service) CreateDashboard(ctx context.Context, d *influxdb.Dashboard) er
 		}
 
 		if err := s.addDashboardOwner(ctx, tx, d.ID); err != nil {
-			s.log.Info("Failed to make user owner of organization", zap.Error(err))
+			s.Logger.Info("failed to make user owner of organization", zap.Error(err))
 		}
 
 		return nil

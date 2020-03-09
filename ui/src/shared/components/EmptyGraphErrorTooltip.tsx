@@ -11,7 +11,7 @@ import {
   Popover,
   PopoverPosition,
   PopoverInteraction,
-  Appearance,
+  PopoverType,
 } from '@influxdata/clockface'
 
 interface Props {
@@ -39,7 +39,7 @@ const EmptyGraphError: FC<Props> = ({message, testID}) => {
           className={`icon ${IconFont.AlertTriangle} empty-graph-error--icon`}
         />
         <Popover
-          appearance={Appearance.Outline}
+          type={PopoverType.Outline}
           position={PopoverPosition.ToTheRight}
           triggerRef={trigger}
           showEvent={PopoverInteraction.Hover}

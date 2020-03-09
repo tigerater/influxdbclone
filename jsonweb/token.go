@@ -110,11 +110,7 @@ func (t *Token) Allowed(p influxdb.Permission) bool {
 // Identifier returns the identifier for this Token
 // as found in the standard claims
 func (t *Token) Identifier() influxdb.ID {
-	id, err := influxdb.IDFromString(t.Id)
-	if err != nil || id == nil {
-		return influxdb.ID(1)
-	}
-
+	id, _ := influxdb.IDFromString(t.Id)
 	return *id
 }
 
@@ -127,14 +123,4 @@ func (t *Token) GetUserID() influxdb.ID {
 // Kind returns the string "jwt" which is used for auditing
 func (t *Token) Kind() string {
 	return kind
-}
-
-// EphemeralAuth creates a influxdb Auth form a jwt token
-func (t *Token) EphemeralAuth(orgID influxdb.ID) *influxdb.Authorization {
-	return &influxdb.Authorization{
-		ID:          t.Identifier(),
-		OrgID:       orgID,
-		Status:      influxdb.Active,
-		Permissions: t.Permissions,
-	}
 }

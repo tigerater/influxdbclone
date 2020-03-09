@@ -57,7 +57,6 @@
 @import 'src/buckets/components/Retention.scss';
 @import 'src/buckets/components/BucketAddDataButton.scss';
 @import 'src/buckets/components/NoBucketsWarning.scss';
-@import 'src/telegrafs/components/Collectors.scss';
 @import 'src/telegrafs/components/TelegrafConfigOverlay.scss';
 @import 'src/variables/components/CreateVariableOverlay.scss';
 @import 'src/authorizations/components/BucketsSelector.scss';
@@ -112,6 +111,7 @@
 @import 'src/shared/components/ThresholdMarkers.scss';
 @import 'src/shared/components/EventMarkers.scss';
 @import 'src/shared/components/EventMarkerTooltip.scss';
+@import 'src/members/components/AddMembersForm.scss';
 @import 'src/shared/components/DeleteDataForm/DeleteDataForm.scss';
 @import 'src/shared/components/cloud/CloudOnly.scss';
 @import 'src/alerting/components/notifications/NewRuleOverlay.scss';

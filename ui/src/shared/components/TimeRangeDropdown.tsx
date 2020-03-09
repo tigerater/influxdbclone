@@ -9,7 +9,7 @@ import {
   Popover,
   PopoverPosition,
   PopoverInteraction,
-  Appearance,
+  PopoverType,
 } from '@influxdata/clockface'
 import DateRangePicker from 'src/shared/components/dateRangePicker/DateRangePicker'
 
@@ -53,7 +53,7 @@ class TimeRangeDropdown extends PureComponent<Props, State> {
     return (
       <>
         <Popover
-          appearance={Appearance.Outline}
+          type={PopoverType.Outline}
           position={PopoverPosition.ToTheLeft}
           triggerRef={this.dropdownRef}
           visible={this.isDatePickerVisible}

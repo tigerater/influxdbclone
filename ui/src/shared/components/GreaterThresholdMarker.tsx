@@ -1,5 +1,5 @@
 // Libraries
-import React, {FunctionComponent, MouseEvent} from 'react'
+import React, {FunctionComponent} from 'react'
 import {Scale} from '@influxdata/giraffe'
 
 // Components
@@ -18,7 +18,6 @@ interface Props {
   yDomain: number[]
   threshold: GreaterThreshold
   onChangePos: (e: DragEvent) => void
-  onMouseUp: (e: MouseEvent<HTMLDivElement>) => void
 }
 
 const GreaterThresholdMarker: FunctionComponent<Props> = ({
@@ -26,19 +25,13 @@ const GreaterThresholdMarker: FunctionComponent<Props> = ({
   yScale,
   threshold: {level, value},
   onChangePos,
-  onMouseUp,
 }) => {
   const y = yScale(clamp(value, yDomain))
 
   return (
     <>
       {isInDomain(value, yDomain) && (
-        <ThresholdMarker
-          level={level}
-          y={y}
-          onDrag={onChangePos}
-          onMouseUp={onMouseUp}
-        />
+        <ThresholdMarker level={level} y={y} onDrag={onChangePos} />
       )}
       {value <= yDomain[1] && (
         <ThresholdMarkerArea

@@ -7,7 +7,6 @@ import (
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/kv"
 	influxdbtesting "github.com/influxdata/influxdb/testing"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestBoltAuthorizationService(t *testing.T) {
@@ -19,7 +18,7 @@ func TestInmemAuthorizationService(t *testing.T) {
 }
 
 func initBoltAuthorizationService(f influxdbtesting.AuthorizationFields, t *testing.T) (influxdb.AuthorizationService, string, func()) {
-	s, closeBolt, err := NewTestBoltStore(t)
+	s, closeBolt, err := NewTestBoltStore()
 	if err != nil {
 		t.Fatalf("failed to create new kv store: %v", err)
 	}
@@ -32,7 +31,7 @@ func initBoltAuthorizationService(f influxdbtesting.AuthorizationFields, t *test
 }
 
 func initInmemAuthorizationService(f influxdbtesting.AuthorizationFields, t *testing.T) (influxdb.AuthorizationService, string, func()) {
-	s, closeBolt, err := NewTestInmemStore(t)
+	s, closeBolt, err := NewTestInmemStore()
 	if err != nil {
 		t.Fatalf("failed to create new kv store: %v", err)
 	}
@@ -45,10 +44,9 @@ func initInmemAuthorizationService(f influxdbtesting.AuthorizationFields, t *tes
 }
 
 func initAuthorizationService(s kv.Store, f influxdbtesting.AuthorizationFields, t *testing.T) (influxdb.AuthorizationService, string, func()) {
-	svc := kv.NewService(zaptest.NewLogger(t), s)
+	svc := kv.NewService(s)
 	svc.IDGenerator = f.IDGenerator
 	svc.TokenGenerator = f.TokenGenerator
-	svc.TimeGenerator = f.TimeGenerator
 
 	ctx := context.Background()
 	if err := svc.Initialize(ctx); err != nil {

@@ -36,7 +36,7 @@ class SettingsNavigation extends PureComponent<Props> {
       {
         text: 'Members',
         id: 'members',
-        cloudExclude: true,
+        cloudExclude: false,
       },
       {
         text: 'Variables',

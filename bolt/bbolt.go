@@ -23,9 +23,9 @@ func getOp(op string) string {
 
 // Client is a client for the boltDB data store.
 type Client struct {
-	Path string
-	db   *bolt.DB
-	log  *zap.Logger
+	Path   string
+	db     *bolt.DB
+	Logger *zap.Logger
 
 	IDGenerator    platform.IDGenerator
 	TokenGenerator platform.TokenGenerator
@@ -33,9 +33,9 @@ type Client struct {
 }
 
 // NewClient returns an instance of a Client.
-func NewClient(log *zap.Logger) *Client {
+func NewClient() *Client {
 	return &Client{
-		log:            log,
+		Logger:         zap.NewNop(),
 		IDGenerator:    snowflake.NewIDGenerator(),
 		TokenGenerator: rand.NewTokenGenerator(64),
 		TimeGenerator:  platform.RealTimeGenerator{},
@@ -45,6 +45,12 @@ func NewClient(log *zap.Logger) *Client {
 // DB returns the clients DB.
 func (c *Client) DB() *bolt.DB {
 	return c.db
+}
+
+// WithLogger sets the logger an a client. It should not be called after
+// the client has been open.
+func (c *Client) WithLogger(l *zap.Logger) {
+	c.Logger = l
 }
 
 // Open / create boltDB file.
@@ -69,7 +75,7 @@ func (c *Client) Open(ctx context.Context) error {
 		return err
 	}
 
-	c.log.Info("Resources opened", zap.String("path", c.Path))
+	c.Logger.Info("Resources opened", zap.String("path", c.Path))
 	return nil
 }
 

@@ -11,23 +11,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func organizationCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "org",
-		Aliases: []string{"organization"},
-		Short:   "Organization management commands",
-		Run:     organizationF,
-	}
-
-	cmd.AddCommand(
-		orgCreateCmd(),
-		orgDeleteCmd(),
-		orgFindCmd(),
-		orgMembersCmd(),
-		orgUpdateCmd(),
-	)
-
-	return cmd
+// Organization Command
+var organizationCmd = &cobra.Command{
+	Use:     "org",
+	Aliases: []string{"organization"},
+	Short:   "Organization management commands",
+	Run:     organizationF,
 }
 
 func organizationF(cmd *cobra.Command, args []string) {
@@ -41,17 +30,17 @@ type OrganizationCreateFlags struct {
 
 var organizationCreateFlags OrganizationCreateFlags
 
-func orgCreateCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func init() {
+	organizationCreateCmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create organization",
 		RunE:  wrapCheckSetup(organizationCreateF),
 	}
 
-	cmd.Flags().StringVarP(&organizationCreateFlags.name, "name", "n", "", "The name of organization that will be created")
-	cmd.MarkFlagRequired("name")
+	organizationCreateCmd.Flags().StringVarP(&organizationCreateFlags.name, "name", "n", "", "The name of organization that will be created")
+	organizationCreateCmd.MarkFlagRequired("name")
 
-	return cmd
+	organizationCmd.AddCommand(organizationCreateCmd)
 }
 
 func newOrganizationService(f Flags) (platform.OrganizationService, error) {
@@ -59,9 +48,8 @@ func newOrganizationService(f Flags) (platform.OrganizationService, error) {
 		return newLocalKVService()
 	}
 	return &http.OrganizationService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}, nil
 }
 
@@ -101,17 +89,17 @@ type OrganizationFindFlags struct {
 
 var organizationFindFlags OrganizationFindFlags
 
-func orgFindCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func init() {
+	organizationFindCmd := &cobra.Command{
 		Use:   "find",
 		Short: "Find organizations",
 		RunE:  wrapCheckSetup(organizationFindF),
 	}
 
-	cmd.Flags().StringVarP(&organizationFindFlags.name, "name", "n", "", "The organization name")
-	cmd.Flags().StringVarP(&organizationFindFlags.id, "id", "i", "", "The organization ID")
+	organizationFindCmd.Flags().StringVarP(&organizationFindFlags.name, "name", "n", "", "The organization name")
+	organizationFindCmd.Flags().StringVarP(&organizationFindFlags.id, "id", "i", "", "The organization ID")
 
-	return cmd
+	organizationCmd.AddCommand(organizationFindCmd)
 }
 
 func organizationFindF(cmd *cobra.Command, args []string) error {
@@ -162,18 +150,18 @@ type OrganizationUpdateFlags struct {
 
 var organizationUpdateFlags OrganizationUpdateFlags
 
-func orgUpdateCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func init() {
+	organizationUpdateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "Update organization",
 		RunE:  wrapCheckSetup(organizationUpdateF),
 	}
 
-	cmd.Flags().StringVarP(&organizationUpdateFlags.id, "id", "i", "", "The organization ID (required)")
-	cmd.Flags().StringVarP(&organizationUpdateFlags.name, "name", "n", "", "The organization name")
-	cmd.MarkFlagRequired("id")
+	organizationUpdateCmd.Flags().StringVarP(&organizationUpdateFlags.id, "id", "i", "", "The organization ID (required)")
+	organizationUpdateCmd.Flags().StringVarP(&organizationUpdateFlags.name, "name", "n", "", "The organization name")
+	organizationUpdateCmd.MarkFlagRequired("id")
 
-	return cmd
+	organizationCmd.AddCommand(organizationUpdateCmd)
 }
 
 func organizationUpdateF(cmd *cobra.Command, args []string) error {
@@ -255,33 +243,28 @@ func organizationDeleteF(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func orgDeleteCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func init() {
+	organizationDeleteCmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete organization",
 		RunE:  wrapCheckSetup(organizationDeleteF),
 	}
 
-	cmd.Flags().StringVarP(&organizationDeleteFlags.id, "id", "i", "", "The organization ID (required)")
-	cmd.MarkFlagRequired("id")
+	organizationDeleteCmd.Flags().StringVarP(&organizationDeleteFlags.id, "id", "i", "", "The organization ID (required)")
+	organizationDeleteCmd.MarkFlagRequired("id")
 
-	return cmd
+	organizationCmd.AddCommand(organizationDeleteCmd)
 }
 
-func orgMembersCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "members",
-		Short: "Organization membership commands",
-		Run:   organizationF,
-	}
+// Member management
+var organizationMembersCmd = &cobra.Command{
+	Use:   "members",
+	Short: "Organization membership commands",
+	Run:   organizationF,
+}
 
-	cmd.AddCommand(
-		orgMembersAddCmd(),
-		orgMembersListCmd(),
-		orgMembersRemoveCmd(),
-	)
-
-	return cmd
+func init() {
+	organizationCmd.AddCommand(organizationMembersCmd)
 }
 
 // List Members
@@ -325,20 +308,20 @@ func organizationMembersListF(cmd *cobra.Command, args []string) error {
 		ResourceType: platform.OrgsResourceType,
 		ResourceID:   organization.ID,
 		UserType:     platform.Member,
-	})
+	}, flags)
 }
 
-func orgMembersListCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func init() {
+	organizationMembersListCmd := &cobra.Command{
 		Use:   "list",
 		Short: "List organization members",
 		RunE:  wrapCheckSetup(organizationMembersListF),
 	}
 
-	cmd.Flags().StringVarP(&organizationMembersListFlags.id, "id", "i", "", "The organization ID")
-	cmd.Flags().StringVarP(&organizationMembersListFlags.name, "name", "n", "", "The organization name")
+	organizationMembersListCmd.Flags().StringVarP(&organizationMembersListFlags.id, "id", "i", "", "The organization ID")
+	organizationMembersListCmd.Flags().StringVarP(&organizationMembersListFlags.name, "name", "n", "", "The organization name")
 
-	return cmd
+	organizationMembersCmd.AddCommand(organizationMembersListCmd)
 }
 
 // OrganizationMembersAddFlags includes flags to add a member
@@ -396,22 +379,22 @@ func organizationMembersAddF(cmd *cobra.Command, args []string) error {
 		MappingType:  platform.UserMappingType,
 		UserID:       memberID,
 		UserType:     platform.Member,
-	})
+	}, flags)
 }
 
-func orgMembersAddCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func init() {
+	organizationMembersAddCmd := &cobra.Command{
 		Use:   "add",
 		Short: "Add organization member",
 		RunE:  wrapCheckSetup(organizationMembersAddF),
 	}
 
-	cmd.Flags().StringVarP(&organizationMembersAddFlags.id, "id", "i", "", "The organization ID")
-	cmd.Flags().StringVarP(&organizationMembersAddFlags.name, "name", "n", "", "The organization name")
-	cmd.Flags().StringVarP(&organizationMembersAddFlags.memberID, "member", "o", "", "The member ID")
-	cmd.MarkFlagRequired("member")
+	organizationMembersAddCmd.Flags().StringVarP(&organizationMembersAddFlags.id, "id", "i", "", "The organization ID")
+	organizationMembersAddCmd.Flags().StringVarP(&organizationMembersAddFlags.name, "name", "n", "", "The organization name")
+	organizationMembersAddCmd.Flags().StringVarP(&organizationMembersAddFlags.memberID, "member", "o", "", "The member ID")
+	organizationMembersAddCmd.MarkFlagRequired("member")
 
-	return cmd
+	organizationMembersCmd.AddCommand(organizationMembersAddCmd)
 }
 
 // OrganizationMembersRemoveFlags includes flags to remove a Member
@@ -463,20 +446,20 @@ func organizationMembersRemoveF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to decode member id %s: %v", organizationMembersRemoveFlags.memberID, err)
 	}
 
-	return membersRemoveF(ctx, organization.ID, memberID)
+	return membersRemoveF(ctx, organization.ID, memberID, flags)
 }
 
-func orgMembersRemoveCmd() *cobra.Command {
-	cmd := &cobra.Command{
+func init() {
+	organizationMembersRemoveCmd := &cobra.Command{
 		Use:   "remove",
 		Short: "Remove organization member",
 		RunE:  wrapCheckSetup(organizationMembersRemoveF),
 	}
 
-	cmd.Flags().StringVarP(&organizationMembersRemoveFlags.id, "id", "i", "", "The organization ID")
-	cmd.Flags().StringVarP(&organizationMembersRemoveFlags.name, "name", "n", "", "The organization name")
-	cmd.Flags().StringVarP(&organizationMembersRemoveFlags.memberID, "member", "o", "", "The member ID")
-	cmd.MarkFlagRequired("member")
+	organizationMembersRemoveCmd.Flags().StringVarP(&organizationMembersRemoveFlags.id, "id", "i", "", "The organization ID")
+	organizationMembersRemoveCmd.Flags().StringVarP(&organizationMembersRemoveFlags.name, "name", "n", "", "The organization name")
+	organizationMembersRemoveCmd.Flags().StringVarP(&organizationMembersRemoveFlags.memberID, "member", "o", "", "The member ID")
+	organizationMembersRemoveCmd.MarkFlagRequired("member")
 
-	return cmd
+	organizationMembersCmd.AddCommand(organizationMembersRemoveCmd)
 }

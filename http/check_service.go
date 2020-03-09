@@ -7,10 +7,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/influxdata/httprouter"
 	"github.com/influxdata/influxdb"
 	pctx "github.com/influxdata/influxdb/context"
 	"github.com/influxdata/influxdb/notification/check"
+	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 )
 
@@ -18,7 +18,7 @@ import (
 // the CheckBackendHandler.
 type CheckBackend struct {
 	influxdb.HTTPErrorHandler
-	log *zap.Logger
+	Logger *zap.Logger
 
 	TaskService                influxdb.TaskService
 	CheckService               influxdb.CheckService
@@ -29,10 +29,10 @@ type CheckBackend struct {
 }
 
 // NewCheckBackend returns a new instance of CheckBackend.
-func NewCheckBackend(log *zap.Logger, b *APIBackend) *CheckBackend {
+func NewCheckBackend(b *APIBackend) *CheckBackend {
 	return &CheckBackend{
 		HTTPErrorHandler: b.HTTPErrorHandler,
-		log:              log,
+		Logger:           b.Logger.With(zap.String("handler", "check")),
 
 		TaskService:                b.TaskService,
 		CheckService:               b.CheckService,
@@ -47,7 +47,7 @@ func NewCheckBackend(log *zap.Logger, b *APIBackend) *CheckBackend {
 type CheckHandler struct {
 	*httprouter.Router
 	influxdb.HTTPErrorHandler
-	log *zap.Logger
+	Logger *zap.Logger
 
 	TaskService                influxdb.TaskService
 	CheckService               influxdb.CheckService
@@ -70,11 +70,11 @@ const (
 )
 
 // NewCheckHandler returns a new instance of CheckHandler.
-func NewCheckHandler(log *zap.Logger, b *CheckBackend) *CheckHandler {
+func NewCheckHandler(b *CheckBackend) *CheckHandler {
 	h := &CheckHandler{
 		Router:           NewRouter(b.HTTPErrorHandler),
 		HTTPErrorHandler: b.HTTPErrorHandler,
-		log:              log,
+		Logger:           b.Logger,
 
 		CheckService:               b.CheckService,
 		UserResourceMappingService: b.UserResourceMappingService,
@@ -93,7 +93,7 @@ func NewCheckHandler(log *zap.Logger, b *CheckBackend) *CheckHandler {
 
 	memberBackend := MemberBackend{
 		HTTPErrorHandler:           b.HTTPErrorHandler,
-		log:                        b.log.With(zap.String("handler", "member")),
+		Logger:                     b.Logger.With(zap.String("handler", "member")),
 		ResourceType:               influxdb.ChecksResourceType,
 		UserType:                   influxdb.Member,
 		UserResourceMappingService: b.UserResourceMappingService,
@@ -105,7 +105,7 @@ func NewCheckHandler(log *zap.Logger, b *CheckBackend) *CheckHandler {
 
 	ownerBackend := MemberBackend{
 		HTTPErrorHandler:           b.HTTPErrorHandler,
-		log:                        b.log.With(zap.String("handler", "member")),
+		Logger:                     b.Logger.With(zap.String("handler", "member")),
 		ResourceType:               influxdb.ChecksResourceType,
 		UserType:                   influxdb.Owner,
 		UserResourceMappingService: b.UserResourceMappingService,
@@ -117,7 +117,7 @@ func NewCheckHandler(log *zap.Logger, b *CheckBackend) *CheckHandler {
 
 	labelBackend := &LabelBackend{
 		HTTPErrorHandler: b.HTTPErrorHandler,
-		log:              b.log.With(zap.String("handler", "label")),
+		Logger:           b.Logger.With(zap.String("handler", "label")),
 		LabelService:     b.LabelService,
 		ResourceType:     influxdb.TelegrafsResourceType,
 	}
@@ -133,7 +133,6 @@ type checkLinks struct {
 	Labels  string `json:"labels"`
 	Members string `json:"members"`
 	Owners  string `json:"owners"`
-	Query   string `json:"query"`
 }
 
 type checkResponse struct {
@@ -196,7 +195,6 @@ func (h *CheckHandler) newCheckResponse(ctx context.Context, chk influxdb.Check,
 			Labels:  fmt.Sprintf("/api/v2/checks/%s/labels", chk.GetID()),
 			Members: fmt.Sprintf("/api/v2/checks/%s/members", chk.GetID()),
 			Owners:  fmt.Sprintf("/api/v2/checks/%s/owners", chk.GetID()),
-			Query:   fmt.Sprintf("/api/v2/checks/%s/query", chk.GetID()),
 		},
 		Labels: []influxdb.Label{},
 	}
@@ -219,7 +217,7 @@ func (h *CheckHandler) newChecksResponse(ctx context.Context, chks []influxdb.Ch
 		labels, _ := labelService.FindResourceLabels(ctx, influxdb.LabelMappingFilter{ResourceID: chk.GetID()})
 		cr, err := h.newCheckResponse(ctx, chk, labels)
 		if err != nil {
-			h.log.Info("Failed to retrieve task associated with check", zap.String("checkID", chk.GetID().String()))
+			h.Logger.Info("Failed to retrieve task associated with check", zap.String("checkID", chk.GetID().String()))
 			continue
 		}
 
@@ -248,7 +246,7 @@ func (h *CheckHandler) handleGetChecks(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	filter, opts, err := decodeCheckFilter(ctx, r)
 	if err != nil {
-		h.log.Debug("Failed to decode request", zap.Error(err))
+		h.Logger.Debug("failed to decode request", zap.Error(err))
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
@@ -257,10 +255,10 @@ func (h *CheckHandler) handleGetChecks(w http.ResponseWriter, r *http.Request) {
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.log.Debug("Checks retrieved", zap.String("checks", fmt.Sprint(chks)))
+	h.Logger.Debug("checks retrieved", zap.String("checks", fmt.Sprint(chks)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, h.newChecksResponse(ctx, chks, h.LabelService, filter, *opts)); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -282,9 +280,9 @@ func (h *CheckHandler) handleGetCheckQuery(w http.ResponseWriter, r *http.Reques
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.log.Debug("Check query retrieved", zap.String("check query", flux))
+	h.Logger.Debug("check query retrieved", zap.String("check query", flux))
 	if err := encodeResponse(ctx, w, http.StatusOK, newFluxResponse(flux)); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -311,7 +309,7 @@ func (h *CheckHandler) handleGetCheck(w http.ResponseWriter, r *http.Request) {
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.log.Debug("Check retrieved", zap.String("check", fmt.Sprint(chk)))
+	h.Logger.Debug("check retrieved", zap.String("check", fmt.Sprint(chk)))
 
 	labels, err := h.LabelService.FindResourceLabels(ctx, influxdb.LabelMappingFilter{ResourceID: chk.GetID()})
 	if err != nil {
@@ -326,7 +324,7 @@ func (h *CheckHandler) handleGetCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusOK, cr); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -516,7 +514,7 @@ func (h *CheckHandler) handlePostCheck(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	chk, err := decodePostCheckRequest(ctx, r)
 	if err != nil {
-		h.log.Debug("Failed to decode request", zap.Error(err))
+		h.Logger.Debug("failed to decode request", zap.Error(err))
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
@@ -531,7 +529,7 @@ func (h *CheckHandler) handlePostCheck(w http.ResponseWriter, r *http.Request) {
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.log.Debug("Check created", zap.String("check", fmt.Sprint(chk)))
+	h.Logger.Debug("check created", zap.String("check", fmt.Sprint(chk)))
 
 	labels := h.mapNewCheckLabels(ctx, chk.CheckCreate, chk.Labels)
 
@@ -542,7 +540,7 @@ func (h *CheckHandler) handlePostCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusCreated, cr); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -584,7 +582,7 @@ func (h *CheckHandler) handlePutCheck(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	chk, err := decodePutCheckRequest(ctx, r)
 	if err != nil {
-		h.log.Debug("Failed to decode request", zap.Error(err))
+		h.Logger.Debug("failed to decode request", zap.Error(err))
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
@@ -600,7 +598,7 @@ func (h *CheckHandler) handlePutCheck(w http.ResponseWriter, r *http.Request) {
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.log.Debug("Check replaced", zap.String("check", fmt.Sprint(c)))
+	h.Logger.Debug("check replaced", zap.String("check", fmt.Sprint(c)))
 
 	cr, err := h.newCheckResponse(ctx, c, labels)
 	if err != nil {
@@ -609,7 +607,7 @@ func (h *CheckHandler) handlePutCheck(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusOK, cr); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -619,7 +617,7 @@ func (h *CheckHandler) handlePatchCheck(w http.ResponseWriter, r *http.Request) 
 	ctx := r.Context()
 	req, err := decodePatchCheckRequest(ctx, r)
 	if err != nil {
-		h.log.Debug("Failed to decode request", zap.Error(err))
+		h.Logger.Debug("failed to decode request", zap.Error(err))
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
@@ -635,7 +633,7 @@ func (h *CheckHandler) handlePatchCheck(w http.ResponseWriter, r *http.Request) 
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.log.Debug("Check patch", zap.String("check", fmt.Sprint(chk)))
+	h.Logger.Debug("check patch", zap.String("check", fmt.Sprint(chk)))
 
 	cr, err := h.newCheckResponse(ctx, chk, labels)
 	if err != nil {
@@ -644,7 +642,7 @@ func (h *CheckHandler) handlePatchCheck(w http.ResponseWriter, r *http.Request) 
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusOK, cr); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -661,7 +659,7 @@ func (h *CheckHandler) handleDeleteCheck(w http.ResponseWriter, r *http.Request)
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.log.Debug("Check deleted", zap.String("checkID", fmt.Sprint(i)))
+	h.Logger.Debug("check deleted", zap.String("checkID", fmt.Sprint(i)))
 
 	w.WriteHeader(http.StatusNoContent)
 }

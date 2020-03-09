@@ -38,9 +38,10 @@ import {isFlagEnabled} from 'src/shared/utils/featureFlag'
 
 // Types
 import {CancelBox} from 'src/types/promises'
-import {GetState, RemoteDataState, StatusRow} from 'src/types'
+import {RemoteDataState, StatusRow} from 'src/types'
+import {GetState} from 'src/types'
 
-export type Action = SaveDraftQueriesAction | SetQueryResults
+export type Action = SetQueryResults | SaveDraftQueriesAction
 
 interface SetQueryResults {
   type: 'SET_QUERY_RESULTS'
@@ -170,6 +171,7 @@ export const executeQueries = (dashboardID?: string) => async (
     }
 
     const files = (results as RunQuerySuccessResult[]).map(r => r.csv)
+
     dispatch(
       setQueryResults(RemoteDataState.Done, files, duration, null, statuses)
     )

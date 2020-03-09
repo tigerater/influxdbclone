@@ -7,7 +7,7 @@ import (
 )
 
 func TestBoltDocumentStore(t *testing.T) {
-	boltStore, closeBolt, err := NewTestBoltStore(t)
+	boltStore, closeBolt, err := NewTestBoltStore()
 	if err != nil {
 		t.Fatalf("failed to create new bolt kv store: %v", err)
 	}
@@ -18,7 +18,7 @@ func TestBoltDocumentStore(t *testing.T) {
 
 func TestInmemDocumentStore(t *testing.T) {
 	t.Skip("https://github.com/influxdata/influxdb/issues/12403")
-	inmemStore, closeInmem, err := NewTestInmemStore(t)
+	inmemStore, closeInmem, err := NewTestInmemStore()
 	if err != nil {
 		t.Fatalf("failed to create new inmem kv store: %v", err)
 	}

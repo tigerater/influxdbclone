@@ -10,7 +10,7 @@ import {
   ComponentSize,
   ComponentColor,
   Popover,
-  Appearance,
+  PopoverType,
   PopoverPosition,
 } from '@influxdata/clockface'
 
@@ -30,7 +30,7 @@ export default class BucketAddDataButton extends PureComponent<Props> {
       <>
         <Popover
           color={ComponentColor.Secondary}
-          appearance={Appearance.Outline}
+          type={PopoverType.Outline}
           position={PopoverPosition.ToTheRight}
           triggerRef={this.triggerRef}
           distanceFromTrigger={8}
@@ -48,10 +48,7 @@ export default class BucketAddDataButton extends PureComponent<Props> {
                 className="bucket-add-data--option"
                 onClick={onAddLineProtocol}
               >
-                <div
-                  className="bucket-add-data--option-header"
-                  data-testid="bucket-add-line-protocol"
-                >
+                <div className="bucket-add-data--option-header">
                   Line Protocol
                 </div>
                 <div className="bucket-add-data--option-desc">
@@ -74,7 +71,6 @@ export default class BucketAddDataButton extends PureComponent<Props> {
         <Button
           ref={this.triggerRef}
           text="Add Data"
-          testID="add-data--button"
           icon={IconFont.Plus}
           size={ComponentSize.ExtraSmall}
           color={ComponentColor.Secondary}

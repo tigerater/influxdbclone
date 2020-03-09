@@ -3,7 +3,8 @@ import React, {PureComponent, ChangeEvent} from 'react'
 import _ from 'lodash'
 
 // Components
-import {Input, DapperScrollbars} from '@influxdata/clockface'
+import {Input} from '@influxdata/clockface'
+import FancyScrollbar from 'src/shared/components/fancy_scrollbar/FancyScrollbar'
 import TableSidebarItem from 'src/shared/components/tables/TableSidebarItem'
 
 // Types
@@ -46,10 +47,7 @@ export default class TableSidebar extends PureComponent<Props, State> {
             />
           </div>
         )}
-        <DapperScrollbars
-          autoHide={true}
-          className="time-machine-sidebar--scroll"
-        >
+        <FancyScrollbar>
           <div className="time-machine-sidebar--items">
             {this.filteredData.map(({groupKey, id, name}) => {
               return (
@@ -64,7 +62,7 @@ export default class TableSidebar extends PureComponent<Props, State> {
               )
             })}
           </div>
-        </DapperScrollbars>
+        </FancyScrollbar>
       </div>
     )
   }

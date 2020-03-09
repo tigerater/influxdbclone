@@ -7,7 +7,7 @@ import {
   Popover,
   PopoverPosition,
   PopoverInteraction,
-  Appearance,
+  PopoverType,
 } from '@influxdata/clockface'
 
 // Types
@@ -26,7 +26,7 @@ const VariableItem: FC<Props> = ({variable, onClickVariable}) => {
     <div className="variables-toolbar--item" ref={trigger}>
       <VariableLabel name={variable.name} onClickVariable={onClickVariable} />
       <Popover
-        appearance={Appearance.Outline}
+        type={PopoverType.Outline}
         position={PopoverPosition.ToTheLeft}
         triggerRef={trigger}
         showEvent={PopoverInteraction.Hover}

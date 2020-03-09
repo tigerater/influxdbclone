@@ -192,16 +192,6 @@ func testTaskCRUD(t *testing.T, sys *System) {
 		return nil, fmt.Errorf("failed to find task by id %s", id)
 	}
 
-	findTasksByStatus := func(tasks []*influxdb.Task, status string) []*influxdb.Task {
-		var foundTasks = []*influxdb.Task{}
-		for _, t := range tasks {
-			if t.Status == status {
-				foundTasks = append(foundTasks, t)
-			}
-		}
-		return foundTasks
-	}
-
 	// TODO: replace with ErrMissingOwner test
 	// // should not be able to create a task without a token
 	// noToken := influxdb.TaskCreate{
@@ -238,16 +228,6 @@ func testTaskCRUD(t *testing.T, sys *System) {
 	}
 	found["FindTasks with Organization filter"] = f
 
-	fs, _, err = sys.TaskService.FindTasks(sys.Ctx, influxdb.TaskFilter{Organization: cr.Org})
-	if err != nil {
-		t.Fatal(err)
-	}
-	f, err = findTask(fs, tsk.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	found["FindTasks with Organization name filter"] = f
-
 	fs, _, err = sys.TaskService.FindTasks(sys.Ctx, influxdb.TaskFilter{User: &cr.UserID})
 	if err != nil {
 		t.Fatal(err)
@@ -262,7 +242,6 @@ func testTaskCRUD(t *testing.T, sys *System) {
 		ID:              tsk.ID,
 		CreatedAt:       tsk.CreatedAt,
 		LatestCompleted: tsk.LatestCompleted,
-		LatestScheduled: tsk.LatestScheduled,
 		OrganizationID:  cr.OrgID,
 		Organization:    cr.Org,
 		AuthorizationID: tsk.AuthorizationID,
@@ -270,7 +249,7 @@ func testTaskCRUD(t *testing.T, sys *System) {
 		OwnerID:         tsk.OwnerID,
 		Name:            "task #0",
 		Cron:            "* * * * *",
-		Offset:          5 * time.Second,
+		Offset:          "5s",
 		Status:          string(backend.DefaultTaskStatus),
 		Flux:            fmt.Sprintf(scriptFmt, 0),
 		Type:            influxdb.TaskSystemType,
@@ -287,7 +266,6 @@ func testTaskCRUD(t *testing.T, sys *System) {
 		OrganizationID: cr.OrgID,
 		Flux:           fmt.Sprintf(scriptFmt, 1),
 		OwnerID:        cr.UserID,
-		Status:         string(backend.TaskInactive),
 	}
 
 	if _, err := sys.TaskService.CreateTask(authorizedCtx, tc2); err != nil {
@@ -319,29 +297,6 @@ func testTaskCRUD(t *testing.T, sys *System) {
 		if first.ID == task.ID {
 			t.Fatalf("after task included in task list")
 		}
-	}
-
-	// Check task status filter
-	active := string(backend.TaskActive)
-	fs, _, err = sys.TaskService.FindTasks(sys.Ctx, influxdb.TaskFilter{Status: &active})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	activeTasks := findTasksByStatus(fs, string(backend.TaskActive))
-	if len(fs) != len(activeTasks) {
-		t.Fatalf("expected to find %d active tasks, found: %d", len(activeTasks), len(fs))
-	}
-
-	inactive := string(backend.TaskInactive)
-	fs, _, err = sys.TaskService.FindTasks(sys.Ctx, influxdb.TaskFilter{Status: &inactive})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	inactiveTasks := findTasksByStatus(fs, string(backend.TaskInactive))
-	if len(fs) != len(inactiveTasks) {
-		t.Fatalf("expected to find %d inactive tasks, found: %d", len(inactiveTasks), len(fs))
 	}
 
 	// Update task: script only.
@@ -608,8 +563,7 @@ from(bucket: "b")
 		if err != nil {
 			t.Fatal(err)
 		}
-		var zero time.Duration
-		if fNoOffset.Offset != zero {
+		if fNoOffset.Offset != "" {
 			t.Fatal("removing offset failed")
 		}
 	})
@@ -633,10 +587,6 @@ func testUpdate(t *testing.T, sys *System) {
 		t.Fatal(err)
 	}
 
-	if task.LatestScheduled.IsZero() {
-		t.Fatal("expected a non-zero LatestScheduled on created task")
-	}
-
 	st, err := sys.TaskService.FindTaskByID(sys.Ctx, task.ID)
 	if err != nil {
 		t.Fatal(err)
@@ -645,13 +595,19 @@ func testUpdate(t *testing.T, sys *System) {
 	after := time.Now()
 	latestCA := after.Add(time.Second)
 
-	ca := st.CreatedAt
+	ca, err := time.Parse(time.RFC3339, st.CreatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if earliestCA.After(ca) || latestCA.Before(ca) {
 		t.Fatalf("createdAt not accurate, expected %s to be between %s and %s", ca, earliestCA, latestCA)
 	}
 
-	ti := st.LatestCompleted
+	ti, err := time.Parse(time.RFC3339, st.LatestCompleted)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if now.Sub(ti) > 10*time.Second {
 		t.Fatalf("latest completed not accurate, expected: ~%s, got %s", now, ti)
@@ -681,7 +637,7 @@ func testUpdate(t *testing.T, sys *System) {
 		t.Fatal(err)
 	}
 
-	if st2.LatestCompleted.Before(st.LatestCompleted) {
+	if st2.LatestCompleted <= st.LatestCompleted {
 		t.Fatalf("executed task has not updated latest complete: expected %s > %s", st2.LatestCompleted, st.LatestCompleted)
 	}
 
@@ -723,7 +679,7 @@ func testUpdate(t *testing.T, sys *System) {
 		t.Fatal(err)
 	}
 
-	if st3.LatestCompleted.Before(st2.LatestCompleted) {
+	if st3.LatestCompleted <= st2.LatestCompleted {
 		t.Fatalf("executed task has not updated latest complete: expected %s > %s", st3.LatestCompleted, st2.LatestCompleted)
 	}
 
@@ -746,7 +702,10 @@ func testUpdate(t *testing.T, sys *System) {
 	earliestUA := now.Add(-time.Second)
 	latestUA := after.Add(time.Second)
 
-	ua := task.UpdatedAt
+	ua, err := time.Parse(time.RFC3339, task.UpdatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if earliestUA.After(ua) || latestUA.Before(ua) {
 		t.Fatalf("updatedAt not accurate, expected %s to be between %s and %s", ua, earliestUA, latestUA)
@@ -757,26 +716,14 @@ func testUpdate(t *testing.T, sys *System) {
 		t.Fatal(err)
 	}
 
-	ua = st.UpdatedAt
+	ua, err = time.Parse(time.RFC3339, st.UpdatedAt)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	if earliestUA.After(ua) || latestUA.Before(ua) {
 		t.Fatalf("updatedAt not accurate after pulling new task, expected %s to be between %s and %s", ua, earliestUA, latestUA)
 	}
-
-	ls := time.Now().Round(time.Second) // round to remove monotonic clock
-	task, err = sys.TaskService.UpdateTask(authorizedCtx, task.ID, influxdb.TaskUpdate{LatestScheduled: &ls})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	st, err = sys.TaskService.FindTaskByID(sys.Ctx, task.ID)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !st.LatestScheduled.Equal(ls) {
-		t.Fatalf("expected latest scheduled to update, expected: %v, got: %v", ls, st.LatestScheduled)
-	}
-
 }
 
 func testTaskRuns(t *testing.T, sys *System) {

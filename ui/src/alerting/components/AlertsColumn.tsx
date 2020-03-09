@@ -36,7 +36,9 @@ const AlertsColumnHeader: FC<Props> = ({
     >
       <Panel.Header>
         <FlexBox direction={FlexDirection.Row} margin={ComponentSize.Small}>
-          <h4 style={{width: 'auto', marginRight: '6px'}}>{title}</h4>
+          <Panel.Title style={{fontSize: '17px', width: 'auto'}}>
+            {title}
+          </Panel.Title>
           <QuestionMarkTooltip
             diameter={18}
             color={ComponentColor.Primary}
@@ -56,7 +58,7 @@ const AlertsColumnHeader: FC<Props> = ({
       </div>
       <div className="alerting-index--column-body">
         <DapperScrollbars
-          autoSize={true}
+          autoSize={false}
           autoHide={true}
           style={{width: '100%', height: '100%'}}
         >

@@ -42,12 +42,10 @@ class TableGraphTransform extends PureComponent<Props> {
   public render() {
     const {properties, data, dataTypes, sortOptions} = this.props
     const {tableOptions, timeFormat, decimalPlaces, fieldOptions} = properties
-    const fo =
-      fieldOptions &&
-      fieldOptions.map(opts => ({
-        ...opts,
-        dataType: dataTypes[opts.internalName],
-      }))
+    const fo = fieldOptions.map(opts => ({
+      ...opts,
+      dataType: dataTypes[opts.internalName],
+    }))
 
     const transformedDataBundle = this.memoizedTableTransform(
       data,

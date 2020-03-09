@@ -2,7 +2,7 @@
 import React, {PureComponent} from 'react'
 
 // Components
-import {Form, SelectGroup, Grid} from '@influxdata/clockface'
+import {Form, Radio, Grid} from '@influxdata/clockface'
 
 // Constants
 import {AXES_SCALE_OPTIONS} from 'src/dashboards/constants/cellEditor'
@@ -24,28 +24,26 @@ class YAxisBase extends PureComponent<Props> {
     return (
       <Grid.Column widthXS={Columns.Twelve}>
         <Form.Element label="Scale">
-          <SelectGroup shape={ButtonShape.StretchToFit}>
-            <SelectGroup.Option
+          <Radio shape={ButtonShape.StretchToFit}>
+            <Radio.Button
               id="y-scale-tab--linear"
-              name="y-scale-tab"
               value={LINEAR}
               active={scale === LINEAR || scale === ''}
               titleText="Set Y-Axis to Linear Scale"
               onClick={onUpdateYAxisScale}
             >
               Linear
-            </SelectGroup.Option>
-            <SelectGroup.Option
+            </Radio.Button>
+            <Radio.Button
               id="y-scale-tab--logarithmic"
-              name="y-scale-tab"
               value={LOG}
               active={scale === LOG}
               titleText="Set Y-Axis to Logarithmic Scale"
               onClick={onUpdateYAxisScale}
             >
               Logarithmic
-            </SelectGroup.Option>
-          </SelectGroup>
+            </Radio.Button>
+          </Radio>
         </Form.Element>
       </Grid.Column>
     )

@@ -1,6 +1,6 @@
 // Libraries
 import React, {Component, ChangeEvent} from 'react'
-import {debounce} from 'lodash'
+import _ from 'lodash'
 
 // Components
 import {Input} from '@influxdata/clockface'
@@ -45,8 +45,8 @@ class SearchWidget extends Component<Props, State> {
     }
   }
 
-  public UNSAFE_componentWillMount() {
-    this.handleSearch = debounce(this.handleSearch, 50)
+  public componentWillMount() {
+    this.handleSearch = _.debounce(this.handleSearch, 50)
   }
 
   public render() {

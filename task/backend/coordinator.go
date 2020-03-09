@@ -26,14 +26,14 @@ type Coordinator interface {
 
 // NotifyCoordinatorOfExisting lists all tasks by the provided task service and for
 // each task it calls the provided coordinators task created method
-func NotifyCoordinatorOfExisting(ctx context.Context, log *zap.Logger, ts TaskService, coord Coordinator) error {
+func NotifyCoordinatorOfExisting(ctx context.Context, ts TaskService, coord Coordinator, logger *zap.Logger) error {
 	// If we missed a Create Action
 	tasks, _, err := ts.FindTasks(ctx, influxdb.TaskFilter{})
 	if err != nil {
 		return err
 	}
 
-	latestCompleted := now()
+	latestCompleted := now().Format(time.RFC3339)
 	for len(tasks) > 0 {
 		for _, task := range tasks {
 			if task.Status != string(TaskActive) {
@@ -42,10 +42,9 @@ func NotifyCoordinatorOfExisting(ctx context.Context, log *zap.Logger, ts TaskSe
 
 			task, err := ts.UpdateTask(context.Background(), task.ID, influxdb.TaskUpdate{
 				LatestCompleted: &latestCompleted,
-				LatestScheduled: &latestCompleted,
 			})
 			if err != nil {
-				log.Error("Failed to set latestCompleted", zap.Error(err))
+				logger.Error("failed to set latestCompleted", zap.Error(err))
 				continue
 			}
 
@@ -68,14 +67,14 @@ type TaskResumer func(ctx context.Context, id influxdb.ID, runID influxdb.ID) er
 // TaskNotifyCoordinatorOfExisting lists all tasks by the provided task service and for
 // each task it calls the provided coordinators task created method
 // TODO(docmerlin): this is temporary untill the executor queue is persistent
-func TaskNotifyCoordinatorOfExisting(ctx context.Context, ts TaskService, tcs TaskControlService, coord Coordinator, exec TaskResumer, log *zap.Logger) error {
+func TaskNotifyCoordinatorOfExisting(ctx context.Context, ts TaskService, tcs TaskControlService, coord Coordinator, exec TaskResumer, logger *zap.Logger) error {
 	// If we missed a Create Action
 	tasks, _, err := ts.FindTasks(ctx, influxdb.TaskFilter{})
 	if err != nil {
 		return err
 	}
 
-	latestCompleted := now()
+	latestCompleted := now().Format(time.RFC3339)
 	for len(tasks) > 0 {
 		for _, task := range tasks {
 			if task.Status != string(TaskActive) {
@@ -84,10 +83,9 @@ func TaskNotifyCoordinatorOfExisting(ctx context.Context, ts TaskService, tcs Ta
 
 			task, err := ts.UpdateTask(context.Background(), task.ID, influxdb.TaskUpdate{
 				LatestCompleted: &latestCompleted,
-				LatestScheduled: &latestCompleted,
 			})
 			if err != nil {
-				log.Error("Failed to set latestCompleted", zap.Error(err))
+				logger.Error("failed to set latestCompleted", zap.Error(err))
 				continue
 			}
 

@@ -1,14 +1,15 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"path"
 
-	"github.com/influxdata/httprouter"
 	platform "github.com/influxdata/influxdb"
+	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 )
 
@@ -16,7 +17,7 @@ import (
 // the DashboardHandler.
 type DashboardBackend struct {
 	platform.HTTPErrorHandler
-	log *zap.Logger
+	Logger *zap.Logger
 
 	DashboardService             platform.DashboardService
 	DashboardOperationLogService platform.DashboardOperationLogService
@@ -26,10 +27,10 @@ type DashboardBackend struct {
 }
 
 // NewDashboardBackend creates a backend used by the dashboard handler.
-func NewDashboardBackend(log *zap.Logger, b *APIBackend) *DashboardBackend {
+func NewDashboardBackend(b *APIBackend) *DashboardBackend {
 	return &DashboardBackend{
 		HTTPErrorHandler: b.HTTPErrorHandler,
-		log:              log,
+		Logger:           b.Logger.With(zap.String("handler", "dashboard")),
 
 		DashboardService:             b.DashboardService,
 		DashboardOperationLogService: b.DashboardOperationLogService,
@@ -44,7 +45,7 @@ type DashboardHandler struct {
 	*httprouter.Router
 
 	platform.HTTPErrorHandler
-	log *zap.Logger
+	Logger *zap.Logger
 
 	DashboardService             platform.DashboardService
 	DashboardOperationLogService platform.DashboardOperationLogService
@@ -69,11 +70,11 @@ const (
 )
 
 // NewDashboardHandler returns a new instance of DashboardHandler.
-func NewDashboardHandler(log *zap.Logger, b *DashboardBackend) *DashboardHandler {
+func NewDashboardHandler(b *DashboardBackend) *DashboardHandler {
 	h := &DashboardHandler{
 		Router:           NewRouter(b.HTTPErrorHandler),
 		HTTPErrorHandler: b.HTTPErrorHandler,
-		log:              log,
+		Logger:           b.Logger,
 
 		DashboardService:             b.DashboardService,
 		DashboardOperationLogService: b.DashboardOperationLogService,
@@ -99,7 +100,7 @@ func NewDashboardHandler(log *zap.Logger, b *DashboardBackend) *DashboardHandler
 
 	memberBackend := MemberBackend{
 		HTTPErrorHandler:           b.HTTPErrorHandler,
-		log:                        b.log.With(zap.String("handler", "member")),
+		Logger:                     b.Logger.With(zap.String("handler", "member")),
 		ResourceType:               platform.DashboardsResourceType,
 		UserType:                   platform.Member,
 		UserResourceMappingService: b.UserResourceMappingService,
@@ -111,7 +112,7 @@ func NewDashboardHandler(log *zap.Logger, b *DashboardBackend) *DashboardHandler
 
 	ownerBackend := MemberBackend{
 		HTTPErrorHandler:           b.HTTPErrorHandler,
-		log:                        b.log.With(zap.String("handler", "member")),
+		Logger:                     b.Logger.With(zap.String("handler", "member")),
 		ResourceType:               platform.DashboardsResourceType,
 		UserType:                   platform.Owner,
 		UserResourceMappingService: b.UserResourceMappingService,
@@ -123,7 +124,7 @@ func NewDashboardHandler(log *zap.Logger, b *DashboardBackend) *DashboardHandler
 
 	labelBackend := &LabelBackend{
 		HTTPErrorHandler: b.HTTPErrorHandler,
-		log:              b.log.With(zap.String("handler", "label")),
+		Logger:           b.Logger.With(zap.String("handler", "label")),
 		LabelService:     b.LabelService,
 		ResourceType:     platform.DashboardsResourceType,
 	}
@@ -206,27 +207,7 @@ func newDashboardResponse(d *platform.Dashboard, labels []*platform.Label) dashb
 
 type dashboardCellResponse struct {
 	platform.Cell
-	Properties platform.ViewProperties `json:"-"`
-	Name       string                  `json:"name,omitempty"`
-	Links      map[string]string       `json:"links"`
-}
-
-func (d *dashboardCellResponse) MarshalJSON() ([]byte, error) {
-	r := struct {
-		platform.Cell
-		Properties platform.ViewProperties `json:"properties,omitempty"`
-		Name       string                  `json:"name,omitempty"`
-		Links      map[string]string       `json:"links"`
-	}{
-		Cell:  d.Cell,
-		Links: d.Links,
-	}
-
-	if d.Cell.View != nil {
-		r.Properties = d.Cell.View.Properties
-		r.Name = d.Cell.View.Name
-	}
-	return json.Marshal(r)
+	Links map[string]string `json:"links"`
 }
 
 func (c dashboardCellResponse) toPlatform() *platform.Cell {
@@ -234,19 +215,13 @@ func (c dashboardCellResponse) toPlatform() *platform.Cell {
 }
 
 func newDashboardCellResponse(dashboardID platform.ID, c *platform.Cell) dashboardCellResponse {
-	resp := dashboardCellResponse{
+	return dashboardCellResponse{
 		Cell: *c,
 		Links: map[string]string{
 			"self": fmt.Sprintf("/api/v2/dashboards/%s/cells/%s", dashboardID, c.ID),
 			"view": fmt.Sprintf("/api/v2/dashboards/%s/cells/%s/view", dashboardID, c.ID),
 		},
 	}
-
-	if c.View != nil {
-		resp.Properties = c.View.Properties
-		resp.Name = c.View.Name
-	}
-	return resp
 }
 
 type dashboardCellsResponse struct {
@@ -375,10 +350,10 @@ func (h *DashboardHandler) handleGetDashboards(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	h.log.Debug("Dashboards retrieved", zap.String("dashboards", fmt.Sprint(dashboards)))
+	h.Logger.Debug("dashboards retrieved", zap.String("dashboards", fmt.Sprint(dashboards)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newGetDashboardsResponse(ctx, dashboards, req.filter, req.opts, h.LabelService)); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -458,24 +433,37 @@ func newGetDashboardsResponse(ctx context.Context, dashboards []*platform.Dashbo
 // handlePostDashboard creates a new dashboard.
 func (h *DashboardHandler) handlePostDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	var d platform.Dashboard
-	if err := json.NewDecoder(r.Body).Decode(&d); err != nil {
+	req, err := decodePostDashboardRequest(ctx, r)
+	if err != nil {
+		h.HandleHTTPError(ctx, err, w)
+		return
+	}
+	if err := h.DashboardService.CreateDashboard(ctx, req.Dashboard); err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
 
-	if err := h.DashboardService.CreateDashboard(ctx, &d); err != nil {
-		h.HandleHTTPError(ctx, err, w)
-		return
-	}
-
-	if err := encodeResponse(ctx, w, http.StatusCreated, newDashboardResponse(&d, []*platform.Label{})); err != nil {
-		logEncodingError(h.log, r, err)
+	if err := encodeResponse(ctx, w, http.StatusCreated, newDashboardResponse(req.Dashboard, []*platform.Label{})); err != nil {
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
 
-// handleGetDashboard retrieves a dashboard by ID.
+type postDashboardRequest struct {
+	Dashboard *platform.Dashboard
+}
+
+func decodePostDashboardRequest(ctx context.Context, r *http.Request) (*postDashboardRequest, error) {
+	c := &platform.Dashboard{}
+	if err := json.NewDecoder(r.Body).Decode(c); err != nil {
+		return nil, err
+	}
+	return &postDashboardRequest{
+		Dashboard: c,
+	}, nil
+}
+
+// hanldeGetDashboard retrieves a dashboard by ID.
 func (h *DashboardHandler) handleGetDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	req, err := decodeGetDashboardRequest(ctx, r)
@@ -490,30 +478,16 @@ func (h *DashboardHandler) handleGetDashboard(w http.ResponseWriter, r *http.Req
 		return
 	}
 
-	if r.URL.Query().Get("include") == "properties" {
-		for _, c := range dashboard.Cells {
-			view, err := h.DashboardService.GetDashboardCellView(ctx, dashboard.ID, c.ID)
-			if err != nil {
-				h.HandleHTTPError(ctx, err, w)
-				return
-			}
-
-			if view != nil {
-				c.View = view
-			}
-		}
-	}
-
 	labels, err := h.LabelService.FindResourceLabels(ctx, platform.LabelMappingFilter{ResourceID: dashboard.ID})
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
 
-	h.log.Debug("Dashboard retrieved", zap.String("dashboard", fmt.Sprint(dashboard)))
+	h.Logger.Debug("dashboard retrieved", zap.String("dashboard", fmt.Sprint(dashboard)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newDashboardResponse(dashboard, labels)); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -557,10 +531,10 @@ func (h *DashboardHandler) handleGetDashboardLog(w http.ResponseWriter, r *http.
 		return
 	}
 
-	h.log.Debug("Dashboard log retrieved", zap.String("log", fmt.Sprint(log)))
+	h.Logger.Debug("dashboard log retrieved", zap.String("log", fmt.Sprint(log)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newDashboardLogResponse(req.DashboardID, log)); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -610,7 +584,7 @@ func (h *DashboardHandler) handleDeleteDashboard(w http.ResponseWriter, r *http.
 		return
 	}
 
-	h.log.Debug("Dashboard deleted", zap.String("dashboardID", req.DashboardID.String()))
+	h.Logger.Debug("dashboard deleted", zap.String("dashboardID", req.DashboardID.String()))
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -659,10 +633,10 @@ func (h *DashboardHandler) handlePatchDashboard(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	h.log.Debug("Dashboard updated", zap.String("dashboard", fmt.Sprint(dashboard)))
+	h.Logger.Debug("dashboard updated", zap.String("dashboard", fmt.Sprint(dashboard)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newDashboardResponse(dashboard, labels)); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -797,10 +771,10 @@ func (h *DashboardHandler) handlePostDashboardCell(w http.ResponseWriter, r *htt
 		return
 	}
 
-	h.log.Debug("Dashboard cell created", zap.String("dashboardID", req.dashboardID.String()), zap.String("cell", fmt.Sprint(cell)))
+	h.Logger.Debug("dashboard cell created", zap.String("dashboardID", req.dashboardID.String()), zap.String("cell", fmt.Sprint(cell)))
 
 	if err := encodeResponse(ctx, w, http.StatusCreated, newDashboardCellResponse(req.dashboardID, cell)); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -847,10 +821,10 @@ func (h *DashboardHandler) handlePutDashboardCells(w http.ResponseWriter, r *htt
 		return
 	}
 
-	h.log.Debug("Dashboard cell replaced", zap.String("dashboardID", req.dashboardID.String()), zap.String("cells", fmt.Sprint(req.cells)))
+	h.Logger.Debug("dashboard cell replaced", zap.String("dashboardID", req.dashboardID.String()), zap.String("cells", fmt.Sprint(req.cells)))
 
 	if err := encodeResponse(ctx, w, http.StatusCreated, newDashboardCellsResponse(req.dashboardID, req.cells)); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -931,10 +905,10 @@ func (h *DashboardHandler) handleGetDashboardCellView(w http.ResponseWriter, r *
 		return
 	}
 
-	h.log.Debug("Dashboard cell view retrieved", zap.String("dashboardID", req.dashboardID.String()), zap.String("cellID", req.cellID.String()), zap.String("view", fmt.Sprint(view)))
+	h.Logger.Debug("dashboard cell view retrieved", zap.String("dashboardID", req.dashboardID.String()), zap.String("cellID", req.cellID.String()), zap.String("view", fmt.Sprint(view)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newDashboardCellViewResponse(req.dashboardID, req.cellID, view)); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -985,10 +959,10 @@ func (h *DashboardHandler) handlePatchDashboardCellView(w http.ResponseWriter, r
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.log.Debug("Dashboard cell view updated", zap.String("dashboardID", req.dashboardID.String()), zap.String("cellID", req.cellID.String()), zap.String("view", fmt.Sprint(view)))
+	h.Logger.Debug("dashboard cell view updated", zap.String("dashboardID", req.dashboardID.String()), zap.String("cellID", req.cellID.String()), zap.String("view", fmt.Sprint(view)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newDashboardCellViewResponse(req.dashboardID, req.cellID, view)); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
@@ -1005,7 +979,7 @@ func (h *DashboardHandler) handleDeleteDashboardCell(w http.ResponseWriter, r *h
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
-	h.log.Debug("Dashboard cell deleted", zap.String("dashboardID", req.dashboardID.String()), zap.String("cellID", req.cellID.String()))
+	h.Logger.Debug("dashboard cell deleted", zap.String("dashboardID", req.dashboardID.String()), zap.String("cellID", req.cellID.String()))
 
 	w.WriteHeader(http.StatusNoContent)
 }
@@ -1070,84 +1044,189 @@ func (h *DashboardHandler) handlePatchDashboardCell(w http.ResponseWriter, r *ht
 		return
 	}
 
-	h.log.Debug("Dashboard cell updated", zap.String("dashboardID", req.dashboardID.String()), zap.String("cell", fmt.Sprint(cell)))
+	h.Logger.Debug("dashboard cell updated", zap.String("dashboardID", req.dashboardID.String()), zap.String("cell", fmt.Sprint(cell)))
 
 	if err := encodeResponse(ctx, w, http.StatusOK, newDashboardCellResponse(req.dashboardID, cell)); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }
 
 // DashboardService is a dashboard service over HTTP to the influxdb server.
 type DashboardService struct {
-	Client *HTTPClient
+	Addr               string
+	Token              string
+	InsecureSkipVerify bool
+	// OpPrefix is the op prefix for certain errors op.
+	OpPrefix string
 }
 
 // FindDashboardByID returns a single dashboard by ID.
 func (s *DashboardService) FindDashboardByID(ctx context.Context, id platform.ID) (*platform.Dashboard, error) {
-	var dr dashboardResponse
-	err := s.Client.get(dashboardIDPath(id)).
-		Queries([2]string{"include", "properties"}).
-		DecodeJSON(&dr).
-		Do(ctx)
+	path := dashboardIDPath(id)
+	url, err := NewURL(s.Addr, path)
 	if err != nil {
 		return nil, err
 	}
-	return dr.toPlatform(), nil
+
+	req, err := http.NewRequest("GET", url.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	SetToken(s.Token, req)
+	hc := NewClient(url.Scheme, s.InsecureSkipVerify)
+
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if err := CheckError(resp); err != nil {
+		return nil, err
+	}
+
+	var dr dashboardResponse
+	if err := json.NewDecoder(resp.Body).Decode(&dr); err != nil {
+		return nil, err
+	}
+
+	dashboard := dr.toPlatform()
+	return dashboard, nil
 }
 
 // FindDashboards returns a list of dashboards that match filter and the total count of matching dashboards.
 // Additional options provide pagination & sorting.
 func (s *DashboardService) FindDashboards(ctx context.Context, filter platform.DashboardFilter, opts platform.FindOptions) ([]*platform.Dashboard, int, error) {
-	var queryPairs [][2]string
+	dashboards := []*platform.Dashboard{}
+	url, err := NewURL(s.Addr, dashboardsPath)
+
+	if err != nil {
+		return dashboards, 0, err
+	}
+
+	qp := url.Query()
 	for _, id := range filter.IDs {
-		queryPairs = append(queryPairs, [2]string{"id", id.String()})
+		qp.Add("id", id.String())
 	}
 	if filter.OrganizationID != nil {
-		queryPairs = append(queryPairs, [2]string{"orgID", filter.OrganizationID.String()})
+		qp.Add("orgID", filter.OrganizationID.String())
 	}
 	if filter.Organization != nil {
-		queryPairs = append(queryPairs, [2]string{"org", *filter.Organization})
+		qp.Add("org", *filter.Organization)
 	}
 	for k, vs := range opts.QueryParams() {
 		for _, v := range vs {
-			queryPairs = append(queryPairs, [2]string{k, v})
+			qp.Add(k, v)
 		}
+	}
+	url.RawQuery = qp.Encode()
+
+	req, err := http.NewRequest("GET", url.String(), nil)
+	if err != nil {
+		return dashboards, 0, err
+	}
+
+	SetToken(s.Token, req)
+	hc := NewClient(url.Scheme, s.InsecureSkipVerify)
+
+	resp, err := hc.Do(req)
+	if err != nil {
+		return dashboards, 0, err
+	}
+	defer resp.Body.Close()
+
+	if err := CheckError(resp); err != nil {
+		return dashboards, 0, err
 	}
 
 	var dr getDashboardsResponse
-	err := s.Client.get(dashboardsPath).
-		Queries(queryPairs...).
-		DecodeJSON(&dr).
-		Do(ctx)
-	if err != nil {
-		return nil, 0, err
+	if err := json.NewDecoder(resp.Body).Decode(&dr); err != nil {
+		return dashboards, 0, err
 	}
 
-	dashboards := dr.toPlatform()
+	dashboards = dr.toPlatform()
 	return dashboards, len(dashboards), nil
 }
 
 // CreateDashboard creates a new dashboard and sets b.ID with the new identifier.
 func (s *DashboardService) CreateDashboard(ctx context.Context, d *platform.Dashboard) error {
-	return s.Client.post(dashboardsPath, bodyJSON(d)).
-		DecodeJSON(d).
-		Do(ctx)
+	url, err := NewURL(s.Addr, dashboardsPath)
+	if err != nil {
+		return err
+	}
+
+	b, err := json.Marshal(d)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url.String(), bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	SetToken(s.Token, req)
+
+	hc := NewClient(url.Scheme, s.InsecureSkipVerify)
+
+	resp, err := hc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if err := CheckError(resp); err != nil {
+		return err
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(d); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // UpdateDashboard updates a single dashboard with changeset.
 // Returns the new dashboard state after update.
 func (s *DashboardService) UpdateDashboard(ctx context.Context, id platform.ID, upd platform.DashboardUpdate) (*platform.Dashboard, error) {
-	var d platform.Dashboard
-	err := s.Client.patch(dashboardIDPath(id), bodyJSON(upd)).
-		DecodeJSON(&d).
-		Do(ctx)
+	u, err := NewURL(s.Addr, dashboardIDPath(id))
 	if err != nil {
 		return nil, err
 	}
 
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(upd); err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", u.String(), &buf)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	SetToken(s.Token, req)
+
+	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if err := CheckError(resp); err != nil {
+		return nil, err
+	}
+
+	var d platform.Dashboard
+	if err := json.NewDecoder(resp.Body).Decode(&d); err != nil {
+		return nil, err
+	}
 	if len(d.Cells) == 0 {
-		// TODO(@jsteenb2): decipher why this is doing this?
 		d.Cells = nil
 	}
 
@@ -1156,34 +1235,128 @@ func (s *DashboardService) UpdateDashboard(ctx context.Context, id platform.ID, 
 
 // DeleteDashboard removes a dashboard by ID.
 func (s *DashboardService) DeleteDashboard(ctx context.Context, id platform.ID) error {
-	return s.Client.delete(dashboardIDPath(id)).Do(ctx)
+	u, err := NewURL(s.Addr, dashboardIDPath(id))
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("DELETE", u.String(), nil)
+	if err != nil {
+		return err
+	}
+	SetToken(s.Token, req)
+
+	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+	resp, err := hc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return CheckError(resp)
 }
 
 // AddDashboardCell adds a cell to a dashboard.
 func (s *DashboardService) AddDashboardCell(ctx context.Context, id platform.ID, c *platform.Cell, opts platform.AddDashboardCellOptions) error {
-	return s.Client.post(cellPath(id), bodyJSON(c)).
-		DecodeJSON(c).
-		Do(ctx)
+	url, err := NewURL(s.Addr, cellPath(id))
+	if err != nil {
+		return err
+	}
+
+	// fixme > in case c does not contain a valid ID this errors out
+	b, err := json.Marshal(c)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url.String(), bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	SetToken(s.Token, req)
+
+	hc := NewClient(url.Scheme, s.InsecureSkipVerify)
+	resp, err := hc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if err := CheckError(resp); err != nil {
+		return err
+	}
+
+	// TODO (goller): deal with the dashboard cell options
+	return json.NewDecoder(resp.Body).Decode(c)
 }
 
 // RemoveDashboardCell removes a dashboard.
 func (s *DashboardService) RemoveDashboardCell(ctx context.Context, dashboardID, cellID platform.ID) error {
-	return s.Client.delete(dashboardCellIDPath(dashboardID, cellID)).Do(ctx)
+	u, err := NewURL(s.Addr, dashboardCellIDPath(dashboardID, cellID))
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("DELETE", u.String(), nil)
+	if err != nil {
+		return err
+	}
+	SetToken(s.Token, req)
+
+	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+	resp, err := hc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return CheckError(resp)
 }
 
 // UpdateDashboardCell replaces the dashboard cell with the provided ID.
 func (s *DashboardService) UpdateDashboardCell(ctx context.Context, dashboardID, cellID platform.ID, upd platform.CellUpdate) (*platform.Cell, error) {
+	op := s.OpPrefix + platform.OpUpdateDashboardCell
 	if err := upd.Valid(); err != nil {
 		return nil, &platform.Error{
+			Op:  op,
 			Err: err,
 		}
 	}
 
-	var c platform.Cell
-	err := s.Client.patch(dashboardCellIDPath(dashboardID, cellID), bodyJSON(upd)).
-		DecodeJSON(&c).
-		Do(ctx)
+	u, err := NewURL(s.Addr, dashboardCellIDPath(dashboardID, cellID))
 	if err != nil {
+		return nil, err
+	}
+
+	b, err := json.Marshal(upd)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", u.String(), bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	SetToken(s.Token, req)
+
+	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if err := CheckError(resp); err != nil {
+		return nil, err
+	}
+
+	var c platform.Cell
+	if err := json.NewDecoder(resp.Body).Decode(&c); err != nil {
 		return nil, err
 	}
 
@@ -1192,36 +1365,118 @@ func (s *DashboardService) UpdateDashboardCell(ctx context.Context, dashboardID,
 
 // GetDashboardCellView retrieves the view for a dashboard cell.
 func (s *DashboardService) GetDashboardCellView(ctx context.Context, dashboardID, cellID platform.ID) (*platform.View, error) {
-	var dcv dashboardCellViewResponse
-	err := s.Client.get(cellViewPath(dashboardID, cellID)).
-		DecodeJSON(&dcv).
-		Do(ctx)
+	u, err := NewURL(s.Addr, cellViewPath(dashboardID, cellID))
 	if err != nil {
 		return nil, err
 	}
 
-	return &dcv.View, nil
+	req, err := http.NewRequest("GET", u.String(), nil)
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	SetToken(s.Token, req)
+
+	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if err := CheckError(resp); err != nil {
+		return nil, err
+	}
+
+	res := dashboardCellViewResponse{}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, err
+	}
+
+	return &res.View, nil
 }
 
 // UpdateDashboardCellView updates the view for a dashboard cell.
 func (s *DashboardService) UpdateDashboardCellView(ctx context.Context, dashboardID, cellID platform.ID, upd platform.ViewUpdate) (*platform.View, error) {
-	var dcv dashboardCellViewResponse
-	err := s.Client.patch(cellViewPath(dashboardID, cellID), bodyJSON(upd)).
-		DecodeJSON(&dcv).
-		Do(ctx)
+	u, err := NewURL(s.Addr, cellViewPath(dashboardID, cellID))
 	if err != nil {
 		return nil, err
 	}
-	return &dcv.View, nil
+
+	b, err := json.Marshal(upd)
+	if err != nil {
+		return nil, err
+	}
+
+	req, err := http.NewRequest("PATCH", u.String(), bytes.NewReader(b))
+	if err != nil {
+		return nil, err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	SetToken(s.Token, req)
+
+	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if err := CheckError(resp); err != nil {
+		return nil, err
+	}
+
+	res := dashboardCellViewResponse{}
+	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+		return nil, err
+	}
+
+	return &res.View, nil
 }
 
 // ReplaceDashboardCells replaces all cells in a dashboard
 func (s *DashboardService) ReplaceDashboardCells(ctx context.Context, id platform.ID, cs []*platform.Cell) error {
-	return s.Client.put(cellPath(id), bodyJSON(cs)).
-		// TODO: previous implementation did not do anything with the response except validate it is valid json.
-		//  seems likely we should have to overwrite (:sadpanda:) the incoming cs...
-		DecodeJSON(&dashboardCellsResponse{}).
-		Do(ctx)
+	u, err := NewURL(s.Addr, cellPath(id))
+	if err != nil {
+		return err
+	}
+
+	// TODO(goller): I think this should be {"cells":[]}
+	b, err := json.Marshal(cs)
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("PUT", u.String(), bytes.NewReader(b))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	SetToken(s.Token, req)
+
+	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
+
+	resp, err := hc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if err := CheckError(resp); err != nil {
+		return err
+	}
+
+	cells := dashboardCellsResponse{}
+	if err := json.NewDecoder(resp.Body).Decode(&cells); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func dashboardIDPath(id platform.ID) string {

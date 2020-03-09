@@ -1,5 +1,5 @@
 // Libraries
-import React, {FunctionComponent, MouseEvent} from 'react'
+import React, {FunctionComponent} from 'react'
 
 // Utils
 import {useDragBehavior, DragEvent} from 'src/shared/utils/useDragBehavior'
@@ -11,15 +11,9 @@ interface Props {
   level: CheckStatusLevel
   y: number
   onDrag: (e: DragEvent) => void
-  onMouseUp: (e: MouseEvent<HTMLDivElement>) => void
 }
 
-const ThresholdMarker: FunctionComponent<Props> = ({
-  level,
-  y,
-  onDrag,
-  onMouseUp,
-}) => {
+const ThresholdMarker: FunctionComponent<Props> = ({level, y, onDrag}) => {
   const dragTargetProps = useDragBehavior(onDrag)
   const levelClass = `threshold-marker--${level.toLowerCase()}`
   const style = {top: `${y}px`}
@@ -31,7 +25,6 @@ const ThresholdMarker: FunctionComponent<Props> = ({
         className={`threshold-marker--handle ${levelClass}`}
         style={style}
         {...dragTargetProps}
-        onMouseUp={onMouseUp}
       />
     </>
   )

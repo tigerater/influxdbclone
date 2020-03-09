@@ -12,14 +12,13 @@ import (
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/kv"
 	"github.com/influxdata/influxdb/mock"
-	"go.uber.org/zap"
 )
 
 // NewDocumentIntegrationTest will test the documents related funcs.
 func NewDocumentIntegrationTest(store kv.Store) func(t *testing.T) {
 	return func(t *testing.T) {
 		ctx := context.Background()
-		svc := kv.NewService(zap.NewNop(), store)
+		svc := kv.NewService(store)
 		mockTimeGen := new(mock.TimeGenerator)
 		if err := svc.Initialize(ctx); err != nil {
 			t.Fatalf("failed to initialize service: %v", err)

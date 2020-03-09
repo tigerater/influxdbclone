@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/influxdata/influxdb/bolt"
-	"go.uber.org/zap/zaptest"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -17,8 +16,8 @@ func init() {
 	bolt.HashCost = bcrypt.MinCost
 }
 
-func NewTestClient(t *testing.T) (*bolt.Client, func(), error) {
-	c, closeFn, err := newTestClient(t)
+func NewTestClient() (*bolt.Client, func(), error) {
+	c, closeFn, err := newTestClient()
 	if err != nil {
 		return nil, nil, err
 	}
@@ -29,8 +28,8 @@ func NewTestClient(t *testing.T) (*bolt.Client, func(), error) {
 	return c, closeFn, nil
 }
 
-func newTestClient(t *testing.T) (*bolt.Client, func(), error) {
-	c := bolt.NewClient(zaptest.NewLogger(t))
+func newTestClient() (*bolt.Client, func(), error) {
+	c := bolt.NewClient()
 
 	f, err := ioutil.TempFile("", "influxdata-platform-bolt-")
 	if err != nil {
@@ -62,7 +61,7 @@ func TestClientOpen(t *testing.T) {
 
 	boltFile := filepath.Join(tempDir, "test", "bolt.db")
 
-	c := bolt.NewClient(zaptest.NewLogger(t))
+	c := bolt.NewClient()
 	c.Path = boltFile
 
 	if err := c.Open(context.Background()); err != nil {
@@ -74,7 +73,7 @@ func TestClientOpen(t *testing.T) {
 	}
 }
 
-func NewTestKVStore(t *testing.T) (*bolt.KVStore, func(), error) {
+func NewTestKVStore() (*bolt.KVStore, func(), error) {
 	f, err := ioutil.TempFile("", "influxdata-platform-bolt-")
 	if err != nil {
 		return nil, nil, errors.New("unable to open temporary boltdb file")
@@ -82,7 +81,7 @@ func NewTestKVStore(t *testing.T) (*bolt.KVStore, func(), error) {
 	f.Close()
 
 	path := f.Name()
-	s := bolt.NewKVStore(zaptest.NewLogger(t), path)
+	s := bolt.NewKVStore(path)
 	if err := s.Open(context.TODO()); err != nil {
 		return nil, nil, err
 	}

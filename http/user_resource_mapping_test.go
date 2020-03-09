@@ -10,10 +10,11 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/influxdata/httprouter"
+	"go.uber.org/zap"
+
 	platform "github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/mock"
-	"go.uber.org/zap/zaptest"
+	"github.com/julienschmidt/httprouter"
 )
 
 func TestUserResourceMappingService_GetMembersHandler(t *testing.T) {
@@ -196,7 +197,7 @@ func TestUserResourceMappingService_GetMembersHandler(t *testing.T) {
 
 				w := httptest.NewRecorder()
 				memberBackend := MemberBackend{
-					log:                        zaptest.NewLogger(t),
+					Logger:                     zap.NewNop().With(zap.String("handler", "member")),
 					ResourceType:               resourceType,
 					UserType:                   tt.args.userType,
 					UserResourceMappingService: tt.fields.userResourceMappingService,
@@ -357,7 +358,7 @@ func TestUserResourceMappingService_PostMembersHandler(t *testing.T) {
 
 				w := httptest.NewRecorder()
 				memberBackend := MemberBackend{
-					log:                        zaptest.NewLogger(t),
+					Logger:                     zap.NewNop().With(zap.String("handler", "member")),
 					ResourceType:               resourceType,
 					UserType:                   tt.args.userType,
 					UserResourceMappingService: tt.fields.userResourceMappingService,

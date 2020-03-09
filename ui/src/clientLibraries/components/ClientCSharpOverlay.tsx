@@ -1,24 +1,12 @@
 // Libraries
 import React, {FunctionComponent} from 'react'
-import {connect} from 'react-redux'
-
 // Components
 import ClientLibraryOverlay from 'src/clientLibraries/components/ClientLibraryOverlay'
 import TemplatedCodeSnippet from 'src/shared/components/TemplatedCodeSnippet'
-
 // Constants
 import {clientCSharpLibrary} from 'src/clientLibraries/constants'
 
-// Types
-import {AppState} from 'src/types'
-
-interface StateProps {
-  org: string
-}
-
-type Props = StateProps
-
-const ClientCSharpOverlay: FunctionComponent<Props> = props => {
+const ClientCSharpOverlay: FunctionComponent<{}> = () => {
   const {
     name,
     url,
@@ -32,9 +20,6 @@ const ClientCSharpOverlay: FunctionComponent<Props> = props => {
     writingDataPocoCodeSnippet,
     pocoClassCodeSnippet,
   } = clientCSharpLibrary
-  const {org} = props
-  const server = window.location.origin
-
   return (
     <ClientLibraryOverlay title={`${name} Client Library`}>
       <p>
@@ -67,9 +52,6 @@ const ClientCSharpOverlay: FunctionComponent<Props> = props => {
           server: 'basepath',
           token: 'token',
         }}
-        values={{
-          server,
-        }}
       />
       <h5>Write Data</h5>
       <p>Option 1: Use InfluxDB Line Protocol to write data</p>
@@ -80,9 +62,6 @@ const ClientCSharpOverlay: FunctionComponent<Props> = props => {
           org: 'orgID',
           bucket: 'bucketID',
         }}
-        values={{
-          org,
-        }}
       />
       <p>Option 2: Use a Data Point to write data</p>
       <TemplatedCodeSnippet
@@ -92,9 +71,6 @@ const ClientCSharpOverlay: FunctionComponent<Props> = props => {
           org: 'orgID',
           bucket: 'bucketID',
         }}
-        values={{
-          org,
-        }}
       />
       <p>Option 3: Use POCO and corresponding Class to write data</p>
       <TemplatedCodeSnippet
@@ -103,9 +79,6 @@ const ClientCSharpOverlay: FunctionComponent<Props> = props => {
         defaults={{
           org: 'orgID',
           bucket: 'bucketID',
-        }}
-        values={{
-          org,
         }}
       />
       <TemplatedCodeSnippet template={pocoClassCodeSnippet} label="C# Code" />
@@ -117,24 +90,9 @@ const ClientCSharpOverlay: FunctionComponent<Props> = props => {
           org: 'orgID',
           bucket: 'bucketID',
         }}
-        values={{
-          org,
-        }}
       />
     </ClientLibraryOverlay>
   )
 }
 
-const mstp = (state: AppState): StateProps => {
-  const org = state.orgs.org.id
-
-  return {
-    org,
-  }
-}
-
-export {ClientCSharpOverlay}
-export default connect<StateProps, {}, Props>(
-  mstp,
-  null
-)(ClientCSharpOverlay)
+export default ClientCSharpOverlay

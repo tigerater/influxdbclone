@@ -10,12 +10,13 @@ import (
 )
 
 var (
-	mockTaskID  = influxdb.ID(1)
-	mockTimeNow = time.Now()
+	mockTaskID     = influxdb.ID(1)
+	mockTimeNow    = time.Now()
+	mockTimeNowStr = time.Now().Format(time.RFC3339Nano)
 )
 
 func (m MockTaskService) UpdateTask(_ context.Context, id influxdb.ID, _ influxdb.TaskUpdate) (*influxdb.Task, error) {
-	return &influxdb.Task{ID: id, UpdatedAt: mockTimeNow}, nil
+	return &influxdb.Task{ID: id, UpdatedAt: mockTimeNowStr}, nil
 }
 
 type MockTaskService struct{}

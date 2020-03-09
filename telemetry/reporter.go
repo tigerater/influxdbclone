@@ -13,29 +13,29 @@ import (
 // gateway every interval.
 type Reporter struct {
 	Pusher   *Pusher
-	log      *zap.Logger
+	Logger   *zap.Logger
 	Interval time.Duration
 }
 
 // NewReporter reports telemetry every 24 hours.
-func NewReporter(log *zap.Logger, g prometheus.Gatherer) *Reporter {
+func NewReporter(g prometheus.Gatherer) *Reporter {
 	return &Reporter{
 		Pusher:   NewPusher(g),
-		log:      log,
+		Logger:   zap.NewNop(),
 		Interval: 24 * time.Hour,
 	}
 }
 
 // Report starts periodic telemetry reporting each interval.
 func (r *Reporter) Report(ctx context.Context) {
-	logger := r.log.With(
+	logger := r.Logger.With(
 		zap.String("service", "telemetry"),
 		influxlogger.DurationLiteral("interval", r.Interval),
 	)
 
 	logger.Info("Starting")
 	if err := r.Pusher.Push(ctx); err != nil {
-		logger.Debug("Failure reporting telemetry metrics", zap.Error(err))
+		logger.Debug("failure reporting telemetry metrics", zap.Error(err))
 	}
 
 	ticker := time.NewTicker(r.Interval)
@@ -45,7 +45,7 @@ func (r *Reporter) Report(ctx context.Context) {
 		case <-ticker.C:
 			logger.Debug("Reporting")
 			if err := r.Pusher.Push(ctx); err != nil {
-				logger.Debug("Failure reporting telemetry metrics", zap.Error(err))
+				logger.Debug("failure reporting telemetry metrics", zap.Error(err))
 			}
 		case <-ctx.Done():
 			logger.Info("Stopping")

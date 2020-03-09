@@ -7,7 +7,6 @@ import (
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/kv"
 	influxdbtesting "github.com/influxdata/influxdb/testing"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestBoltTelegrafService(t *testing.T) {
@@ -19,7 +18,7 @@ func TestInmemTelegrafService(t *testing.T) {
 }
 
 func initBoltTelegrafService(f influxdbtesting.TelegrafConfigFields, t *testing.T) (influxdb.TelegrafConfigStore, func()) {
-	s, closeBolt, err := NewTestBoltStore(t)
+	s, closeBolt, err := NewTestBoltStore()
 	if err != nil {
 		t.Fatalf("failed to create new kv store: %v", err)
 	}
@@ -32,7 +31,7 @@ func initBoltTelegrafService(f influxdbtesting.TelegrafConfigFields, t *testing.
 }
 
 func initInmemTelegrafService(f influxdbtesting.TelegrafConfigFields, t *testing.T) (influxdb.TelegrafConfigStore, func()) {
-	s, closeBolt, err := NewTestInmemStore(t)
+	s, closeBolt, err := NewTestInmemStore()
 	if err != nil {
 		t.Fatalf("failed to create new kv store: %v", err)
 	}
@@ -45,7 +44,7 @@ func initInmemTelegrafService(f influxdbtesting.TelegrafConfigFields, t *testing
 }
 
 func initTelegrafService(s kv.Store, f influxdbtesting.TelegrafConfigFields, t *testing.T) (influxdb.TelegrafConfigStore, func()) {
-	svc := kv.NewService(zaptest.NewLogger(t), s)
+	svc := kv.NewService(s)
 	svc.IDGenerator = f.IDGenerator
 
 	ctx := context.Background()

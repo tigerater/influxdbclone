@@ -7,7 +7,7 @@ import {
   Popover,
   PopoverPosition,
   PopoverInteraction,
-  Appearance,
+  PopoverType,
 } from '@influxdata/clockface'
 
 // Types
@@ -35,7 +35,7 @@ const ToolbarFunction: FC<Props> = ({func, onClickFunction, testID}) => {
       data-testid={testID}
     >
       <Popover
-        appearance={Appearance.Outline}
+        type={PopoverType.Outline}
         position={PopoverPosition.ToTheLeft}
         triggerRef={functionRef}
         showEvent={PopoverInteraction.Hover}

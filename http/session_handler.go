@@ -4,31 +4,29 @@ import (
 	"context"
 	"net/http"
 
-	"github.com/influxdata/httprouter"
 	platform "github.com/influxdata/influxdb"
+	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 )
 
 // SessionBackend is all services and associated parameters required to construct
 // the SessionHandler.
 type SessionBackend struct {
-	log *zap.Logger
+	Logger *zap.Logger
 	platform.HTTPErrorHandler
 
 	PasswordsService platform.PasswordsService
 	SessionService   platform.SessionService
-	UserService      platform.UserService
 }
 
-// newSessionBackend creates a new SessionBackend with associated logger.
-func newSessionBackend(log *zap.Logger, b *APIBackend) *SessionBackend {
+// NewSessionBackend creates a new SessionBackend with associated logger.
+func NewSessionBackend(b *APIBackend) *SessionBackend {
 	return &SessionBackend{
 		HTTPErrorHandler: b.HTTPErrorHandler,
-		log:              log,
+		Logger:           b.Logger.With(zap.String("handler", "session")),
 
 		PasswordsService: b.PasswordsService,
 		SessionService:   b.SessionService,
-		UserService:      b.UserService,
 	}
 }
 
@@ -36,23 +34,21 @@ func newSessionBackend(log *zap.Logger, b *APIBackend) *SessionBackend {
 type SessionHandler struct {
 	*httprouter.Router
 	platform.HTTPErrorHandler
-	log *zap.Logger
+	Logger *zap.Logger
 
 	PasswordsService platform.PasswordsService
 	SessionService   platform.SessionService
-	UserService      platform.UserService
 }
 
 // NewSessionHandler returns a new instance of SessionHandler.
-func NewSessionHandler(log *zap.Logger, b *SessionBackend) *SessionHandler {
+func NewSessionHandler(b *SessionBackend) *SessionHandler {
 	h := &SessionHandler{
 		Router:           NewRouter(b.HTTPErrorHandler),
 		HTTPErrorHandler: b.HTTPErrorHandler,
-		log:              log,
+		Logger:           b.Logger,
 
 		PasswordsService: b.PasswordsService,
 		SessionService:   b.SessionService,
-		UserService:      b.UserService,
 	}
 
 	h.HandlerFunc("POST", "/api/v2/signin", h.handleSignin)
@@ -64,21 +60,13 @@ func NewSessionHandler(log *zap.Logger, b *SessionBackend) *SessionHandler {
 func (h *SessionHandler) handleSignin(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	req, decErr := decodeSigninRequest(ctx, r)
-	if decErr != nil {
-		UnauthorizedError(ctx, h, w)
-		return
-	}
-
-	u, err := h.UserService.FindUser(ctx, platform.UserFilter{
-		Name: &req.Username,
-	})
+	req, err := decodeSigninRequest(ctx, r)
 	if err != nil {
 		UnauthorizedError(ctx, h, w)
 		return
 	}
 
-	if err := h.PasswordsService.ComparePassword(ctx, u.ID, req.Password); err != nil {
+	if err := h.PasswordsService.ComparePassword(ctx, req.Username, req.Password); err != nil {
 		// Don't log here, it should already be handled by the service
 		UnauthorizedError(ctx, h, w)
 		return

@@ -1,4 +1,4 @@
-package http
+package http_test
 
 import (
 	"context"
@@ -7,23 +7,20 @@ import (
 	"testing"
 	"time"
 
+	"go.uber.org/zap"
+
 	platform "github.com/influxdata/influxdb"
+	platformhttp "github.com/influxdata/influxdb/http"
 	"github.com/influxdata/influxdb/mock"
-	"go.uber.org/zap/zaptest"
 )
 
 // NewMockSessionBackend returns a SessionBackend with mock services.
-func NewMockSessionBackend(t *testing.T) *SessionBackend {
-	userSVC := mock.NewUserService()
-	userSVC.FindUserFn = func(_ context.Context, f platform.UserFilter) (*platform.User, error) {
-		return &platform.User{ID: 1}, nil
-	}
-	return &SessionBackend{
-		log: zaptest.NewLogger(t),
+func NewMockSessionBackend() *platformhttp.SessionBackend {
+	return &platformhttp.SessionBackend{
+		Logger: zap.NewNop().With(zap.String("handler", "session")),
 
 		SessionService:   mock.NewSessionService(),
-		PasswordsService: mock.NewPasswordsService(),
-		UserService:      userSVC,
+		PasswordsService: mock.NewPasswordsService("", ""),
 	}
 }
 
@@ -62,7 +59,7 @@ func TestSessionHandler_handleSignin(t *testing.T) {
 					},
 				},
 				PasswordsService: &mock.PasswordsService{
-					ComparePasswordFn: func(context.Context, platform.ID, string) error {
+					ComparePasswordFn: func(context.Context, string, string) error {
 						return nil
 					},
 				},
@@ -80,10 +77,10 @@ func TestSessionHandler_handleSignin(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			b := NewMockSessionBackend(t)
+			b := NewMockSessionBackend()
 			b.PasswordsService = tt.fields.PasswordsService
 			b.SessionService = tt.fields.SessionService
-			h := NewSessionHandler(zaptest.NewLogger(t), b)
+			h := platformhttp.NewSessionHandler(b)
 
 			w := httptest.NewRecorder()
 			r := httptest.NewRequest("POST", "http://localhost:9999/api/v2/signin", nil)

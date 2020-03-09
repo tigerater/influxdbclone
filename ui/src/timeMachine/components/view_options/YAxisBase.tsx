@@ -2,7 +2,7 @@
 import React, {PureComponent} from 'react'
 
 // Components
-import {Form, SelectGroup, Grid} from '@influxdata/clockface'
+import {Form, Radio, Grid} from '@influxdata/clockface'
 
 // Constants
 import {AXES_SCALE_OPTIONS} from 'src/dashboards/constants/cellEditor'
@@ -24,9 +24,8 @@ class YAxisBase extends PureComponent<Props> {
     return (
       <Grid.Column widthXS={Columns.Twelve}>
         <Form.Element label="Y-Value Unit Prefix">
-          <SelectGroup shape={ButtonShape.StretchToFit}>
-            <SelectGroup.Option
-              name="y-values-format"
+          <Radio shape={ButtonShape.StretchToFit}>
+            <Radio.Button
               id="y-values-format-tab--raw"
               value=""
               active={base === ''}
@@ -34,9 +33,8 @@ class YAxisBase extends PureComponent<Props> {
               onClick={onUpdateYAxisBase}
             >
               None
-            </SelectGroup.Option>
-            <SelectGroup.Option
-              name="y-values-format"
+            </Radio.Button>
+            <Radio.Button
               id="y-values-format-tab--kmb"
               value={BASE_10}
               active={base === BASE_10}
@@ -44,9 +42,8 @@ class YAxisBase extends PureComponent<Props> {
               onClick={onUpdateYAxisBase}
             >
               SI
-            </SelectGroup.Option>
-            <SelectGroup.Option
-              name="y-values-format"
+            </Radio.Button>
+            <Radio.Button
               id="y-values-format-tab--kmg"
               value={BASE_2}
               active={base === BASE_2}
@@ -54,8 +51,8 @@ class YAxisBase extends PureComponent<Props> {
               onClick={onUpdateYAxisBase}
             >
               Binary
-            </SelectGroup.Option>
-          </SelectGroup>
+            </Radio.Button>
+          </Radio>
         </Form.Element>
       </Grid.Column>
     )

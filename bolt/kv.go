@@ -15,17 +15,17 @@ import (
 
 // KVStore is a kv.Store backed by boltdb.
 type KVStore struct {
-	path string
-	db   *bolt.DB
-	log  *zap.Logger
+	path   string
+	db     *bolt.DB
+	logger *zap.Logger
 }
 
 // NewKVStore returns an instance of KVStore with the file at
 // the provided path.
-func NewKVStore(log *zap.Logger, path string) *KVStore {
+func NewKVStore(path string) *KVStore {
 	return &KVStore{
-		path: path,
-		log:  log,
+		path:   path,
+		logger: zap.NewNop(),
 	}
 }
 
@@ -50,7 +50,7 @@ func (s *KVStore) Open(ctx context.Context) error {
 	}
 	s.db = db
 
-	s.log.Info("Resources opened", zap.String("path", s.path))
+	s.logger.Info("Resources opened", zap.String("path", s.path))
 	return nil
 }
 
@@ -87,6 +87,11 @@ func (s *KVStore) cleanBucket(tx *bolt.Tx, b *bolt.Bucket) {
 			s.cleanBucket(tx, b.Bucket(k))
 		}
 	}
+}
+
+// WithLogger sets the logger on the store.
+func (s *KVStore) WithLogger(l *zap.Logger) {
+	s.logger = l
 }
 
 // WithDB sets the boltdb on the store.

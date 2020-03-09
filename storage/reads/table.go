@@ -31,7 +31,6 @@ type table struct {
 	err error
 
 	cancelled, used int32
-	cache           *tagsCache
 	alloc           *memory.Allocator
 }
 
@@ -41,7 +40,6 @@ func newTable(
 	key flux.GroupKey,
 	cols []flux.ColMeta,
 	defs [][]byte,
-	cache *tagsCache,
 	alloc *memory.Allocator,
 ) table {
 	return table{
@@ -51,7 +49,6 @@ func newTable(
 		tags:   make([][]byte, len(cols)),
 		defs:   defs,
 		cols:   cols,
-		cache:  cache,
 		alloc:  alloc,
 	}
 }
@@ -200,15 +197,30 @@ func (t *table) appendTags(cr *colReader) {
 	for j := range t.cols {
 		v := t.tags[j]
 		if v != nil {
-			cr.cols[j] = t.cache.GetTag(string(v), cr.l, t.alloc)
+			b := arrow.NewStringBuilder(t.alloc)
+			b.Reserve(cr.l)
+			b.ReserveData(cr.l * len(v))
+			for i := 0; i < cr.l; i++ {
+				b.Append(v)
+			}
+			cr.cols[j] = b.NewArray()
+			b.Release()
 		}
 	}
 }
 
 // appendBounds fills the colBufs for the time bounds
 func (t *table) appendBounds(cr *colReader) {
-	start, stop := t.cache.GetBounds(t.bounds, cr.l, t.alloc)
-	cr.cols[startColIdx], cr.cols[stopColIdx] = start, stop
+	bounds := []execute.Time{t.bounds.Start, t.bounds.Stop}
+	for j := range []int{startColIdx, stopColIdx} {
+		b := arrow.NewIntBuilder(t.alloc)
+		b.Reserve(cr.l)
+		for i := 0; i < cr.l; i++ {
+			b.UnsafeAppend(int64(bounds[j]))
+		}
+		cr.cols[j] = b.NewArray()
+		b.Release()
+	}
 }
 
 func (t *table) closeDone() {

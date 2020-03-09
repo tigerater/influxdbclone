@@ -19,23 +19,6 @@ describe('Dashboards', () => {
     })
   })
 
-  it('empty state should have a header with text and a button to create a dashboard', () => {
-    cy.getByTestID('page-contents').within(() => {
-      cy.getByTestID('empty-dashboards-list').within(() => {
-        cy.getByTestID('empty-state--text').should($t => {
-          expect($t).to.have.length(1)
-          expect($t).to.contain(
-            "Looks like you don't have any Dashboards, why not create one?"
-          )
-        })
-        cy.getByTestID('add-resource-dropdown--button').should($b => {
-          expect($b).to.have.length(1)
-          expect($b).to.contain('Create Dashboard')
-        })
-      })
-    })
-  })
-
   it('can create a dashboard from empty state', () => {
     cy.getByTestID('empty-dashboards-list').within(() => {
       cy.getByTestID('add-resource-dropdown--button').click()
@@ -74,9 +57,7 @@ describe('Dashboards', () => {
       cy.createDashboardTemplate(id)
     })
 
-    cy.getByTestID('empty-dashboards-list')
-      .getByTestID('add-resource-dropdown--button')
-      .click()
+    cy.getByTestID('add-resource-dropdown--button').click()
 
     cy.getByTestID('add-resource-dropdown--template').click()
 

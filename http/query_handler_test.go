@@ -324,7 +324,7 @@ func TestFluxHandler_PostQuery_Errors(t *testing.T) {
 	i := inmem.NewService()
 	b := &FluxBackend{
 		HTTPErrorHandler:    ErrorHandler(0),
-		log:                 zaptest.NewLogger(t),
+		Logger:              zaptest.NewLogger(t),
 		QueryEventRecorder:  noopEventRecorder{},
 		OrganizationService: i,
 		ProxyQueryService: &mock.ProxyQueryService{
@@ -336,7 +336,7 @@ func TestFluxHandler_PostQuery_Errors(t *testing.T) {
 			},
 		},
 	}
-	h := NewFluxHandler(zaptest.NewLogger(t), b)
+	h := NewFluxHandler(b)
 
 	t.Run("missing authorizer", func(t *testing.T) {
 		ts := httptest.NewServer(h)
@@ -478,18 +478,18 @@ func TestFluxService_Query_gzip(t *testing.T) {
 
 	fluxBackend := &FluxBackend{
 		HTTPErrorHandler:    ErrorHandler(0),
-		log:                 zaptest.NewLogger(t),
+		Logger:              zaptest.NewLogger(t),
 		QueryEventRecorder:  noopEventRecorder{},
 		OrganizationService: orgService,
 		ProxyQueryService:   queryService,
 	}
 
-	fluxHandler := NewFluxHandler(zaptest.NewLogger(t), fluxBackend)
+	fluxHandler := NewFluxHandler(fluxBackend)
 
 	// fluxHandling expects authorization to be on the request context.
 	// AuthenticationHandler extracts the token from headers and places
 	// the auth on context.
-	auth := NewAuthenticationHandler(zaptest.NewLogger(t), ErrorHandler(0))
+	auth := NewAuthenticationHandler(ErrorHandler(0))
 	auth.AuthorizationService = authService
 	auth.Handler = fluxHandler
 	auth.UserService = &influxmock.UserService{
@@ -614,18 +614,18 @@ func benchmarkQuery(b *testing.B, disableCompression bool) {
 
 	fluxBackend := &FluxBackend{
 		HTTPErrorHandler:    ErrorHandler(0),
-		log:                 zaptest.NewLogger(b),
+		Logger:              zaptest.NewLogger(b),
 		QueryEventRecorder:  noopEventRecorder{},
 		OrganizationService: orgService,
 		ProxyQueryService:   queryService,
 	}
 
-	fluxHandler := NewFluxHandler(zaptest.NewLogger(b), fluxBackend)
+	fluxHandler := NewFluxHandler(fluxBackend)
 
 	// fluxHandling expects authorization to be on the request context.
 	// AuthenticationHandler extracts the token from headers and places
 	// the auth on context.
-	auth := NewAuthenticationHandler(zaptest.NewLogger(b), ErrorHandler(0))
+	auth := NewAuthenticationHandler(ErrorHandler(0))
 	auth.AuthorizationService = authService
 	auth.Handler = fluxHandler
 

@@ -124,64 +124,6 @@ func SortDashboards(opts FindOptions, ds []*Dashboard) {
 type Cell struct {
 	ID ID `json:"id,omitempty"`
 	CellProperty
-	View *View `json:"-"`
-}
-
-// Marshals the cell
-func (c *Cell) MarshalJSON() ([]byte, error) {
-	type resp struct {
-		ID             *ID             `json:"id,omitempty"`
-		Name           string          `json:"name,omitempty"`
-		ViewProperties json.RawMessage `json:"properties,omitempty"`
-		CellProperty
-	}
-	response := resp{
-		CellProperty: c.CellProperty,
-	}
-	if c.ID != 0 {
-		response.ID = &c.ID
-	}
-	if c.View != nil {
-		response.Name = c.View.Name
-		rawJSON, err := MarshalViewPropertiesJSON(c.View.Properties)
-		if err != nil {
-			return nil, err
-		}
-		response.ViewProperties = rawJSON
-	}
-	return json.Marshal(response)
-}
-
-func (c *Cell) UnmarshalJSON(b []byte) error {
-	var newCell struct {
-		ID             ID              `json:"id,omitempty"`
-		Name           string          `json:"name,omitempty"`
-		ViewProperties json.RawMessage `json:"properties,omitempty"`
-		CellProperty
-	}
-	if err := json.Unmarshal(b, &newCell); err != nil {
-		return err
-	}
-
-	c.ID = newCell.ID
-	c.CellProperty = newCell.CellProperty
-
-	if newCell.Name != "" {
-		if c.View == nil {
-			c.View = new(View)
-		}
-		c.View.Name = newCell.Name
-	}
-
-	props, err := UnmarshalViewPropertiesJSON(newCell.ViewProperties)
-	if err == nil {
-		if c.View == nil {
-			c.View = new(View)
-		}
-		c.View.Properties = props
-	}
-
-	return nil
 }
 
 // CellProperty contains the properties of a cell.
@@ -357,21 +299,6 @@ type ViewContents struct {
 	Name string `json:"name"`
 }
 
-// Values for all supported view property types.
-const (
-	ViewPropertyTypeCheck              = "check"
-	ViewPropertyTypeGauge              = "gauge"
-	ViewPropertyTypeHeatMap            = "heatmap"
-	ViewPropertyTypeHistogram          = "histogram"
-	ViewPropertyTypeLogViewer          = "log-viewer"
-	ViewPropertyTypeMarkdown           = "markdown"
-	ViewPropertyTypeScatter            = "scatter"
-	ViewPropertyTypeSingleStat         = "single-stat"
-	ViewPropertyTypeSingleStatPlusLine = "line-plus-single-stat"
-	ViewPropertyTypeTable              = "table"
-	ViewPropertyTypeXY                 = "xy"
-)
-
 // ViewProperties is used to mark other structures as conforming to a View.
 type ViewProperties interface {
 	viewProperties()
@@ -413,67 +340,67 @@ func UnmarshalViewPropertiesJSON(b []byte) (ViewProperties, error) {
 	switch t.Shape {
 	case "chronograf-v2":
 		switch t.Type {
-		case ViewPropertyTypeCheck:
+		case "check":
 			var cv CheckViewProperties
 			if err := json.Unmarshal(v.B, &cv); err != nil {
 				return nil, err
 			}
 			vis = cv
-		case ViewPropertyTypeXY:
+		case "xy":
 			var xyv XYViewProperties
 			if err := json.Unmarshal(v.B, &xyv); err != nil {
 				return nil, err
 			}
 			vis = xyv
-		case ViewPropertyTypeSingleStat:
+		case "single-stat":
 			var ssv SingleStatViewProperties
 			if err := json.Unmarshal(v.B, &ssv); err != nil {
 				return nil, err
 			}
 			vis = ssv
-		case ViewPropertyTypeGauge:
+		case "gauge":
 			var gv GaugeViewProperties
 			if err := json.Unmarshal(v.B, &gv); err != nil {
 				return nil, err
 			}
 			vis = gv
-		case ViewPropertyTypeTable:
+		case "table":
 			var tv TableViewProperties
 			if err := json.Unmarshal(v.B, &tv); err != nil {
 				return nil, err
 			}
 			vis = tv
-		case ViewPropertyTypeMarkdown:
+		case "markdown":
 			var mv MarkdownViewProperties
 			if err := json.Unmarshal(v.B, &mv); err != nil {
 				return nil, err
 			}
 			vis = mv
-		case ViewPropertyTypeLogViewer: // happens in log viewer stays in log viewer.
+		case "log-viewer": // happens in log viewer stays in log viewer.
 			var lv LogViewProperties
 			if err := json.Unmarshal(v.B, &lv); err != nil {
 				return nil, err
 			}
 			vis = lv
-		case ViewPropertyTypeSingleStatPlusLine:
+		case "line-plus-single-stat":
 			var lv LinePlusSingleStatProperties
 			if err := json.Unmarshal(v.B, &lv); err != nil {
 				return nil, err
 			}
 			vis = lv
-		case ViewPropertyTypeHistogram:
+		case "histogram":
 			var hv HistogramViewProperties
 			if err := json.Unmarshal(v.B, &hv); err != nil {
 				return nil, err
 			}
 			vis = hv
-		case ViewPropertyTypeHeatMap:
+		case "heatmap":
 			var hv HeatmapViewProperties
 			if err := json.Unmarshal(v.B, &hv); err != nil {
 				return nil, err
 			}
 			vis = hv
-		case ViewPropertyTypeScatter:
+		case "scatter":
 			var sv ScatterViewProperties
 			if err := json.Unmarshal(v.B, &sv); err != nil {
 				return nil, err
@@ -487,7 +414,7 @@ func UnmarshalViewPropertiesJSON(b []byte) (ViewProperties, error) {
 		}
 		vis = ev
 	default:
-		return nil, fmt.Errorf("unknown shape %v", t.Shape)
+		return nil, fmt.Errorf("unknown type %v", t.Shape)
 	}
 
 	return vis, nil
@@ -608,8 +535,8 @@ func MarshalViewPropertiesJSON(v ViewProperties) ([]byte, error) {
 }
 
 // MarshalJSON encodes a view to JSON bytes.
-func (v View) MarshalJSON() ([]byte, error) {
-	viewProperties, err := MarshalViewPropertiesJSON(v.Properties)
+func (c View) MarshalJSON() ([]byte, error) {
+	vis, err := MarshalViewPropertiesJSON(c.Properties)
 	if err != nil {
 		return nil, err
 	}
@@ -618,8 +545,8 @@ func (v View) MarshalJSON() ([]byte, error) {
 		ViewContents
 		ViewProperties json.RawMessage `json:"properties"`
 	}{
-		ViewContents:   v.ViewContents,
-		ViewProperties: viewProperties,
+		ViewContents:   c.ViewContents,
+		ViewProperties: vis,
 	})
 }
 
@@ -682,7 +609,6 @@ type LinePlusSingleStatProperties struct {
 	XColumn           string           `json:"xColumn"`
 	YColumn           string           `json:"yColumn"`
 	ShadeBelow        bool             `json:"shadeBelow"`
-	Position          string           `json:"position"`
 }
 
 // XYViewProperties represents options for line, bar, step, or stacked view in Chronograf
@@ -698,8 +624,6 @@ type XYViewProperties struct {
 	XColumn           string           `json:"xColumn"`
 	YColumn           string           `json:"yColumn"`
 	ShadeBelow        bool             `json:"shadeBelow"`
-	Position          string           `json:"position"`
-	TimeFormat        string           `json:"timeFormat"`
 }
 
 // CheckViewProperties represents options for a view representing a check
@@ -755,7 +679,6 @@ type HeatmapViewProperties struct {
 	YSuffix           string           `json:"ySuffix"`
 	Note              string           `json:"note"`
 	ShowNoteWhenEmpty bool             `json:"showNoteWhenEmpty"`
-	TimeFormat        string           `json:"timeFormat"`
 }
 
 // ScatterViewProperties represents options for scatter view in Chronograf
@@ -777,7 +700,6 @@ type ScatterViewProperties struct {
 	YSuffix           string           `json:"ySuffix"`
 	Note              string           `json:"note"`
 	ShowNoteWhenEmpty bool             `json:"showNoteWhenEmpty"`
-	TimeFormat        string           `json:"timeFormat"`
 }
 
 // GaugeViewProperties represents options for gauge view in Chronograf

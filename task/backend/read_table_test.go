@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/influxdata/flux/csv"
-	"go.uber.org/zap/zaptest"
+	"go.uber.org/zap"
 )
 
 func TestReadTable(t *testing.T) {
@@ -24,7 +24,7 @@ func TestReadTable(t *testing.T) {
 	}
 
 	defer itr.Release()
-	re := &runReader{log: zaptest.NewLogger(t)}
+	re := &runReader{logger: zap.NewNop()}
 
 	for itr.More() {
 		err := itr.Next().Tables().Do(re.readTable)

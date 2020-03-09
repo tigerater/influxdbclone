@@ -5,7 +5,6 @@ import (
 	"context"
 	"sort"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	platform "github.com/influxdata/influxdb"
@@ -36,7 +35,6 @@ var authorizationCmpOptions = cmp.Options{
 type AuthorizationFields struct {
 	IDGenerator    platform.IDGenerator
 	TokenGenerator platform.TokenGenerator
-	TimeGenerator  platform.TimeGenerator
 	Authorizations []*platform.Authorization
 	Users          []*platform.User
 	Orgs           []*platform.Organization
@@ -106,9 +104,6 @@ func CreateAuthorization(
 			name: "basic create authorization",
 			fields: AuthorizationFields{
 				IDGenerator: mock.NewIDGenerator(authTwoID, t),
-				TimeGenerator: &mock.TimeGenerator{
-					FakeValue: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-				},
 				TokenGenerator: &mock.TokenGenerator{
 					TokenFn: func() (string, error) {
 						return "rand", nil
@@ -164,10 +159,6 @@ func CreateAuthorization(
 						Status:      platform.Active,
 						Permissions: createUsersPermission(MustIDBase16(orgOneID)),
 						Description: "new auth",
-						CRUDLog: platform.CRUDLog{
-							CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-							UpdatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-						},
 					},
 				},
 			},
@@ -176,9 +167,6 @@ func CreateAuthorization(
 			name: "if auth ID supplied it is ignored",
 			fields: AuthorizationFields{
 				IDGenerator: mock.NewIDGenerator(authTwoID, t),
-				TimeGenerator: &mock.TimeGenerator{
-					FakeValue: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-				},
 				TokenGenerator: &mock.TokenGenerator{
 					TokenFn: func() (string, error) {
 						return "rand", nil
@@ -231,10 +219,6 @@ func CreateAuthorization(
 						Token:       "rand",
 						Status:      platform.Active,
 						Permissions: createUsersPermission(MustIDBase16(orgOneID)),
-						CRUDLog: platform.CRUDLog{
-							CreatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-							UpdatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-						},
 					},
 				},
 			},
@@ -243,9 +227,6 @@ func CreateAuthorization(
 			name: "providing a non existing user is invalid",
 			fields: AuthorizationFields{
 				IDGenerator: mock.NewIDGenerator(authTwoID, t),
-				TimeGenerator: &mock.TimeGenerator{
-					FakeValue: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-				},
 				TokenGenerator: &mock.TokenGenerator{
 					TokenFn: func() (string, error) {
 						return "rand", nil
@@ -301,9 +282,6 @@ func CreateAuthorization(
 			name: "providing a non existing org is invalid",
 			fields: AuthorizationFields{
 				IDGenerator: mock.NewIDGenerator(authTwoID, t),
-				TimeGenerator: &mock.TimeGenerator{
-					FakeValue: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-				},
 				TokenGenerator: &mock.TokenGenerator{
 					TokenFn: func() (string, error) {
 						return "rand", nil
@@ -495,9 +473,6 @@ func UpdateAuthorization(
 		{
 			name: "regular update",
 			fields: AuthorizationFields{
-				TimeGenerator: &mock.TimeGenerator{
-					FakeValue: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-				},
 				Users: []*platform.User{
 					{
 						Name: "cooluser",
@@ -566,9 +541,6 @@ func UpdateAuthorization(
 					Permissions: createUsersPermission(MustIDBase16(orgOneID)),
 					Status:      platform.Inactive,
 					Description: "desc1",
-					CRUDLog: platform.CRUDLog{
-						UpdatedAt: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-					},
 				},
 			},
 		},
@@ -637,9 +609,6 @@ func UpdateAuthorization(
 		{
 			name: "update with unknown status",
 			fields: AuthorizationFields{
-				TimeGenerator: &mock.TimeGenerator{
-					FakeValue: time.Date(2009, time.November, 10, 23, 0, 0, 0, time.UTC),
-				},
 				Users: []*platform.User{
 					{
 						Name: "cooluser",

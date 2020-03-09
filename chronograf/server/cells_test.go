@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-cmp/cmp"
 	"github.com/influxdata/influxdb/chronograf"
 	"github.com/influxdata/influxdb/chronograf/mocks"
-	"github.com/influxdata/httprouter"
+	"github.com/julienschmidt/httprouter"
 )
 
 func Test_Cells_CorrectAxis(t *testing.T) {

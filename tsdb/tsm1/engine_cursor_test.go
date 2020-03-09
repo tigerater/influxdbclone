@@ -11,7 +11,7 @@ import (
 )
 
 func TestEngine_CursorIterator_Stats(t *testing.T) {
-	e := MustOpenEngine(t)
+	e := MustOpenEngine()
 	defer e.Close()
 
 	points := []models.Point{

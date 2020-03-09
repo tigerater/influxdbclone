@@ -36,7 +36,6 @@ func (r *storeReader) ReadFilter(ctx context.Context, spec influxdb.ReadFilterSp
 		ctx:   ctx,
 		s:     r.s,
 		spec:  spec,
-		cache: newTagsCache(0),
 		alloc: alloc,
 	}, nil
 }
@@ -46,7 +45,6 @@ func (r *storeReader) ReadGroup(ctx context.Context, spec influxdb.ReadGroupSpec
 		ctx:   ctx,
 		s:     r.s,
 		spec:  spec,
-		cache: newTagsCache(0),
 		alloc: alloc,
 	}, nil
 }
@@ -98,7 +96,6 @@ type filterIterator struct {
 	s     Store
 	spec  influxdb.ReadFilterSpec
 	stats cursors.CursorStats
-	cache *tagsCache
 	alloc *memory.Allocator
 }
 
@@ -140,7 +137,7 @@ func (fi *filterIterator) Do(f func(flux.Table) error) error {
 		return nil
 	}
 
-	return fi.handleRead(f, rs)
+	return fi.handleRead(filterDuplicateTables(f), rs)
 }
 
 func (fi *filterIterator) handleRead(f func(flux.Table) error, rs ResultSet) error {
@@ -158,7 +155,6 @@ func (fi *filterIterator) handleRead(f func(flux.Table) error, rs ResultSet) err
 			cur.Close()
 		}
 		rs.Close()
-		fi.cache.Release()
 	}()
 
 READ:
@@ -175,19 +171,19 @@ READ:
 		switch typedCur := cur.(type) {
 		case cursors.IntegerArrayCursor:
 			cols, defs := determineTableColsForSeries(rs.Tags(), flux.TInt)
-			table = newIntegerTable(done, typedCur, bnds, key, cols, rs.Tags(), defs, fi.cache, fi.alloc)
+			table = newIntegerTable(done, typedCur, bnds, key, cols, rs.Tags(), defs, fi.alloc)
 		case cursors.FloatArrayCursor:
 			cols, defs := determineTableColsForSeries(rs.Tags(), flux.TFloat)
-			table = newFloatTable(done, typedCur, bnds, key, cols, rs.Tags(), defs, fi.cache, fi.alloc)
+			table = newFloatTable(done, typedCur, bnds, key, cols, rs.Tags(), defs, fi.alloc)
 		case cursors.UnsignedArrayCursor:
 			cols, defs := determineTableColsForSeries(rs.Tags(), flux.TUInt)
-			table = newUnsignedTable(done, typedCur, bnds, key, cols, rs.Tags(), defs, fi.cache, fi.alloc)
+			table = newUnsignedTable(done, typedCur, bnds, key, cols, rs.Tags(), defs, fi.alloc)
 		case cursors.BooleanArrayCursor:
 			cols, defs := determineTableColsForSeries(rs.Tags(), flux.TBool)
-			table = newBooleanTable(done, typedCur, bnds, key, cols, rs.Tags(), defs, fi.cache, fi.alloc)
+			table = newBooleanTable(done, typedCur, bnds, key, cols, rs.Tags(), defs, fi.alloc)
 		case cursors.StringArrayCursor:
 			cols, defs := determineTableColsForSeries(rs.Tags(), flux.TString)
-			table = newStringTable(done, typedCur, bnds, key, cols, rs.Tags(), defs, fi.cache, fi.alloc)
+			table = newStringTable(done, typedCur, bnds, key, cols, rs.Tags(), defs, fi.alloc)
 		default:
 			panic(fmt.Sprintf("unreachable: %T", typedCur))
 		}
@@ -222,7 +218,6 @@ type groupIterator struct {
 	s     Store
 	spec  influxdb.ReadGroupSpec
 	stats cursors.CursorStats
-	cache *tagsCache
 	alloc *memory.Allocator
 }
 
@@ -272,7 +267,7 @@ func (gi *groupIterator) Do(f func(flux.Table) error) error {
 	if rs == nil {
 		return nil
 	}
-	return gi.handleRead(f, rs)
+	return gi.handleRead(filterDuplicateTables(f), rs)
 }
 
 func (gi *groupIterator) handleRead(f func(flux.Table) error, rs GroupResultSet) error {
@@ -294,7 +289,6 @@ func (gi *groupIterator) handleRead(f func(flux.Table) error, rs GroupResultSet)
 			gc.Close()
 		}
 		rs.Close()
-		gi.cache.Release()
 	}()
 
 	gc = rs.Next()
@@ -319,19 +313,19 @@ READ:
 		switch typedCur := cur.(type) {
 		case cursors.IntegerArrayCursor:
 			cols, defs := determineTableColsForGroup(gc.Keys(), flux.TInt)
-			table = newIntegerGroupTable(done, gc, typedCur, bnds, key, cols, gc.Tags(), defs, gi.cache, gi.alloc)
+			table = newIntegerGroupTable(done, gc, typedCur, bnds, key, cols, gc.Tags(), defs, gi.alloc)
 		case cursors.FloatArrayCursor:
 			cols, defs := determineTableColsForGroup(gc.Keys(), flux.TFloat)
-			table = newFloatGroupTable(done, gc, typedCur, bnds, key, cols, gc.Tags(), defs, gi.cache, gi.alloc)
+			table = newFloatGroupTable(done, gc, typedCur, bnds, key, cols, gc.Tags(), defs, gi.alloc)
 		case cursors.UnsignedArrayCursor:
 			cols, defs := determineTableColsForGroup(gc.Keys(), flux.TUInt)
-			table = newUnsignedGroupTable(done, gc, typedCur, bnds, key, cols, gc.Tags(), defs, gi.cache, gi.alloc)
+			table = newUnsignedGroupTable(done, gc, typedCur, bnds, key, cols, gc.Tags(), defs, gi.alloc)
 		case cursors.BooleanArrayCursor:
 			cols, defs := determineTableColsForGroup(gc.Keys(), flux.TBool)
-			table = newBooleanGroupTable(done, gc, typedCur, bnds, key, cols, gc.Tags(), defs, gi.cache, gi.alloc)
+			table = newBooleanGroupTable(done, gc, typedCur, bnds, key, cols, gc.Tags(), defs, gi.alloc)
 		case cursors.StringArrayCursor:
 			cols, defs := determineTableColsForGroup(gc.Keys(), flux.TString)
-			table = newStringGroupTable(done, gc, typedCur, bnds, key, cols, gc.Tags(), defs, gi.cache, gi.alloc)
+			table = newStringGroupTable(done, gc, typedCur, bnds, key, cols, gc.Tags(), defs, gi.alloc)
 		default:
 			panic(fmt.Sprintf("unreachable: %T", typedCur))
 		}
@@ -653,4 +647,28 @@ func (ti *tagValuesIterator) handleRead(f func(flux.Table) error, rs cursors.Str
 
 func (ti *tagValuesIterator) Statistics() cursors.CursorStats {
 	return cursors.CursorStats{}
+}
+
+type duplicateFilter struct {
+	f    func(tbl flux.Table) error
+	seen *execute.GroupLookup
+}
+
+func filterDuplicateTables(f func(tbl flux.Table) error) func(tbl flux.Table) error {
+	filter := &duplicateFilter{
+		f:    f,
+		seen: execute.NewGroupLookup(),
+	}
+	return filter.Process
+}
+
+func (df *duplicateFilter) Process(tbl flux.Table) error {
+	// Identify duplicate keys within the cursor.
+	if _, ok := df.seen.Lookup(tbl.Key()); ok {
+		// Discard this table.
+		tbl.Done()
+		return nil
+	}
+	df.seen.Set(tbl.Key(), true)
+	return df.f(tbl)
 }

@@ -18,13 +18,6 @@ var (
 		Msg:  "your username or password is incorrect",
 	}
 
-	// EIncorrectUser is returned when any user is failed to be found which indicates
-	// the userID provided is for a user that does not exist.
-	EIncorrectUser = &platform.Error{
-		Code: platform.EForbidden,
-		Msg:  "your userID is incorrect",
-	}
-
 	// EShortPassword is used when a password is less than the minimum
 	// acceptable password length.
 	EShortPassword = &platform.Error{
@@ -39,14 +32,14 @@ var _ platform.PasswordsService = (*Service)(nil)
 const HashCost = bcrypt.DefaultCost
 
 // SetPassword stores the password hash associated with a user.
-func (s *Service) SetPassword(ctx context.Context, userID platform.ID, password string) error {
+func (s *Service) SetPassword(ctx context.Context, name string, password string) error {
 	if len(password) < MinPasswordLength {
 		return EShortPassword
 	}
 
-	u, err := s.FindUserByID(ctx, userID)
+	u, err := s.FindUser(ctx, platform.UserFilter{Name: &name})
 	if err != nil {
-		return EIncorrectUser
+		return EIncorrectPassword
 	}
 	hash, err := bcrypt.GenerateFromPassword([]byte(password), HashCost)
 	if err != nil {
@@ -59,10 +52,10 @@ func (s *Service) SetPassword(ctx context.Context, userID platform.ID, password 
 }
 
 // ComparePassword compares a provided password with the stored password hash.
-func (s *Service) ComparePassword(ctx context.Context, userID platform.ID, password string) error {
-	u, err := s.FindUserByID(ctx, userID)
+func (s *Service) ComparePassword(ctx context.Context, name string, password string) error {
+	u, err := s.FindUser(ctx, platform.UserFilter{Name: &name})
 	if err != nil {
-		return EIncorrectUser
+		return EIncorrectPassword
 	}
 	hash, ok := s.basicAuthKV.Load(u.ID.String())
 	if !ok {
@@ -76,9 +69,9 @@ func (s *Service) ComparePassword(ctx context.Context, userID platform.ID, passw
 }
 
 // CompareAndSetPassword replaces the old password with the new password if thee old password is correct.
-func (s *Service) CompareAndSetPassword(ctx context.Context, userID platform.ID, old string, new string) error {
-	if err := s.ComparePassword(ctx, userID, old); err != nil {
+func (s *Service) CompareAndSetPassword(ctx context.Context, name string, old string, new string) error {
+	if err := s.ComparePassword(ctx, name, old); err != nil {
 		return err
 	}
-	return s.SetPassword(ctx, userID, new)
+	return s.SetPassword(ctx, name, new)
 }

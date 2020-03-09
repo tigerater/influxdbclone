@@ -25,11 +25,7 @@ const SingleStat: SFC<Props> = ({stat, properties}) => {
   const formattedValue = formatStatValue(stat, {decimalPlaces, prefix, suffix})
 
   return (
-    <div
-      className="single-stat"
-      style={{backgroundColor}}
-      data-testid="single-stat"
-    >
+    <div className="single-stat" style={{backgroundColor}}>
       <div className="single-stat--resizer">
         <svg
           width="100%"
@@ -38,7 +34,6 @@ const SingleStat: SFC<Props> = ({stat, properties}) => {
         >
           <text
             className="single-stat--text"
-            data-testid="single-stat--text"
             fontSize="100"
             y="59%"
             x="50%"

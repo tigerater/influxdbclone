@@ -1,14 +1,10 @@
 package pkger
 
 import (
-	"path/filepath"
-	"strconv"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/influxdata/influxdb"
-	"github.com/influxdata/influxdb/notification/endpoint"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -20,10 +16,25 @@ func TestParse(t *testing.T) {
 		})
 
 		t.Run("malformed required metadata", func(t *testing.T) {
-			tests := []testPkgResourceError{
+			containsField := func(t *testing.T, expected []string, actual string) {
+				t.Helper()
+
+				for _, e := range expected {
+					if e == actual {
+						return
+					}
+				}
+				assert.Fail(t, "did not find field: "+actual)
+			}
+
+			tests := []struct {
+				name           string
+				in             string
+				expectedFields []string
+			}{
 				{
 					name: "missing apiVersion",
-					pkgStr: `kind: Package
+					in: `kind: Package
 meta:
   pkgName:      first_bucket_package
   pkgVersion:   1
@@ -33,11 +44,11 @@ spec:
       name: buck_1
       retention_period: 1h
 `,
-					valFields: []string{"apiVersion"},
+					expectedFields: []string{"apiVersion"},
 				},
 				{
 					name: "apiVersion is invalid version",
-					pkgStr: `apiVersion: 222.2 #invalid apiVersion
+					in: `apiVersion: 222.2 #invalid apiVersion
 kind: Package
 meta:
   pkgName:      first_bucket_package
@@ -48,11 +59,11 @@ spec:
       name: buck_1
       retention_period: 1h
 `,
-					valFields: []string{"apiVersion"},
+					expectedFields: []string{"apiVersion"},
 				},
 				{
 					name: "missing kind",
-					pkgStr: `apiVersion: 0.1.0
+					in: `apiVersion: 0.1.0
 meta:
   pkgName:   first_bucket_package
   pkgVersion:   1
@@ -62,11 +73,11 @@ spec:
       name: buck_1
       retention_period: 1h
 `,
-					valFields: []string{"kind"},
+					expectedFields: []string{"kind"},
 				},
 				{
 					name: "missing pkgName",
-					pkgStr: `apiVersion: 0.1.0
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgVersion:   1
@@ -76,11 +87,11 @@ spec:
       name: buck_1
       retention_period: 1h
 `,
-					valFields: []string{"meta.pkgName"},
+					expectedFields: []string{"pkgName"},
 				},
 				{
 					name: "missing pkgVersion",
-					pkgStr: `apiVersion: 0.1.0
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:   foo_name
@@ -90,51 +101,71 @@ spec:
       name: buck_1
       retention_period: 1h
 `,
-					valFields: []string{"meta.pkgVersion"},
+					expectedFields: []string{"pkgVersion"},
 				},
 				{
 					name: "missing multiple",
-					pkgStr: `spec:
+					in: `spec:
   resources:
     - kind: Bucket
       name: buck_1
       retention_period: 1h
 `,
-					valFields: []string{"apiVersion", "kind", "meta.pkgVersion", "meta.pkgName"},
+					expectedFields: []string{"pkgVersion", "pkgName", "kind", "apiVersion"},
 				},
 			}
 
 			for _, tt := range tests {
-				testPkgErrors(t, KindPackage, tt)
+				fn := func(t *testing.T) {
+					_, err := Parse(EncodingYAML, FromString(tt.in))
+					require.Error(t, err)
+
+					pErr, ok := IsParseErr(err)
+					require.True(t, ok)
+
+					require.Len(t, pErr.Resources, 1)
+
+					failedResource := pErr.Resources[0]
+					assert.Equal(t, "Package", failedResource.Kind)
+
+					require.Len(t, failedResource.ValidationFails, len(tt.expectedFields))
+
+					for _, f := range failedResource.ValidationFails {
+						containsField(t, tt.expectedFields, f.Field)
+					}
+				}
+
+				t.Run(tt.name, fn)
 			}
 		})
 	})
 
-	t.Run("pkg with a bucket", func(t *testing.T) {
+	t.Run("pkg with just a bucket", func(t *testing.T) {
 		t.Run("with valid bucket pkg should be valid", func(t *testing.T) {
 			testfileRunner(t, "testdata/bucket", func(t *testing.T, pkg *Pkg) {
-				buckets := pkg.Summary().Buckets
+				buckets := pkg.buckets()
 				require.Len(t, buckets, 1)
 
 				actual := buckets[0]
-				expectedBucket := SummaryBucket{
-					Bucket: influxdb.Bucket{
-						Name:            "rucket_11",
-						Description:     "bucket 1 description",
-						RetentionPeriod: time.Hour,
-					},
+				expectedBucket := bucket{
+					Name:            "rucket_11",
+					Description:     "bucket 1 description",
+					RetentionPeriod: time.Hour,
 				}
-				assert.Equal(t, expectedBucket, actual)
+				assert.Equal(t, expectedBucket, *actual)
 			})
 		})
 
-		t.Run("handles bad config", func(t *testing.T) {
-			tests := []testPkgResourceError{
+		t.Run("with missing bucket name should error", func(t *testing.T) {
+			tests := []struct {
+				name    string
+				numErrs int
+				in      string
+			}{
 				{
-					name:           "missing name",
-					validationErrs: 1,
-					valFields:      []string{fieldName},
-					pkgStr: `apiVersion: 0.1.0
+					name:    "missing name",
+					numErrs: 1,
+					in: `apiVersion: 1
 kind: Package
 meta:
   pkgName:      first_bucket_package
@@ -144,12 +175,10 @@ spec:
     - kind: Bucket
       retention_period: 1h
 `,
-				},
-				{
-					name:           "mixed valid and missing name",
-					validationErrs: 1,
-					valFields:      []string{fieldName},
-					pkgStr: `apiVersion: 0.1.0
+				}, {
+					name:    "mixed valid and missing name",
+					numErrs: 1,
+					in: `apiVersion: 1
 kind: Package
 meta:
   pkgName:      first_bucket_package
@@ -162,13 +191,10 @@ spec:
     - kind: Bucket
       retention_period: 1h
 `,
-				},
-				{
-					name:           "mixed valid and multiple bad names",
-					resourceErrs:   2,
-					validationErrs: 1,
-					valFields:      []string{fieldName},
-					pkgStr: `apiVersion: 0.1.0
+				}, {
+					name:    "mixed valid and multiple bad names",
+					numErrs: 2,
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      first_bucket_package
@@ -182,51 +208,65 @@ spec:
       retention_period: 1h
     - kind: Bucket
       retention_period: 1h
-`,
-				},
-				{
-					name:           "duplicate bucket names",
-					resourceErrs:   1,
-					validationErrs: 1,
-					valFields:      []string{fieldName},
-					pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      first_bucket_package
-  pkgVersion:   1
-spec:
-  resources:
-    - kind: Bucket
-      retention_period: 1h
-      name: valid name
-    - kind: Bucket
-      retention_period: 1h
-      name: valid name
 `,
 				},
 			}
 
 			for _, tt := range tests {
-				testPkgErrors(t, KindBucket, tt)
+				fn := func(t *testing.T) {
+					_, err := Parse(EncodingYAML, FromString(tt.in))
+					pErr, ok := IsParseErr(err)
+					require.True(t, ok)
+					assert.Len(t, pErr.Resources, tt.numErrs)
+				}
+
+				t.Run(tt.name, fn)
 			}
+		})
+
+		t.Run("with duplicate buckets should error", func(t *testing.T) {
+			yamlFile := `apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      first_bucket_package
+  pkgVersion:   1
+spec:
+  resources:
+    - kind: Bucket
+      retention_period: 1h
+      name: valid name
+    - kind: Bucket
+      retention_period: 1h
+      name: valid name
+`
+			_, err := Parse(EncodingYAML, FromString(yamlFile))
+			require.Error(t, err)
+
+			pErr, ok := IsParseErr(err)
+			require.True(t, ok)
+			assert.Len(t, pErr.Resources, 1)
+
+			fields := pErr.Resources[0].ValidationFails
+			require.Len(t, fields, 1)
+			assert.Equal(t, "name", fields[0].Field)
 		})
 	})
 
-	t.Run("pkg with a label", func(t *testing.T) {
+	t.Run("pkg with just a label", func(t *testing.T) {
 		t.Run("with valid label pkg should be valid", func(t *testing.T) {
 			testfileRunner(t, "testdata/label", func(t *testing.T, pkg *Pkg) {
 				labels := pkg.labels()
 				require.Len(t, labels, 2)
 
 				expectedLabel1 := label{
-					name:        "label_1",
+					Name:        "label_1",
 					Description: "label 1 description",
 					Color:       "#FFFFFF",
 				}
 				assert.Equal(t, expectedLabel1, *labels[0])
 
 				expectedLabel2 := label{
-					name:        "label_2",
+					Name:        "label_2",
 					Description: "label 2 description",
 					Color:       "#000000",
 				}
@@ -235,12 +275,15 @@ spec:
 		})
 
 		t.Run("with missing label name should error", func(t *testing.T) {
-			tests := []testPkgResourceError{
+			tests := []struct {
+				name    string
+				numErrs int
+				in      string
+			}{
 				{
-					name:           "missing name",
-					validationErrs: 1,
-					valFields:      []string{"name"},
-					pkgStr: `apiVersion: 0.1.0
+					name:    "missing name",
+					numErrs: 1,
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName: first_label_pkg 
@@ -251,10 +294,9 @@ spec:
 `,
 				},
 				{
-					name:           "mixed valid and missing name",
-					validationErrs: 1,
-					valFields:      []string{"name"},
-					pkgStr: `apiVersion: 0.1.0
+					name:    "mixed valid and missing name",
+					numErrs: 1,
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName: label_pkg
@@ -267,11 +309,9 @@ spec:
 `,
 				},
 				{
-					name:           "multiple labels with missing name",
-					resourceErrs:   2,
-					validationErrs: 1,
-					valFields:      []string{"name"},
-					pkgStr: `apiVersion: 0.1.0
+					name:    "multiple labels with missing name",
+					numErrs: 2,
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName: label_pkg
@@ -285,7 +325,14 @@ spec:
 			}
 
 			for _, tt := range tests {
-				testPkgErrors(t, KindLabel, tt)
+				fn := func(t *testing.T) {
+					_, err := Parse(EncodingYAML, FromString(tt.in))
+					pErr, ok := IsParseErr(err)
+					require.True(t, ok)
+					assert.Len(t, pErr.Resources, tt.numErrs)
+				}
+
+				t.Run(tt.name, fn)
 			}
 		})
 	})
@@ -351,12 +398,17 @@ spec:
 		})
 
 		t.Run("association doesn't exist then provides an error", func(t *testing.T) {
-			tests := []testPkgResourceError{
+			tests := []struct {
+				name    string
+				numErrs int
+				in      string
+				errIdxs []int
+			}{
 				{
 					name:    "no labels provided",
-					assErrs: 1,
-					assIdxs: []int{0},
-					pkgStr: `apiVersion: 0.1.0
+					numErrs: 1,
+					errIdxs: []int{0},
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName: label_pkg
@@ -372,9 +424,9 @@ spec:
 				},
 				{
 					name:    "mixed found and not found",
-					assErrs: 1,
-					assIdxs: []int{1},
-					pkgStr: `apiVersion: 0.1.0
+					numErrs: 1,
+					errIdxs: []int{1},
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName: label_pkg
@@ -394,9 +446,9 @@ spec:
 				},
 				{
 					name:    "multiple not found",
-					assErrs: 1,
-					assIdxs: []int{0, 1},
-					pkgStr: `apiVersion: 0.1.0
+					numErrs: 1,
+					errIdxs: []int{0, 1},
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName: label_pkg
@@ -416,9 +468,9 @@ spec:
 				},
 				{
 					name:    "duplicate valid nested labels",
-					assErrs: 1,
-					assIdxs: []int{1},
-					pkgStr: `apiVersion: 0.1.0
+					numErrs: 1,
+					errIdxs: []int{1},
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName: label_pkg
@@ -439,1376 +491,28 @@ spec:
 			}
 
 			for _, tt := range tests {
-				testPkgErrors(t, KindBucket, tt)
+				fn := func(t *testing.T) {
+					_, err := Parse(EncodingYAML, FromString(tt.in))
+
+					pErr, ok := IsParseErr(err)
+					require.True(t, ok)
+					require.Len(t, pErr.Resources, tt.numErrs)
+
+					assFails := pErr.Resources[0].AssociationFails
+					require.Len(t, assFails, len(tt.errIdxs))
+					assert.Equal(t, "associations", assFails[0].Field)
+
+					for i, f := range assFails {
+						assert.Equal(t, tt.errIdxs[i], f.Index)
+					}
+				}
+
+				t.Run(tt.name, fn)
 			}
 		})
 	})
 
 	t.Run("pkg with single dashboard and single chart", func(t *testing.T) {
-		t.Run("single gauge chart", func(t *testing.T) {
-			testfileRunner(t, "testdata/dashboard_gauge", func(t *testing.T, pkg *Pkg) {
-				sum := pkg.Summary()
-				require.Len(t, sum.Dashboards, 1)
-
-				actual := sum.Dashboards[0]
-				assert.Equal(t, "dash_1", actual.Name)
-				assert.Equal(t, "desc1", actual.Description)
-
-				require.Len(t, actual.Charts, 1)
-				actualChart := actual.Charts[0]
-				assert.Equal(t, 3, actualChart.Height)
-				assert.Equal(t, 6, actualChart.Width)
-				assert.Equal(t, 1, actualChart.XPosition)
-				assert.Equal(t, 2, actualChart.YPosition)
-
-				props, ok := actualChart.Properties.(influxdb.GaugeViewProperties)
-				require.True(t, ok)
-				assert.Equal(t, "gauge", props.GetType())
-				assert.Equal(t, "gauge note", props.Note)
-				assert.True(t, props.ShowNoteWhenEmpty)
-
-				require.Len(t, props.Queries, 1)
-				q := props.Queries[0]
-				queryText := `from(bucket: v.bucket)  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)  |> filter(fn: (r) => r._measurement == "boltdb_writes_total")  |> filter(fn: (r) => r._field == "counter")`
-				assert.Equal(t, queryText, q.Text)
-				assert.Equal(t, "advanced", q.EditMode)
-
-				require.Len(t, props.ViewColors, 3)
-				c := props.ViewColors[0]
-				assert.NotZero(t, c.ID)
-				assert.Equal(t, "laser", c.Name)
-				assert.Equal(t, "min", c.Type)
-				assert.Equal(t, "#8F8AF4", c.Hex)
-				assert.Equal(t, 0.0, c.Value)
-			})
-
-			t.Run("handles invalid config", func(t *testing.T) {
-				tests := []testPkgResourceError{
-					{
-						name:           "color a gauge type",
-						encoding:       EncodingJSON,
-						validationErrs: 1,
-						valFields:      []string{"charts[0].colors"},
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dash_1",
-			"description": "desc1",
-			"charts": [
-			{
-				"kind": "gauge",
-				"name": "gauge",
-				"prefix": "prefix",
-				"suffix": "suffix",
-				"note": "gauge note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"decimalPlaces": 1,
-				"xColumn": "_time",
-				"yColumn": "_value",
-				"queries": [
-				{
-					"query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)  |> filter(fn: (r) => r._measurement == \"boltdb_writes_total\")  |> filter(fn: (r) => r._field == \"counter\")"
-				}
-				],
-				"colors": [
-				{
-					"name": "laser",
-					"type": "min",
-					"hex": "#8F8AF4",
-					"value": 0
-				},
-				{
-					"name": "comet",
-					"type": "max",
-					"hex": "#F4CF31",
-					"value": 5000
-					}
-				]
-			}
-			]
-		}
-		]
-	}
-}  
-`,
-					},
-					{
-						name:           "color mixing a hex value",
-						encoding:       EncodingJSON,
-						validationErrs: 1,
-						valFields:      []string{"charts[0].colors[0].hex"},
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dash_1",
-			"description": "desc1",
-			"charts": [
-			{
-				"kind": "gauge",
-				"name": "gauge",
-				"prefix": "prefix",
-				"suffix": "suffix",
-				"note": "gauge note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"decimalPlaces": 1,
-				"xColumn": "_time",
-				"yColumn": "_value",
-				"queries": [
-				{
-					"query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)  |> filter(fn: (r) => r._measurement == \"boltdb_writes_total\")  |> filter(fn: (r) => r._field == \"counter\")"
-				}
-				],
-				"colors": [
-				{
-					"name": "laser",
-					"type": "min",
-					"value": 0
-				},
-				{
-					"name": "pool",
-					"type": "threshold",
-					"hex": "#F4CF31",
-					"value": 700
-				},
-				{
-					"name": "comet",
-					"type": "max",
-					"hex": "#F4CF31",
-					"value": 5000
-					}
-				]
-			}
-			]
-		}
-		]
-	}
-}
-`,
-					},
-					{
-						name:           "missing a query value",
-						encoding:       EncodingJSON,
-						validationErrs: 1,
-						valFields:      []string{"charts[0].queries[0].query"},
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dash_1",
-			"description": "desc1",
-			"charts": [
-			{
-				"kind": "gauge",
-				"name": "gauge",
-				"prefix": "prefix",
-				"suffix": "suffix",
-				"note": "gauge note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"decimalPlaces": 1,
-				"xColumn": "_time",
-				"yColumn": "_value",
-				"queries": [
-					{
-						"query": null
-					}
-				],
-				"colors": [
-				{
-					"name": "laser",
-					"type": "min",
-					"hex": "#FFF000",
-					"value": 0
-				},
-				{
-					"name": "pool",
-					"type": "threshold",
-					"hex": "#F4CF31",
-					"value": 700
-				},
-				{
-					"name": "comet",
-					"type": "max",
-					"hex": "#F4CF31",
-					"value": 5000
-					}
-				]
-			}
-			]
-		}
-		]
-	}
-}
-`,
-					},
-				}
-
-				for _, tt := range tests {
-					testPkgErrors(t, KindDashboard, tt)
-				}
-			})
-		})
-
-		t.Run("single heatmap chart", func(t *testing.T) {
-			testfileRunner(t, "testdata/dashboard_heatmap", func(t *testing.T, pkg *Pkg) {
-				sum := pkg.Summary()
-				require.Len(t, sum.Dashboards, 1)
-
-				actual := sum.Dashboards[0]
-				assert.Equal(t, "dashboard w/ single heatmap chart", actual.Name)
-				assert.Equal(t, "a dashboard w/ heatmap chart", actual.Description)
-
-				require.Len(t, actual.Charts, 1)
-				actualChart := actual.Charts[0]
-				assert.Equal(t, 3, actualChart.Height)
-				assert.Equal(t, 6, actualChart.Width)
-				assert.Equal(t, 1, actualChart.XPosition)
-				assert.Equal(t, 2, actualChart.YPosition)
-
-				props, ok := actualChart.Properties.(influxdb.HeatmapViewProperties)
-				require.True(t, ok)
-				assert.Equal(t, "heatmap", props.GetType())
-				assert.Equal(t, "heatmap note", props.Note)
-				assert.Equal(t, int32(10), props.BinSize)
-				assert.True(t, props.ShowNoteWhenEmpty)
-
-				assert.Equal(t, []float64{0, 10}, props.XDomain)
-				assert.Equal(t, []float64{0, 100}, props.YDomain)
-
-				require.Len(t, props.Queries, 1)
-				q := props.Queries[0]
-				queryText := `from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == "mem")  |> filter(fn: (r) => r._field == "used_percent")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: "mean")`
-				assert.Equal(t, queryText, q.Text)
-				assert.Equal(t, "advanced", q.EditMode)
-
-				require.Len(t, props.ViewColors, 12)
-				c := props.ViewColors[0]
-				assert.Equal(t, "#000004", c)
-			})
-
-			t.Run("handles invalid config", func(t *testing.T) {
-				tests := []testPkgResourceError{
-					{
-						name:           "a color is missing a hex value",
-						encoding:       EncodingJSON,
-						validationErrs: 1,
-						valFields:      []string{"charts[0].colors[2].hex"},
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dashboard w/ single heatmap chart",
-			"description": "a dashboard w/ heatmap chart",
-			"charts": [
-			{
-				"kind": "heatmap",
-				"name": "heatmap chart",
-				"note": "heatmap note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"xCol": "_time",
-				"yCol": "_value",
-				"binSize": 10,
-				"queries": [
-				{
-					"query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
-				}
-				],
-				"axes":[
-				{
-					"name": "x",
-					"label": "x_label",
-					"prefix": "x_prefix",
-					"suffix": "x_suffix"
-				},
-				{
-					"name": "y",
-					"label": "y_label",
-					"prefix": "y_prefix",
-					"suffix": "y_suffix"
-				}
-				],
-				"colors": [
-				{
-					"hex": "#8F8AF4"
-				},
-				{
-					"hex": "#F4CF31"
-				},
-				{
-					"hex": null
-				}
-				]
-			}
-			]
-		}
-		]
-	}
-	}
-						  
-			`,
-					},
-					{
-						name:           "missing axes",
-						encoding:       EncodingJSON,
-						validationErrs: 1,
-						valFields:      []string{"charts[0].axes", "charts[0].axes"},
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dashboard w/ single heatmap chart",
-			"description": "a dashboard w/ heatmap chart",
-			"charts": [
-			{
-				"kind": "heatmap",
-				"name": "heatmap chart",
-				"note": "heatmap note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"xCol": "_time",
-				"yCol": "_value",
-				"binSize": 10,
-				"queries": [
-				{
-					"query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
-				}
-				],
-				"colors": [
-				{
-					"hex": "#8F8AF4"
-				},
-				{
-					"hex": "#F4CF31"
-				},
-				{
-					"hex": "#FFFFFF"
-				}
-				]
-			}
-			]
-		}
-		]
-	}
-	}				  
-			`,
-					},
-					{
-						name:           "missing a query value",
-						encoding:       EncodingJSON,
-						validationErrs: 1,
-						valFields:      []string{"charts[0].queries[0].query"},
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dashboard w/ single heatmap chart",
-			"description": "a dashboard w/ heatmap chart",
-			"charts": [
-			{
-				"kind": "heatmap",
-				"name": "heatmap chart",
-				"note": "heatmap note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"xCol": "_time",
-				"yCol": "_value",
-				"binSize": 10,
-				"queries": [
-				{
-					"query": null
-				}
-				],
-				"axes":[
-				{
-					"name": "x",
-					"label": "x_label",
-					"prefix": "x_prefix",
-					"suffix": "x_suffix"
-				},
-				{
-					"name": "y",
-					"label": "y_label",
-					"prefix": "y_prefix",
-					"suffix": "y_suffix"
-				}
-				],
-				"colors": [
-				{
-					"hex": "#8F8AF4"
-				},
-				{
-					"hex": "#F4CF31"
-				},
-				{
-					"hex": "#FFFFFF"
-				}
-				]
-			}
-			]
-		}
-		]
-	}
-	}
-						  
-`,
-					},
-				}
-
-				for _, tt := range tests {
-					testPkgErrors(t, KindDashboard, tt)
-				}
-			})
-		})
-
-		t.Run("single histogram chart", func(t *testing.T) {
-			testfileRunner(t, "testdata/dashboard_histogram", func(t *testing.T, pkg *Pkg) {
-				sum := pkg.Summary()
-				require.Len(t, sum.Dashboards, 1)
-
-				actual := sum.Dashboards[0]
-				assert.Equal(t, "dashboard w/ single histogram chart", actual.Name)
-				assert.Equal(t, "a dashboard w/ single histogram chart", actual.Description)
-
-				require.Len(t, actual.Charts, 1)
-				actualChart := actual.Charts[0]
-				assert.Equal(t, 3, actualChart.Height)
-				assert.Equal(t, 6, actualChart.Width)
-
-				props, ok := actualChart.Properties.(influxdb.HistogramViewProperties)
-				require.True(t, ok)
-				assert.Equal(t, "histogram", props.GetType())
-				assert.Equal(t, "histogram note", props.Note)
-				assert.Equal(t, 30, props.BinCount)
-				assert.True(t, props.ShowNoteWhenEmpty)
-				assert.Equal(t, []float64{0, 10}, props.XDomain)
-				assert.Equal(t, []string{}, props.FillColumns)
-				require.Len(t, props.Queries, 1)
-				q := props.Queries[0]
-				queryText := `from(bucket: v.bucket) |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == "boltdb_reads_total") |> filter(fn: (r) => r._field == "counter")`
-				assert.Equal(t, queryText, q.Text)
-				assert.Equal(t, "advanced", q.EditMode)
-
-				require.Len(t, props.ViewColors, 3)
-				assert.Equal(t, "#8F8AF4", props.ViewColors[0].Hex)
-				assert.Equal(t, "#F4CF31", props.ViewColors[1].Hex)
-				assert.Equal(t, "#FFFFFF", props.ViewColors[2].Hex)
-			})
-
-			t.Run("handles invalid config", func(t *testing.T) {
-				tests := []testPkgResourceError{
-					{
-						name:           "missing x axis",
-						encoding:       EncodingJSON,
-						validationErrs: 1,
-						valFields:      []string{"charts[0].axes"},
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dashboard w/ single histogram chart",
-			"description": "a dashboard w/ single histogram chart",
-			"charts": [
-			{
-				"kind": "histogram",
-				"name": "histogram chart",
-				"note": "histogram note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"xCol": "_time",
-				"yCol": "_value",
-				"position": "stacked",
-				"binCount": 30,
-				"queries": [
-				{
-					"query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
-				}
-				],
-				"axes":[],
-				"colors": [
-				{
-					"hex": "#8F8AF4"
-				},
-				{
-					"hex": "#F4CF31"
-				},
-				{
-					"hex": "#FFFFFF"
-				}
-				]
-			}
-			]
-		}
-		]
-	}
-	}
-						  
-			`,
-					},
-					{
-						name:           "missing x-axis",
-						encoding:       EncodingJSON,
-						validationErrs: 1,
-						valFields:      []string{"charts[0].axes", "charts[0].axes"},
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dashboard w/ single histogram chart",
-			"description": "a dashboard w/ single histogram chart",
-			"charts": [
-			{
-				"kind": "histogram",
-				"name": "histogram chart",
-				"note": "histogram note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"xCol": "_time",
-				"yCol": "_value",
-				"position": "stacked",
-				"binCount": 30,
-				"queries": [
-				{
-					"query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
-				}
-				],
-				"axes":[
-				{
-					"name": "y",
-					"label": "y_label",
-					"domain": [0, 10]
-				}
-				],
-				"colors": [
-				{
-					"hex": "#8F8AF4"
-				},
-				{
-					"hex": "#F4CF31"
-				},
-				{
-					"hex": "#FFFFFF"
-				}
-				]
-			}
-			]
-		}
-		]
-	}
-	}
-											
-			`,
-					},
-					{
-						name:           "missing a query value",
-						encoding:       EncodingJSON,
-						validationErrs: 1,
-						valFields:      []string{"charts[0].queries[0].query"},
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dashboard w/ single heatmap chart",
-			"description": "a dashboard w/ heatmap chart",
-			"charts": [
-			{
-				"kind": "heatmap",
-				"name": "heatmap chart",
-				"note": "heatmap note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"xCol": "_time",
-				"yCol": "_value",
-				"binSize": 10,
-				"queries": [
-				{
-					"query": null
-				}
-				],
-				"axes":[
-				{
-					"name": "x",
-					"label": "x_label",
-					"prefix": "x_prefix",
-					"suffix": "x_suffix"
-				},
-				{
-					"name": "y",
-					"label": "y_label",
-					"prefix": "y_prefix",
-					"suffix": "y_suffix"
-				}
-				],
-				"colors": [
-				{
-					"hex": "#8F8AF4"
-				},
-				{
-					"hex": "#F4CF31"
-				},
-				{
-					"hex": "#FFFFFF"
-				}
-				]
-			}
-			]
-		}
-		]
-	}
-	}
-						  
-`,
-					},
-				}
-
-				for _, tt := range tests {
-					testPkgErrors(t, KindDashboard, tt)
-				}
-			})
-		})
-
-		t.Run("single markdown chart", func(t *testing.T) {
-			testfileRunner(t, "testdata/dashboard_markdown", func(t *testing.T, pkg *Pkg) {
-				sum := pkg.Summary()
-				require.Len(t, sum.Dashboards, 1)
-
-				actual := sum.Dashboards[0]
-				assert.Equal(t, "dashboard w/ single markdown chart", actual.Name)
-				assert.Equal(t, "a dashboard w/ single markdown chart", actual.Description)
-
-				require.Len(t, actual.Charts, 1)
-				actualChart := actual.Charts[0]
-
-				props, ok := actualChart.Properties.(influxdb.MarkdownViewProperties)
-				require.True(t, ok)
-				assert.Equal(t, "markdown", props.GetType())
-				assert.Equal(t, "## markdown note", props.Note)
-			})
-
-			t.Run("handles empty markdown note", func(t *testing.T) {
-				pkgStr := `{
-					"apiVersion": "0.1.0",
-					"kind": "Package",
-					"meta": {
-						"pkgName": "pkg_name",
-						"pkgVersion": "1",
-						"description": "pack description"
-					},
-					"spec": {
-						"resources": [
-							{
-								"kind": "Dashboard",
-								"name": "dashboard w/ single markdown chart",
-								"description": "a dashboard w/ markdown chart",
-								"charts": [
-									{
-										"kind": "markdown",
-										"name": "markdown chart"
-									}
-								]
-							}
-						]
-					}
-				}`
-
-				pkg, _ := Parse(EncodingJSON, FromString(pkgStr))
-				props, ok := pkg.Summary().Dashboards[0].Charts[0].Properties.(influxdb.MarkdownViewProperties)
-				require.True(t, ok)
-				assert.Equal(t, "", props.Note)
-			})
-		})
-
-		t.Run("single scatter chart", func(t *testing.T) {
-			testfileRunner(t, "testdata/dashboard_scatter", func(t *testing.T, pkg *Pkg) {
-				sum := pkg.Summary()
-				require.Len(t, sum.Dashboards, 1)
-
-				actual := sum.Dashboards[0]
-				assert.Equal(t, "dashboard w/ single scatter chart", actual.Name)
-				assert.Equal(t, "a dashboard w/ single scatter chart", actual.Description)
-
-				require.Len(t, actual.Charts, 1)
-				actualChart := actual.Charts[0]
-				assert.Equal(t, 3, actualChart.Height)
-				assert.Equal(t, 6, actualChart.Width)
-				assert.Equal(t, 1, actualChart.XPosition)
-				assert.Equal(t, 2, actualChart.YPosition)
-
-				props, ok := actualChart.Properties.(influxdb.ScatterViewProperties)
-				require.True(t, ok)
-				assert.Equal(t, "scatter note", props.Note)
-				assert.True(t, props.ShowNoteWhenEmpty)
-
-				require.Len(t, props.Queries, 1)
-				q := props.Queries[0]
-				expectedQuery := `from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == "mem")  |> filter(fn: (r) => r._field == "used_percent")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: "mean")`
-				assert.Equal(t, expectedQuery, q.Text)
-				assert.Equal(t, "advanced", q.EditMode)
-
-				assert.Equal(t, []float64{0, 10}, props.XDomain)
-				assert.Equal(t, []float64{0, 100}, props.YDomain)
-				assert.Equal(t, "x_label", props.XAxisLabel)
-				assert.Equal(t, "y_label", props.YAxisLabel)
-				assert.Equal(t, "x_prefix", props.XPrefix)
-				assert.Equal(t, "y_prefix", props.YPrefix)
-				assert.Equal(t, "x_suffix", props.XSuffix)
-				assert.Equal(t, "y_suffix", props.YSuffix)
-			})
-
-			t.Run("handles invalid config", func(t *testing.T) {
-				tests := []testPkgResourceError{
-					{
-						name:           "missing axes",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].axes", "charts[0].axes"},
-						encoding:       EncodingJSON,
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dashboard w/ single scatter chart",
-			"description": "a dashboard w/ single scatter chart",
-			"charts": [
-			{
-				"kind": "scatter",
-				"name": "scatter chart",
-				"note": "scatter note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"xCol": "_time",
-				"yCol": "_value",
-				"queries": [
-					{
-						"query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
-					}
-				],
-				"colors": [
-					{
-						"hex": "#8F8AF4"
-					},
-					{
-						"hex": "#F4CF31"
-					},
-					{
-						"hex": "#FFFFFF"
-					}
-				]
-			}
-			]
-		}
-		]
-	}
-	}`,
-					},
-					{
-						name:           "missing query value",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].queries[0].query"},
-						encoding:       EncodingJSON,
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dashboard w/ single scatter chart",
-			"description": "a dashboard w/ single scatter chart",
-			"charts": [
-			{
-				"kind": "scatter",
-				"name": "scatter chart",
-				"note": "scatter note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"xCol": "_time",
-				"yCol": "_value",
-				"queries": [
-				{
-					"query": null
-				}
-				],
-				"axes":[
-				{
-					"name": "x",
-					"label": "x_label",
-					"prefix": "x_prefix",
-					"suffix": "x_suffix"
-				},
-				{
-					"name": "y",
-					"label": "y_label",
-					"prefix": "y_prefix",
-					"suffix": "y_suffix"
-				}
-				],
-				"colors": [
-				{
-					"hex": "#8F8AF4"
-				},
-				{
-					"hex": "#F4CF31"
-				},
-				{
-					"hex": "#FFFFFF"
-				}
-				]
-			}
-			]
-		}
-		]
-	}
-	}				  
-						`,
-					},
-					{
-						name:           "no queries provided",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].queries"},
-						encoding:       EncodingJSON,
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dashboard w/ single scatter chart",
-			"description": "a dashboard w/ single scatter chart",
-			"charts": [
-			{
-				"kind": "scatter",
-				"name": "scatter chart",
-				"note": "scatter note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"xCol": "_time",
-				"yCol": "_value",
-				"queries": [],
-				"axes":[
-				{
-					"name": "x",
-					"label": "x_label",
-					"prefix": "x_prefix",
-					"suffix": "x_suffix"
-				},
-				{
-					"name": "y",
-					"label": "y_label",
-					"prefix": "y_prefix",
-					"suffix": "y_suffix"
-				}
-				],
-				"colors": [
-				{
-					"hex": "#8F8AF4"
-				},
-				{
-					"hex": "#F4CF31"
-				},
-				{
-					"hex": "#FFFFFF"
-				}
-				]
-			}
-			]
-		}
-		]
-	}
-	}
-						  
-						`,
-					},
-					{
-						name:           "no width provided",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].width"},
-						encoding:       EncodingJSON,
-						pkgStr: `
-						{
-							"apiVersion": "0.1.0",
-							"kind": "Package",
-							"meta": {
-							  "pkgName": "pkg_name",
-							  "pkgVersion": "1",
-							  "description": "pack description"
-							},
-							"spec": {
-							  "resources": [
-								{
-								  "kind": "Dashboard",
-								  "name": "dashboard w/ single scatter chart",
-								  "description": "a dashboard w/ single scatter chart",
-								  "charts": [
-									{
-									  "kind": "scatter",
-									  "name": "scatter chart",
-									  "note": "scatter note",
-									  "noteOnEmpty": true,
-									  "xPos": 1,
-									  "yPos": 2,
-									  "height": 3,
-									  "xCol": "_time",
-									  "yCol": "_value",
-									  "queries": [
-										{
-										  "query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
-										}
-									  ],
-									  "axes":[
-										{
-										  "name": "x",
-										  "label": "x_label",
-										  "prefix": "x_prefix",
-										  "suffix": "x_suffix"
-										},
-										{
-										  "name": "y",
-										  "label": "y_label",
-										  "prefix": "y_prefix",
-										  "suffix": "y_suffix"
-										}
-									  ],
-									  "colors": [
-										{
-										  "hex": "#8F8AF4"
-										},
-										{
-										  "hex": "#F4CF31"
-										},
-										{
-										  "hex": "#FFFFFF"
-										}
-									  ]
-									}
-								  ]
-								}
-							  ]
-							}
-						  }
-					  
-						`,
-					},
-					{
-						name:           "no height provided",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].height"},
-						encoding:       EncodingJSON,
-						pkgStr: `
-						{
-							"apiVersion": "0.1.0",
-							"kind": "Package",
-							"meta": {
-							  "pkgName": "pkg_name",
-							  "pkgVersion": "1",
-							  "description": "pack description"
-							},
-							"spec": {
-							  "resources": [
-								{
-								  "kind": "Dashboard",
-								  "name": "dashboard w/ single scatter chart",
-								  "description": "a dashboard w/ single scatter chart",
-								  "charts": [
-									{
-									  "kind": "scatter",
-									  "name": "scatter chart",
-									  "note": "scatter note",
-									  "noteOnEmpty": true,
-									  "xPos": 1,
-									  "yPos": 2,
-									  "width": 6,
-									  "xCol": "_time",
-									  "yCol": "_value",
-									  "queries": [
-										{
-										  "query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
-										}
-									  ],
-									  "axes":[
-										{
-										  "name": "x",
-										  "label": "x_label",
-										  "prefix": "x_prefix",
-										  "suffix": "x_suffix"
-										},
-										{
-										  "name": "y",
-										  "label": "y_label",
-										  "prefix": "y_prefix",
-										  "suffix": "y_suffix"
-										}
-									  ],
-									  "colors": [
-										{
-										  "hex": "#8F8AF4"
-										},
-										{
-										  "hex": "#F4CF31"
-										},
-										{
-										  "hex": "#FFFFFF"
-										}
-									  ]
-									}
-								  ]
-								}
-							  ]
-							}
-						  }
-						  
-`,
-					},
-					{
-						name:           "missing hex color",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].colors[0].hex"},
-						encoding:       EncodingJSON,
-						pkgStr: `
-						{
-							"apiVersion": "0.1.0",
-							"kind": "Package",
-							"meta": {
-							  "pkgName": "pkg_name",
-							  "pkgVersion": "1",
-							  "description": "pack description"
-							},
-							"spec": {
-							  "resources": [
-								{
-								  "kind": "Dashboard",
-								  "name": "dashboard w/ single scatter chart",
-								  "description": "a dashboard w/ single scatter chart",
-								  "charts": [
-									{
-									  "kind": "scatter",
-									  "name": "scatter chart",
-									  "note": "scatter note",
-									  "noteOnEmpty": true,
-									  "xPos": 1,
-									  "yPos": 2,
-									  "width": 6,
-									  "height": 3,
-									  "xCol": "_time",
-									  "yCol": "_value",
-									  "queries": [
-										{
-										  "query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
-										}
-									  ],
-									  "axes":[
-										{
-										  "name": "x",
-										  "label": "x_label",
-										  "prefix": "x_prefix",
-										  "suffix": "x_suffix"
-										},
-										{
-										  "name": "y",
-										  "label": "y_label",
-										  "prefix": "y_prefix",
-										  "suffix": "y_suffix"
-										}
-									  ],
-									  "colors": [
-										{
-
-										},
-										{
-										  "hex": "#F4CF31"
-										},
-										{
-										  "hex": "#FFFFFF"
-										}
-									  ]
-									}
-								  ]
-								}
-							  ]
-							}
-						  }
-						  
-`,
-					},
-					{
-						name:           "missing x axis",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].axes"},
-						encoding:       EncodingJSON,
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dashboard w/ single scatter chart",
-			"description": "a dashboard w/ single scatter chart",
-			"charts": [
-			{
-				"kind": "scatter",
-				"name": "scatter chart",
-				"note": "scatter note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"xCol": "_time",
-				"yCol": "_value",
-				"queries": [
-				{
-					"query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
-				}
-				],
-				"axes":[
-				{
-					"name": "y",
-					"label": "y_label",
-					"prefix": "y_prefix",
-					"suffix": "y_suffix"
-				}
-				],
-				"colors": [
-				{
-					"hex": "#8F8AF4"
-				},
-				{
-					"hex": "#F4CF31"
-				},
-				{
-					"hex": "#FFFFFF"
-				}
-				]
-			}
-			]
-		}
-		]
-	}
-	}
-						  
-						`,
-					},
-					{
-						name:           "missing y axis",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].axes"},
-						encoding:       EncodingJSON,
-						pkgStr: `
-{
-	"apiVersion": "0.1.0",
-	"kind": "Package",
-	"meta": {
-		"pkgName": "pkg_name",
-		"pkgVersion": "1",
-		"description": "pack description"
-	},
-	"spec": {
-		"resources": [
-		{
-			"kind": "Dashboard",
-			"name": "dashboard w/ single scatter chart",
-			"description": "a dashboard w/ single scatter chart",
-			"charts": [
-			{
-				"kind": "scatter",
-				"name": "scatter chart",
-				"note": "scatter note",
-				"noteOnEmpty": true,
-				"xPos": 1,
-				"yPos": 2,
-				"width": 6,
-				"height": 3,
-				"xCol": "_time",
-				"yCol": "_value",
-				"queries": [
-				{
-					"query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
-				}
-				],
-				"axes":[
-				{
-					"name": "y",
-					"label": "y_label",
-					"prefix": "y_prefix",
-					"suffix": "y_suffix"
-				}
-				],
-				"colors": [
-				{
-					"hex": "#8F8AF4"
-				},
-				{
-					"hex": "#F4CF31"
-				},
-				{
-					"hex": "#FFFFFF"
-				}
-				]
-			}
-			]
-		}
-		]
-	}
-	}
-`,
-					},
-				}
-
-				for _, tt := range tests {
-					testPkgErrors(t, KindDashboard, tt)
-				}
-			})
-		})
-
 		t.Run("single stat chart", func(t *testing.T) {
 			testfileRunner(t, "testdata/dashboard", func(t *testing.T, pkg *Pkg) {
 				sum := pkg.Summary()
@@ -1820,6 +524,7 @@ spec:
 
 				require.Len(t, actual.Charts, 1)
 				actualChart := actual.Charts[0]
+				assert.Equal(t, ChartKindSingleStat, actualChart.Kind)
 				assert.Equal(t, 3, actualChart.Height)
 				assert.Equal(t, 6, actualChart.Width)
 				assert.Equal(t, 1, actualChart.XPosition)
@@ -1851,12 +556,17 @@ spec:
 			})
 
 			t.Run("handles invalid config", func(t *testing.T) {
-				tests := []testPkgResourceError{
+				tests := []struct {
+					name      string
+					ymlStr    string
+					numErrs   int
+					errFields []string
+				}{
 					{
-						name:           "color missing hex value",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].colors[0].hex"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "color missing hex value",
+						numErrs:   1,
+						errFields: []string{"charts[0].colors[0].hex"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -1883,10 +593,37 @@ spec:
 `,
 					},
 					{
-						name:           "query missing text value",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].queries[0].query"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "no colors provided",
+						numErrs:   2,
+						errFields: []string{"charts[0].colors", "charts[0].colors"},
+						ymlStr: `apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+  description:  pack description
+spec:
+  resources:
+    - kind: Dashboard
+      name: dash_1
+      description: desc1
+      charts:
+        - kind:   Single_Stat
+          name:   single stat
+          suffix: days
+          width:  6
+          height: 3
+          shade: true
+          queries:
+            - query: >
+                from(bucket: v.bucket) |> range(start: v.timeRangeStart) |> filter(fn: (r) => r._measurement == "system") |> filter(fn: (r) => r._field == "uptime") |> last() |> map(fn: (r) => ({r with _value: r._value / 86400})) |> yield(name: "last")
+`,
+					},
+					{
+						name:      "query missing text value",
+						numErrs:   1,
+						errFields: []string{"charts[0].queries[0].query"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -1913,10 +650,10 @@ spec:
 `,
 					},
 					{
-						name:           "no queries provided",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].queries"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "no queries provided",
+						numErrs:   1,
+						errFields: []string{"charts[0].queries"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -1941,10 +678,10 @@ spec:
 `,
 					},
 					{
-						name:           "no width provided",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].width"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "no width provided",
+						numErrs:   1,
+						errFields: []string{"charts[0].width"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -1971,10 +708,10 @@ spec:
 `,
 					},
 					{
-						name:           "no height provided",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].height"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "no height provided",
+						numErrs:   1,
+						errFields: []string{"charts[0].height"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -2003,7 +740,24 @@ spec:
 				}
 
 				for _, tt := range tests {
-					testPkgErrors(t, KindDashboard, tt)
+					fn := func(t *testing.T) {
+						_, err := Parse(EncodingYAML, FromString(tt.ymlStr))
+						require.Error(t, err)
+
+						pErr, ok := IsParseErr(err)
+						require.True(t, ok, err)
+
+						require.Len(t, pErr.Resources, 1)
+
+						resErr := pErr.Resources[0]
+						assert.Equal(t, "dashboard", resErr.Kind)
+
+						require.Len(t, resErr.ValidationFails, tt.numErrs)
+						for i, vFail := range resErr.ValidationFails {
+							assert.Equal(t, tt.errFields[i], vFail.Field)
+						}
+					}
+					t.Run(tt.name, fn)
 				}
 			})
 		})
@@ -2019,6 +773,7 @@ spec:
 
 				require.Len(t, actual.Charts, 1)
 				actualChart := actual.Charts[0]
+				assert.Equal(t, ChartKindSingleStatPlusLine, actualChart.Kind)
 				assert.Equal(t, 3, actualChart.Height)
 				assert.Equal(t, 6, actualChart.Width)
 				assert.Equal(t, 1, actualChart.XPosition)
@@ -2032,7 +787,6 @@ spec:
 				assert.Equal(t, int32(1), props.DecimalPlaces.Digits)
 				assert.Equal(t, "days", props.Suffix)
 				assert.Equal(t, "sumtin", props.Prefix)
-				assert.Equal(t, "overlaid", props.Position)
 				assert.Equal(t, "leg_type", props.Legend.Type)
 				assert.Equal(t, "horizontal", props.Legend.Orientation)
 
@@ -2069,12 +823,17 @@ spec:
 			})
 
 			t.Run("handles invalid config", func(t *testing.T) {
-				tests := []testPkgResourceError{
+				tests := []struct {
+					name      string
+					ymlStr    string
+					numErrs   int
+					errFields []string
+				}{
 					{
-						name:           "color missing hex value",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].colors[0].hex"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "color missing hex value",
+						numErrs:   1,
+						errFields: []string{"charts[0].colors[0].hex"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -2111,10 +870,44 @@ spec:
 `,
 					},
 					{
-						name:           "missing query value",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].queries[0].query"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "no colors provided",
+						numErrs:   3,
+						errFields: []string{"charts[0].colors", "charts[0].colors", "charts[0].colors"},
+						ymlStr: `apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+  description:  pack description
+spec:
+  resources:
+    - kind: Dashboard
+      name: dash_1
+      description: desc1
+      charts:
+        - kind:   Single_Stat_Plus_Line
+          name:   single stat plus line
+          width:  6
+          height: 3
+          queries:
+            - query: >
+                from(bucket: v.bucket) |> range(start: v.timeRangeStart) |> filter(fn: (r) => r._measurement == "system") |> filter(fn: (r) => r._field == "uptime") |> last() |> map(fn: (r) => ({r with _value: r._value / 86400})) |> yield(name: "last")
+          axes:
+            - name : "x"
+              label: x_label
+              base: 10
+              scale: linear
+            - name: "y"
+              label: y_label
+              base: 10
+              scale: linear
+`,
+					},
+					{
+						name:      "missing query value",
+						numErrs:   1,
+						errFields: []string{"charts[0].queries[0].query"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -2151,10 +944,10 @@ spec:
 `,
 					},
 					{
-						name:           "no queries provided",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].queries"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "no queries provided",
+						numErrs:   1,
+						errFields: []string{"charts[0].queries"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -2188,10 +981,10 @@ spec:
               scale: linear`,
 					},
 					{
-						name:           "no width provided",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].width"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "no width provided",
+						numErrs:   1,
+						errFields: []string{"charts[0].width"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -2227,10 +1020,10 @@ spec:
               scale: linear`,
 					},
 					{
-						name:           "no height provided",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].height"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "no height provided",
+						numErrs:   1,
+						errFields: []string{"charts[0].height"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -2266,10 +1059,10 @@ spec:
               scale: linear`,
 					},
 					{
-						name:           "missing text color but has scale color",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].colors"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "missing text color but has scale color",
+						numErrs:   1,
+						errFields: []string{"charts[0].colors"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -2303,10 +1096,10 @@ spec:
               scale: linear`,
 					},
 					{
-						name:           "missing x axis",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].axes"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "missing x axis",
+						numErrs:   1,
+						errFields: []string{"charts[0].axes"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -2339,10 +1132,10 @@ spec:
               scale: linear`,
 					},
 					{
-						name:           "missing y axis",
-						validationErrs: 1,
-						valFields:      []string{"charts[0].axes"},
-						pkgStr: `apiVersion: 0.1.0
+						name:      "missing y axis",
+						numErrs:   1,
+						errFields: []string{"charts[0].axes"},
+						ymlStr: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName:      pkg_name
@@ -2376,60 +1169,82 @@ spec:
 				}
 
 				for _, tt := range tests {
-					testPkgErrors(t, KindDashboard, tt)
+					fn := func(t *testing.T) {
+						_, err := Parse(EncodingYAML, FromString(tt.ymlStr))
+						require.Error(t, err)
+
+						pErr, ok := IsParseErr(err)
+						require.True(t, ok, err)
+
+						require.Len(t, pErr.Resources, 1)
+
+						resErr := pErr.Resources[0]
+						assert.Equal(t, "dashboard", resErr.Kind)
+
+						require.Len(t, resErr.ValidationFails, tt.numErrs)
+						for i, vFail := range resErr.ValidationFails {
+							assert.Equal(t, tt.errFields[i], vFail.Field)
+						}
+					}
+					t.Run(tt.name, fn)
 				}
 			})
 		})
+	})
 
-		t.Run("single xy chart", func(t *testing.T) {
-			t.Run("xy chart", func(t *testing.T) {
-				testfileRunner(t, "testdata/dashboard_xy", func(t *testing.T, pkg *Pkg) {
-					sum := pkg.Summary()
-					require.Len(t, sum.Dashboards, 1)
+	t.Run("pkg with single dashboard xy chart", func(t *testing.T) {
+		t.Run("xy chart", func(t *testing.T) {
+			testfileRunner(t, "testdata/dashboard_xy", func(t *testing.T, pkg *Pkg) {
+				sum := pkg.Summary()
+				require.Len(t, sum.Dashboards, 1)
 
-					actual := sum.Dashboards[0]
-					assert.Equal(t, "dash_1", actual.Name)
-					assert.Equal(t, "desc1", actual.Description)
+				actual := sum.Dashboards[0]
+				assert.Equal(t, "dash_1", actual.Name)
+				assert.Equal(t, "desc1", actual.Description)
 
-					require.Len(t, actual.Charts, 1)
-					actualChart := actual.Charts[0]
-					assert.Equal(t, 3, actualChart.Height)
-					assert.Equal(t, 6, actualChart.Width)
-					assert.Equal(t, 1, actualChart.XPosition)
-					assert.Equal(t, 2, actualChart.YPosition)
+				require.Len(t, actual.Charts, 1)
+				actualChart := actual.Charts[0]
+				assert.Equal(t, ChartKindXY, actualChart.Kind)
+				assert.Equal(t, 3, actualChart.Height)
+				assert.Equal(t, 6, actualChart.Width)
+				assert.Equal(t, 1, actualChart.XPosition)
+				assert.Equal(t, 2, actualChart.YPosition)
 
-					props, ok := actualChart.Properties.(influxdb.XYViewProperties)
-					require.True(t, ok)
-					assert.Equal(t, "xy", props.GetType())
-					assert.Equal(t, true, props.ShadeBelow)
-					assert.Equal(t, "xy chart note", props.Note)
-					assert.True(t, props.ShowNoteWhenEmpty)
-					assert.Equal(t, "stacked", props.Position)
+				props, ok := actualChart.Properties.(influxdb.XYViewProperties)
+				require.True(t, ok)
+				assert.Equal(t, "xy", props.GetType())
+				assert.Equal(t, true, props.ShadeBelow)
+				assert.Equal(t, "xy chart note", props.Note)
+				assert.True(t, props.ShowNoteWhenEmpty)
 
-					require.Len(t, props.Queries, 1)
-					q := props.Queries[0]
-					queryText := `from(bucket: v.bucket)  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)  |> filter(fn: (r) => r._measurement == "boltdb_writes_total")  |> filter(fn: (r) => r._field == "counter")`
-					assert.Equal(t, queryText, q.Text)
-					assert.Equal(t, "advanced", q.EditMode)
+				require.Len(t, props.Queries, 1)
+				q := props.Queries[0]
+				queryText := `from(bucket: v.bucket)  |> range(start: v.timeRangeStart, stop: v.timeRangeStop)  |> filter(fn: (r) => r._measurement == "boltdb_writes_total")  |> filter(fn: (r) => r._field == "counter")`
+				assert.Equal(t, queryText, q.Text)
+				assert.Equal(t, "advanced", q.EditMode)
 
-					require.Len(t, props.ViewColors, 1)
-					c := props.ViewColors[0]
-					assert.NotZero(t, c.ID)
-					assert.Equal(t, "laser", c.Name)
-					assert.Equal(t, "scale", c.Type)
-					assert.Equal(t, "#8F8AF4", c.Hex)
-					assert.Equal(t, 3.0, c.Value)
-				})
+				require.Len(t, props.ViewColors, 1)
+				c := props.ViewColors[0]
+				assert.NotZero(t, c.ID)
+				assert.Equal(t, "laser", c.Name)
+				assert.Equal(t, "scale", c.Type)
+				assert.Equal(t, "#8F8AF4", c.Hex)
+				assert.Equal(t, 3.0, c.Value)
 			})
+		})
 
-			t.Run("handles invalid config", func(t *testing.T) {
-				tests := []testPkgResourceError{
-					{
-						name:           "color missing hex value",
-						encoding:       EncodingJSON,
-						validationErrs: 1,
-						valFields:      []string{"charts[0].colors[0].hex"},
-						pkgStr: `{
+		t.Run("handles invalid config", func(t *testing.T) {
+			tests := []struct {
+				name      string
+				jsonStr   string
+				numErrs   int
+				errFields []string
+			}{
+				{
+					name:      "color missing hex value",
+					numErrs:   1,
+					errFields: []string{"charts[0].colors[0].hex"},
+					jsonStr: `{
 						"apiVersion": "0.1.0",
 						"kind": "Package",
 						"meta": {
@@ -2497,13 +1312,12 @@ spec:
 						}
 					  }		  
 `,
-					},
-					{
-						name:           "invalid geom flag",
-						encoding:       EncodingJSON,
-						validationErrs: 1,
-						valFields:      []string{"charts[0].geom"},
-						pkgStr: `
+				},
+				{
+					name:      "invalid geom flag",
+					numErrs:   1,
+					errFields: []string{"charts[0].geom"},
+					jsonStr: `
 					{
 						"apiVersion": "0.1.0",
 						"kind": "Package",
@@ -2573,13 +1387,29 @@ spec:
 						}
 					  }  
 `,
-					},
-				}
+				},
+			}
 
-				for _, tt := range tests {
-					testPkgErrors(t, KindDashboard, tt)
+			for _, tt := range tests {
+				fn := func(t *testing.T) {
+					_, err := Parse(EncodingJSON, FromString(tt.jsonStr))
+					require.Error(t, err)
+
+					pErr, ok := IsParseErr(err)
+					require.True(t, ok, err)
+
+					require.Len(t, pErr.Resources, 1)
+
+					resErr := pErr.Resources[0]
+					assert.Equal(t, "dashboard", resErr.Kind)
+
+					require.Len(t, resErr.ValidationFails, tt.numErrs)
+					for i, vFail := range resErr.ValidationFails {
+						assert.Equal(t, tt.errFields[i], vFail.Field)
+					}
 				}
-			})
+				t.Run(tt.name, fn)
+			}
 		})
 	})
 
@@ -2611,12 +1441,17 @@ spec:
 		})
 
 		t.Run("association doesn't exist then provides an error", func(t *testing.T) {
-			tests := []testPkgResourceError{
+			tests := []struct {
+				name    string
+				numErrs int
+				in      string
+				errIdxs []int
+			}{
 				{
 					name:    "no labels provided",
-					assErrs: 1,
-					assIdxs: []int{0},
-					pkgStr: `apiVersion: 0.1.0
+					numErrs: 1,
+					errIdxs: []int{0},
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName: label_pkg
@@ -2632,9 +1467,9 @@ spec:
 				},
 				{
 					name:    "mixed found and not found",
-					assErrs: 1,
-					assIdxs: []int{1},
-					pkgStr: `apiVersion: 0.1.0
+					numErrs: 1,
+					errIdxs: []int{1},
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName: label_pkg
@@ -2654,9 +1489,9 @@ spec:
 				},
 				{
 					name:    "multiple not found",
-					assErrs: 1,
-					assIdxs: []int{0, 1},
-					pkgStr: `apiVersion: 0.1.0
+					numErrs: 1,
+					errIdxs: []int{0, 1},
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName: label_pkg
@@ -2676,9 +1511,9 @@ spec:
 				},
 				{
 					name:    "duplicate valid nested labels",
-					assErrs: 1,
-					assIdxs: []int{1},
-					pkgStr: `apiVersion: 0.1.0
+					numErrs: 1,
+					errIdxs: []int{1},
+					in: `apiVersion: 0.1.0
 kind: Package
 meta:
   pkgName: label_pkg
@@ -2699,847 +1534,31 @@ spec:
 			}
 
 			for _, tt := range tests {
-				testPkgErrors(t, KindDashboard, tt)
-			}
-		})
-	})
+				fn := func(t *testing.T) {
+					_, err := Parse(EncodingYAML, FromString(tt.in))
 
-	t.Run("pkg with notification endpoints and labels associated", func(t *testing.T) {
-		testfileRunner(t, "testdata/notification_endpoint", func(t *testing.T, pkg *Pkg) {
-			expectedEndpoints := []SummaryNotificationEndpoint{
-				{
-					NotificationEndpoint: &endpoint.HTTP{
-						Base: endpoint.Base{
-							Name:        "http_basic_auth_notification_endpoint",
-							Description: "http basic auth desc",
-							Status:      influxdb.TaskStatusInactive,
-						},
-						URL:        "https://www.example.com/endpoint/basicauth",
-						AuthMethod: "basic",
-						Method:     "POST",
-					},
-				},
-				{
-					NotificationEndpoint: &endpoint.HTTP{
-						Base: endpoint.Base{
-							Name:        "http_bearer_auth_notification_endpoint",
-							Description: "http bearer auth desc",
-							Status:      influxdb.TaskStatusActive,
-						},
-						URL:        "https://www.example.com/endpoint/bearerauth",
-						AuthMethod: "bearer",
-						Method:     "POST",
-					},
-				},
-				{
-					NotificationEndpoint: &endpoint.HTTP{
-						Base: endpoint.Base{
-							Name:        "http_none_auth_notification_endpoint",
-							Description: "http none auth desc",
-							Status:      influxdb.TaskStatusActive,
-						},
-						URL:        "https://www.example.com/endpoint/noneauth",
-						AuthMethod: "none",
-						Method:     "POST",
-					},
-				},
-				{
-					NotificationEndpoint: &endpoint.PagerDuty{
-						Base: endpoint.Base{
-							Name:        "pager_duty_notification_endpoint",
-							Description: "pager duty desc",
-							Status:      influxdb.TaskStatusActive,
-						},
-						ClientURL: "http://localhost:8080/orgs/7167eb6719fa34e5/alert-history",
-					},
-				},
-				{
-					NotificationEndpoint: &endpoint.Slack{
-						Base: endpoint.Base{
-							Name:        "slack_notification_endpoint",
-							Description: "slack desc",
-							Status:      influxdb.TaskStatusActive,
-						},
-						URL: "https://hooks.slack.com/services/bip/piddy/boppidy",
-					},
-				},
-			}
+					pErr, ok := IsParseErr(err)
+					require.True(t, ok)
+					require.Len(t, pErr.Resources, tt.numErrs)
 
-			sum := pkg.Summary()
-			endpoints := sum.NotificationEndpoints
-			require.Len(t, endpoints, len(expectedEndpoints))
+					assFails := pErr.Resources[0].AssociationFails
+					require.Len(t, assFails, len(tt.errIdxs))
+					assert.Equal(t, "associations", assFails[0].Field)
 
-			for i := range expectedEndpoints {
-				expected, actual := expectedEndpoints[i], endpoints[i]
-				assert.Equalf(t, expected.NotificationEndpoint, actual.NotificationEndpoint, "index=%d", i)
-				require.Len(t, actual.LabelAssociations, 1)
-				assert.Equal(t, "label_1", actual.LabelAssociations[0].Name)
-
-				require.Len(t, sum.LabelMappings, len(expectedEndpoints))
-				expectedMapping := SummaryLabelMapping{
-					ResourceName: expected.GetName(),
-					LabelName:    "label_1",
-					LabelMapping: influxdb.LabelMapping{
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-				}
-				assert.Contains(t, sum.LabelMappings, expectedMapping)
-			}
-		})
-
-		t.Run("handles bad config", func(t *testing.T) {
-			tests := []struct {
-				kind   Kind
-				resErr testPkgResourceError
-			}{
-				{
-					kind: KindNotificationEndpointSlack,
-					resErr: testPkgResourceError{
-						name:           "missing slack url",
-						validationErrs: 1,
-						valFields:      []string{fieldNotificationEndpointURL},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointSlack
-      name: name1
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointPagerDuty,
-					resErr: testPkgResourceError{
-						name:           "missing pager duty url",
-						validationErrs: 1,
-						valFields:      []string{fieldNotificationEndpointURL},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointPagerDuty
-      name: name1
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointHTTP,
-					resErr: testPkgResourceError{
-						name:           "missing http url",
-						validationErrs: 1,
-						valFields:      []string{fieldNotificationEndpointURL},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointHTTP
-      name: name1
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointHTTP,
-					resErr: testPkgResourceError{
-						name:           "bad url",
-						validationErrs: 1,
-						valFields:      []string{fieldNotificationEndpointURL},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointHTTP
-      name: name1
-      type: none
-      url: d_____-_8**(*https://www.examples.coms
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointHTTP,
-					resErr: testPkgResourceError{
-						name:           "bad url",
-						validationErrs: 1,
-						valFields:      []string{fieldNotificationEndpointURL},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointHTTP
-      name: name1
-      type: none
-      url: d_____-_8**(*https://www.examples.coms
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointHTTP,
-					resErr: testPkgResourceError{
-						name:           "missing basic username",
-						validationErrs: 1,
-						valFields:      []string{fieldNotificationEndpointUsername},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointHTTP
-      name: name1
-      type: basic
-      url: example.com
-      password: password
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointHTTP,
-					resErr: testPkgResourceError{
-						name:           "missing basic password",
-						validationErrs: 1,
-						valFields:      []string{fieldNotificationEndpointPassword},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointHTTP
-      name: name1
-      type: basic
-      url: example.com
-      username: user
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointHTTP,
-					resErr: testPkgResourceError{
-						name:           "missing basic password and username",
-						validationErrs: 1,
-						valFields:      []string{fieldNotificationEndpointPassword, fieldNotificationEndpointUsername},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointHTTP
-      name: name1
-      type: basic
-      url: example.com
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointHTTP,
-					resErr: testPkgResourceError{
-						name:           "missing bearer token",
-						validationErrs: 1,
-						valFields:      []string{fieldNotificationEndpointToken},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointHTTP
-      name: name1
-      type: bearer
-      url: example.com
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointHTTP,
-					resErr: testPkgResourceError{
-						name:           "invalid http type",
-						validationErrs: 1,
-						valFields:      []string{fieldType},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointHTTP
-      name: name1
-      type: threeve
-      url: example.com
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointHTTP,
-					resErr: testPkgResourceError{
-						name:           "invalid http type",
-						validationErrs: 1,
-						valFields:      []string{fieldType},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointHTTP
-      name: name1
-      type: threeve
-      url: example.com
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointSlack,
-					resErr: testPkgResourceError{
-						name:           "duplicate ",
-						validationErrs: 1,
-						valFields:      []string{fieldName},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointSlack
-      name: dupe
-      url: example.com
-    - kind: NotificationEndpointSlack
-      name: dupe
-      url: example.com
-`,
-					},
-				},
-				{
-					kind: KindNotificationEndpointSlack,
-					resErr: testPkgResourceError{
-						name:           "invalid status",
-						validationErrs: 1,
-						valFields:      []string{fieldStatus},
-						pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: NotificationEndpointSlack
-      name: dupe
-      url: example.com
-      status: rando bad status
-`,
-					},
-				},
-			}
-
-			for _, tt := range tests {
-				testPkgErrors(t, tt.kind, tt.resErr)
-			}
-		})
-	})
-
-	t.Run("pkg with telegraf and label associations", func(t *testing.T) {
-		t.Run("with valid fields", func(t *testing.T) {
-			testfileRunner(t, "testdata/telegraf", func(t *testing.T, pkg *Pkg) {
-				sum := pkg.Summary()
-				require.Len(t, sum.TelegrafConfigs, 1)
-
-				actual := sum.TelegrafConfigs[0]
-				assert.Equal(t, "first_tele_config", actual.Name)
-				assert.Equal(t, "desc", actual.Description)
-
-				require.Len(t, actual.LabelAssociations, 1)
-				assert.Equal(t, "label_1", actual.LabelAssociations[0].Name)
-
-				require.Len(t, sum.LabelMappings, 1)
-				expectedMapping := SummaryLabelMapping{
-					ResourceName: "first_tele_config",
-					LabelName:    "label_1",
-					LabelMapping: influxdb.LabelMapping{
-						ResourceType: influxdb.TelegrafsResourceType,
-					},
-				}
-				assert.Equal(t, expectedMapping, sum.LabelMappings[0])
-			})
-		})
-
-		t.Run("handles bad config", func(t *testing.T) {
-			tests := []testPkgResourceError{
-				{
-					name:           "config missing",
-					validationErrs: 1,
-					valFields:      []string{"config"},
-					pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: Telegraf
-      name: tele_name
-      description: desc
-`,
-				},
-			}
-
-			for _, tt := range tests {
-				testPkgErrors(t, KindTelegraf, tt)
-			}
-		})
-	})
-
-	t.Run("pkg with a variable", func(t *testing.T) {
-		t.Run("with valid fields should produce summary", func(t *testing.T) {
-			testfileRunner(t, "testdata/variables", func(t *testing.T, pkg *Pkg) {
-				sum := pkg.Summary()
-
-				require.Len(t, sum.Variables, 4)
-
-				varEquals := func(t *testing.T, name, vType string, vals interface{}, v SummaryVariable) {
-					t.Helper()
-
-					assert.Equal(t, name, v.Name)
-					assert.Equal(t, name+" desc", v.Description)
-					require.NotNil(t, v.Arguments)
-					assert.Equal(t, vType, v.Arguments.Type)
-					assert.Equal(t, vals, v.Arguments.Values)
+					for i, f := range assFails {
+						assert.Equal(t, tt.errIdxs[i], f.Index)
+					}
 				}
 
-				// validates we support all known variable types
-				varEquals(t,
-					"var_const_3",
-					"constant",
-					influxdb.VariableConstantValues([]string{"first val"}),
-					sum.Variables[0],
-				)
-
-				varEquals(t,
-					"var_map_4",
-					"map",
-					influxdb.VariableMapValues{"k1": "v1"},
-					sum.Variables[1],
-				)
-
-				varEquals(t,
-					"var_query_1",
-					"query",
-					influxdb.VariableQueryValues{
-						Query:    `buckets()  |> filter(fn: (r) => r.name !~ /^_/)  |> rename(columns: {name: "_value"})  |> keep(columns: ["_value"])`,
-						Language: "flux",
-					},
-					sum.Variables[2],
-				)
-
-				varEquals(t,
-					"var_query_2",
-					"query",
-					influxdb.VariableQueryValues{
-						Query:    "an influxql query of sorts",
-						Language: "influxql",
-					},
-					sum.Variables[3],
-				)
-			})
-		})
-
-		t.Run("handles bad config", func(t *testing.T) {
-			tests := []testPkgResourceError{
-				{
-					name:           "name missing",
-					validationErrs: 1,
-					valFields:      []string{"name"},
-					pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: Variable
-      type: map
-      values:
-        k1: v1
-`,
-				},
-				{
-					name:           "map var missing values",
-					validationErrs: 1,
-					valFields:      []string{"values"},
-					pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: Variable
-      name: var
-      type: map
-`,
-				},
-				{
-					name:           "const var missing values",
-					validationErrs: 1,
-					valFields:      []string{"values"},
-					pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: Variable
-      name: var
-      type: constant
-`,
-				},
-				{
-					name:           "query var missing query",
-					validationErrs: 1,
-					valFields:      []string{"query"},
-					pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: Variable
-      name: var
-      type: query
-      language: influxql
-`,
-				},
-				{
-					name:           "query var missing query language",
-					validationErrs: 1,
-					valFields:      []string{"language"},
-					pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: Variable
-      name: var
-      type: query
-      query: from(v.bucket) |> count()
-`,
-				},
-				{
-					name:           "query var provides incorrect query language",
-					validationErrs: 1,
-					valFields:      []string{"language"},
-					pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: Variable
-      name: var
-      type: query
-      query: from(v.bucket) |> count()
-      language: wrongo language
-`,
-				},
-				{
-					name:           "duplicate var names",
-					validationErrs: 1,
-					valFields:      []string{"name"},
-					pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: Variable
-      name: var
-      type: query
-      query: from(v.bucket) |> count()
-      language: flux
-    - kind: Variable
-      name: var
-      type: query
-      query: from(v.bucket) |> mean()
-      language: flux
-`,
-				},
-			}
-
-			for _, tt := range tests {
-				testPkgErrors(t, KindVariable, tt)
+				t.Run(tt.name, fn)
 			}
 		})
 	})
-
-	t.Run("pkg with variable and labels associated", func(t *testing.T) {
-		testfileRunner(t, "testdata/variable_associates_label.yml", func(t *testing.T, pkg *Pkg) {
-			sum := pkg.Summary()
-			require.Len(t, sum.Labels, 1)
-
-			vars := sum.Variables
-			require.Len(t, vars, 1)
-
-			expectedLabelMappings := []struct {
-				varName string
-				labels  []string
-			}{
-				{
-					varName: "var_1",
-					labels:  []string{"label_1"},
-				},
-			}
-			for i, expected := range expectedLabelMappings {
-				v := vars[i]
-				require.Len(t, v.LabelAssociations, len(expected.labels))
-
-				for j, label := range expected.labels {
-					assert.Equal(t, label, v.LabelAssociations[j].Name)
-				}
-			}
-
-			expectedMappings := []SummaryLabelMapping{
-				{
-					ResourceName: "var_1",
-					LabelName:    "label_1",
-				},
-			}
-
-			require.Len(t, sum.LabelMappings, len(expectedMappings))
-			for i, expected := range expectedMappings {
-				expected.LabelMapping.ResourceType = influxdb.VariablesResourceType
-				assert.Equal(t, expected, sum.LabelMappings[i])
-			}
-		})
-	})
-}
-
-func Test_PkgValidationErr(t *testing.T) {
-	iPtr := func(i int) *int {
-		return &i
-	}
-
-	compIntSlcs := func(t *testing.T, expected []int, actuals []*int) {
-		t.Helper()
-
-		if len(expected) >= len(actuals) {
-			require.FailNow(t, "expected array is larger than actuals")
-		}
-
-		for i, actual := range actuals {
-			if i == len(expected) {
-				assert.Nil(t, actual)
-				continue
-			}
-			assert.Equal(t, expected[i], *actual)
-		}
-	}
-
-	pErr := &parseErr{
-		Resources: []resourceErr{
-			{
-				Kind: KindDashboard.String(),
-				Idx:  intPtr(0),
-				ValidationErrs: []validationErr{
-					{
-						Field: "charts",
-						Index: iPtr(1),
-						Nested: []validationErr{
-							{
-								Field: "colors",
-								Index: iPtr(0),
-								Nested: []validationErr{
-									{
-										Field: "hex",
-										Msg:   "hex value required",
-									},
-								},
-							},
-							{
-								Field: "kind",
-								Msg:   "chart kind must be provided",
-							},
-						},
-					},
-				},
-			},
-		},
-	}
-
-	errs := pErr.ValidationErrs()
-	require.Len(t, errs, 2)
-	assert.Equal(t, KindDashboard.String(), errs[0].Kind)
-	assert.Equal(t, []string{"spec.resources", "charts", "colors", "hex"}, errs[0].Fields)
-	compIntSlcs(t, []int{0, 1, 0}, errs[0].Indexes)
-	assert.Equal(t, "hex value required", errs[0].Reason)
-
-	assert.Equal(t, KindDashboard.String(), errs[1].Kind)
-	assert.Equal(t, []string{"spec.resources", "charts", "kind"}, errs[1].Fields)
-	compIntSlcs(t, []int{0, 1}, errs[1].Indexes)
-	assert.Equal(t, "chart kind must be provided", errs[1].Reason)
-}
-
-type testPkgResourceError struct {
-	name           string
-	encoding       Encoding
-	pkgStr         string
-	resourceErrs   int
-	validationErrs int
-	valFields      []string
-	assErrs        int
-	assIdxs        []int
-}
-
-// defaults to yaml encoding if encoding not provided
-// defaults num resources to 1 if resource errs not provided.
-func testPkgErrors(t *testing.T, k Kind, tt testPkgResourceError) {
-	t.Helper()
-	encoding := EncodingYAML
-	if tt.encoding != EncodingUnknown {
-		encoding = tt.encoding
-	}
-
-	resErrs := 1
-	if tt.resourceErrs > 0 {
-		resErrs = tt.resourceErrs
-	}
-
-	fn := func(t *testing.T) {
-		t.Helper()
-
-		_, err := Parse(encoding, FromString(tt.pkgStr))
-		require.Error(t, err)
-
-		require.True(t, IsParseErr(err), err)
-
-		pErr := err.(*parseErr)
-		require.Len(t, pErr.Resources, resErrs)
-
-		resErr := pErr.Resources[0]
-		assert.Equal(t, k.String(), resErr.Kind)
-
-		for i, vFail := range resErr.ValidationErrs {
-			if len(tt.valFields) == i {
-				break
-			}
-			expectedField := tt.valFields[i]
-			findErr(t, expectedField, vFail)
-		}
-
-		if tt.assErrs == 0 {
-			return
-		}
-
-		assFails := pErr.Resources[0].AssociationErrs
-		for i, assFail := range assFails {
-			if len(tt.valFields) == i {
-				break
-			}
-			expectedField := tt.valFields[i]
-			findErr(t, expectedField, assFail)
-		}
-	}
-	t.Run(tt.name, fn)
-}
-
-func findErr(t *testing.T, expectedField string, vErr validationErr) validationErr {
-	t.Helper()
-
-	fields := strings.Split(expectedField, ".")
-	if len(fields) == 1 {
-		require.Equal(t, expectedField, vErr.Field)
-		return vErr
-	}
-
-	currentFieldName, idx := nextField(t, fields[0])
-	if idx > -1 {
-		require.NotNil(t, vErr.Index)
-		require.Equal(t, idx, *vErr.Index)
-	}
-	require.Equal(t, currentFieldName, vErr.Field)
-
-	next := strings.Join(fields[1:], ".")
-	nestedField, _ := nextField(t, next)
-	for _, n := range vErr.Nested {
-		if n.Field == nestedField {
-			return findErr(t, next, n)
-		}
-	}
-	assert.Fail(t, "did not find field: "+expectedField)
-
-	return vErr
-}
-
-func nextField(t *testing.T, field string) (string, int) {
-	t.Helper()
-
-	fields := strings.Split(field, ".")
-	if len(fields) == 1 && !strings.HasSuffix(fields[0], "]") {
-		return field, -1
-	}
-	parts := strings.Split(fields[0], "[")
-	if len(parts) == 1 {
-		return "", 0
-	}
-	fieldName := parts[0]
-
-	if strIdx := strings.Index(parts[1], "]"); strIdx > -1 {
-		idx, err := strconv.Atoi(parts[1][:strIdx])
-		require.NoError(t, err)
-		return fieldName, idx
-	}
-	return "", -1
 }
 
 type baseAsserts struct {
 	version     string
-	kind        Kind
+	kind        string
 	description string
 	metaName    string
 	metaVersion string
@@ -3552,11 +1571,10 @@ func validParsedPkg(t *testing.T, path string, encoding Encoding, expected baseA
 	require.NoError(t, err)
 
 	require.Equal(t, expected.version, pkg.APIVersion)
-	require.True(t, pkg.Kind.is(expected.kind))
+	require.Equal(t, expected.kind, pkg.Kind)
 	require.Equal(t, expected.description, pkg.Metadata.Description)
 	require.Equal(t, expected.metaName, pkg.Metadata.Name)
 	require.Equal(t, expected.metaVersion, pkg.Metadata.Version)
-	require.True(t, pkg.isParsed)
 
 	return pkg
 }
@@ -3571,33 +1589,23 @@ func testfileRunner(t *testing.T, path string, testFn func(t *testing.T, pkg *Pk
 	}{
 		{
 			name:      "yaml",
-			extension: ".yml",
+			extension: "yml",
 			encoding:  EncodingYAML,
 		},
 		{
 			name:      "json",
-			extension: ".json",
+			extension: "json",
 			encoding:  EncodingJSON,
 		},
 	}
-
-	ext := filepath.Ext(path)
-	switch ext {
-	case ".yml":
-		tests = tests[:1]
-	case ".json":
-		tests = tests[1:]
-	}
-
-	path = strings.TrimSuffix(path, ext)
 
 	for _, tt := range tests {
 		fn := func(t *testing.T) {
 			t.Helper()
 
-			pkg := validParsedPkg(t, path+tt.extension, tt.encoding, baseAsserts{
+			pkg := validParsedPkg(t, path+"."+tt.extension, tt.encoding, baseAsserts{
 				version:     "0.1.0",
-				kind:        KindPackage,
+				kind:        "Package",
 				description: "pack description",
 				metaName:    "pkg_name",
 				metaVersion: "1",
@@ -3608,4 +1616,5 @@ func testfileRunner(t *testing.T, path string, testFn func(t *testing.T, pkg *Pk
 		}
 		t.Run(tt.name, fn)
 	}
+
 }

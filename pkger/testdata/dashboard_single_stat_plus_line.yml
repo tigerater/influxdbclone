@@ -22,7 +22,6 @@ spec:
           width:  6
           height: 3
           shade: true
-          position: overlaid
           legend:
             type: leg_type
             orientation: horizontal

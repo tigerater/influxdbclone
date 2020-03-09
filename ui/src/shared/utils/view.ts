@@ -124,7 +124,6 @@ const NEW_VIEW_CREATORS = {
       geom: 'line',
       xColumn: null,
       yColumn: null,
-      position: 'overlaid',
     },
   }),
   histogram: (): NewView<HistogramViewProperties> => ({
@@ -193,7 +192,6 @@ const NEW_VIEW_CREATORS = {
       shape: 'chronograf-v2',
       xColumn: null,
       yColumn: null,
-      position: 'overlaid',
     },
   }),
   table: (): NewView<TableViewProperties> => ({

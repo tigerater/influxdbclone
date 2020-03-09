@@ -6,8 +6,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/influxdata/httprouter"
 	platform "github.com/influxdata/influxdb"
+	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 )
 
@@ -15,16 +15,16 @@ import (
 type UsageHandler struct {
 	*httprouter.Router
 	platform.HTTPErrorHandler
-	log *zap.Logger
+	Logger *zap.Logger
 
 	UsageService platform.UsageService
 }
 
 // NewUsageHandler returns a new instance of UsageHandler.
-func NewUsageHandler(log *zap.Logger, he platform.HTTPErrorHandler) *UsageHandler {
+func NewUsageHandler(he platform.HTTPErrorHandler) *UsageHandler {
 	h := &UsageHandler{
 		Router: NewRouter(he),
-		log:    log,
+		Logger: zap.NewNop(),
 	}
 
 	h.HandlerFunc("GET", "/api/v2/usage", h.handleGetUsage)
@@ -48,7 +48,7 @@ func (h *UsageHandler) handleGetUsage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := encodeResponse(ctx, w, http.StatusOK, b); err != nil {
-		logEncodingError(h.log, r, err)
+		logEncodingError(h.Logger, r, err)
 		return
 	}
 }

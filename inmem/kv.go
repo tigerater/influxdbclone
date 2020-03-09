@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	"github.com/google/btree"
+
 	"github.com/influxdata/influxdb/kv"
 )
 
@@ -14,14 +15,12 @@ import (
 type KVStore struct {
 	mu      sync.RWMutex
 	buckets map[string]*Bucket
-	ro      map[string]*bucket
 }
 
 // NewKVStore creates an instance of a KVStore.
 func NewKVStore() *KVStore {
 	return &KVStore{
 		buckets: map[string]*Bucket{},
-		ro:      map[string]*bucket{},
 	}
 }
 
@@ -31,7 +30,6 @@ func (s *KVStore) View(ctx context.Context, fn func(kv.Tx) error) error {
 	defer s.mu.RUnlock()
 	if s.buckets == nil {
 		s.buckets = map[string]*Bucket{}
-		s.ro = map[string]*bucket{}
 	}
 	return fn(&Tx{
 		kv:       s,
@@ -46,7 +44,6 @@ func (s *KVStore) Update(ctx context.Context, fn func(kv.Tx) error) error {
 	defer s.mu.Unlock()
 	if s.buckets == nil {
 		s.buckets = map[string]*Bucket{}
-		s.ro = map[string]*bucket{}
 	}
 
 	return fn(&Tx{
@@ -102,11 +99,16 @@ func (t *Tx) createBucketIfNotExists(b []byte) (kv.Bucket, error) {
 		if !ok {
 			bkt = &Bucket{btree.New(2)}
 			t.kv.buckets[string(b)] = bkt
-			t.kv.ro[string(b)] = &bucket{Bucket: bkt}
-			return bkt, nil
+			return &bucket{
+				Bucket:   bkt,
+				writable: t.writable,
+			}, nil
 		}
 
-		return bkt, nil
+		return &bucket{
+			Bucket:   bkt,
+			writable: t.writable,
+		}, nil
 	}
 
 	return nil, kv.ErrTxNotWritable
@@ -119,11 +121,10 @@ func (t *Tx) Bucket(b []byte) (kv.Bucket, error) {
 		return t.createBucketIfNotExists(b)
 	}
 
-	if t.writable {
-		return bkt, nil
-	}
-
-	return t.kv.ro[string(b)], nil
+	return &bucket{
+		Bucket:   bkt,
+		writable: t.writable,
+	}, nil
 }
 
 // Bucket is a btree that implements kv.Bucket.
@@ -133,17 +134,24 @@ type Bucket struct {
 
 type bucket struct {
 	kv.Bucket
+	writable bool
 }
 
 // Put wraps the put method of a kv bucket and ensures that the
 // bucket is writable.
-func (b *bucket) Put(_, _ []byte) error {
+func (b *bucket) Put(key, value []byte) error {
+	if b.writable {
+		return b.Bucket.Put(key, value)
+	}
 	return kv.ErrTxNotWritable
 }
 
 // Delete wraps the delete method of a kv bucket and ensures that the
 // bucket is writable.
-func (b *bucket) Delete(_ []byte) error {
+func (b *bucket) Delete(key []byte) error {
+	if b.writable {
+		return b.Bucket.Delete(key)
+	}
 	return kv.ErrTxNotWritable
 }
 
@@ -192,14 +200,9 @@ func (b *Bucket) Delete(key []byte) error {
 
 // Cursor creates a static cursor from all entries in the database.
 func (b *Bucket) Cursor(opts ...kv.CursorHint) (kv.Cursor, error) {
-	var o kv.CursorHints
-	for _, opt := range opts {
-		opt(&o)
-	}
-
 	// TODO we should do this by using the Ascend/Descend methods that
 	//  the btree provides.
-	pairs, err := b.getAll(&o)
+	pairs, err := b.getAll()
 	if err != nil {
 		return nil, err
 	}
@@ -207,10 +210,8 @@ func (b *Bucket) Cursor(opts ...kv.CursorHint) (kv.Cursor, error) {
 	return kv.NewStaticCursor(pairs), nil
 }
 
-func (b *Bucket) getAll(o *kv.CursorHints) ([]kv.Pair, error) {
-	fn := o.PredicateFn
-
-	var pairs []kv.Pair
+func (b *Bucket) getAll() ([]kv.Pair, error) {
+	pairs := []kv.Pair{}
 	var err error
 	b.btree.Ascend(func(i btree.Item) bool {
 		j, ok := i.(*item)
@@ -219,10 +220,7 @@ func (b *Bucket) getAll(o *kv.CursorHints) ([]kv.Pair, error) {
 			return false
 		}
 
-		if fn == nil || fn(j.key, j.value) {
-			pairs = append(pairs, kv.Pair{Key: j.key, Value: j.value})
-		}
-
+		pairs = append(pairs, kv.Pair{Key: j.key, Value: j.value})
 		return true
 	})
 

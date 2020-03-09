@@ -19,20 +19,16 @@ import {INVALID_DATA_COPY} from 'src/shared/copy/cell'
 import {RemoteDataState, HeatmapViewProperties, TimeZone} from 'src/types'
 
 interface Props {
-  endTime: number
-  loading: RemoteDataState
-  startTime: number
   table: Table
-  timeZone: TimeZone
+  loading: RemoteDataState
   viewProperties: HeatmapViewProperties
+  timeZone: TimeZone
   children: (config: Config) => JSX.Element
 }
 
 const HeatmapPlot: FunctionComponent<Props> = ({
-  endTime,
-  loading,
-  startTime,
   table,
+  loading,
   timeZone,
   viewProperties: {
     xColumn,
@@ -47,7 +43,6 @@ const HeatmapPlot: FunctionComponent<Props> = ({
     ySuffix,
     colors: storedColors,
     binSize,
-    timeFormat,
   },
   children,
 }) => {
@@ -55,9 +50,7 @@ const HeatmapPlot: FunctionComponent<Props> = ({
 
   const [xDomain, onSetXDomain, onResetXDomain] = useVisDomainSettings(
     storedXDomain,
-    table.getColumn(xColumn, 'number'),
-    startTime,
-    endTime
+    table.getColumn(xColumn, 'number')
   )
 
   const [yDomain, onSetYDomain, onResetYDomain] = useVisDomainSettings(
@@ -84,14 +77,12 @@ const HeatmapPlot: FunctionComponent<Props> = ({
     prefix: xPrefix,
     suffix: xSuffix,
     timeZone,
-    timeFormat,
   })
 
   const yFormatter = getFormatter(table.getColumnType(yColumn), {
     prefix: yPrefix,
     suffix: ySuffix,
     timeZone,
-    timeFormat,
   })
 
   const config: Config = {

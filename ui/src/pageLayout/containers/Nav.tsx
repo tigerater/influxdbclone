@@ -76,7 +76,7 @@ class SideNav extends PureComponent<Props, State> {
     const tokensLink = `${orgPrefix}/load-data/tokens`
     const clientLibrariesLink = `${orgPrefix}/load-data/client-libraries`
     // Settings
-    const settingsLink = `${orgPrefix}/settings`
+    const settingsLink = `${orgPrefix}/settings/members`
     const membersLink = `${orgPrefix}/settings/members`
     const variablesLink = `${orgPrefix}/settings/variables`
     const templatesLink = `${orgPrefix}/settings/templates`
@@ -129,11 +129,7 @@ class SideNav extends PureComponent<Props, State> {
         />
         <NavMenu.Item
           titleLink={className => (
-            <Link
-              className={className}
-              to={dashboardsLink}
-              data-testid="nav-menu_dashboard"
-            >
+            <Link className={className} to={dashboardsLink}>
               Dashboards
             </Link>
           )}
@@ -257,17 +253,15 @@ class SideNav extends PureComponent<Props, State> {
           )}
           active={getNavItemActivation(['settings'], location.pathname)}
         >
-          <CloudExclude>
-            <NavMenu.SubItem
-              titleLink={className => (
-                <Link to={membersLink} className={className}>
-                  Members
-                </Link>
-              )}
-              active={getNavItemActivation(['members'], location.pathname)}
-              key="members"
-            />
-          </CloudExclude>
+          <NavMenu.SubItem
+            titleLink={className => (
+              <Link to={membersLink} className={className}>
+                Members
+              </Link>
+            )}
+            active={getNavItemActivation(['members'], location.pathname)}
+            key="members"
+          />
           <NavMenu.SubItem
             titleLink={className => (
               <Link to={variablesLink} className={className}>

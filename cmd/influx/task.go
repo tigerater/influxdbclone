@@ -83,9 +83,8 @@ func taskCreateF(cmd *cobra.Command, args []string) error {
 	}
 
 	s := &http.TaskService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
 	flux, err := repl.LoadQuery(args[0])
@@ -122,13 +121,14 @@ func taskCreateF(cmd *cobra.Command, args []string) error {
 		"Cron",
 	)
 	w.Write(map[string]interface{}{
-		"ID":             t.ID.String(),
-		"Name":           t.Name,
-		"OrganizationID": t.OrganizationID.String(),
-		"Organization":   t.Organization,
-		"Status":         t.Status,
-		"Every":          t.Every,
-		"Cron":           t.Cron,
+		"ID":              t.ID.String(),
+		"Name":            t.Name,
+		"OrganizationID":  t.OrganizationID.String(),
+		"Organization":    t.Organization,
+		"AuthorizationID": t.AuthorizationID.String(),
+		"Status":          t.Status,
+		"Every":           t.Every,
+		"Cron":            t.Cron,
 	})
 	w.Flush()
 
@@ -164,9 +164,8 @@ func init() {
 
 func taskFindF(cmd *cobra.Command, args []string) error {
 	s := &http.TaskService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
 	filter := platform.TaskFilter{}
@@ -194,7 +193,7 @@ func taskFindF(cmd *cobra.Command, args []string) error {
 	}
 	filter.Limit = taskFindFlags.limit
 
-	var tasks []http.Task
+	var tasks []*platform.Task
 	var err error
 
 	if taskFindFlags.id != "" {
@@ -208,7 +207,7 @@ func taskFindF(cmd *cobra.Command, args []string) error {
 			return err
 		}
 
-		tasks = append(tasks, *task)
+		tasks = append(tasks, task)
 	} else {
 		tasks, _, err = s.FindTasks(context.Background(), filter)
 		if err != nil {
@@ -229,13 +228,14 @@ func taskFindF(cmd *cobra.Command, args []string) error {
 	)
 	for _, t := range tasks {
 		w.Write(map[string]interface{}{
-			"ID":             t.ID.String(),
-			"Name":           t.Name,
-			"OrganizationID": t.OrganizationID.String(),
-			"Organization":   t.Organization,
-			"Status":         t.Status,
-			"Every":          t.Every,
-			"Cron":           t.Cron,
+			"ID":              t.ID.String(),
+			"Name":            t.Name,
+			"OrganizationID":  t.OrganizationID.String(),
+			"Organization":    t.Organization,
+			"AuthorizationID": t.AuthorizationID.String(),
+			"Status":          t.Status,
+			"Every":           t.Every,
+			"Cron":            t.Cron,
 		})
 	}
 	w.Flush()
@@ -267,9 +267,8 @@ func init() {
 
 func taskUpdateF(cmd *cobra.Command, args []string) error {
 	s := &http.TaskService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
 	var id platform.ID
@@ -307,13 +306,14 @@ func taskUpdateF(cmd *cobra.Command, args []string) error {
 		"Cron",
 	)
 	w.Write(map[string]interface{}{
-		"ID":             t.ID.String(),
-		"Name":           t.Name,
-		"OrganizationID": t.OrganizationID.String(),
-		"Organization":   t.Organization,
-		"Status":         t.Status,
-		"Every":          t.Every,
-		"Cron":           t.Cron,
+		"ID":              t.ID.String(),
+		"Name":            t.Name,
+		"OrganizationID":  t.OrganizationID.String(),
+		"Organization":    t.Organization,
+		"AuthorizationID": t.AuthorizationID.String(),
+		"Status":          t.Status,
+		"Every":           t.Every,
+		"Cron":            t.Cron,
 	})
 	w.Flush()
 
@@ -342,9 +342,8 @@ func init() {
 
 func taskDeleteF(cmd *cobra.Command, args []string) error {
 	s := &http.TaskService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
 	var id platform.ID
@@ -375,13 +374,14 @@ func taskDeleteF(cmd *cobra.Command, args []string) error {
 		"Cron",
 	)
 	w.Write(map[string]interface{}{
-		"ID":             t.ID.String(),
-		"Name":           t.Name,
-		"OrganizationID": t.OrganizationID.String(),
-		"Organization":   t.Organization,
-		"Status":         t.Status,
-		"Every":          t.Every,
-		"Cron":           t.Cron,
+		"ID":              t.ID.String(),
+		"Name":            t.Name,
+		"OrganizationID":  t.OrganizationID.String(),
+		"Organization":    t.Organization,
+		"AuthorizationID": t.AuthorizationID.String(),
+		"Status":          t.Status,
+		"Every":           t.Every,
+		"Cron":            t.Cron,
 	})
 	w.Flush()
 
@@ -412,9 +412,8 @@ func init() {
 
 func taskLogFindF(cmd *cobra.Command, args []string) error {
 	s := &http.TaskService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
 	var filter platform.LogFilter
@@ -487,9 +486,8 @@ func init() {
 
 func taskRunFindF(cmd *cobra.Command, args []string) error {
 	s := &http.TaskService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
 	filter := platform.RunFilter{
@@ -576,9 +574,8 @@ func init() {
 
 func runRetryF(cmd *cobra.Command, args []string) error {
 	s := &http.TaskService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
 	var taskID, runID platform.ID

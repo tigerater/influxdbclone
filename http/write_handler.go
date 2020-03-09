@@ -9,8 +9,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/influxdata/httprouter"
 	"github.com/influxdata/influxdb/http/metric"
+	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 
 	"github.com/influxdata/influxdb"
@@ -25,7 +25,7 @@ import (
 // the WriteHandler.
 type WriteBackend struct {
 	influxdb.HTTPErrorHandler
-	log                *zap.Logger
+	Logger             *zap.Logger
 	WriteEventRecorder metric.EventRecorder
 
 	PointsWriter        storage.PointsWriter
@@ -34,10 +34,10 @@ type WriteBackend struct {
 }
 
 // NewWriteBackend returns a new instance of WriteBackend.
-func NewWriteBackend(log *zap.Logger, b *APIBackend) *WriteBackend {
+func NewWriteBackend(b *APIBackend) *WriteBackend {
 	return &WriteBackend{
 		HTTPErrorHandler:   b.HTTPErrorHandler,
-		log:                log,
+		Logger:             b.Logger.With(zap.String("handler", "write")),
 		WriteEventRecorder: b.WriteEventRecorder,
 
 		PointsWriter:        b.PointsWriter,
@@ -50,7 +50,7 @@ func NewWriteBackend(log *zap.Logger, b *APIBackend) *WriteBackend {
 type WriteHandler struct {
 	*httprouter.Router
 	influxdb.HTTPErrorHandler
-	log *zap.Logger
+	Logger *zap.Logger
 
 	BucketService       influxdb.BucketService
 	OrganizationService influxdb.OrganizationService
@@ -67,11 +67,11 @@ const (
 )
 
 // NewWriteHandler creates a new handler at /api/v2/write to receive line protocol.
-func NewWriteHandler(log *zap.Logger, b *WriteBackend) *WriteHandler {
+func NewWriteHandler(b *WriteBackend) *WriteHandler {
 	h := &WriteHandler{
 		Router:           NewRouter(b.HTTPErrorHandler),
 		HTTPErrorHandler: b.HTTPErrorHandler,
-		log:              log,
+		Logger:           b.Logger,
 
 		PointsWriter:        b.PointsWriter,
 		BucketService:       b.BucketService,
@@ -134,18 +134,17 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log := h.log.With(zap.String("org", req.Org), zap.String("bucket", req.Bucket))
+	logger := h.Logger.With(zap.String("org", req.Org), zap.String("bucket", req.Bucket))
 
 	var org *influxdb.Organization
 	org, err = queryOrganization(ctx, r, h.OrganizationService)
 	if err != nil {
-		log.Info("Failed to find organization", zap.Error(err))
+		logger.Info("Failed to find organization", zap.Error(err))
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
 
 	orgID = org.ID
-	span.LogKV("org_id", orgID)
 
 	var bucket *influxdb.Bucket
 	if id, err := influxdb.IDFromString(req.Bucket); err == nil {
@@ -174,7 +173,6 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 
 		bucket = b
 	}
-	span.LogKV("bucket_id", bucket.ID)
 
 	p, err := influxdb.NewPermissionAtID(bucket.ID, influxdb.WriteAction, influxdb.BucketsResourceType, org.ID)
 	if err != nil {
@@ -199,12 +197,9 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 	// TODO(jeff): we should be publishing with the org and bucket instead of
 	// parsing, rewriting, and publishing, but the interface isn't quite there yet.
 	// be sure to remove this when it is there!
-	span, _ = tracing.StartSpanFromContextWithOperationName(ctx, "read request body")
 	data, err := ioutil.ReadAll(in)
-	span.LogKV("request_bytes", len(data))
-	span.Finish()
 	if err != nil {
-		log.Error("Error reading body", zap.Error(err))
+		logger.Error("Error reading body", zap.Error(err))
 		h.HandleHTTPError(ctx, &influxdb.Error{
 			Code: influxdb.EInternal,
 			Op:   "http/handleWrite",
@@ -224,14 +219,11 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	span, _ = tracing.StartSpanFromContextWithOperationName(ctx, "encoding and parsing")
 	encoded := tsdb.EncodeName(org.ID, bucket.ID)
 	mm := models.EscapeMeasurement(encoded[:])
 	points, err := models.ParsePointsWithPrecision(data, mm, time.Now(), req.Precision)
-	span.LogKV("values_total", len(points))
-	span.Finish()
 	if err != nil {
-		log.Error("Error parsing points", zap.Error(err))
+		logger.Error("Error parsing points", zap.Error(err))
 		h.HandleHTTPError(ctx, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  err.Error(),
@@ -240,7 +232,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.PointsWriter.WritePoints(ctx, points); err != nil {
-		log.Error("Error writing points", zap.Error(err))
+		logger.Error("Error writing points", zap.Error(err))
 		h.HandleHTTPError(ctx, &influxdb.Error{
 			Code: influxdb.EInternal,
 			Op:   "http/handleWrite",

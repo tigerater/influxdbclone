@@ -5,6 +5,10 @@ import {
   Dashboard,
   FieldOption,
   DecimalPlaces,
+  Service,
+  Source,
+  SourceAuthenticationMethod,
+  SourceLinks,
   TimeRange,
   TableOptions,
 } from 'src/types'
@@ -31,6 +35,50 @@ export const dashboard: Dashboard = {
   links: {
     self: '/v2/dashboards/1',
     cells: '/v2/dashboards/cells',
+  },
+}
+
+export const sourceLinks: SourceLinks = {
+  query: '/chronograf/v1/query/4',
+  services: '/chronograf/v1/sources/4',
+  self: '/chronograf/v1/sources/4',
+  kapacitors: '/chronograf/v1/sources/4/kapacitors',
+  proxy: '/chronograf/v1/sources/4/proxy',
+  queries: '/chronograf/v1/sources/4/queries',
+  write: '/chronograf/v1/sources/4/write',
+  permissions: '/chronograf/v1/sources/4/permissions',
+  users: '/chronograf/v1/sources/4/users',
+  databases: '/chronograf/v1/sources/4/dbs',
+  annotations: '/chronograf/v1/sources/4/annotations',
+  health: '/chronograf/v1/sources/4/health',
+}
+
+export const source: Source = {
+  id: '4',
+  name: 'Influx 1',
+  type: 'influx',
+  url: 'http://localhost:8086',
+  default: false,
+  telegraf: 'telegraf',
+  links: sourceLinks,
+  insecureSkipVerify: false,
+  authentication: SourceAuthenticationMethod.Basic,
+}
+
+export const service: Service = {
+  id: '1',
+  sourceID: '1',
+  name: 'Flux',
+  url: 'http://localhost:8093',
+  insecureSkipVerify: false,
+  type: 'flux',
+  metadata: {
+    active: true,
+  },
+  links: {
+    proxy: '/chronograf/v1/sources/1/services/1/proxy',
+    self: '/chronograf/v1/sources/1/services/1',
+    source: '/chronograf/v1/sources/1',
   },
 }
 

@@ -72,7 +72,6 @@ export const myView: View = {
     showNoteWhenEmpty: false,
     xColumn: null,
     yColumn: null,
-    position: 'overlaid',
   },
 }
 

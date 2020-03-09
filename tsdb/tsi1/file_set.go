@@ -331,17 +331,15 @@ func (fs *FileSet) tagKeysByFilter(name []byte, op influxql.Token, val []byte, r
 }
 
 // TagKeySeriesIDIterator returns a series iterator for all values across a single key.
-func (fs *FileSet) TagKeySeriesIDIterator(name, key []byte) (tsdb.SeriesIDIterator, error) {
+func (fs *FileSet) TagKeySeriesIDIterator(name, key []byte) tsdb.SeriesIDIterator {
 	a := make([]tsdb.SeriesIDIterator, 0, len(fs.files))
 	for _, f := range fs.files {
-		itr, err := f.TagKeySeriesIDIterator(name, key)
-		if err != nil {
-			return nil, err
-		} else if itr != nil {
+		itr := f.TagKeySeriesIDIterator(name, key)
+		if itr != nil {
 			a = append(a, itr)
 		}
 	}
-	return tsdb.MergeSeriesIDIterators(a...), nil
+	return tsdb.MergeSeriesIDIterators(a...)
 }
 
 // HasTagKey returns true if the tag key exists.
@@ -425,7 +423,7 @@ type File interface {
 
 	// Series iteration.
 	MeasurementSeriesIDIterator(name []byte) tsdb.SeriesIDIterator
-	TagKeySeriesIDIterator(name, key []byte) (tsdb.SeriesIDIterator, error)
+	TagKeySeriesIDIterator(name, key []byte) tsdb.SeriesIDIterator
 	TagValueSeriesIDSet(name, key, value []byte) (*tsdb.SeriesIDSet, error)
 
 	// Bitmap series existence.

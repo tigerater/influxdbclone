@@ -309,36 +309,27 @@ func (f *IndexFile) TagValueIterator(name, key []byte) TagValueIterator {
 
 // TagKeySeriesIDIterator returns a series iterator for a tag key and a flag
 // indicating if a tombstone exists on the measurement or key.
-func (f *IndexFile) TagKeySeriesIDIterator(name, key []byte) (tsdb.SeriesIDIterator, error) {
+func (f *IndexFile) TagKeySeriesIDIterator(name, key []byte) tsdb.SeriesIDIterator {
 	tblk := f.tblks[string(name)]
 	if tblk == nil {
-		return nil, nil
+		return nil
 	}
 
 	// Find key element.
 	ke := tblk.TagKeyElem(key)
 	if ke == nil {
-		return nil, nil
+		return nil
 	}
 
 	// Merge all value series iterators together.
 	vitr := ke.TagValueIterator()
-
 	var itrs []tsdb.SeriesIDIterator
 	for ve := vitr.Next(); ve != nil; ve = vitr.Next() {
-		tblk, ok := ve.(*TagBlockValueElem)
-		if !ok {
-			return nil, fmt.Errorf("got type %T for iterator, expected %T", ve, TagBlockValueElem{})
-		}
-
-		ss, err := tblk.SeriesIDSet()
-		if err != nil {
-			return nil, err
-		}
-		itrs = append(itrs, tsdb.NewSeriesIDSetIterator(ss))
+		sitr := &rawSeriesIDIterator{data: ve.(*TagBlockValueElem).series.data}
+		itrs = append(itrs, sitr)
 	}
 
-	return tsdb.MergeSeriesIDIterators(itrs...), nil
+	return tsdb.MergeSeriesIDIterators(itrs...)
 }
 
 // TagValueSeriesIDSet returns a series id set for a tag value.

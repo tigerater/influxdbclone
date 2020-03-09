@@ -4,7 +4,7 @@ import {connect} from 'react-redux'
 import {get} from 'lodash'
 
 // Components
-import {Form, SelectGroup} from '@influxdata/clockface'
+import {Form, Radio} from '@influxdata/clockface'
 
 // Actions
 import {
@@ -40,9 +40,8 @@ class ThresholdColoring extends PureComponent<Props> {
   public render() {
     return (
       <Form.Element label="Colorization" style={{marginTop: '16px'}}>
-        <SelectGroup shape={ButtonShape.StretchToFit}>
-          <SelectGroup.Option
-            name="threshold-coloring"
+        <Radio shape={ButtonShape.StretchToFit}>
+          <Radio.Button
             id={ThresholdColoringSetting.Background}
             titleText={ThresholdColoringSetting.Background}
             active={this.activeSetting === ThresholdColoringSetting.Background}
@@ -50,9 +49,8 @@ class ThresholdColoring extends PureComponent<Props> {
             value={ThresholdColoringSetting.Background}
           >
             Background
-          </SelectGroup.Option>
-          <SelectGroup.Option
-            name="threshold-coloring"
+          </Radio.Button>
+          <Radio.Button
             id={ThresholdColoringSetting.Text}
             titleText={ThresholdColoringSetting.Text}
             active={this.activeSetting === ThresholdColoringSetting.Text}
@@ -60,8 +58,8 @@ class ThresholdColoring extends PureComponent<Props> {
             value={ThresholdColoringSetting.Text}
           >
             Text
-          </SelectGroup.Option>
-        </SelectGroup>
+          </Radio.Button>
+        </Radio>
       </Form.Element>
     )
   }

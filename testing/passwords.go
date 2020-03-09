@@ -49,7 +49,7 @@ func SetPassword(
 	init func(PasswordFields, *testing.T) (influxdb.PasswordsService, func()),
 	t *testing.T) {
 	type args struct {
-		user     influxdb.ID
+		user     string
 		password string
 	}
 	type wants struct {
@@ -72,7 +72,7 @@ func SetPassword(
 				},
 			},
 			args: args{
-				user:     MustIDBase16(oneID),
+				user:     "user1",
 				password: "howdydoody",
 			},
 			wants: wants{},
@@ -88,7 +88,7 @@ func SetPassword(
 				},
 			},
 			args: args{
-				user:     MustIDBase16(oneID),
+				user:     "user1",
 				password: "short",
 			},
 			wants: wants{
@@ -106,11 +106,11 @@ func SetPassword(
 				},
 			},
 			args: args{
-				user:     33,
+				user:     "invalid",
 				password: "howdydoody",
 			},
 			wants: wants{
-				err: fmt.Errorf("your userID is incorrect"),
+				err: fmt.Errorf("your username or password is incorrect"),
 			},
 		},
 	}
@@ -132,6 +132,7 @@ func SetPassword(
 				if want, got := tt.wants.err.Error(), err.Error(); want != got {
 					t.Fatalf("expected SetPassword error %v got %v", want, got)
 				}
+				return
 			}
 		})
 	}
@@ -142,7 +143,7 @@ func ComparePassword(
 	init func(PasswordFields, *testing.T) (influxdb.PasswordsService, func()),
 	t *testing.T) {
 	type args struct {
-		user     influxdb.ID
+		user     string
 		password string
 	}
 	type wants struct {
@@ -166,7 +167,7 @@ func ComparePassword(
 				Passwords: []string{"howdydoody"},
 			},
 			args: args{
-				user:     MustIDBase16(oneID),
+				user:     "user1",
 				password: "howdydoody",
 			},
 			wants: wants{},
@@ -183,7 +184,7 @@ func ComparePassword(
 				Passwords: []string{"howdydoody"},
 			},
 			args: args{
-				user:     MustIDBase16(oneID),
+				user:     "user1",
 				password: "wrongpassword",
 			},
 			wants: wants{
@@ -202,11 +203,11 @@ func ComparePassword(
 				Passwords: []string{"howdydoody"},
 			},
 			args: args{
-				user:     1,
+				user:     "invalid",
 				password: "howdydoody",
 			},
 			wants: wants{
-				err: fmt.Errorf("your userID is incorrect"),
+				err: fmt.Errorf("your username or password is incorrect"),
 			},
 		},
 		{
@@ -220,7 +221,7 @@ func ComparePassword(
 				},
 			},
 			args: args{
-				user:     MustIDBase16(oneID),
+				user:     "user1",
 				password: "howdydoody",
 			},
 			wants: wants{
@@ -258,7 +259,7 @@ func CompareAndSetPassword(
 	init func(PasswordFields, *testing.T) (influxdb.PasswordsService, func()),
 	t *testing.T) {
 	type args struct {
-		user influxdb.ID
+		user string
 		old  string
 		new  string
 	}
@@ -283,7 +284,7 @@ func CompareAndSetPassword(
 				Passwords: []string{"howdydoody"},
 			},
 			args: args{
-				user: MustIDBase16(oneID),
+				user: "user1",
 				old:  "howdydoody",
 				new:  "howdydoody",
 			},
@@ -301,7 +302,7 @@ func CompareAndSetPassword(
 				Passwords: []string{"howdydoody"},
 			},
 			args: args{
-				user: MustIDBase16(oneID),
+				user: "user1",
 				old:  "invalid",
 				new:  "not used",
 			},
@@ -321,7 +322,7 @@ func CompareAndSetPassword(
 				Passwords: []string{"howdydoody"},
 			},
 			args: args{
-				user: MustIDBase16(oneID),
+				user: "user1",
 				old:  "howdydoody",
 				new:  "short",
 			},

@@ -2,7 +2,7 @@
 import React, {useState, SFC, KeyboardEvent} from 'react'
 
 // Components
-import {Form, Input, SelectGroup, Grid} from '@influxdata/clockface'
+import {Form, Input, Radio, Grid} from '@influxdata/clockface'
 
 // Utils
 import {useOneWayState} from 'src/shared/utils/useOneWayState'
@@ -123,9 +123,8 @@ const AutoDomainInput: SFC<AutoDomainInputProps> = ({
       <Grid>
         <Grid.Row>
           <Grid.Column widthXS={Columns.Twelve}>
-            <SelectGroup shape={ButtonShape.StretchToFit}>
-              <SelectGroup.Option
-                name="auto-domain"
+            <Radio shape={ButtonShape.StretchToFit}>
+              <Radio.Button
                 id="radio_auto"
                 titleText="Auto"
                 active={!showInputs}
@@ -133,9 +132,8 @@ const AutoDomainInput: SFC<AutoDomainInputProps> = ({
                 value="Auto"
               >
                 Auto
-              </SelectGroup.Option>
-              <SelectGroup.Option
-                name="auto-domain"
+              </Radio.Button>
+              <Radio.Button
                 id="radio_custom"
                 titleText="Custom"
                 active={showInputs}
@@ -143,8 +141,8 @@ const AutoDomainInput: SFC<AutoDomainInputProps> = ({
                 value="Custom"
               >
                 Custom
-              </SelectGroup.Option>
-            </SelectGroup>
+              </Radio.Button>
+            </Radio>
           </Grid.Column>
         </Grid.Row>
         {showInputs && (

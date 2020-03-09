@@ -46,7 +46,6 @@ export default class extends PureComponent<Props> {
             value={lineProtocolBody}
             placeholder="Write text here"
             onChange={this.handleTextChange}
-            testID="line-protocol--text-area"
           />
         )
       case LineProtocolTab.EnterURL:

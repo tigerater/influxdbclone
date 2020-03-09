@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"os"
 
 	platform "github.com/influxdata/influxdb"
@@ -11,71 +10,58 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func userCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "user",
-		Short: "User management commands",
-		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Usage()
-		},
-	}
-	cmd.AddCommand(
-		userCreateCmd(),
-		userDeleteCmd(),
-		userFindCmd(),
-		userUpdateCmd(),
-	)
-
-	return cmd
+var userCmd = &cobra.Command{
+	Use:   "user",
+	Short: "User management commands",
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Usage()
+	},
 }
 
-var userUpdateFlags struct {
+// UserUpdateFlags are command line args used when updating a user
+type UserUpdateFlags struct {
 	id   string
 	name string
 }
 
-func userUpdateCmd() *cobra.Command {
-	cmd := &cobra.Command{
+var userUpdateFlags UserUpdateFlags
+
+func init() {
+	userUpdateCmd := &cobra.Command{
 		Use:   "update",
 		Short: "Update user",
 		RunE:  wrapCheckSetup(userUpdateF),
 	}
 
-	cmd.Flags().StringVarP(&userUpdateFlags.id, "id", "i", "", "The user ID (required)")
-	cmd.Flags().StringVarP(&userUpdateFlags.name, "name", "n", "", "The user name")
-	cmd.MarkFlagRequired("id")
+	userUpdateCmd.Flags().StringVarP(&userUpdateFlags.id, "id", "i", "", "The user ID (required)")
+	userUpdateCmd.Flags().StringVarP(&userUpdateFlags.name, "name", "n", "", "The user name")
+	userUpdateCmd.MarkFlagRequired("id")
 
-	return cmd
+	userCmd.AddCommand(userUpdateCmd)
 }
 
-func newUserService() (platform.UserService, error) {
+func newUserService(f Flags) (platform.UserService, error) {
 	if flags.local {
 		return newLocalKVService()
 	}
 	return &http.UserService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}, nil
 }
 
-func newUserResourceMappingService() (platform.UserResourceMappingService, error) {
+func newUserResourceMappingService(f Flags) (platform.UserResourceMappingService, error) {
 	if flags.local {
 		return newLocalKVService()
 	}
-
-	c, err := newHTTPClient()
-	if err != nil {
-		return nil, err
-	}
-
 	return &http.UserResourceMappingService{
-		Client: c,
+		Addr:  flags.host,
+		Token: flags.token,
 	}, nil
 }
 
 func userUpdateF(cmd *cobra.Command, args []string) error {
-	s, err := newUserService()
+	s, err := newUserService(flags)
 	if err != nil {
 		return err
 	}
@@ -109,29 +95,28 @@ func userUpdateF(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var userCreateFlags struct {
-	name     string
-	password string
-	orgID    string
+// UserCreateFlags are command line args used when creating a user
+type UserCreateFlags struct {
+	name string
 }
 
-func userCreateCmd() *cobra.Command {
-	cmd := &cobra.Command{
+var userCreateFlags UserCreateFlags
+
+func init() {
+	userCreateCmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create user",
 		RunE:  wrapCheckSetup(userCreateF),
 	}
 
-	cmd.Flags().StringVarP(&userCreateFlags.name, "name", "n", "", "The user name (required)")
-	cmd.MarkFlagRequired("name")
-	cmd.Flags().StringVarP(&userCreateFlags.password, "password", "p", "", "The user password")
-	cmd.Flags().StringVarP(&userCreateFlags.orgID, "org-id", "o", "", "The organization id the user belongs too. Is required if password provided.")
+	userCreateCmd.Flags().StringVarP(&userCreateFlags.name, "name", "n", "", "The user name (required)")
+	userCreateCmd.MarkFlagRequired("name")
 
-	return cmd
+	userCmd.AddCommand(userCreateCmd)
 }
 
 func userCreateF(cmd *cobra.Command, args []string) error {
-	s, err := newUserService()
+	s, err := newUserService(flags)
 	if err != nil {
 		return err
 	}
@@ -144,91 +129,43 @@ func userCreateF(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	writeOutput := func(headers []string, vals ...string) error {
-		if len(headers) != len(vals) {
-			return errors.New("invalid headers and val setup for writer")
-		}
-
-		m := make(map[string]interface{})
-		for i, h := range headers {
-			m[h] = vals[i]
-		}
-		w := internal.NewTabWriter(os.Stdout)
-		w.WriteHeaders(headers...)
-		w.Write(m)
-		w.Flush()
-
-		return nil
-	}
-
-	orgIDStr := userCreateFlags.orgID
-	pass := userCreateFlags.password
-	if orgIDStr == "" && pass == "" {
-		return writeOutput([]string{"ID", "Name"}, user.ID.String(), user.Name)
-	}
-
-	if pass != "" && orgIDStr == "" {
-		return errors.New("an org id is required when providing a user password")
-	}
-
-	orgID, err := platform.IDFromString(orgIDStr)
-	if err != nil {
-		return errors.New("an invalid org ID provided: " + orgIDStr)
-	}
-
-	c, err := newHTTPClient()
-	if err != nil {
-		return err
-	}
-
-	userResMapSVC := &http.UserResourceMappingService{
-		Client: c,
-	}
-
-	err = userResMapSVC.CreateUserResourceMapping(context.Background(), &platform.UserResourceMapping{
-		UserID:       user.ID,
-		UserType:     platform.Member,
-		ResourceType: platform.OrgsResourceType,
-		ResourceID:   *orgID,
+	w := internal.NewTabWriter(os.Stdout)
+	w.WriteHeaders(
+		"ID",
+		"Name",
+	)
+	w.Write(map[string]interface{}{
+		"ID":   user.ID.String(),
+		"Name": user.Name,
 	})
-	if err != nil {
-		return err
-	}
+	w.Flush()
 
-	passSVC := &http.PasswordService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
-	}
-
-	ctx := context.Background()
-	if err := passSVC.SetPassword(ctx, user.ID, pass); err != nil {
-		return err
-	}
-
-	return writeOutput([]string{"ID", "Name", "Organization ID"}, user.ID.String(), user.Name, orgID.String())
+	return nil
 }
 
-var userFindFlags struct {
+// UserFindFlags are command line args used when finding a user
+type UserFindFlags struct {
 	id   string
 	name string
 }
 
-func userFindCmd() *cobra.Command {
-	cmd := &cobra.Command{
+var userFindFlags UserFindFlags
+
+func init() {
+	userFindCmd := &cobra.Command{
 		Use:   "find",
 		Short: "Find user",
 		RunE:  wrapCheckSetup(userFindF),
 	}
 
-	cmd.Flags().StringVarP(&userFindFlags.id, "id", "i", "", "The user ID")
-	cmd.Flags().StringVarP(&userFindFlags.name, "name", "n", "", "The user name")
+	userFindCmd.Flags().StringVarP(&userFindFlags.id, "id", "i", "", "The user ID")
+	userFindCmd.Flags().StringVarP(&userFindFlags.name, "name", "n", "", "The user name")
 
-	return cmd
+	userCmd.AddCommand(userFindCmd)
 }
 
 func userFindF(cmd *cobra.Command, args []string) error {
-	s, err := newUserService()
+	s, err := newUserService(flags)
 	if err != nil {
 		return err
 	}
@@ -266,25 +203,28 @@ func userFindF(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var userDeleteFlags struct {
+// UserDeleteFlags are command line args used when deleting a user
+type UserDeleteFlags struct {
 	id string
 }
 
-func userDeleteCmd() *cobra.Command {
-	cmd := &cobra.Command{
+var userDeleteFlags UserDeleteFlags
+
+func init() {
+	userDeleteCmd := &cobra.Command{
 		Use:   "delete",
 		Short: "Delete user",
 		RunE:  wrapCheckSetup(userDeleteF),
 	}
 
-	cmd.Flags().StringVarP(&userDeleteFlags.id, "id", "i", "", "The user ID (required)")
-	cmd.MarkFlagRequired("id")
+	userDeleteCmd.Flags().StringVarP(&userDeleteFlags.id, "id", "i", "", "The user ID (required)")
+	userDeleteCmd.MarkFlagRequired("id")
 
-	return cmd
+	userCmd.AddCommand(userDeleteCmd)
 }
 
 func userDeleteF(cmd *cobra.Command, args []string) error {
-	s, err := newUserService()
+	s, err := newUserService(flags)
 	if err != nil {
 		return err
 	}

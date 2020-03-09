@@ -23,23 +23,19 @@ import {INVALID_DATA_COPY} from 'src/shared/copy/cell'
 import {RemoteDataState, ScatterViewProperties, TimeZone} from 'src/types'
 
 interface Props {
-  children: (config: Config) => JSX.Element
-  endTime: number
+  table: Table
   fluxGroupKeyUnion?: string[]
   loading: RemoteDataState
-  startTime: number
-  table: Table
-  timeZone: TimeZone
   viewProperties: ScatterViewProperties
+  children: (config: Config) => JSX.Element
+  timeZone: TimeZone
 }
 
 const ScatterPlot: FunctionComponent<Props> = ({
-  children,
-  endTime,
-  loading,
-  startTime,
-  timeZone,
   table,
+  loading,
+  children,
+  timeZone,
   viewProperties: {
     xAxisLabel,
     yAxisLabel,
@@ -54,7 +50,6 @@ const ScatterPlot: FunctionComponent<Props> = ({
     yDomain: storedYDomain,
     xColumn: storedXColumn,
     yColumn: storedYColumn,
-    timeFormat,
   },
 }) => {
   const fillColumns = storedFill || []
@@ -67,9 +62,7 @@ const ScatterPlot: FunctionComponent<Props> = ({
 
   const [xDomain, onSetXDomain, onResetXDomain] = useVisDomainSettings(
     storedXDomain,
-    table.getColumn(xColumn, 'number'),
-    startTime,
-    endTime
+    table.getColumn(xColumn, 'number')
   )
 
   const [yDomain, onSetYDomain, onResetYDomain] = useVisDomainSettings(
@@ -96,14 +89,12 @@ const ScatterPlot: FunctionComponent<Props> = ({
     prefix: xPrefix,
     suffix: xSuffix,
     timeZone,
-    timeFormat,
   })
 
   const yFormatter = getFormatter(table.getColumnType(yColumn), {
     prefix: yPrefix,
     suffix: ySuffix,
     timeZone,
-    timeFormat,
   })
 
   const config: Config = {

@@ -24,6 +24,5 @@ func initOnboardingService(f platformtesting.OnboardingFields, t *testing.T) (pl
 }
 
 func TestGenerate(t *testing.T) {
-	t.Skip("these are no longer being used, using kv inmem instead")
 	platformtesting.Generate(initOnboardingService, t)
 }

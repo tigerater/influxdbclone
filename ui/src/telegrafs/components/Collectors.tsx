@@ -5,17 +5,7 @@ import {connect} from 'react-redux'
 import {withRouter, WithRouterProps} from 'react-router'
 
 // Components
-import {
-  Button,
-  EmptyState,
-  Grid,
-  Sort,
-  Columns,
-  IconFont,
-  ComponentSize,
-  ComponentColor,
-  ComponentStatus,
-} from '@influxdata/clockface'
+import {Button, EmptyState, Grid, Sort} from '@influxdata/clockface'
 import SearchWidget from 'src/shared/components/search_widget/SearchWidget'
 import SettingsTabbedPageHeader from 'src/settings/components/SettingsTabbedPageHeader'
 import CollectorList from 'src/telegrafs/components/CollectorList'
@@ -33,6 +23,13 @@ import {ErrorHandling} from 'src/shared/decorators/errors'
 
 // Types
 import {ITelegraf as Telegraf} from '@influxdata/influx'
+import {
+  Columns,
+  IconFont,
+  ComponentSize,
+  ComponentColor,
+  ComponentStatus,
+} from '@influxdata/clockface'
 import {OverlayState, AppState, Bucket} from 'src/types'
 import {
   setDataLoadersType,
@@ -89,14 +86,10 @@ class Collectors extends PureComponent<Props, State> {
     }
   }
 
-  public static defaultProps = {
-    collectors: [],
-  }
-
   public render() {
     const {collectors} = this.props
     const {searchTerm, sortKey, sortDirection, sortType} = this.state
-    const hasTelegrafs = collectors && collectors.length > 0
+
     return (
       <>
         <NoBucketsWarning
@@ -104,40 +97,25 @@ class Collectors extends PureComponent<Props, State> {
           resourceName="Telegraf Configurations"
         />
 
-        <SettingsTabbedPageHeader className="telegraf-collectors--header">
+        <SettingsTabbedPageHeader>
           <SearchWidget
             placeholderText="Filter telegraf configurations..."
             searchTerm={searchTerm}
             onSearch={this.handleFilterChange}
           />
-          <div className="telegraf-collectors-button-wrap">
-            <Button
-              text="InfluxDB Output Plugin"
-              icon={IconFont.Eye}
-              color={ComponentColor.Secondary}
-              style={{marginRight: '8px'}}
-              onClick={this.handleJustTheOutput}
-              titleText="Output section of telegraf.conf for V2"
-              testID="button--output-only"
-            />
-            {this.createButton}
-          </div>
+          {this.createButton}
         </SettingsTabbedPageHeader>
         <Grid>
           <Grid.Row>
             <Grid.Column
               widthXS={Columns.Twelve}
-              widthSM={hasTelegrafs ? Columns.Eight : Columns.Twelve}
-              widthMD={hasTelegrafs ? Columns.Ten : Columns.Twelve}
+              widthSM={Columns.Eight}
+              widthMD={Columns.Ten}
             >
               <GetResources resources={[ResourceType.Labels]}>
                 <FilterList<Telegraf>
                   searchTerm={searchTerm}
-                  searchKeys={[
-                    'plugins.0.config.bucket',
-                    'name',
-                    'labels[].name',
-                  ]}
+                  searchKeys={['plugins.0.config.bucket', 'name']}
                   list={collectors}
                 >
                   {cs => (
@@ -156,15 +134,13 @@ class Collectors extends PureComponent<Props, State> {
                 </FilterList>
               </GetResources>
             </Grid.Column>
-            {hasTelegrafs && (
-              <Grid.Column
-                widthXS={Columns.Twelve}
-                widthSM={Columns.Four}
-                widthMD={Columns.Two}
-              >
-                <TelegrafExplainer />
-              </Grid.Column>
-            )}
+            <Grid.Column
+              widthXS={Columns.Twelve}
+              widthSM={Columns.Four}
+              widthMD={Columns.Two}
+            >
+              <TelegrafExplainer />
+            </Grid.Column>
           </Grid.Row>
         </Grid>
       </>
@@ -227,15 +203,6 @@ class Collectors extends PureComponent<Props, State> {
     router.push(`/orgs/${orgID}/load-data/telegrafs/new`)
   }
 
-  private handleJustTheOutput = () => {
-    const {
-      router,
-      params: {orgID},
-    } = this.props
-
-    router.push(`/orgs/${orgID}/load-data/telegrafs/output`)
-  }
-
   private get emptyState(): JSX.Element {
     const {orgName} = this.props
     const {searchTerm} = this.state
@@ -248,13 +215,6 @@ class Collectors extends PureComponent<Props, State> {
             not create one?
           </EmptyState.Text>
           {this.createButton}
-          <br />
-          <br />
-          <TelegrafExplainer
-            hasNoTelegrafs={true}
-            textAlign="center"
-            bodySize={ComponentSize.Medium}
-          />
         </EmptyState>
       )
     }
@@ -284,13 +244,11 @@ class Collectors extends PureComponent<Props, State> {
     this.setState({searchTerm})
   }
 }
-const mstp = ({telegrafs, orgs: {org}, buckets}: AppState): StateProps => {
-  return {
-    collectors: telegrafs.list,
-    orgName: org.name,
-    buckets: buckets.list,
-  }
-}
+const mstp = ({telegrafs, orgs: {org}, buckets}: AppState): StateProps => ({
+  collectors: telegrafs.list,
+  orgName: org.name,
+  buckets: buckets.list,
+})
 
 const mdtp: DispatchProps = {
   onSetBucketInfo: setBucketInfo,

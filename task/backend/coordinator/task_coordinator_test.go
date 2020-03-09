@@ -5,11 +5,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+
+	"github.com/google/go-cmp/cmp"
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/task/backend/scheduler"
-	"go.uber.org/zap/zaptest"
+	"go.uber.org/zap"
 )
 
 func Test_Coordinator_Executor_Methods(t *testing.T) {
@@ -78,7 +79,7 @@ func Test_Coordinator_Executor_Methods(t *testing.T) {
 			var (
 				executor  = &executorE{}
 				scheduler = &schedulerC{}
-				coord     = NewCoordinator(zaptest.NewLogger(t), scheduler, executor)
+				coord     = NewCoordinator(zap.NewNop(), scheduler, executor)
 			)
 
 			test.call(t, coord)
@@ -99,7 +100,7 @@ func Test_Coordinator_Scheduler_Methods(t *testing.T) {
 		one   = influxdb.ID(1)
 		two   = influxdb.ID(2)
 		three = influxdb.ID(3)
-		now   = time.Now().UTC()
+		now   = time.Now().Format(time.RFC3339Nano)
 
 		taskOne           = &influxdb.Task{ID: one, CreatedAt: now, Cron: "* * * * *"}
 		taskTwo           = &influxdb.Task{ID: two, Status: "active", CreatedAt: now, Cron: "* * * * *"}
@@ -218,7 +219,7 @@ func Test_Coordinator_Scheduler_Methods(t *testing.T) {
 			var (
 				executor = &executorE{}
 				sch      = &schedulerC{}
-				coord    = NewCoordinator(zaptest.NewLogger(t), sch, executor)
+				coord    = NewCoordinator(zap.NewNop(), sch, executor)
 			)
 
 			test.call(t, coord)

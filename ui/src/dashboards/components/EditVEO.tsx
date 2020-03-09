@@ -13,6 +13,7 @@ import VEOHeader from 'src/dashboards/components/VEOHeader'
 import {setName} from 'src/timeMachine/actions'
 import {saveVEOView} from 'src/dashboards/actions'
 import {getViewForTimeMachine} from 'src/dashboards/actions/views'
+import {executeQueries} from 'src/timeMachine/actions/queries'
 
 // Utils
 import {getActiveTimeMachine} from 'src/timeMachine/selectors'
@@ -23,6 +24,7 @@ import {AppState, RemoteDataState, QueryView, TimeMachineID} from 'src/types'
 interface DispatchProps {
   onSetName: typeof setName
   onSaveView: typeof saveVEOView
+  onExecuteQueries: typeof executeQueries
   getViewForTimeMachine: typeof getViewForTimeMachine
 }
 
@@ -36,6 +38,7 @@ type Props = DispatchProps & StateProps & WithRouterProps
 const EditViewVEO: FunctionComponent<Props> = ({
   getViewForTimeMachine,
   activeTimeMachineID,
+  onExecuteQueries,
   onSaveView,
   onSetName,
   params: {orgID, cellID, dashboardID},
@@ -44,7 +47,8 @@ const EditViewVEO: FunctionComponent<Props> = ({
 }) => {
   useEffect(() => {
     getViewForTimeMachine(dashboardID, cellID, 'veo')
-  }, [])
+    onExecuteQueries(dashboardID)
+  }, [cellID, dashboardID])
 
   const handleClose = () => {
     router.push(`/orgs/${orgID}/dashboards/${dashboardID}`)
@@ -91,13 +95,13 @@ const mstp = (state: AppState): StateProps => {
   const {activeTimeMachineID} = state.timeMachines
 
   const {view} = getActiveTimeMachine(state)
-
   return {view, activeTimeMachineID}
 }
 
 const mdtp: DispatchProps = {
   onSetName: setName,
   onSaveView: saveVEOView,
+  onExecuteQueries: executeQueries,
   getViewForTimeMachine: getViewForTimeMachine,
 }
 

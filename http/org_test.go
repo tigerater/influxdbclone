@@ -10,18 +10,19 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"go.uber.org/zap"
+
 	platform "github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/inmem"
 	"github.com/influxdata/influxdb/kv"
 	"github.com/influxdata/influxdb/mock"
 	platformtesting "github.com/influxdata/influxdb/testing"
-	"go.uber.org/zap/zaptest"
 )
 
 // NewMockOrgBackend returns a OrgBackend with mock services.
-func NewMockOrgBackend(t *testing.T) *OrgBackend {
+func NewMockOrgBackend() *OrgBackend {
 	return &OrgBackend{
-		log: zaptest.NewLogger(t),
+		Logger: zap.NewNop().With(zap.String("handler", "org")),
 
 		OrganizationService:             mock.NewOrganizationService(),
 		OrganizationOperationLogService: mock.NewOrganizationOperationLogService(),
@@ -34,7 +35,7 @@ func NewMockOrgBackend(t *testing.T) *OrgBackend {
 
 func initOrganizationService(f platformtesting.OrganizationFields, t *testing.T) (platform.OrganizationService, string, func()) {
 	t.Helper()
-	svc := kv.NewService(zaptest.NewLogger(t), inmem.NewKVStore())
+	svc := kv.NewService(inmem.NewKVStore())
 	svc.IDGenerator = f.IDGenerator
 	svc.OrgBucketIDs = f.OrgBucketIDs
 	svc.TimeGenerator = f.TimeGenerator
@@ -53,10 +54,10 @@ func initOrganizationService(f platformtesting.OrganizationFields, t *testing.T)
 		}
 	}
 
-	orgBackend := NewMockOrgBackend(t)
+	orgBackend := NewMockOrgBackend()
 	orgBackend.HTTPErrorHandler = ErrorHandler(0)
 	orgBackend.OrganizationService = svc
-	handler := NewOrgHandler(zaptest.NewLogger(t), orgBackend)
+	handler := NewOrgHandler(orgBackend)
 	server := httptest.NewServer(handler)
 	client := OrganizationService{
 		Addr:     server.URL,
@@ -146,44 +147,14 @@ func TestSecretService_handleGetSecrets(t *testing.T) {
 `,
 			},
 		},
-		{
-			name: "get secrets when organization has no secret keys",
-			fields: fields{
-				&mock.SecretService{
-					GetSecretKeysFn: func(ctx context.Context, orgID platform.ID) ([]string, error) {
-						return []string{}, &platform.Error{
-							Code: platform.ENotFound,
-							Msg:  "organization has no secret keys",
-						}
-
-					},
-				},
-			},
-			args: args{
-				orgID: 1,
-			},
-			wants: wants{
-				statusCode:  http.StatusOK,
-				contentType: "application/json; charset=utf-8",
-				body: `
-{
-  "links": {
-    "org": "/api/v2/orgs/0000000000000001",
-    "self": "/api/v2/orgs/0000000000000001/secrets"
-  },
-  "secrets": []
-}
-`,
-			},
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			orgBackend := NewMockOrgBackend(t)
+			orgBackend := NewMockOrgBackend()
 			orgBackend.HTTPErrorHandler = ErrorHandler(0)
 			orgBackend.SecretService = tt.fields.SecretService
-			h := NewOrgHandler(zaptest.NewLogger(t), orgBackend)
+			h := NewOrgHandler(orgBackend)
 
 			u := fmt.Sprintf("http://any.url/api/v2/orgs/%s/secrets", tt.args.orgID)
 			r := httptest.NewRequest("GET", u, nil)
@@ -256,10 +227,10 @@ func TestSecretService_handlePatchSecrets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			orgBackend := NewMockOrgBackend(t)
+			orgBackend := NewMockOrgBackend()
 			orgBackend.HTTPErrorHandler = ErrorHandler(0)
 			orgBackend.SecretService = tt.fields.SecretService
-			h := NewOrgHandler(zaptest.NewLogger(t), orgBackend)
+			h := NewOrgHandler(orgBackend)
 
 			b, err := json.Marshal(tt.args.secrets)
 			if err != nil {
@@ -338,10 +309,10 @@ func TestSecretService_handleDeleteSecrets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			orgBackend := NewMockOrgBackend(t)
+			orgBackend := NewMockOrgBackend()
 			orgBackend.HTTPErrorHandler = ErrorHandler(0)
 			orgBackend.SecretService = tt.fields.SecretService
-			h := NewOrgHandler(zaptest.NewLogger(t), orgBackend)
+			h := NewOrgHandler(orgBackend)
 
 			b, err := json.Marshal(deleteSecretsRequest{
 				Secrets: tt.args.secrets,

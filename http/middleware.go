@@ -16,7 +16,7 @@ import (
 type Middleware func(http.Handler) http.Handler
 
 // LoggingMW middleware for logging inflight http requests.
-func LoggingMW(log *zap.Logger) Middleware {
+func LoggingMW(logger *zap.Logger) Middleware {
 	return func(next http.Handler) http.Handler {
 		fn := func(w http.ResponseWriter, r *http.Request) {
 			srw := &statusResponseWriter{
@@ -62,7 +62,7 @@ func LoggingMW(log *zap.Logger) Middleware {
 					fields = append(fields, zap.ByteString("body", buf.Bytes()))
 				}
 
-				log.Debug("Request", fields...)
+				logger.Debug("Request", fields...)
 			}(time.Now())
 
 			next.ServeHTTP(srw, r)

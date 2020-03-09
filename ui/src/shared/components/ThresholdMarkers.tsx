@@ -1,7 +1,7 @@
 // Libraries
-import React, {useRef, useState, FunctionComponent} from 'react'
+import React, {useRef, FunctionComponent} from 'react'
 import {Scale} from '@influxdata/giraffe'
-import {debounce, round} from 'lodash'
+import {round} from 'lodash'
 
 // Components
 import RangeThresholdMarkers from 'src/shared/components/RangeThresholdMarkers'
@@ -16,7 +16,6 @@ import {Threshold} from 'src/types'
 
 // Constants
 const DRAGGABLE_THRESHOLD_PRECISION = 2
-const ZOOM_IN_WAIT = 500
 
 interface Props {
   thresholds: Threshold[]
@@ -33,41 +32,9 @@ const ThresholdMarkers: FunctionComponent<Props> = ({
 }) => {
   const originRef = useRef<HTMLDivElement>(null)
 
-  const nextZoomThreshold: {
-    index?: number
-    minValue?: number
-    maxValue?: number
-  } = {}
-
-  const [zoomThreshold, setZoomThreshold] = useState(nextZoomThreshold)
-
-  const zoomIn = () => {
-    onSetThresholds(
-      thresholds.map((t, i) => {
-        if (zoomThreshold.index !== i) {
-          return t
-        }
-        if (t.type === 'greater' || t.type === 'lesser') {
-          return {...t, max: t.value}
-        }
-        if (t.type === 'range') {
-          return {
-            ...t,
-            max: zoomThreshold.maxValue,
-            min: zoomThreshold.minValue,
-          }
-        }
-      })
-    )
-  }
-
-  const debouncedZoomIn = debounce(zoomIn, ZOOM_IN_WAIT)
-
   const handleDrag = (index: number, field: string, y: number) => {
-    nextZoomThreshold.index = index
     const yRelative = y - originRef.current.getBoundingClientRect().top
     const yValue = clamp(yScale.invert(yRelative), yDomain)
-
     const nextThreshold: Threshold = {
       ...thresholds[index],
       [field]: yValue,
@@ -91,47 +58,18 @@ const ThresholdMarkers: FunctionComponent<Props> = ({
 
     const roundedThresholds = nextThresholds.map(nt => {
       if (nt.type === 'greater' || nt.type === 'lesser') {
-        return {
-          ...nt,
-          value: round(nt.value, DRAGGABLE_THRESHOLD_PRECISION),
-          max: yDomain[1],
-        }
+        return {...nt, value: round(nt.value, DRAGGABLE_THRESHOLD_PRECISION)}
       }
 
       if (nt.type === 'range') {
-        if (field === 'maxValue') {
-          nextZoomThreshold.maxValue = round(
-            nt['maxValue'],
-            DRAGGABLE_THRESHOLD_PRECISION
-          )
-          nextZoomThreshold.minValue = round(
-            nt.min,
-            DRAGGABLE_THRESHOLD_PRECISION
-          )
-          return {
-            ...nt,
-            max: round(yDomain[1], DRAGGABLE_THRESHOLD_PRECISION),
-            min: round(nt.min, DRAGGABLE_THRESHOLD_PRECISION),
-          }
-        }
-        nextZoomThreshold.maxValue = round(
-          nt.max,
-          DRAGGABLE_THRESHOLD_PRECISION
-        )
-        nextZoomThreshold.minValue = round(
-          nt['minValue'],
-          DRAGGABLE_THRESHOLD_PRECISION
-        )
         return {
           ...nt,
+          min: round(nt.min, DRAGGABLE_THRESHOLD_PRECISION),
           max: round(nt.max, DRAGGABLE_THRESHOLD_PRECISION),
-          min: yDomain[0]
-            ? round(yDomain[0], DRAGGABLE_THRESHOLD_PRECISION)
-            : 0,
         }
       }
     })
-    setZoomThreshold(nextZoomThreshold)
+
     onSetThresholds(roundedThresholds)
   }
 
@@ -151,7 +89,6 @@ const ThresholdMarkers: FunctionComponent<Props> = ({
                 yDomain={yDomain}
                 threshold={threshold}
                 onChangePos={onChangePos}
-                onMouseUp={debouncedZoomIn}
               />
             )
           case 'lesser':
@@ -162,7 +99,6 @@ const ThresholdMarkers: FunctionComponent<Props> = ({
                 yDomain={yDomain}
                 threshold={threshold}
                 onChangePos={onChangePos}
-                onMouseUp={debouncedZoomIn}
               />
             )
           case 'range':
@@ -171,18 +107,9 @@ const ThresholdMarkers: FunctionComponent<Props> = ({
                 key={index}
                 yScale={yScale}
                 yDomain={yDomain}
-                threshold={{
-                  ...threshold,
-                  min: zoomThreshold.minValue
-                    ? zoomThreshold.minValue
-                    : round(threshold.min, DRAGGABLE_THRESHOLD_PRECISION),
-                  max: zoomThreshold.maxValue
-                    ? zoomThreshold.maxValue
-                    : round(threshold.max, DRAGGABLE_THRESHOLD_PRECISION),
-                }}
+                threshold={threshold}
                 onChangeMinPos={onChangeMinPos}
                 onChangeMaxPos={onChangeMaxPos}
-                onMouseUp={debouncedZoomIn}
               />
             )
           default:

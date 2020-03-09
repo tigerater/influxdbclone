@@ -200,12 +200,17 @@ func grabTaskOptionAST(p *ast.Package, keys ...string) map[string]ast.Expression
 	return res
 }
 
+type constantSecretService struct{}
+
+func (s constantSecretService) LoadSecret(ctx context.Context, k string) (string, error) {
+	return "", nil
+}
+
 func newDeps() flux.Dependencies {
 	deps := flux.NewDefaultDependencies()
-	deps.Deps.HTTPClient = httpClient{}
-	deps.Deps.URLValidator = urlValidator{}
-	deps.Deps.SecretService = secretService{}
-	deps.Deps.FilesystemService = fileSystem{}
+	deps.Deps.HTTPClient = nil
+	deps.Deps.URLValidator = nil
+	deps.Deps.SecretService = constantSecretService{}
 	return deps
 }
 
@@ -402,6 +407,7 @@ func (o *Options) Validate() error {
 // TODO(docmerlin): create an EffectiveCronStringFrom(t time.Time) string,
 // that works from a unit of time.
 // Do not use this if you haven't checked for validity already.
+// TODO(docmerlin): modify this when the new scheduler comes on line, replace this method with TaskEffectiveCronString
 func (o *Options) EffectiveCronString() string {
 	if o.Cron != "" {
 		return o.Cron

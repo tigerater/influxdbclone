@@ -1,6 +1,7 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -9,9 +10,16 @@ import (
 
 	"go.uber.org/zap"
 
-	"github.com/influxdata/httprouter"
 	"github.com/influxdata/influxdb"
+	"github.com/julienschmidt/httprouter"
 )
+
+// UserResourceMappingService is the struct of urm service
+type UserResourceMappingService struct {
+	Addr               string
+	Token              string
+	InsecureSkipVerify bool
+}
 
 type resourceUserResponse struct {
 	Role influxdb.UserType `json:"role"`
@@ -48,7 +56,7 @@ func newResourceUsersResponse(opts influxdb.FindOptions, f influxdb.UserResource
 // member handler.
 type MemberBackend struct {
 	influxdb.HTTPErrorHandler
-	log *zap.Logger
+	Logger *zap.Logger
 
 	ResourceType influxdb.ResourceType
 	UserType     influxdb.UserType
@@ -84,7 +92,7 @@ func newPostMemberHandler(b MemberBackend) http.HandlerFunc {
 			b.HandleHTTPError(ctx, err, w)
 			return
 		}
-		b.log.Debug("Member/owner created", zap.String("mapping", fmt.Sprint(mapping)))
+		b.Logger.Debug("member/owner created", zap.String("mapping", fmt.Sprint(mapping)))
 
 		if err := encodeResponse(ctx, w, http.StatusCreated, newResourceUserResponse(user, b.UserType)); err != nil {
 			b.HandleHTTPError(ctx, err, w)
@@ -167,7 +175,7 @@ func newGetMembersHandler(b MemberBackend) http.HandlerFunc {
 
 			users = append(users, user)
 		}
-		b.log.Debug("Members/owners retrieved", zap.String("users", fmt.Sprint(users)))
+		b.Logger.Debug("members/owners retrieved", zap.String("users", fmt.Sprint(users)))
 
 		if err := encodeResponse(ctx, w, http.StatusOK, newResourceUsersResponse(opts, filter, users)); err != nil {
 			b.HandleHTTPError(ctx, err, w)
@@ -217,7 +225,7 @@ func newDeleteMemberHandler(b MemberBackend) http.HandlerFunc {
 			b.HandleHTTPError(ctx, err, w)
 			return
 		}
-		b.log.Debug("Member deleted", zap.String("resourceID", req.ResourceID.String()), zap.String("memberID", req.MemberID.String()))
+		b.Logger.Debug("member deleted", zap.String("resourceID", req.ResourceID.String()), zap.String("memberID", req.MemberID.String()))
 
 		w.WriteHeader(http.StatusNoContent)
 	}
@@ -262,18 +270,33 @@ func decodeDeleteMemberRequest(ctx context.Context, r *http.Request) (*deleteMem
 	}, nil
 }
 
-// UserResourceMappingService is the struct of urm service
-type UserResourceMappingService struct {
-	Client *HTTPClient
-}
-
 // FindUserResourceMappings returns the user resource mappings
 func (s *UserResourceMappingService) FindUserResourceMappings(ctx context.Context, filter influxdb.UserResourceMappingFilter, opt ...influxdb.FindOptions) ([]*influxdb.UserResourceMapping, int, error) {
-	var results resourceUsersResponse
-	err := s.Client.get(resourceIDPath(filter.ResourceType, filter.ResourceID, string(filter.UserType)+"s")).
-		DecodeJSON(&results).
-		Do(ctx)
+	url, err := NewURL(s.Addr, resourceIDPath(filter.ResourceType, filter.ResourceID, string(filter.UserType)+"s"))
 	if err != nil {
+		return nil, 0, err
+	}
+
+	req, err := http.NewRequest("GET", url.String(), nil)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	SetToken(s.Token, req)
+
+	hc := NewClient(url.Scheme, s.InsecureSkipVerify)
+	resp, err := hc.Do(req)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer resp.Body.Close()
+
+	if err := CheckError(resp); err != nil {
+		return nil, 0, err
+	}
+
+	results := new(resourceUsersResponse)
+	if err := json.NewDecoder(resp.Body).Decode(results); err != nil {
 		return nil, 0, err
 	}
 
@@ -295,16 +318,66 @@ func (s *UserResourceMappingService) CreateUserResourceMapping(ctx context.Conte
 		return err
 	}
 
-	urlPath := resourceIDPath(m.ResourceType, m.ResourceID, string(m.UserType)+"s")
-	return s.Client.post(urlPath, bodyJSON(influxdb.User{ID: m.UserID})).
-		DecodeJSON(m).
-		Do(ctx)
+	url, err := NewURL(s.Addr, resourceIDPath(m.ResourceType, m.ResourceID, string(m.UserType)+"s"))
+	if err != nil {
+		return err
+	}
+
+	octets, err := json.Marshal(influxdb.User{ID: m.UserID})
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", url.String(), bytes.NewReader(octets))
+	if err != nil {
+		return err
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+	SetToken(s.Token, req)
+
+	hc := NewClient(url.Scheme, s.InsecureSkipVerify)
+
+	resp, err := hc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// TODO(jsternberg): Should this check for a 201 explicitly?
+	if err := CheckError(resp); err != nil {
+		return err
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(m); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // DeleteUserResourceMapping will delete user resource mapping based in criteria.
 func (s *UserResourceMappingService) DeleteUserResourceMapping(ctx context.Context, resourceID influxdb.ID, userID influxdb.ID) error {
-	urlPath := resourceIDUserPath(influxdb.OrgsResourceType, resourceID, influxdb.Member, userID)
-	return s.Client.delete(urlPath).Do(ctx)
+	// default to use org resource type, and member resource type since it doesn't matter.
+	url, err := NewURL(s.Addr, resourceIDUserPath(influxdb.OrgsResourceType, resourceID, influxdb.Member, userID))
+	if err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("DELETE", url.String(), nil)
+	if err != nil {
+		return err
+	}
+	SetToken(s.Token, req)
+
+	hc := NewClient(url.Scheme, s.InsecureSkipVerify)
+	resp, err := hc.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	return CheckError(resp)
 }
 
 func resourceIDPath(resourceType influxdb.ResourceType, resourceID influxdb.ID, p string) string {

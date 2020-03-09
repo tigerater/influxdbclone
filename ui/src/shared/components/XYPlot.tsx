@@ -26,23 +26,19 @@ import {INVALID_DATA_COPY} from 'src/shared/copy/cell'
 import {RemoteDataState, XYViewProperties, TimeZone} from 'src/types'
 
 interface Props {
-  children: (config: Config) => JSX.Element
-  endTime: number
+  table: Table
   fluxGroupKeyUnion: string[]
   loading: RemoteDataState
-  startTime: number
-  table: Table
   timeZone: TimeZone
   viewProperties: XYViewProperties
+  children: (config: Config) => JSX.Element
 }
 
 const XYPlot: FunctionComponent<Props> = ({
-  children,
-  endTime,
+  table,
   fluxGroupKeyUnion,
   loading,
-  startTime,
-  table,
+  children,
   timeZone,
   viewProperties: {
     geom,
@@ -66,8 +62,6 @@ const XYPlot: FunctionComponent<Props> = ({
         base: yTickBase,
       },
     },
-    position,
-    timeFormat,
   },
 }) => {
   const storedXDomain = useMemo(() => parseBounds(xBounds), [xBounds])
@@ -80,9 +74,7 @@ const XYPlot: FunctionComponent<Props> = ({
 
   const [xDomain, onSetXDomain, onResetXDomain] = useVisDomainSettings(
     storedXDomain,
-    table.getColumn(xColumn, 'number'),
-    startTime,
-    endTime
+    table.getColumn(xColumn, 'number')
   )
 
   const [yDomain, onSetYDomain, onResetYDomain] = useVisDomainSettings(
@@ -119,7 +111,6 @@ const XYPlot: FunctionComponent<Props> = ({
     suffix: xTickSuffix,
     base: xTickBase,
     timeZone,
-    timeFormat,
   })
 
   const yFormatter = getFormatter(table.getColumnType(yColumn), {
@@ -127,7 +118,6 @@ const XYPlot: FunctionComponent<Props> = ({
     suffix: yTickSuffix,
     base: yTickBase,
     timeZone,
-    timeFormat,
   })
 
   const config: Config = {
@@ -153,7 +143,6 @@ const XYPlot: FunctionComponent<Props> = ({
         y: yColumn,
         fill: groupKey,
         interpolation,
-        position,
         colors: colorHexes,
         shadeBelow: !!shadeBelow,
         shadeBelowOpacity: 0.08,

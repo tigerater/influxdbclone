@@ -2,22 +2,21 @@ package http
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"time"
 
-	"github.com/influxdata/httprouter"
 	platform "github.com/influxdata/influxdb"
 	platcontext "github.com/influxdata/influxdb/context"
 	"github.com/influxdata/influxdb/jsonweb"
+	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 )
 
 // AuthenticationHandler is a middleware for authenticating incoming requests.
 type AuthenticationHandler struct {
 	platform.HTTPErrorHandler
-	log *zap.Logger
+	Logger *zap.Logger
 
 	AuthorizationService platform.AuthorizationService
 	SessionService       platform.SessionService
@@ -33,9 +32,9 @@ type AuthenticationHandler struct {
 }
 
 // NewAuthenticationHandler creates an authentication handler.
-func NewAuthenticationHandler(log *zap.Logger, h platform.HTTPErrorHandler) *AuthenticationHandler {
+func NewAuthenticationHandler(h platform.HTTPErrorHandler) *AuthenticationHandler {
 	return &AuthenticationHandler{
-		log:              log,
+		Logger:           zap.NewNop(),
 		HTTPErrorHandler: h,
 		Handler:          http.DefaultServeMux,
 		TokenParser:      jsonweb.NewTokenParser(jsonweb.EmptyKeyStore),
@@ -71,7 +70,7 @@ func ProbeAuthScheme(r *http.Request) (string, error) {
 }
 
 func (h *AuthenticationHandler) unauthorized(ctx context.Context, w http.ResponseWriter, err error) {
-	h.log.Info("Unauthorized", zap.Error(err))
+	h.Logger.Info("unauthorized", zap.Error(err))
 	UnauthorizedError(ctx, h, w)
 }
 
@@ -90,17 +89,21 @@ func (h *AuthenticationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 	}
 
 	var auth platform.Authorizer
+
 	switch scheme {
 	case tokenAuthScheme:
 		auth, err = h.extractAuthorization(ctx, r)
+		if err != nil {
+			h.unauthorized(ctx, w, err)
+			return
+		}
 	case sessionAuthScheme:
 		auth, err = h.extractSession(ctx, r)
+		if err != nil {
+			h.unauthorized(ctx, w, err)
+			return
+		}
 	default:
-		// TODO: this error will be nil if it gets here, this should be remedied with some
-		//  sentinel error I'm thinking
-		err = errors.New("invalid auth scheme")
-	}
-	if err != nil {
 		h.unauthorized(ctx, w, err)
 		return
 	}

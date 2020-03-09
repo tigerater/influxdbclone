@@ -1,6 +1,6 @@
 import React, {PureComponent} from 'react'
 
-import {SelectGroup, ButtonShape} from '@influxdata/clockface'
+import {Radio, ButtonShape} from '@influxdata/clockface'
 
 import {BucketTab} from 'src/authorizations/utils/permissions'
 
@@ -14,10 +14,9 @@ export default class BucketsTabSelector extends PureComponent<Props> {
   public render() {
     const {tabs, activeTab} = this.props
     return (
-      <SelectGroup shape={ButtonShape.StretchToFit}>
+      <Radio shape={ButtonShape.StretchToFit}>
         {tabs.map(tab => (
-          <SelectGroup.Option
-            name="bucket-selector"
+          <Radio.Button
             key={tab}
             id={tab}
             titleText={tab}
@@ -26,9 +25,9 @@ export default class BucketsTabSelector extends PureComponent<Props> {
             onClick={this.handleTabClick}
           >
             {tab}
-          </SelectGroup.Option>
+          </Radio.Button>
         ))}
-      </SelectGroup>
+      </Radio>
     )
   }
 

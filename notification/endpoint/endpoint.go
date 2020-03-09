@@ -20,11 +20,13 @@ var typeToEndpoint = map[string](func() influxdb.NotificationEndpoint){
 	HTTPType:      func() influxdb.NotificationEndpoint { return &HTTP{} },
 }
 
+type rawJSON struct {
+	Type string `json:"type"`
+}
+
 // UnmarshalJSON will convert the bytes to notification endpoint.
 func UnmarshalJSON(b []byte) (influxdb.NotificationEndpoint, error) {
-	var raw struct {
-		Type string `json:"type"`
-	}
+	var raw rawJSON
 	if err := json.Unmarshal(b, &raw); err != nil {
 		return nil, &influxdb.Error{
 			Msg: "unable to detect the notification endpoint type from json",

@@ -7,7 +7,6 @@ import (
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/kv"
 	influxdbtesting "github.com/influxdata/influxdb/testing"
-	"go.uber.org/zap/zaptest"
 )
 
 func TestBoltSecretService(t *testing.T) {
@@ -19,7 +18,7 @@ func TestInmemSecretService(t *testing.T) {
 }
 
 func initBoltSecretService(f influxdbtesting.SecretServiceFields, t *testing.T) (influxdb.SecretService, func()) {
-	s, closeBolt, err := NewTestBoltStore(t)
+	s, closeBolt, err := NewTestBoltStore()
 	if err != nil {
 		t.Fatalf("failed to create new kv store: %v", err)
 	}
@@ -32,7 +31,7 @@ func initBoltSecretService(f influxdbtesting.SecretServiceFields, t *testing.T) 
 }
 
 func initInmemSecretService(f influxdbtesting.SecretServiceFields, t *testing.T) (influxdb.SecretService, func()) {
-	s, closeBolt, err := NewTestInmemStore(t)
+	s, closeBolt, err := NewTestInmemStore()
 	if err != nil {
 		t.Fatalf("failed to create new kv store: %v", err)
 	}
@@ -45,7 +44,7 @@ func initInmemSecretService(f influxdbtesting.SecretServiceFields, t *testing.T)
 }
 
 func initSecretService(s kv.Store, f influxdbtesting.SecretServiceFields, t *testing.T) (influxdb.SecretService, func()) {
-	svc := kv.NewService(zaptest.NewLogger(t), s)
+	svc := kv.NewService(s)
 	ctx := context.Background()
 	if err := svc.Initialize(ctx); err != nil {
 		t.Fatalf("error initializing secret service: %v", err)

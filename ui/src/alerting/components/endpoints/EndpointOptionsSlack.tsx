@@ -13,7 +13,7 @@ const EndpointOptionsSlack: FC<Props> = ({url, onChange}) => {
   return (
     <Panel>
       <Panel.Header>
-        <h4>Slack Options</h4>
+        <Panel.Title>Slack Options</Panel.Title>
       </Panel.Header>
       <Panel.Body>
         <Grid>

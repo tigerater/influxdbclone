@@ -41,7 +41,7 @@ const EndpointOptionsHTTP: FC<Props> = ({
   return (
     <Panel>
       <Panel.Header>
-        <h4>HTTP Options</h4>
+        <Panel.Title>HTTP Options</Panel.Title>
       </Panel.Header>
       <Panel.Body>
         <Grid>

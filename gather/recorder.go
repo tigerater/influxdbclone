@@ -31,21 +31,14 @@ func (s PointWriter) Record(collected MetricsCollection) error {
 
 // Recorder record the metrics of a time based.
 type Recorder interface {
-	// Subscriber nats.Subscriber
+	//Subscriber nats.Subscriber
 	Record(collected MetricsCollection) error
 }
 
 // RecorderHandler implements nats.Handler interface.
 type RecorderHandler struct {
 	Recorder Recorder
-	log      *zap.Logger
-}
-
-func NewRecorderHandler(log *zap.Logger, recorder Recorder) *RecorderHandler {
-	return &RecorderHandler{
-		Recorder: recorder,
-		log:      log,
-	}
+	Logger   *zap.Logger
 }
 
 // Process consumes job queue, and use recorder to record.
@@ -54,11 +47,11 @@ func (h *RecorderHandler) Process(s nats.Subscription, m nats.Message) {
 	collected := new(MetricsCollection)
 	err := json.Unmarshal(m.Data(), &collected)
 	if err != nil {
-		h.log.Error("Recorder handler error", zap.Error(err))
+		h.Logger.Error("recorder handler error", zap.Error(err))
 		return
 	}
 	err = h.Recorder.Record(*collected)
 	if err != nil {
-		h.log.Error("Recorder handler error", zap.Error(err))
+		h.Logger.Error("recorder handler error", zap.Error(err))
 	}
 }

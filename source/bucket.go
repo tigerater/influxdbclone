@@ -17,13 +17,15 @@ func NewBucketService(s *platform.Source) (platform.BucketService, error) {
 		// how services are instantiated
 		return nil, fmt.Errorf("self source type not implemented")
 	case platform.V2SourceType:
-		httpClient, err := http.NewHTTPClient(s.URL, s.Token, s.InsecureSkipVerify)
-		if err != nil {
-			return nil, err
-		}
-		return &http.BucketService{Client: httpClient}, nil
+		return &http.BucketService{
+			Addr:               s.URL,
+			InsecureSkipVerify: s.InsecureSkipVerify,
+			Token:              s.Token,
+		}, nil
 	case platform.V1SourceType:
-		return &influxdb.BucketService{Source: s}, nil
+		return &influxdb.BucketService{
+			Source: s,
+		}, nil
 	}
 	return nil, fmt.Errorf("unsupported source type %s", s.Type)
 }

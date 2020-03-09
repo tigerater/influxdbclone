@@ -3,14 +3,7 @@ import _ from 'lodash'
 import React, {PureComponent, ChangeEvent} from 'react'
 
 // Components
-import {
-  Form,
-  SelectGroup,
-  Input,
-  Button,
-  FlexBox,
-  Grid,
-} from '@influxdata/clockface'
+import {Form, Radio, Input, Button, FlexBox, Grid} from '@influxdata/clockface'
 import TaskScheduleFormField from 'src/tasks/components/TaskScheduleFormField'
 import TaskOptionsBucketDropdown from 'src/tasks/components/TasksOptionsBucketDropdown'
 import GetResources, {ResourceType} from 'src/shared/components/GetResources'
@@ -97,9 +90,8 @@ export default class TaskForm extends PureComponent<Props, State> {
                   alignItems={AlignItems.FlexStart}
                   margin={ComponentSize.Small}
                 >
-                  <SelectGroup shape={ButtonShape.StretchToFit}>
-                    <SelectGroup.Option
-                      name="task-schedule"
+                  <Radio shape={ButtonShape.StretchToFit}>
+                    <Radio.Button
                       id="every"
                       active={taskScheduleType === TaskSchedule.interval}
                       value={TaskSchedule.interval}
@@ -108,9 +100,8 @@ export default class TaskForm extends PureComponent<Props, State> {
                       testID="task-card-every-btn"
                     >
                       Every
-                    </SelectGroup.Option>
-                    <SelectGroup.Option
-                      name="task-schedule"
+                    </Radio.Button>
+                    <Radio.Button
                       id="cron"
                       active={taskScheduleType === TaskSchedule.cron}
                       value={TaskSchedule.cron}
@@ -119,8 +110,8 @@ export default class TaskForm extends PureComponent<Props, State> {
                       testID="task-card-cron-btn"
                     >
                       Cron
-                    </SelectGroup.Option>
-                  </SelectGroup>
+                    </Radio.Button>
+                  </Radio>
                   {this.cronHelper}
                 </FlexBox>
               </Form.Element>

@@ -16,7 +16,7 @@ import {
   IndexList,
   Alignment,
   ConfirmationButton,
-  Appearance,
+  PopoverType,
 } from '@influxdata/clockface'
 import EditableName from 'src/shared/components/EditableName'
 
@@ -66,7 +66,7 @@ class TokenRow extends PureComponent<Props> {
             confirmationLabel="Really delete this token?"
             confirmationButtonText="Confirm"
             confirmationButtonColor={ComponentColor.Danger}
-            popoverAppearance={Appearance.Outline}
+            popoverType={PopoverType.Outline}
             popoverColor={ComponentColor.Danger}
             color={ComponentColor.Danger}
             onConfirm={this.handleDelete}

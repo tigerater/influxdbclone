@@ -1,6 +1,6 @@
 // Libraries
 import React, {FC} from 'react'
-import {SelectGroup} from '@influxdata/clockface'
+import {Radio} from '@influxdata/clockface'
 
 // Components
 import BackToTopButton from 'src/eventViewer/components/BackToTopButton'
@@ -30,28 +30,24 @@ const AlertHistoryControls: FC<Props> = ({
   return (
     <div className="alert-history-controls">
       <div className="alert-history-controls--left">
-        <SelectGroup className="alert-history-controls--switcher">
-          <SelectGroup.Option
-            name="alert-history-mode"
-            id="alert-history-mode--statuses"
+        <Radio className="alert-history-controls--switcher">
+          <Radio.Button
             value="statuses"
             onClick={() => onSetHistoryType('statuses')}
             titleText="View Status History"
             active={historyType === 'statuses'}
           >
             Statuses
-          </SelectGroup.Option>
-          <SelectGroup.Option
-            name="alert-history-mode"
-            id="alert-history-mode--notifications"
+          </Radio.Button>
+          <Radio.Button
             value="notifications"
             onClick={() => onSetHistoryType('notifications')}
             titleText="View Notification History"
             active={historyType === 'notifications'}
           >
             Notifications
-          </SelectGroup.Option>
-        </SelectGroup>
+          </Radio.Button>
+        </Radio>
       </div>
       <div className="alert-history-controls--right">
         <BackToTopButton {...eventViewerProps} />

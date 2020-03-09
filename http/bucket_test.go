@@ -11,21 +11,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/influxdata/httprouter"
-	"github.com/influxdata/influxdb"
 	platform "github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/inmem"
 	"github.com/influxdata/influxdb/kv"
 	"github.com/influxdata/influxdb/mock"
 	platformtesting "github.com/influxdata/influxdb/testing"
+	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
-	"go.uber.org/zap/zaptest"
 )
 
 // NewMockBucketBackend returns a BucketBackend with mock services.
-func NewMockBucketBackend(t *testing.T) *BucketBackend {
+func NewMockBucketBackend() *BucketBackend {
 	return &BucketBackend{
-		log: zaptest.NewLogger(t).With(zap.String("handler", "bucket")),
+		Logger: zap.NewNop().With(zap.String("handler", "bucket")),
 
 		BucketService:              mock.NewBucketService(),
 		BucketOperationLogService:  mock.NewBucketOperationLogService(),
@@ -197,10 +195,10 @@ func TestService_handleGetBuckets(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bucketBackend := NewMockBucketBackend(t)
+			bucketBackend := NewMockBucketBackend()
 			bucketBackend.BucketService = tt.fields.BucketService
 			bucketBackend.LabelService = tt.fields.LabelService
-			h := NewBucketHandler(zaptest.NewLogger(t), bucketBackend)
+			h := NewBucketHandler(bucketBackend)
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
@@ -322,10 +320,10 @@ func TestService_handleGetBucket(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bucketBackend := NewMockBucketBackend(t)
+			bucketBackend := NewMockBucketBackend()
 			bucketBackend.HTTPErrorHandler = ErrorHandler(0)
 			bucketBackend.BucketService = tt.fields.BucketService
-			h := NewBucketHandler(zaptest.NewLogger(t), bucketBackend)
+			h := NewBucketHandler(bucketBackend)
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
@@ -432,40 +430,14 @@ func TestService_handlePostBucket(t *testing.T) {
 `,
 			},
 		},
-		{
-			name: "create a new bucket with invalid name",
-			fields: fields{
-				BucketService: &mock.BucketService{
-					CreateBucketFn: func(ctx context.Context, c *platform.Bucket) error {
-						c.ID = platformtesting.MustIDBase16("020f755c3c082000")
-						return nil
-					},
-				},
-				OrganizationService: &mock.OrganizationService{
-					FindOrganizationF: func(ctx context.Context, f platform.OrganizationFilter) (*platform.Organization, error) {
-						return &platform.Organization{ID: platformtesting.MustIDBase16("6f626f7274697320")}, nil
-					},
-				},
-			},
-			args: args{
-				bucket: &platform.Bucket{
-					Name:  "_hello",
-					OrgID: platformtesting.MustIDBase16("6f626f7274697320"),
-				},
-			},
-			wants: wants{
-				statusCode: http.StatusBadRequest,
-			},
-		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bucketBackend := NewMockBucketBackend(t)
-			bucketBackend.HTTPErrorHandler = ErrorHandler(0)
+			bucketBackend := NewMockBucketBackend()
 			bucketBackend.BucketService = tt.fields.BucketService
 			bucketBackend.OrganizationService = tt.fields.OrganizationService
-			h := NewBucketHandler(zaptest.NewLogger(t), bucketBackend)
+			h := NewBucketHandler(bucketBackend)
 
 			b, err := json.Marshal(newBucket(tt.args.bucket))
 			if err != nil {
@@ -560,10 +532,10 @@ func TestService_handleDeleteBucket(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bucketBackend := NewMockBucketBackend(t)
+			bucketBackend := NewMockBucketBackend()
 			bucketBackend.HTTPErrorHandler = ErrorHandler(0)
 			bucketBackend.BucketService = tt.fields.BucketService
-			h := NewBucketHandler(zaptest.NewLogger(t), bucketBackend)
+			h := NewBucketHandler(bucketBackend)
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
@@ -627,13 +599,6 @@ func TestService_handlePatchBucket(t *testing.T) {
 			name: "update a bucket name and retention",
 			fields: fields{
 				&mock.BucketService{
-					FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-						return &platform.Bucket{
-							ID:    platformtesting.MustIDBase16("020f755c3c082000"),
-							Name:  "hello",
-							OrgID: platformtesting.MustIDBase16("020f755c3c082000"),
-						}, nil
-					},
 					UpdateBucketFn: func(ctx context.Context, id platform.ID, upd platform.BucketUpdate) (*platform.Bucket, error) {
 						if id == platformtesting.MustIDBase16("020f755c3c082000") {
 							d := &platform.Bucket{
@@ -689,49 +654,9 @@ func TestService_handlePatchBucket(t *testing.T) {
 			},
 		},
 		{
-			name: "update a bucket name invalid",
-			fields: fields{
-				&mock.BucketService{
-					FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-						if id == platformtesting.MustIDBase16("020f755c3c082000") {
-							return &platform.Bucket{
-								ID:    platformtesting.MustIDBase16("020f755c3c082000"),
-								Name:  "hello",
-								OrgID: platformtesting.MustIDBase16("020f755c3c082000"),
-							}, nil
-						}
-						return nil, fmt.Errorf("not found")
-					},
-					UpdateBucketFn: func(ctx context.Context, id platform.ID, upd platform.BucketUpdate) (*platform.Bucket, error) {
-						if id == platformtesting.MustIDBase16("020f755c3c082000") {
-							return &platform.Bucket{
-								ID:    platformtesting.MustIDBase16("020f755c3c082000"),
-								Name:  "hello",
-								OrgID: platformtesting.MustIDBase16("020f755c3c082000"),
-							}, nil
-						}
-						return nil, fmt.Errorf("not found")
-					},
-				},
-			},
-			args: args{
-				id:   "020f755c3c082000",
-				name: "_example",
-			},
-			wants: wants{
-				statusCode: http.StatusBadRequest,
-			},
-		},
-		{
 			name: "bucket not found",
 			fields: fields{
 				&mock.BucketService{
-					FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-						return nil, &platform.Error{
-							Code: platform.ENotFound,
-							Msg:  "bucket not found",
-						}
-					},
 					UpdateBucketFn: func(ctx context.Context, id platform.ID, upd platform.BucketUpdate) (*platform.Bucket, error) {
 						return nil, &platform.Error{
 							Code: platform.ENotFound,
@@ -753,16 +678,6 @@ func TestService_handlePatchBucket(t *testing.T) {
 			name: "update bucket to no retention and new name",
 			fields: fields{
 				&mock.BucketService{
-					FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-						if id == platformtesting.MustIDBase16("020f755c3c082000") {
-							return &platform.Bucket{
-								ID:    platformtesting.MustIDBase16("020f755c3c082000"),
-								Name:  "hello",
-								OrgID: platformtesting.MustIDBase16("020f755c3c082000"),
-							}, nil
-						}
-						return nil, fmt.Errorf("not found")
-					},
 					UpdateBucketFn: func(ctx context.Context, id platform.ID, upd platform.BucketUpdate) (*platform.Bucket, error) {
 						if id == platformtesting.MustIDBase16("020f755c3c082000") {
 							d := &platform.Bucket{
@@ -881,13 +796,6 @@ func TestService_handlePatchBucket(t *testing.T) {
 			name: "update a bucket name with invalid retention policy is an error",
 			fields: fields{
 				&mock.BucketService{
-					FindBucketByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.Bucket, error) {
-						return &platform.Bucket{
-							ID:    platformtesting.MustIDBase16("020f755c3c082000"),
-							Name:  "hello",
-							OrgID: platformtesting.MustIDBase16("020f755c3c082000"),
-						}, nil
-					},
 					UpdateBucketFn: func(ctx context.Context, id platform.ID, upd platform.BucketUpdate) (*platform.Bucket, error) {
 						if id == platformtesting.MustIDBase16("020f755c3c082000") {
 							d := &platform.Bucket{
@@ -927,10 +835,10 @@ func TestService_handlePatchBucket(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bucketBackend := NewMockBucketBackend(t)
+			bucketBackend := NewMockBucketBackend()
 			bucketBackend.HTTPErrorHandler = ErrorHandler(0)
 			bucketBackend.BucketService = tt.fields.BucketService
-			h := NewBucketHandler(zaptest.NewLogger(t), bucketBackend)
+			h := NewBucketHandler(bucketBackend)
 
 			upd := platform.BucketUpdate{}
 			if tt.args.name != "" {
@@ -1043,9 +951,9 @@ func TestService_handlePostBucketMember(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bucketBackend := NewMockBucketBackend(t)
+			bucketBackend := NewMockBucketBackend()
 			bucketBackend.UserService = tt.fields.UserService
-			h := NewBucketHandler(zaptest.NewLogger(t), bucketBackend)
+			h := NewBucketHandler(bucketBackend)
 
 			b, err := json.Marshal(tt.args.user)
 			if err != nil {
@@ -1137,9 +1045,9 @@ func TestService_handlePostBucketOwner(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			bucketBackend := NewMockBucketBackend(t)
+			bucketBackend := NewMockBucketBackend()
 			bucketBackend.UserService = tt.fields.UserService
-			h := NewBucketHandler(zaptest.NewLogger(t), bucketBackend)
+			h := NewBucketHandler(bucketBackend)
 
 			b, err := json.Marshal(tt.args.user)
 			if err != nil {
@@ -1172,7 +1080,7 @@ func TestService_handlePostBucketOwner(t *testing.T) {
 }
 
 func initBucketService(f platformtesting.BucketFields, t *testing.T) (platform.BucketService, string, func()) {
-	svc := kv.NewService(zaptest.NewLogger(t), inmem.NewKVStore())
+	svc := kv.NewService(inmem.NewKVStore())
 	svc.IDGenerator = f.IDGenerator
 	svc.OrgBucketIDs = f.OrgBucketIDs
 	svc.TimeGenerator = f.TimeGenerator
@@ -1196,14 +1104,14 @@ func initBucketService(f platformtesting.BucketFields, t *testing.T) (platform.B
 		}
 	}
 
-	bucketBackend := NewMockBucketBackend(t)
+	bucketBackend := NewMockBucketBackend()
 	bucketBackend.HTTPErrorHandler = ErrorHandler(0)
 	bucketBackend.BucketService = svc
 	bucketBackend.OrganizationService = svc
-	handler := NewBucketHandler(zaptest.NewLogger(t), bucketBackend)
+	handler := NewBucketHandler(bucketBackend)
 	server := httptest.NewServer(handler)
 	client := BucketService{
-		Client:   mustNewHTTPClient(t, server.URL, ""),
+		Addr:     server.URL,
 		OpPrefix: inmem.OpPrefix,
 	}
 	done := server.Close
@@ -1213,14 +1121,4 @@ func initBucketService(f platformtesting.BucketFields, t *testing.T) (platform.B
 
 func TestBucketService(t *testing.T) {
 	platformtesting.BucketService(initBucketService, t)
-}
-
-func mustNewHTTPClient(t *testing.T, addr, token string) *HTTPClient {
-	t.Helper()
-
-	httpClient, err := NewHTTPClient(addr, token, false)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return httpClient
 }

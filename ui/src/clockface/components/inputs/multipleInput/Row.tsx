@@ -10,7 +10,7 @@ import {
   Alignment,
   ConfirmationButton,
   ComponentColor,
-  Appearance,
+  PopoverType,
 } from '@influxdata/clockface'
 import EditableDescription from 'src/shared/components/editable_description/EditableDescription'
 
@@ -53,7 +53,7 @@ class Row extends PureComponent<RowProps> {
                 returnValue={item}
                 text="Delete"
                 popoverColor={ComponentColor.Danger}
-                popoverAppearance={Appearance.Outline}
+                popoverType={PopoverType.Outline}
                 color={ComponentColor.Danger}
                 confirmationLabel=""
                 confirmationButtonColor={ComponentColor.Danger}

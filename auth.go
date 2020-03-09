@@ -23,7 +23,6 @@ type Authorization struct {
 	OrgID       ID           `json:"orgID"`
 	UserID      ID           `json:"userID,omitempty"`
 	Permissions []Permission `json:"permissions"`
-	CRUDLog
 }
 
 // AuthorizationUpdate is the authorization update request.

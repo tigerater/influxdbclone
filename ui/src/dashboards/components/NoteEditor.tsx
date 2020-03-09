@@ -5,7 +5,6 @@ import {connect} from 'react-redux'
 // Components
 import {
   SlideToggle,
-  InputLabel,
   ComponentSize,
   FlexBox,
   FlexDirection,
@@ -86,7 +85,7 @@ class NoteEditor extends PureComponent<Props, State> {
         direction={FlexDirection.Row}
         justifyContent={JustifyContent.FlexEnd}
       >
-        <InputLabel>Show note when query returns no data</InputLabel>
+        <SlideToggle.Label text="Show note when query returns no data" />
         <SlideToggle
           active={showNoteWhenEmpty}
           size={ComponentSize.ExtraSmall}

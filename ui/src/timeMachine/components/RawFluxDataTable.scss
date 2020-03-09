@@ -1,11 +1,7 @@
 @import "src/style/modules";
 
-.raw-flux-data-table > .fancy-scroll--container,
 .raw-flux-data-table--cell {
-  border: ($ix-border / 2) solid $g2-kevlar;
-}
-
-.raw-flux-data-table--cell {
+  border: 1px solid $g4-onyx;
   font-family: $code-font;
   font-size: 12px;
   z-index: 1;
@@ -14,8 +10,8 @@
   left: 0;
 
   .raw-flux-data-table--cell-bg {
-    background: $g0-obsidian;
-    border: 2px solid $g0-obsidian;
+    background: $g3-castle;
+    border: 2px solid $g3-castle;
     position: absolute;
     padding: 5px;
     border-radius: 2px;
