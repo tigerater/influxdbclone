@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/influxdata/influxdb"
@@ -647,6 +648,11 @@ func (s *Service) validBucketName(ctx context.Context, tx Tx, b *influxdb.Bucket
 		return BucketAlreadyExistsError(b)
 	}
 
+	// names starting with an underscore are reserved for system buckets
+	if strings.HasPrefix(b.Name, "_") && b.Type != influxdb.BucketTypeSystem {
+		return ReservedBucketNameError(b)
+	}
+
 	return err
 }
 
@@ -903,5 +909,15 @@ func BucketAlreadyExistsError(b *influxdb.Bucket) error {
 		Code: influxdb.EConflict,
 		Op:   "kv/bucket",
 		Msg:  fmt.Sprintf("bucket with name %s already exists", b.Name),
+	}
+}
+
+// ReservedBucketNameError is used when creating a bucket with a name that
+// starts with an underscore.
+func ReservedBucketNameError(b *influxdb.Bucket) error {
+	return &influxdb.Error{
+		Code: influxdb.EInvalid,
+		Op:   "kv/bucket",
+		Msg:  fmt.Sprintf("bucket name %s is invalid. Buckets may not start with underscore", b.Name),
 	}
 }

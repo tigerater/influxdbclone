@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"net/http"
 	"path"
-	"strings"
 	"time"
 
 	"github.com/influxdata/httprouter"
@@ -328,12 +327,6 @@ func (h *BucketHandler) handlePostBucket(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	// names starting with an underscore are reserved for system buckets
-	if err := validBucketName(bucket); err != nil {
-		h.HandleHTTPError(ctx, err, w)
-		return
-	}
-
 	if err := h.BucketService.CreateBucket(ctx, bucket); err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
@@ -644,19 +637,6 @@ func (h *BucketHandler) handlePatchBucket(w http.ResponseWriter, r *http.Request
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
-	}
-
-	if req.Update.Name != nil {
-		b, err := h.BucketService.FindBucketByID(ctx, req.BucketID)
-		if err != nil {
-			h.HandleHTTPError(ctx, err, w)
-			return
-		}
-		b.Name = *req.Update.Name
-		if err := validBucketName(b); err != nil {
-			h.HandleHTTPError(ctx, err, w)
-			return
-		}
 	}
 
 	b, err := h.BucketService.UpdateBucket(ctx, req.BucketID, req.Update)
@@ -1007,17 +987,4 @@ func (s *BucketService) DeleteBucket(ctx context.Context, id influxdb.ID) error 
 	defer resp.Body.Close()
 
 	return CheckError(resp)
-}
-
-// validBucketName reports any errors with bucket names
-func validBucketName(bucket *influxdb.Bucket) error {
-	// names starting with an underscore are reserved for system buckets
-	if strings.HasPrefix(bucket.Name, "_") && bucket.Type != influxdb.BucketTypeSystem {
-		return &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Op:   "http/bucket",
-			Msg:  fmt.Sprintf("bucket name %s is invalid. Buckets may not start with underscore", bucket.Name),
-		}
-	}
-	return nil
 }
