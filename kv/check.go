@@ -154,9 +154,6 @@ func filterChecksFn(idMap map[influxdb.ID]bool, filter influxdb.CheckFilter) fun
 		if filter.ID != nil && c.GetID() != *filter.ID {
 			return false
 		}
-		if filter.OrgID != nil && c.GetOrgID() != *filter.OrgID {
-			return false
-		}
 		if filter.Name != nil && c.GetName() != *filter.Name {
 			return false
 		}
@@ -201,6 +198,15 @@ func (s *Service) FindChecks(ctx context.Context, filter influxdb.CheckFilter, o
 			filter.OrgID = &o.ID
 		}
 
+		var prefix []byte
+		if filter.OrgID != nil {
+			encs := []EncodeFn{EncID(*filter.OrgID)}
+			if filter.Name != nil {
+				encs = append(encs, EncString(*filter.Name))
+			}
+			prefix, _ = s.checkStore.IndexStore.EntKey(ctx, Entity{UniqueKey: Encode(encs...)})
+		}
+
 		var opt influxdb.FindOptions
 		if len(opts) > 0 {
 			opt = opts[0]
@@ -211,6 +217,7 @@ func (s *Service) FindChecks(ctx context.Context, filter influxdb.CheckFilter, o
 			Descending: opt.Descending,
 			Offset:     opt.Offset,
 			Limit:      opt.Limit,
+			Prefix:     prefix,
 			FilterEntFn: func(k []byte, v interface{}) bool {
 				ch, ok := v.(influxdb.Check)
 				if err := IsErrUnexpectedDecodeVal(ok); err != nil {
