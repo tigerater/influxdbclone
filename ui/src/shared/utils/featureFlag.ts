@@ -7,7 +7,6 @@ const OSS_FLAGS = {
   deleteWithPredicate: false,
   monacoEditor: false,
   downloadCellCSV: false,
-  telegrafEditor: false,
 }
 
 const CLOUD_FLAGS = {
@@ -17,7 +16,6 @@ const CLOUD_FLAGS = {
   monacoEditor: false,
   cloudBilling: CLOUD_BILLING_VISIBLE, // should be visible in dev and acceptance, but not in cloud
   downloadCellCSV: false,
-  telegrafEditor: false,
 }
 
 export const isFlagEnabled = (flagName: string, equals?: string | boolean) => {

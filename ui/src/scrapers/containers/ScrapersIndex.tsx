@@ -35,7 +35,7 @@ class ScrapersIndex extends Component<StateProps> {
             <GetResources
               resources={[ResourceType.Scrapers, ResourceType.Buckets]}
             >
-              <Scrapers />
+              <Scrapers orgName={org.name} />
             </GetResources>
           </LoadDataTabbedPage>
         </Page>

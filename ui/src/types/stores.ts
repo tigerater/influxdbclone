@@ -16,7 +16,6 @@ import {BucketsState} from 'src/buckets/reducers'
 import {
   TelegrafEditorPluginState,
   TelegrafEditorActivePluginState,
-  TelegrafEditorState,
 } from 'src/dataLoaders/reducers/telegrafEditor'
 import {TelegrafsState} from 'src/telegrafs/reducers'
 import {TemplatesState} from 'src/templates/reducers'
@@ -61,7 +60,6 @@ export interface AppState {
   tasks: TasksState
   telegrafEditorPlugins: TelegrafEditorPluginState
   telegrafEditorActivePlugins: TelegrafEditorActivePluginState
-  telegrafEditor: TelegrafEditorState
   telegrafs: TelegrafsState
   templates: TemplatesState
   timeMachines: TimeMachinesState

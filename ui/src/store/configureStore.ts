@@ -38,7 +38,6 @@ import endpointsReducer from 'src/alerting/reducers/notifications/endpoints'
 import {
   pluginsReducer,
   activePluginsReducer,
-  editorReducer,
 } from 'src/dataLoaders/reducers/telegrafEditor'
 
 // Types
@@ -68,7 +67,6 @@ export const rootReducer = combineReducers<ReducerState>({
   buckets: bucketsReducer,
   telegrafEditorPlugins: pluginsReducer,
   telegrafEditorActivePlugins: activePluginsReducer,
-  telegrafEditor: editorReducer,
   telegrafs: telegrafsReducer,
   tokens: authorizationsReducer,
   scrapers: scrapersReducer,
