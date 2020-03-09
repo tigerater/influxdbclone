@@ -38,12 +38,7 @@ class InlineLabelsList extends Component<Props> {
           style={{maxWidth: '100%', maxHeight: '300px'}}
           noScrollX={true}
         >
-          <div
-            className="inline-labels--list"
-            data-testid="inline-labels--list"
-          >
-            {this.menuItems}
-          </div>
+          <div className="inline-labels--list">{this.menuItems}</div>
         </DapperScrollbars>
       </div>
     )
