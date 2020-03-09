@@ -51,11 +51,10 @@ func TestNotificationEndpointService_FindNotificationEndpointByID(t *testing.T) 
 			fields: fields{
 				NotificationEndpointService: &mock.NotificationEndpointService{
 					FindNotificationEndpointByIDF: func(ctx context.Context, id influxdb.ID) (influxdb.NotificationEndpoint, error) {
-						orgID := influxdb.ID(10)
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    &id,
-								OrgID: &orgID,
+								ID:    id,
+								OrgID: 10,
 							},
 						}, nil
 					},
@@ -80,11 +79,10 @@ func TestNotificationEndpointService_FindNotificationEndpointByID(t *testing.T) 
 			fields: fields{
 				NotificationEndpointService: &mock.NotificationEndpointService{
 					FindNotificationEndpointByIDF: func(ctx context.Context, id influxdb.ID) (influxdb.NotificationEndpoint, error) {
-						orgID := influxdb.ID(10)
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    &id,
-								OrgID: &orgID,
+								ID:    id,
+								OrgID: 10,
 							},
 						}, nil
 					},
@@ -148,14 +146,20 @@ func TestNotificationEndpointService_FindNotificationEndpoints(t *testing.T) {
 						return []influxdb.NotificationEndpoint{
 							&endpoint.Slack{
 								Base: endpoint.Base{
-									ID:    idPtr(1),
-									OrgID: idPtr(10),
+									ID:    1,
+									OrgID: 10,
+								},
+							},
+							&endpoint.Slack{
+								Base: endpoint.Base{
+									ID:    2,
+									OrgID: 10,
 								},
 							},
 							&endpoint.HTTP{
 								Base: endpoint.Base{
-									ID:    idPtr(1),
-									OrgID: idPtr(10),
+									ID:    3,
+									OrgID: 11,
 								},
 							},
 						}, 3, nil
@@ -175,14 +179,14 @@ func TestNotificationEndpointService_FindNotificationEndpoints(t *testing.T) {
 				notificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
-							ID:    idPtr(1),
-							OrgID: idPtr(10),
+							ID:    1,
+							OrgID: 10,
 						},
 					},
-					&endpoint.HTTP{
+					&endpoint.Slack{
 						Base: endpoint.Base{
-							ID:    idPtr(1),
-							OrgID: idPtr(10),
+							ID:    2,
+							OrgID: 10,
 						},
 					},
 				},
@@ -235,16 +239,16 @@ func TestNotificationEndpointService_UpdateNotificationEndpoint(t *testing.T) {
 					FindNotificationEndpointByIDF: func(ctc context.Context, id influxdb.ID) (influxdb.NotificationEndpoint, error) {
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    idPtr(1),
-								OrgID: idPtr(10),
+								ID:    1,
+								OrgID: 10,
 							},
 						}, nil
 					},
 					UpdateNotificationEndpointF: func(ctx context.Context, id influxdb.ID, upd influxdb.NotificationEndpoint, userID influxdb.ID) (influxdb.NotificationEndpoint, error) {
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    idPtr(1),
-								OrgID: idPtr(10),
+								ID:    1,
+								OrgID: 10,
 							},
 						}, nil
 					},
@@ -280,16 +284,16 @@ func TestNotificationEndpointService_UpdateNotificationEndpoint(t *testing.T) {
 					FindNotificationEndpointByIDF: func(ctc context.Context, id influxdb.ID) (influxdb.NotificationEndpoint, error) {
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    idPtr(1),
-								OrgID: idPtr(10),
+								ID:    1,
+								OrgID: 10,
 							},
 						}, nil
 					},
 					UpdateNotificationEndpointF: func(ctx context.Context, id influxdb.ID, upd influxdb.NotificationEndpoint, userID influxdb.ID) (influxdb.NotificationEndpoint, error) {
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    idPtr(1),
-								OrgID: idPtr(10),
+								ID:    1,
+								OrgID: 10,
 							},
 						}, nil
 					},
@@ -356,16 +360,16 @@ func TestNotificationEndpointService_PatchNotificationEndpoint(t *testing.T) {
 					FindNotificationEndpointByIDF: func(ctc context.Context, id influxdb.ID) (influxdb.NotificationEndpoint, error) {
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    idPtr(1),
-								OrgID: idPtr(10),
+								ID:    1,
+								OrgID: 10,
 							},
 						}, nil
 					},
 					PatchNotificationEndpointF: func(ctx context.Context, id influxdb.ID, upd influxdb.NotificationEndpointUpdate) (influxdb.NotificationEndpoint, error) {
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    idPtr(1),
-								OrgID: idPtr(10),
+								ID:    1,
+								OrgID: 10,
 							},
 						}, nil
 					},
@@ -401,16 +405,16 @@ func TestNotificationEndpointService_PatchNotificationEndpoint(t *testing.T) {
 					FindNotificationEndpointByIDF: func(ctc context.Context, id influxdb.ID) (influxdb.NotificationEndpoint, error) {
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    idPtr(1),
-								OrgID: idPtr(10),
+								ID:    1,
+								OrgID: 10,
 							},
 						}, nil
 					},
 					PatchNotificationEndpointF: func(ctx context.Context, id influxdb.ID, upd influxdb.NotificationEndpointUpdate) (influxdb.NotificationEndpoint, error) {
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    idPtr(1),
-								OrgID: idPtr(10),
+								ID:    1,
+								OrgID: 10,
 							},
 						}, nil
 					},
@@ -476,8 +480,8 @@ func TestNotificationEndpointService_DeleteNotificationEndpoint(t *testing.T) {
 					FindNotificationEndpointByIDF: func(ctc context.Context, id influxdb.ID) (influxdb.NotificationEndpoint, error) {
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    idPtr(1),
-								OrgID: idPtr(10),
+								ID:    1,
+								OrgID: 10,
 							},
 						}, nil
 					},
@@ -516,8 +520,8 @@ func TestNotificationEndpointService_DeleteNotificationEndpoint(t *testing.T) {
 					FindNotificationEndpointByIDF: func(ctc context.Context, id influxdb.ID) (influxdb.NotificationEndpoint, error) {
 						return &endpoint.Slack{
 							Base: endpoint.Base{
-								ID:    idPtr(1),
-								OrgID: idPtr(10),
+								ID:    1,
+								OrgID: 10,
 							},
 						}, nil
 					},
@@ -665,13 +669,9 @@ func TestNotificationEndpointService_CreateNotificationEndpoint(t *testing.T) {
 
 			err := s.CreateNotificationEndpoint(ctx, &endpoint.Slack{
 				Base: endpoint.Base{
-					OrgID: idPtr(tt.args.orgID)},
+					OrgID: tt.args.orgID},
 			}, influxdb.ID(1))
 			influxdbtesting.ErrorsEqual(t, err, tt.wants.err)
 		})
 	}
-}
-
-func idPtr(id influxdb.ID) *influxdb.ID {
-	return &id
 }

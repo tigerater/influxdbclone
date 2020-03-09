@@ -10,29 +10,22 @@ import (
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
 	"github.com/influxdata/influxdb"
-	pctx "github.com/influxdata/influxdb/context"
 	"github.com/influxdata/influxdb/kit/tracing"
-	"github.com/influxdata/influxdb/pkg/httpc"
 	"github.com/influxdata/influxdb/pkger"
-	"go.uber.org/zap"
 	"gopkg.in/yaml.v3"
 )
-
-const prefixPackages = "/api/v2/packages"
 
 // HandlerPkg is a server that manages the packages HTTP transport.
 type HandlerPkg struct {
 	chi.Router
 	influxdb.HTTPErrorHandler
-	logger *zap.Logger
-	svc    pkger.SVC
+	svc pkger.SVC
 }
 
 // NewHandlerPkg constructs a new http server.
-func NewHandlerPkg(log *zap.Logger, errHandler influxdb.HTTPErrorHandler, svc pkger.SVC) *HandlerPkg {
+func NewHandlerPkg(errHandler influxdb.HTTPErrorHandler, svc pkger.SVC) *HandlerPkg {
 	svr := &HandlerPkg{
 		HTTPErrorHandler: errHandler,
-		logger:           log,
 		svc:              svc,
 	}
 
@@ -55,17 +48,17 @@ func NewHandlerPkg(log *zap.Logger, errHandler influxdb.HTTPErrorHandler, svc pk
 
 // Prefix provides the prefix to this route tree.
 func (s *HandlerPkg) Prefix() string {
-	return prefixPackages
+	return "/api/v2/packages"
 }
 
 type (
 	// ReqCreatePkg is a request body for the create pkg endpoint.
 	ReqCreatePkg struct {
-		PkgName        string                  `json:"pkgName"`
-		PkgDescription string                  `json:"pkgDescription"`
-		PkgVersion     string                  `json:"pkgVersion"`
-		OrgIDs         []string                `json:"orgIDs"`
-		Resources      []pkger.ResourceToClone `json:"resources"`
+		PkgName        string `json:"pkgName"`
+		PkgDescription string `json:"pkgDescription"`
+		PkgVersion     string `json:"pkgVersion"`
+
+		Resources []pkger.ResourceToClone `json:"resources"`
 	}
 
 	// RespCreatePkg is a response body for the create pkg endpoint.
@@ -83,25 +76,15 @@ func (s *HandlerPkg) createPkg(w http.ResponseWriter, r *http.Request) {
 	}
 	defer r.Body.Close()
 
-	opts := []pkger.CreatePkgSetFn{
+	newPkg, err := s.svc.CreatePkg(r.Context(),
 		pkger.CreateWithMetadata(pkger.Metadata{
 			Description: reqBody.PkgDescription,
 			Name:        reqBody.PkgName,
 			Version:     reqBody.PkgVersion,
 		}),
 		pkger.CreateWithExistingResources(reqBody.Resources...),
-	}
-	for _, orgIDStr := range reqBody.OrgIDs {
-		orgID, err := influxdb.IDFromString(orgIDStr)
-		if err != nil {
-			continue
-		}
-		opts = append(opts, pkger.CreateWithAllOrgResources(*orgID))
-	}
-
-	newPkg, err := s.svc.CreatePkg(r.Context(), opts...)
+	)
 	if err != nil {
-		s.logger.Error("failed to create pkg", zap.Error(err))
 		s.HandleHTTPError(r.Context(), err, w)
 		return
 	}
@@ -154,15 +137,8 @@ func (s *HandlerPkg) applyPkg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	auth, err := pctx.GetAuthorizer(r.Context())
-	if err != nil {
-		s.HandleHTTPError(r.Context(), err, w)
-		return
-	}
-	userID := auth.GetUserID()
-
 	parsedPkg := reqBody.Pkg
-	sum, diff, err := s.svc.DryRun(r.Context(), *orgID, userID, parsedPkg)
+	sum, diff, err := s.svc.DryRun(r.Context(), *orgID, parsedPkg)
 	if pkger.IsParseErr(err) {
 		s.encJSONResp(r.Context(), w, http.StatusUnprocessableEntity, RespApplyPkg{
 			Diff:    diff,
@@ -172,7 +148,6 @@ func (s *HandlerPkg) applyPkg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err != nil {
-		s.logger.Error("failed to dry run pkg", zap.Error(err))
 		s.HandleHTTPError(r.Context(), err, w)
 		return
 	}
@@ -186,9 +161,8 @@ func (s *HandlerPkg) applyPkg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sum, err = s.svc.Apply(r.Context(), *orgID, userID, parsedPkg)
+	sum, err = s.svc.Apply(r.Context(), *orgID, parsedPkg)
 	if err != nil && !pkger.IsParseErr(err) {
-		s.logger.Error("failed to apply pkg", zap.Error(err))
 		s.HandleHTTPError(r.Context(), err, w)
 		return
 	}
@@ -196,7 +170,6 @@ func (s *HandlerPkg) applyPkg(w http.ResponseWriter, r *http.Request) {
 	s.encJSONResp(r.Context(), w, http.StatusCreated, RespApplyPkg{
 		Diff:    diff,
 		Summary: sum,
-		Errors:  convertParseErr(err),
 	})
 }
 
@@ -240,83 +213,6 @@ func (s *HandlerPkg) encResp(ctx context.Context, w http.ResponseWriter, enc enc
 
 func (s *HandlerPkg) encJSONResp(ctx context.Context, w http.ResponseWriter, code int, res interface{}) {
 	s.encResp(ctx, w, newJSONEnc(w), code, res)
-}
-
-// PkgerService provides an http client that is fluent in all things pkger.
-type PkgerService struct {
-	Client *httpc.Client
-}
-
-var _ pkger.SVC = (*PkgerService)(nil)
-
-// CreatePkg will produce a pkg from the parameters provided.
-func (s *PkgerService) CreatePkg(ctx context.Context, setters ...pkger.CreatePkgSetFn) (*pkger.Pkg, error) {
-	var opt pkger.CreateOpt
-	for _, setter := range setters {
-		if err := setter(&opt); err != nil {
-			return nil, err
-		}
-	}
-	var orgIDs []string
-	for orgID := range opt.OrgIDs {
-		orgIDs = append(orgIDs, orgID.String())
-	}
-
-	reqBody := ReqCreatePkg{
-		PkgDescription: opt.Metadata.Description,
-		PkgName:        opt.Metadata.Name,
-		PkgVersion:     opt.Metadata.Version,
-		OrgIDs:         orgIDs,
-		Resources:      opt.Resources,
-	}
-
-	var newPkg RespCreatePkg
-	err := s.Client.
-		PostJSON(reqBody, prefixPackages).
-		DecodeJSON(&newPkg).
-		Do(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	if err := newPkg.Validate(pkger.ValidWithoutResources()); err != nil {
-		return nil, err
-	}
-	return newPkg.Pkg, nil
-}
-
-// DryRun provides a dry run of the pkg application. The pkg will be marked verified
-// for later calls to Apply. This func will be run on an Apply if it has not been run
-// already.
-func (s *PkgerService) DryRun(ctx context.Context, orgID, userID influxdb.ID, pkg *pkger.Pkg) (pkger.Summary, pkger.Diff, error) {
-	return s.apply(ctx, orgID, pkg, true)
-}
-
-// Apply will apply all the resources identified in the provided pkg. The entire pkg will be applied
-// in its entirety. If a failure happens midway then the entire pkg will be rolled back to the state
-// from before the pkg were applied.
-func (s *PkgerService) Apply(ctx context.Context, orgID, userID influxdb.ID, pkg *pkger.Pkg) (pkger.Summary, error) {
-	sum, _, err := s.apply(ctx, orgID, pkg, false)
-	return sum, err
-}
-
-func (s *PkgerService) apply(ctx context.Context, orgID influxdb.ID, pkg *pkger.Pkg, dryRun bool) (pkger.Summary, pkger.Diff, error) {
-	reqBody := ReqApplyPkg{
-		OrgID:  orgID.String(),
-		DryRun: dryRun,
-		Pkg:    pkg,
-	}
-
-	var resp RespApplyPkg
-	err := s.Client.
-		PostJSON(reqBody, prefixPackages, "/apply").
-		DecodeJSON(&resp).
-		Do(ctx)
-	if err != nil {
-		return pkger.Summary{}, pkger.Diff{}, err
-	}
-
-	return resp.Summary, resp.Diff, pkger.NewParseError(resp.Errors...)
 }
 
 func convertParseErr(err error) []pkger.ValidationErr {

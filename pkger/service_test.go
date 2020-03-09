@@ -56,7 +56,7 @@ func TestService(t *testing.T) {
 					}
 					svc := newTestService(WithBucketSVC(fakeBktSVC))
 
-					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), 0, pkg)
+					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), pkg)
 					require.NoError(t, err)
 
 					require.Len(t, diff.Buckets, 1)
@@ -85,7 +85,7 @@ func TestService(t *testing.T) {
 					}
 					svc := newTestService(WithBucketSVC(fakeBktSVC))
 
-					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), 0, pkg)
+					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), pkg)
 					require.NoError(t, err)
 
 					require.Len(t, diff.Buckets, 1)
@@ -120,7 +120,7 @@ func TestService(t *testing.T) {
 					}
 					svc := newTestService(WithLabelSVC(fakeLabelSVC))
 
-					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), 0, pkg)
+					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), pkg)
 					require.NoError(t, err)
 
 					require.Len(t, diff.Labels, 2)
@@ -154,7 +154,7 @@ func TestService(t *testing.T) {
 					}
 					svc := newTestService(WithLabelSVC(fakeLabelSVC))
 
-					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), 0, pkg)
+					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), pkg)
 					require.NoError(t, err)
 
 					require.Len(t, diff.Labels, 2)
@@ -179,10 +179,9 @@ func TestService(t *testing.T) {
 		t.Run("notification endpoints", func(t *testing.T) {
 			testfileRunner(t, "testdata/notification_endpoint.yml", func(t *testing.T, pkg *Pkg) {
 				fakeEndpointSVC := mock.NewNotificationEndpointService()
-				id := influxdb.ID(1)
 				existing := &endpoint.HTTP{
 					Base: endpoint.Base{
-						ID:          &id,
+						ID:          1,
 						Name:        "http_none_auth_notification_endpoint",
 						Description: "old desc",
 						Status:      influxdb.TaskStatusInactive,
@@ -197,7 +196,7 @@ func TestService(t *testing.T) {
 
 				svc := newTestService(WithNoticationEndpointSVC(fakeEndpointSVC))
 
-				_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), 0, pkg)
+				_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), pkg)
 				require.NoError(t, err)
 
 				require.Len(t, diff.NotificationEndpoints, 5)
@@ -225,7 +224,7 @@ func TestService(t *testing.T) {
 					New: DiffNotificationEndpointValues{
 						NotificationEndpoint: &endpoint.HTTP{
 							Base: endpoint.Base{
-								ID:          &id,
+								ID:          1,
 								Name:        "http_none_auth_notification_endpoint",
 								Description: "http none auth desc",
 								Status:      influxdb.TaskStatusActive,
@@ -254,7 +253,7 @@ func TestService(t *testing.T) {
 				}
 				svc := newTestService(WithVariableSVC(fakeVarSVC))
 
-				_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), 0, pkg)
+				_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), pkg)
 				require.NoError(t, err)
 
 				require.Len(t, diff.Variables, 4)
@@ -312,13 +311,13 @@ func TestService(t *testing.T) {
 
 					orgID := influxdb.ID(9000)
 
-					sum, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					sum, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.NoError(t, err)
 
 					require.Len(t, sum.Buckets, 1)
 					buck1 := sum.Buckets[0]
-					assert.Equal(t, SafeID(time.Hour), buck1.ID)
-					assert.Equal(t, SafeID(orgID), buck1.OrgID)
+					assert.Equal(t, influxdb.ID(time.Hour), buck1.ID)
+					assert.Equal(t, orgID, buck1.OrgID)
 					assert.Equal(t, "rucket_11", buck1.Name)
 					assert.Equal(t, time.Hour, buck1.RetentionPeriod)
 					assert.Equal(t, "bucket 1 description", buck1.Description)
@@ -347,13 +346,13 @@ func TestService(t *testing.T) {
 
 					svc := newTestService(WithBucketSVC(fakeBktSVC))
 
-					sum, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					sum, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.NoError(t, err)
 
 					require.Len(t, sum.Buckets, 1)
 					buck1 := sum.Buckets[0]
-					assert.Equal(t, SafeID(3), buck1.ID)
-					assert.Equal(t, SafeID(orgID), buck1.OrgID)
+					assert.Equal(t, influxdb.ID(3), buck1.ID)
+					assert.Equal(t, orgID, buck1.OrgID)
 					assert.Equal(t, "rucket_11", buck1.Name)
 					assert.Equal(t, time.Hour, buck1.RetentionPeriod)
 					assert.Equal(t, "bucket 1 description", buck1.Description)
@@ -383,7 +382,7 @@ func TestService(t *testing.T) {
 
 					orgID := influxdb.ID(9000)
 
-					_, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					_, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.Error(t, err)
 
 					assert.GreaterOrEqual(t, fakeBktSVC.DeleteBucketCalls.Count(), 1)
@@ -408,23 +407,23 @@ func TestService(t *testing.T) {
 
 					orgID := influxdb.ID(9000)
 
-					sum, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					sum, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.NoError(t, err)
 
 					require.Len(t, sum.Labels, 2)
 					label1 := sum.Labels[0]
-					assert.Equal(t, SafeID(1), label1.ID)
-					assert.Equal(t, SafeID(orgID), label1.OrgID)
+					assert.Equal(t, influxdb.ID(1), label1.ID)
+					assert.Equal(t, orgID, label1.OrgID)
 					assert.Equal(t, "label_1", label1.Name)
-					assert.Equal(t, "#FFFFFF", label1.Properties.Color)
-					assert.Equal(t, "label 1 description", label1.Properties.Description)
+					assert.Equal(t, "#FFFFFF", label1.Properties["color"])
+					assert.Equal(t, "label 1 description", label1.Properties["description"])
 
 					label2 := sum.Labels[1]
-					assert.Equal(t, SafeID(2), label2.ID)
-					assert.Equal(t, SafeID(orgID), label2.OrgID)
+					assert.Equal(t, influxdb.ID(2), label2.ID)
+					assert.Equal(t, orgID, label2.OrgID)
 					assert.Equal(t, "label_2", label2.Name)
-					assert.Equal(t, "#000000", label2.Properties.Color)
-					assert.Equal(t, "label 2 description", label2.Properties.Description)
+					assert.Equal(t, "#000000", label2.Properties["color"])
+					assert.Equal(t, "label 2 description", label2.Properties["description"])
 				})
 			})
 
@@ -446,7 +445,7 @@ func TestService(t *testing.T) {
 
 					orgID := influxdb.ID(9000)
 
-					_, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					_, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.Error(t, err)
 
 					assert.GreaterOrEqual(t, fakeLabelSVC.DeleteLabelCalls.Count(), 1)
@@ -487,23 +486,23 @@ func TestService(t *testing.T) {
 
 					svc := newTestService(WithLabelSVC(fakeLabelSVC))
 
-					sum, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					sum, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.NoError(t, err)
 
 					require.Len(t, sum.Labels, 2)
 					label1 := sum.Labels[0]
-					assert.Equal(t, SafeID(1), label1.ID)
-					assert.Equal(t, SafeID(orgID), label1.OrgID)
+					assert.Equal(t, influxdb.ID(1), label1.ID)
+					assert.Equal(t, orgID, label1.OrgID)
 					assert.Equal(t, "label_1", label1.Name)
-					assert.Equal(t, "#FFFFFF", label1.Properties.Color)
-					assert.Equal(t, "label 1 description", label1.Properties.Description)
+					assert.Equal(t, "#FFFFFF", label1.Properties["color"])
+					assert.Equal(t, "label 1 description", label1.Properties["description"])
 
 					label2 := sum.Labels[1]
-					assert.Equal(t, SafeID(2), label2.ID)
-					assert.Equal(t, SafeID(orgID), label2.OrgID)
+					assert.Equal(t, influxdb.ID(2), label2.ID)
+					assert.Equal(t, orgID, label2.OrgID)
 					assert.Equal(t, "label_2", label2.Name)
-					assert.Equal(t, "#000000", label2.Properties.Color)
-					assert.Equal(t, "label 2 description", label2.Properties.Description)
+					assert.Equal(t, "#000000", label2.Properties["color"])
+					assert.Equal(t, "label 2 description", label2.Properties["description"])
 
 					assert.Equal(t, 1, fakeLabelSVC.CreateLabelCalls.Count()) // only called for second label
 				})
@@ -526,7 +525,7 @@ func TestService(t *testing.T) {
 
 					orgID := influxdb.ID(9000)
 
-					sum, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					sum, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.NoError(t, err)
 
 					require.Len(t, sum.Dashboards, 1)
@@ -561,7 +560,7 @@ func TestService(t *testing.T) {
 
 					orgID := influxdb.ID(9000)
 
-					_, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					_, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.Error(t, err)
 
 					assert.True(t, deletedDashs[1])
@@ -594,7 +593,7 @@ func TestService(t *testing.T) {
 
 						orgID := influxdb.ID(9000)
 
-						_, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+						_, err := svc.Apply(context.TODO(), orgID, pkg)
 						require.NoError(t, err)
 
 						assert.Equal(t, numExpected, fakeLabelSVC.CreateLabelMappingCalls.Count())
@@ -636,7 +635,7 @@ func TestService(t *testing.T) {
 
 						orgID := influxdb.ID(9000)
 
-						_, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+						_, err := svc.Apply(context.TODO(), orgID, pkg)
 						require.Error(t, err)
 
 						assert.GreaterOrEqual(t, fakeLabelSVC.DeleteLabelMappingCalls.Count(), numExpected)
@@ -727,14 +726,13 @@ func TestService(t *testing.T) {
 
 					orgID := influxdb.ID(9000)
 
-					sum, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					sum, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.NoError(t, err)
 
 					require.Len(t, sum.NotificationEndpoints, 5)
 
 					containsWithID := func(t *testing.T, name string) {
-						for _, actualNotification := range sum.NotificationEndpoints {
-							actual := actualNotification.NotificationEndpoint
+						for _, actual := range sum.NotificationEndpoints {
 							if actual.GetID() == 0 {
 								assert.NotZero(t, actual.GetID())
 							}
@@ -778,7 +776,7 @@ func TestService(t *testing.T) {
 
 					orgID := influxdb.ID(9000)
 
-					_, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					_, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.Error(t, err)
 
 					assert.GreaterOrEqual(t, fakeEndpointSVC.DeleteNotificationEndpointCalls.Count(), 5)
@@ -799,12 +797,12 @@ func TestService(t *testing.T) {
 
 					svc := newTestService(WithTelegrafSVC(fakeTeleSVC))
 
-					sum, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					sum, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.NoError(t, err)
 
 					require.Len(t, sum.TelegrafConfigs, 1)
-					assert.Equal(t, "first_tele_config", sum.TelegrafConfigs[0].TelegrafConfig.Name)
-					assert.Equal(t, "desc", sum.TelegrafConfigs[0].TelegrafConfig.Description)
+					assert.Equal(t, "first_tele_config", sum.TelegrafConfigs[0].Name)
+					assert.Equal(t, "desc", sum.TelegrafConfigs[0].Description)
 				})
 			})
 
@@ -831,7 +829,7 @@ func TestService(t *testing.T) {
 
 					orgID := influxdb.ID(9000)
 
-					_, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					_, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.Error(t, err)
 
 					assert.Equal(t, 1, fakeTeleSVC.DeleteTelegrafConfigCalls.Count())
@@ -856,20 +854,20 @@ func TestService(t *testing.T) {
 
 					orgID := influxdb.ID(9000)
 
-					sum, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					sum, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.NoError(t, err)
 
 					require.Len(t, sum.Variables, 4)
 					expected := sum.Variables[0]
-					assert.Equal(t, SafeID(3), expected.ID)
-					assert.Equal(t, SafeID(orgID), expected.OrgID)
+					assert.Equal(t, influxdb.ID(3), expected.ID)
+					assert.Equal(t, orgID, expected.OrganizationID)
 					assert.Equal(t, "var_const_3", expected.Name)
 					assert.Equal(t, "var_const_3 desc", expected.Description)
 					require.NotNil(t, expected.Arguments)
 					assert.Equal(t, influxdb.VariableConstantValues{"first val"}, expected.Arguments.Values)
 
 					for _, actual := range sum.Variables {
-						assert.Contains(t, []SafeID{1, 2, 3, 4}, actual.ID)
+						assert.Contains(t, []influxdb.ID{1, 2, 3, 4}, actual.ID)
 					}
 				})
 			})
@@ -889,7 +887,7 @@ func TestService(t *testing.T) {
 
 					orgID := influxdb.ID(9000)
 
-					_, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					_, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.Error(t, err)
 
 					assert.GreaterOrEqual(t, fakeVarSVC.DeleteVariableCalls.Count(), 1)
@@ -929,12 +927,12 @@ func TestService(t *testing.T) {
 
 					svc := newTestService(WithVariableSVC(fakeVarSVC))
 
-					sum, err := svc.Apply(context.TODO(), orgID, 0, pkg)
+					sum, err := svc.Apply(context.TODO(), orgID, pkg)
 					require.NoError(t, err)
 
 					require.Len(t, sum.Variables, 4)
 					expected := sum.Variables[0]
-					assert.Equal(t, SafeID(1), expected.ID)
+					assert.Equal(t, influxdb.ID(1), expected.ID)
 					assert.Equal(t, "var_const_3", expected.Name)
 
 					assert.Equal(t, 3, fakeVarSVC.CreateVariableCalls.Count()) // only called for last 3 labels
@@ -1378,8 +1376,7 @@ func TestService(t *testing.T) {
 							expectedName = tt.newName
 						}
 						assert.Equal(t, expectedName, actual.Name)
-						assert.Equal(t, expectedLabel.Properties["color"], actual.Properties.Color)
-						assert.Equal(t, expectedLabel.Properties["description"], actual.Properties.Description)
+						assert.Equal(t, expectedLabel.Properties, actual.Properties)
 					}
 					t.Run(tt.name, fn)
 				}

@@ -27,7 +27,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type pkgSVCsFn func() (pkger.SVC, influxdb.OrganizationService, error)
+type pkgSVCsFn func(cliReq httpClientOpts, opts ...pkger.ServiceSetterFn) (pkger.SVC, influxdb.OrganizationService, error)
 
 func cmdPkg(svcFn pkgSVCsFn, opts ...genericCLIOptfn) *cobra.Command {
 	return newCmdPkgBuilder(svcFn, opts...).cmdPkg()
@@ -38,6 +38,7 @@ type cmdPkgBuilder struct {
 
 	svcFn pkgSVCsFn
 
+	applyReqLimit   int
 	file            string
 	hasColor        bool
 	hasTableBorders bool
@@ -92,6 +93,7 @@ func (b *cmdPkgBuilder) cmdPkgApply() *cobra.Command {
 	cmd.Flags().StringVarP(&b.file, "file", "f", "", "Path to package file")
 	cmd.MarkFlagFilename("file", "yaml", "yml", "json")
 	cmd.Flags().BoolVarP(&b.quiet, "quiet", "q", false, "disable output printing")
+	cmd.Flags().IntVarP(&b.applyReqLimit, "req-limit", "r", 0, "Request limit for applying a pkg, defaults to 5(recommended for OSS).")
 	cmd.Flags().StringVar(&b.applyOpts.force, "force", "", `TTY input, if package will have destructive changes, proceed if set "true".`)
 
 	cmd.Flags().StringVarP(&b.orgID, "org-id", "", "", "The ID of the organization that owns the bucket")
@@ -121,7 +123,7 @@ func (b *cmdPkgBuilder) pkgApplyRunEFn() func(*cobra.Command, []string) error {
 		}
 		color.NoColor = !b.hasColor
 
-		svc, orgSVC, err := b.svcFn()
+		svc, orgSVC, err := b.svcFn(flags.httpClientOpts(), pkger.WithApplyReqLimit(b.applyReqLimit))
 		if err != nil {
 			return err
 		}
@@ -136,7 +138,7 @@ func (b *cmdPkgBuilder) pkgApplyRunEFn() func(*cobra.Command, []string) error {
 			return err
 		}
 
-		_, diff, err := svc.DryRun(context.Background(), influxOrgID, 0, pkg)
+		_, diff, err := svc.DryRun(context.Background(), influxOrgID, pkg)
 		if err != nil {
 			return err
 		}
@@ -163,7 +165,7 @@ func (b *cmdPkgBuilder) pkgApplyRunEFn() func(*cobra.Command, []string) error {
 			return errors.New("package has conflicts with existing resources and cannot safely apply")
 		}
 
-		summary, err := svc.Apply(context.Background(), influxOrgID, 0, pkg)
+		summary, err := svc.Apply(context.Background(), influxOrgID, pkg)
 		if err != nil {
 			return err
 		}
@@ -210,7 +212,7 @@ func (b *cmdPkgBuilder) pkgNewRunEFn() func(*cobra.Command, []string) error {
 			}
 		}
 
-		pkgSVC, _, err := b.svcFn()
+		pkgSVC, _, err := b.svcFn(flags.httpClientOpts())
 		if err != nil {
 			return err
 		}
@@ -242,7 +244,7 @@ func (b *cmdPkgBuilder) cmdPkgExport() *cobra.Command {
 
 func (b *cmdPkgBuilder) pkgExportRunEFn() func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		pkgSVC, _, err := b.svcFn()
+		pkgSVC, _, err := b.svcFn(flags.httpClientOpts())
 		if err != nil {
 			return err
 		}
@@ -310,7 +312,11 @@ func (b *cmdPkgBuilder) cmdPkgExportAll() *cobra.Command {
 
 func (b *cmdPkgBuilder) pkgExportAllRunEFn() func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) error {
-		pkgSVC, orgSVC, err := b.svcFn()
+		if err := b.validOrgFlags(); err != nil {
+			return err
+		}
+
+		pkgSVC, orgSVC, err := b.svcFn(flags.httpClientOpts())
 		if err != nil {
 			return err
 		}
@@ -497,7 +503,7 @@ func createPkgBuf(pkg *pkger.Pkg, outPath string) (*bytes.Buffer, error) {
 	return &buf, nil
 }
 
-func newPkgerSVC() (pkger.SVC, influxdb.OrganizationService, error) {
+func newPkgerSVC(cliReqOpts httpClientOpts, opts ...pkger.ServiceSetterFn) (pkger.SVC, influxdb.OrganizationService, error) {
 	httpClient, err := newHTTPClient()
 	if err != nil {
 		return nil, nil, err
@@ -507,7 +513,16 @@ func newPkgerSVC() (pkger.SVC, influxdb.OrganizationService, error) {
 		Client: httpClient,
 	}
 
-	return &ihttp.PkgerService{Client: httpClient}, orgSvc, nil
+	return pkger.NewService(
+		append(opts,
+			pkger.WithBucketSVC(&ihttp.BucketService{Client: httpClient}),
+			pkger.WithDashboardSVC(&ihttp.DashboardService{Client: httpClient}),
+			pkger.WithLabelSVC(&ihttp.LabelService{Client: httpClient}),
+			pkger.WithNoticationEndpointSVC(ihttp.NewNotificationEndpointService(httpClient)),
+			pkger.WithTelegrafSVC(ihttp.NewTelegrafService(httpClient)),
+			pkger.WithVariableSVC(&ihttp.VariableService{Client: httpClient}),
+		)...,
+	), orgSvc, nil
 }
 
 func pkgFromReader(stdin io.Reader) (*pkger.Pkg, error) {
@@ -689,8 +704,8 @@ func (b *cmdPkgBuilder) printPkgSummary(sum pkger.Summary) {
 			return []string{
 				l.ID.String(),
 				l.Name,
-				l.Properties.Description,
-				l.Properties.Color,
+				l.Properties["description"],
+				l.Properties["color"],
 			}
 		})
 	}
@@ -736,10 +751,10 @@ func (b *cmdPkgBuilder) printPkgSummary(sum pkger.Summary) {
 		tablePrintFn("NOTIFICATION ENDPOINTS", headers, len(endpoints), func(i int) []string {
 			v := endpoints[i]
 			return []string{
-				v.NotificationEndpoint.GetID().String(),
-				v.NotificationEndpoint.GetName(),
-				v.NotificationEndpoint.GetDescription(),
-				string(v.NotificationEndpoint.GetStatus()),
+				v.GetID().String(),
+				v.GetName(),
+				v.GetDescription(),
+				string(v.GetStatus()),
 			}
 		})
 	}
@@ -749,9 +764,9 @@ func (b *cmdPkgBuilder) printPkgSummary(sum pkger.Summary) {
 		tablePrintFn("TELEGRAF CONFIGS", headers, len(teles), func(i int) []string {
 			t := teles[i]
 			return []string{
-				t.TelegrafConfig.ID.String(),
-				t.TelegrafConfig.Name,
-				t.TelegrafConfig.Description,
+				t.ID.String(),
+				t.Name,
+				t.Description,
 			}
 		})
 	}

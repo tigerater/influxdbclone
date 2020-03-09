@@ -1,7 +1,6 @@
 package pkger
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -177,8 +176,8 @@ type DiffBucketValues struct {
 
 // DiffBucket is a diff of an individual bucket.
 type DiffBucket struct {
-	ID   SafeID            `json:"id"`
-	Name string            `json:"name"`
+	ID   SafeID
+	Name string
 	New  DiffBucketValues  `json:"new"`
 	Old  *DiffBucketValues `json:"old,omitempty"` // using omitempty here to signal there was no prev state with a nil
 }
@@ -300,16 +299,6 @@ type DiffNotificationEndpointValues struct {
 	influxdb.NotificationEndpoint
 }
 
-// UnmarshalJSON decodes the notification endpoint. This is necessary unfortunately.
-func (d *DiffNotificationEndpointValues) UnmarshalJSON(b []byte) error {
-	e, err := endpoint.UnmarshalJSON(b)
-	if err != nil {
-		fmt.Println("broken here")
-	}
-	d.NotificationEndpoint = e
-	return err
-}
-
 // DiffNotificationEndpoint is a diff of an individual notification endpoint.
 type DiffNotificationEndpoint struct {
 	ID   SafeID                          `json:"id"`
@@ -407,13 +396,8 @@ type Summary struct {
 
 // SummaryBucket provides a summary of a pkg bucket.
 type SummaryBucket struct {
-	ID          SafeID `json:"id,omitempty"`
-	OrgID       SafeID `json:"orgID,omitempty"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	// TODO: return retention rules?
-	RetentionPeriod   time.Duration  `json:"retentionPeriod"`
-	LabelAssociations []SummaryLabel `json:"labelAssociations"`
+	influxdb.Bucket
+	LabelAssociations []influxdb.Label `json:"labelAssociations"`
 }
 
 // SummaryDashboard provides a summary of a pkg dashboard.
@@ -424,7 +408,7 @@ type SummaryDashboard struct {
 	Description string         `json:"description"`
 	Charts      []SummaryChart `json:"charts"`
 
-	LabelAssociations []SummaryLabel `json:"labelAssociations"`
+	LabelAssociations []influxdb.Label `json:"labelAssociations"`
 }
 
 // chartKind identifies what kind of chart is eluded too. Each
@@ -463,7 +447,7 @@ func (c chartKind) title() string {
 
 // SummaryChart provides a summary of a pkg dashboard's chart.
 type SummaryChart struct {
-	Properties influxdb.ViewProperties `json:"-"`
+	Properties influxdb.ViewProperties `json:"properties"`
 
 	XPosition int `json:"xPos"`
 	YPosition int `json:"yPos"`
@@ -471,103 +455,35 @@ type SummaryChart struct {
 	Width     int `json:"width"`
 }
 
-// MarshalJSON marshals a summary chart.
-func (s *SummaryChart) MarshalJSON() ([]byte, error) {
-	b, err := influxdb.MarshalViewPropertiesJSON(s.Properties)
-	if err != nil {
-		return nil, err
-	}
-
-	type alias SummaryChart
-
-	out := struct {
-		Props json.RawMessage `json:"properties"`
-		alias
-	}{
-		Props: b,
-		alias: alias(*s),
-	}
-	return json.Marshal(out)
-}
-
-// UnmarshalJSON unmarshals a view properities and other data.
-func (s *SummaryChart) UnmarshalJSON(b []byte) error {
-	type alias SummaryChart
-	a := (*alias)(s)
-	if err := json.Unmarshal(b, a); err != nil {
-		return err
-	}
-	s.XPosition = a.XPosition
-	s.XPosition = a.YPosition
-	s.Height = a.Height
-	s.Width = a.Width
-
-	vp, err := influxdb.UnmarshalViewPropertiesJSON(b)
-	if err != nil {
-		return err
-	}
-	s.Properties = vp
-	return nil
-}
-
 // SummaryNotificationEndpoint provides a summary of a pkg endpoint rule.
 type SummaryNotificationEndpoint struct {
-	NotificationEndpoint influxdb.NotificationEndpoint `json:"notificationEndpoint"`
-	LabelAssociations    []SummaryLabel                `json:"labelAssociations"`
-}
-
-// UnmarshalJSON unmarshals the notificatio endpoint. This is necessary b/c of
-// the notification endpoint does not have a means ot unmarshal itself.
-func (s *SummaryNotificationEndpoint) UnmarshalJSON(b []byte) error {
-	var a struct {
-		NotificationEndpoint json.RawMessage `json:"notificationEndpoint"`
-		LabelAssociations    []SummaryLabel  `json:"labelAssociations"`
-	}
-	if err := json.Unmarshal(b, &a); err != nil {
-		return err
-	}
-	s.LabelAssociations = a.LabelAssociations
-
-	e, err := endpoint.UnmarshalJSON(a.NotificationEndpoint)
-	s.NotificationEndpoint = e
-	return err
+	influxdb.NotificationEndpoint
+	LabelAssociations []influxdb.Label `json:"labelAssociations"`
 }
 
 // SummaryLabel provides a summary of a pkg label.
 type SummaryLabel struct {
-	ID         SafeID `json:"id"`
-	OrgID      SafeID `json:"orgID"`
-	Name       string `json:"name"`
-	Properties struct {
-		Color       string `json:"color"`
-		Description string `json:"description"`
-	} `json:"properties"`
+	influxdb.Label
 }
 
 // SummaryLabelMapping provides a summary of a label mapped with a single resource.
 type SummaryLabelMapping struct {
 	exists       bool
-	ResourceID   SafeID                `json:"resourceID"`
-	ResourceName string                `json:"resourceName"`
-	ResourceType influxdb.ResourceType `json:"resourceType"`
-	LabelName    string                `json:"labelName"`
-	LabelID      SafeID                `json:"labelID"`
+	ResourceName string `json:"resourceName"`
+	LabelName    string `json:"labelName"`
+	influxdb.LabelMapping
 }
 
 // SummaryTelegraf provides a summary of a pkg telegraf config.
 type SummaryTelegraf struct {
-	TelegrafConfig    influxdb.TelegrafConfig `json:"telegrafConfig"`
-	LabelAssociations []SummaryLabel          `json:"labelAssociations"`
+	influxdb.TelegrafConfig
+	LabelAssociations []influxdb.Label `json:"labelAssociations"`
 }
 
 // SummaryVariable provides a summary of a pkg variable.
 type SummaryVariable struct {
-	ID                SafeID                      `json:"id,omitempty"`
-	OrgID             SafeID                      `json:"orgID,omitempty"`
-	Name              string                      `json:"name"`
-	Description       string                      `json:"description"`
-	Arguments         *influxdb.VariableArguments `json:"arguments"`
-	LabelAssociations []SummaryLabel              `json:"labelAssociations"`
+	influxdb.Variable
+	LabelAssociations []influxdb.Label `json:"labelAssociations"`
 }
 
 const (
@@ -628,12 +544,14 @@ func (b *bucket) Exists() bool {
 
 func (b *bucket) summarize() SummaryBucket {
 	return SummaryBucket{
-		ID:                SafeID(b.ID()),
-		OrgID:             SafeID(b.OrgID),
-		Name:              b.Name(),
-		Description:       b.Description,
-		RetentionPeriod:   b.RetentionRules.RP(),
-		LabelAssociations: toSummaryLabels(b.labels...),
+		Bucket: influxdb.Bucket{
+			ID:              b.ID(),
+			OrgID:           b.OrgID,
+			Name:            b.Name(),
+			Description:     b.Description,
+			RetentionPeriod: b.RetentionRules.RP(),
+		},
+		LabelAssociations: toInfluxLabels(b.labels...),
 	}
 }
 
@@ -812,15 +730,11 @@ func (l *label) shouldApply() bool {
 
 func (l *label) summarize() SummaryLabel {
 	return SummaryLabel{
-		ID:    SafeID(l.ID()),
-		OrgID: SafeID(l.OrgID),
-		Name:  l.Name(),
-		Properties: struct {
-			Color       string `json:"color"`
-			Description string `json:"description"`
-		}{
-			Color:       l.Color,
-			Description: l.Description,
+		Label: influxdb.Label{
+			ID:         l.ID(),
+			OrgID:      l.OrgID,
+			Name:       l.Name(),
+			Properties: l.properties(),
 		},
 	}
 }
@@ -831,11 +745,13 @@ func (l *label) mappingSummary() []SummaryLabelMapping {
 		for _, v := range vals {
 			mappings = append(mappings, SummaryLabelMapping{
 				exists:       v.exists,
-				ResourceID:   SafeID(v.ID()),
 				ResourceName: resource.name,
-				ResourceType: resource.resType,
-				LabelID:      SafeID(l.ID()),
 				LabelName:    l.Name(),
+				LabelMapping: influxdb.LabelMapping{
+					LabelID:      l.ID(),
+					ResourceID:   v.ID(),
+					ResourceType: resource.resType,
+				},
 			})
 		}
 	}
@@ -859,10 +775,10 @@ func (l *label) toInfluxLabel() influxdb.Label {
 	}
 }
 
-func toSummaryLabels(labels ...*label) []SummaryLabel {
-	var iLabels []SummaryLabel
+func toInfluxLabels(labels ...*label) []influxdb.Label {
+	var iLabels []influxdb.Label
 	for _, l := range labels {
-		iLabels = append(iLabels, l.summarize())
+		iLabels = append(iLabels, l.toInfluxLabel())
 	}
 	return iLabels
 }
@@ -948,18 +864,13 @@ func (n *notificationEndpoint) ResourceType() influxdb.ResourceType {
 }
 
 func (n *notificationEndpoint) base() endpoint.Base {
-	e := endpoint.Base{
+	return endpoint.Base{
+		ID:          n.ID(),
+		OrgID:       n.OrgID,
 		Name:        n.Name(),
 		Description: n.description,
 		Status:      influxdb.TaskStatusActive,
 	}
-	if id := n.ID(); id > 0 {
-		e.ID = &id
-	}
-	if orgID := n.OrgID; orgID > 0 {
-		e.OrgID = &orgID
-	}
-	return e
 }
 
 func (n *notificationEndpoint) summarize() SummaryNotificationEndpoint {
@@ -968,7 +879,7 @@ func (n *notificationEndpoint) summarize() SummaryNotificationEndpoint {
 		base.Status = influxdb.Status(n.status)
 	}
 	sum := SummaryNotificationEndpoint{
-		LabelAssociations: toSummaryLabels(n.labels...),
+		LabelAssociations: toInfluxLabels(n.labels...),
 	}
 
 	switch n.kind {
@@ -1010,7 +921,7 @@ func (n *notificationEndpoint) summarize() SummaryNotificationEndpoint {
 	return sum
 }
 
-var validEndpointHTTPMethods = map[string]bool{
+var validHTTPMethods = map[string]bool{
 	"DELETE":  true,
 	"GET":     true,
 	"HEAD":    true,
@@ -1041,11 +952,11 @@ func (n *notificationEndpoint) valid() []validationErr {
 		if n.routingKey == "" {
 			failures = append(failures, validationErr{
 				Field: fieldNotificationEndpointRoutingKey,
-				Msg:   "must be provide",
+				Msg:   "must provide non empty string",
 			})
 		}
 	case notificationKindHTTP:
-		if !validEndpointHTTPMethods[n.method] {
+		if !validHTTPMethods[n.method] {
 			failures = append(failures, validationErr{
 				Field: fieldNotificationEndpointHTTPMethod,
 				Msg:   "http method must be a valid HTTP verb",
@@ -1133,7 +1044,7 @@ func (t *telegraf) Exists() bool {
 func (t *telegraf) summarize() SummaryTelegraf {
 	return SummaryTelegraf{
 		TelegrafConfig:    t.config,
-		LabelAssociations: toSummaryLabels(t.labels...),
+		LabelAssociations: toInfluxLabels(t.labels...),
 	}
 }
 
@@ -1201,12 +1112,14 @@ func (v *variable) shouldApply() bool {
 
 func (v *variable) summarize() SummaryVariable {
 	return SummaryVariable{
-		ID:                SafeID(v.ID()),
-		OrgID:             SafeID(v.OrgID),
-		Name:              v.Name(),
-		Description:       v.Description,
-		Arguments:         v.influxVarArgs(),
-		LabelAssociations: toSummaryLabels(v.labels...),
+		Variable: influxdb.Variable{
+			ID:             v.ID(),
+			OrganizationID: v.OrgID,
+			Name:           v.Name(),
+			Description:    v.Description,
+			Arguments:      v.influxVarArgs(),
+		},
+		LabelAssociations: toInfluxLabels(v.labels...),
 	}
 }
 
@@ -1312,7 +1225,7 @@ func (d *dashboard) summarize() SummaryDashboard {
 		OrgID:             SafeID(d.OrgID),
 		Name:              d.Name(),
 		Description:       d.Description,
-		LabelAssociations: toSummaryLabels(d.labels...),
+		LabelAssociations: toInfluxLabels(d.labels...),
 	}
 	for _, c := range d.Charts {
 		iDash.Charts = append(iDash.Charts, SummaryChart{

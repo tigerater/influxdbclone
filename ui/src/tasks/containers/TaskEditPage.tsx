@@ -1,6 +1,6 @@
 // Libraries
+import _ from 'lodash'
 import React, {PureComponent, ChangeEvent} from 'react'
-import Loadable from 'react-loadable'
 import {InjectedRouter} from 'react-router'
 import {connect} from 'react-redux'
 
@@ -8,23 +8,7 @@ import {connect} from 'react-redux'
 import TaskForm from 'src/tasks/components/TaskForm'
 import TaskHeader from 'src/tasks/components/TaskHeader'
 import {Page} from '@influxdata/clockface'
-import {FeatureFlag} from 'src/shared/utils/featureFlag'
-
-const spinner = <div />
-
-const FluxEditor = Loadable({
-  loader: () => import('src/shared/components/FluxEditor'),
-  loading() {
-    return spinner
-  },
-})
-
-const FluxMonacoEditor = Loadable({
-  loader: () => import('src/shared/components/FluxMonacoEditor'),
-  loading() {
-    return spinner
-  },
-})
+import FluxEditor from 'src/shared/components/FluxEditor'
 
 // Actions
 import {
@@ -110,21 +94,12 @@ class TaskEditPage extends PureComponent<Props> {
               />
             </div>
             <div className="task-form--editor">
-              <FeatureFlag name="monacoEditor">
-                <FluxMonacoEditor
-                  script={currentScript}
-                  onChangeScript={this.handleChangeScript}
-                />
-              </FeatureFlag>
-              <FeatureFlag name="monacoEditor" equals={false}>
-                <FluxEditor
-                  script={currentScript}
-                  onChangeScript={this.handleChangeScript}
-                  visibility="visible"
-                  suggestions={[]}
-                />
-              </FeatureFlag>
-              <FluxEditor />
+              <FluxEditor
+                script={currentScript}
+                onChangeScript={this.handleChangeScript}
+                visibility="visible"
+                suggestions={[]}
+              />
             </div>
           </div>
         </Page.Contents>

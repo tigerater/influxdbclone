@@ -162,7 +162,13 @@ func (p *Pkg) Summary() Summary {
 		sum.Labels = append(sum.Labels, l.summarize())
 	}
 
-	sum.LabelMappings = p.labelMappings()
+	for _, m := range p.labelMappings() {
+		sum.LabelMappings = append(sum.LabelMappings, SummaryLabelMapping{
+			ResourceName: m.ResourceName,
+			LabelName:    m.LabelName,
+			LabelMapping: m.LabelMapping,
+		})
+	}
 
 	for _, n := range p.notificationEndpoints() {
 		sum.NotificationEndpoints = append(sum.NotificationEndpoints, n.summarize())
@@ -723,10 +729,10 @@ func (p *Pkg) parseNestedLabel(nr Resource, fn func(lb *label) error) *validatio
 	k, err := nr.kind()
 	if err != nil {
 		return &validationErr{
-			Field: fieldAssociations,
+			Field: "associations",
 			Nested: []validationErr{
 				{
-					Field: fieldKind,
+					Field: "kind",
 					Msg:   err.Error(),
 				},
 			},
@@ -739,14 +745,14 @@ func (p *Pkg) parseNestedLabel(nr Resource, fn func(lb *label) error) *validatio
 	lb, found := p.mLabels[nr.Name()]
 	if !found {
 		return &validationErr{
-			Field: fieldAssociations,
+			Field: "associations",
 			Msg:   fmt.Sprintf("label %q does not exist in pkg", nr.Name()),
 		}
 	}
 
 	if err := fn(lb); err != nil {
 		return &validationErr{
-			Field: fieldAssociations,
+			Field: "associations",
 			Msg:   err.Error(),
 		}
 	}
@@ -1117,18 +1123,9 @@ type ParseError interface {
 	ValidationErrs() []ValidationErr
 }
 
-// NewParseError creates a new parse error from existing validation errors.
-func NewParseError(errs ...ValidationErr) error {
-	if len(errs) == 0 {
-		return nil
-	}
-	return &parseErr{rawErrs: errs}
-}
-
 type (
 	parseErr struct {
 		Resources []resourceErr
-		rawErrs   []ValidationErr
 	}
 
 	// resourceErr describes the error for a particular resource. In
@@ -1153,7 +1150,7 @@ type (
 // Error implements the error interface.
 func (e *parseErr) Error() string {
 	var errMsg []string
-	for _, ve := range append(e.ValidationErrs(), e.rawErrs...) {
+	for _, ve := range e.ValidationErrs() {
 		errMsg = append(errMsg, ve.Error())
 	}
 
@@ -1161,8 +1158,9 @@ func (e *parseErr) Error() string {
 }
 
 func (e *parseErr) ValidationErrs() []ValidationErr {
-	errs := e.rawErrs[:]
+	var errs []ValidationErr
 	for _, r := range e.Resources {
+
 		rootErr := ValidationErr{
 			Kind: r.Kind,
 		}

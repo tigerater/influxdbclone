@@ -118,9 +118,11 @@ spec:
 
 				actual := buckets[0]
 				expectedBucket := SummaryBucket{
-					Name:            "rucket_11",
-					Description:     "bucket 1 description",
-					RetentionPeriod: time.Hour,
+					Bucket: influxdb.Bucket{
+						Name:            "rucket_11",
+						Description:     "bucket 1 description",
+						RetentionPeriod: time.Hour,
+					},
 				}
 				assert.Equal(t, expectedBucket, actual)
 			})
@@ -343,7 +345,7 @@ spec:
 
 			require.Len(t, sum.LabelMappings, len(expectedMappings))
 			for i, expected := range expectedMappings {
-				expected.ResourceType = influxdb.BucketsResourceType
+				expected.LabelMapping.ResourceType = influxdb.BucketsResourceType
 				assert.Equal(t, expected, sum.LabelMappings[i])
 			}
 		})
@@ -2603,7 +2605,7 @@ spec:
 			require.Len(t, sum.LabelMappings, len(expectedMappings))
 
 			for i, expected := range expectedMappings {
-				expected.ResourceType = influxdb.DashboardsResourceType
+				expected.LabelMapping.ResourceType = influxdb.DashboardsResourceType
 				assert.Equal(t, expected, sum.LabelMappings[i])
 			}
 		})
@@ -2780,9 +2782,11 @@ spec:
 
 				require.Len(t, sum.LabelMappings, len(expectedEndpoints))
 				expectedMapping := SummaryLabelMapping{
-					ResourceName: expected.NotificationEndpoint.GetName(),
+					ResourceName: expected.GetName(),
 					LabelName:    "label_1",
-					ResourceType: influxdb.NotificationEndpointResourceType,
+					LabelMapping: influxdb.LabelMapping{
+						ResourceType: influxdb.NotificationEndpointResourceType,
+					},
 				}
 				assert.Contains(t, sum.LabelMappings, expectedMapping)
 			}
@@ -3087,8 +3091,8 @@ spec:
 				require.Len(t, sum.TelegrafConfigs, 1)
 
 				actual := sum.TelegrafConfigs[0]
-				assert.Equal(t, "first_tele_config", actual.TelegrafConfig.Name)
-				assert.Equal(t, "desc", actual.TelegrafConfig.Description)
+				assert.Equal(t, "first_tele_config", actual.Name)
+				assert.Equal(t, "desc", actual.Description)
 
 				require.Len(t, actual.LabelAssociations, 1)
 				assert.Equal(t, "label_1", actual.LabelAssociations[0].Name)
@@ -3097,7 +3101,9 @@ spec:
 				expectedMapping := SummaryLabelMapping{
 					ResourceName: "first_tele_config",
 					LabelName:    "label_1",
-					ResourceType: influxdb.TelegrafsResourceType,
+					LabelMapping: influxdb.LabelMapping{
+						ResourceType: influxdb.TelegrafsResourceType,
+					},
 				}
 				assert.Equal(t, expectedMapping, sum.LabelMappings[0])
 			})
@@ -3360,7 +3366,7 @@ spec:
 
 			require.Len(t, sum.LabelMappings, len(expectedMappings))
 			for i, expected := range expectedMappings {
-				expected.ResourceType = influxdb.VariablesResourceType
+				expected.LabelMapping.ResourceType = influxdb.VariablesResourceType
 				assert.Equal(t, expected, sum.LabelMappings[i])
 			}
 		})

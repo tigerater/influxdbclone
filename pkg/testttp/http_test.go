@@ -13,72 +13,41 @@ import (
 
 func TestHTTP(t *testing.T) {
 	svr := newMux()
-	t.Run("Delete", func(t *testing.T) {
-		testttp.
-			Delete(t, "/").
-			Do(svr).
-			ExpectStatus(http.StatusNoContent)
-	})
-
 	t.Run("Get", func(t *testing.T) {
-		testttp.
-			Get(t, "/").
+		testttp.Get("/").
 			Do(svr).
-			ExpectStatus(http.StatusOK).
+			ExpectStatus(t, http.StatusOK).
 			ExpectBody(assertBody(t, http.MethodGet))
 	})
 
-	t.Run("Patch", func(t *testing.T) {
-		testttp.
-			Patch(t, "/", nil).
-			Do(svr).
-			ExpectStatus(http.StatusPartialContent).
-			ExpectBody(assertBody(t, http.MethodPatch))
-	})
-
-	t.Run("PatchJSON", func(t *testing.T) {
-		testttp.
-			PatchJSON(t, "/", map[string]string{"k": "t"}).
-			Do(svr).
-			ExpectStatus(http.StatusPartialContent).
-			ExpectBody(assertBody(t, http.MethodPatch))
-	})
-
 	t.Run("Post", func(t *testing.T) {
-		testttp.
-			Post(t, "/", nil).
-			Do(svr).
-			ExpectStatus(http.StatusCreated).
-			ExpectBody(assertBody(t, http.MethodPost))
-	})
-
-	t.Run("PostJSON", func(t *testing.T) {
-		testttp.
-			PostJSON(t, "/", map[string]string{"k": "v"}).
-			Do(svr).
-			ExpectStatus(http.StatusCreated).
+		testttp.Post("/", nil).Do(svr).
+			ExpectStatus(t, http.StatusCreated).
 			ExpectBody(assertBody(t, http.MethodPost))
 	})
 
 	t.Run("Put", func(t *testing.T) {
-		testttp.
-			Put(t, "/", nil).
+		testttp.Put("/", nil).
 			Do(svr).
-			ExpectStatus(http.StatusAccepted).
+			ExpectStatus(t, http.StatusAccepted).
 			ExpectBody(assertBody(t, http.MethodPut))
 	})
 
-	t.Run("PutJSON", func(t *testing.T) {
-		testttp.
-			PutJSON(t, "/", map[string]string{"k": "t"}).
+	t.Run("Patch", func(t *testing.T) {
+		testttp.Patch("/", nil).
 			Do(svr).
-			ExpectStatus(http.StatusAccepted).
-			ExpectBody(assertBody(t, http.MethodPut))
+			ExpectStatus(t, http.StatusPartialContent).
+			ExpectBody(assertBody(t, http.MethodPatch))
+	})
+
+	t.Run("Delete", func(t *testing.T) {
+		testttp.Delete("/").
+			Do(svr).
+			ExpectStatus(t, http.StatusNoContent)
 	})
 
 	t.Run("Headers", func(t *testing.T) {
-		testttp.
-			Post(t, "/", strings.NewReader(`a: foo`)).
+		testttp.Post("/", strings.NewReader(`a: foo`)).
 			Headers("Content-Type", "text/yml").
 			Do(svr).
 			Expect(func(resp *testttp.Resp) {
