@@ -92,7 +92,10 @@ func (s *PagerDuty) generateFluxASTSecrets(e *endpoint.PagerDuty) ast.Statement 
 
 func (s *PagerDuty) generateFluxASTEndpoint(e *endpoint.PagerDuty) ast.Statement {
 	call := flux.Call(flux.Member("pagerduty", "endpoint"),
-		flux.Object(),
+		flux.Object(
+			flux.Property("token", flux.Identifier("pagerduty_secret")),
+			flux.Property("url", flux.String(e.URL)),
+		),
 	)
 
 	return flux.DefineVariable("pagerduty_endpoint", call)
