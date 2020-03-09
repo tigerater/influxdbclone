@@ -181,7 +181,10 @@ func createDatabasesSource(prSpec plan.ProcedureSpec, dsid execute.DatasetID, a 
 	if !ok {
 		return nil, fmt.Errorf("invalid spec type %T", prSpec)
 	}
-	deps := GetDatabasesDependencies(a.Context())
+
+	// the dependencies used for FromKind are adequate for what we need here
+	// so there's no need to inject custom dependencies for databases()
+	deps := a.Dependencies()[DatabasesKind].(DatabasesDependencies)
 	req := query.RequestFromContext(a.Context())
 	if req == nil {
 		return nil, errors.New("missing request on context")
@@ -193,29 +196,20 @@ func createDatabasesSource(prSpec plan.ProcedureSpec, dsid execute.DatasetID, a 
 	return execute.CreateSourceFromDecoder(bd, dsid, a)
 }
 
-type key int
-
-const dependenciesKey key = iota
-
 type DatabasesDependencies struct {
 	DBRP         platform.DBRPMappingService
 	BucketLookup platform.BucketService
 }
 
-func (d DatabasesDependencies) Inject(ctx context.Context) context.Context {
-	return context.WithValue(ctx, dependenciesKey, d)
-}
-
-func GetDatabasesDependencies(ctx context.Context) DatabasesDependencies {
-	return ctx.Value(dependenciesKey).(DatabasesDependencies)
-}
-
-func (d DatabasesDependencies) Validate() error {
-	if d.DBRP == nil {
+func InjectDatabasesDependencies(depsMap execute.Dependencies, deps DatabasesDependencies) error {
+	if deps.DBRP == nil {
 		return errors.New("missing all databases lookup dependency")
 	}
-	if d.BucketLookup == nil {
+
+	if deps.BucketLookup == nil {
 		return errors.New("missing buckets lookup dependency")
 	}
+
+	depsMap[DatabasesKind] = deps
 	return nil
 }

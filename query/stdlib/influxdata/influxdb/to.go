@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/influxdata/flux/dependencies"
 	"sort"
 	"time"
 
@@ -258,8 +259,9 @@ func createToTransformation(id execute.DatasetID, mode execute.AccumulationMode,
 	}
 	cache := execute.NewTableBuilderCache(a.Allocator())
 	d := execute.NewDataset(id, mode, cache)
-	deps := GetStorageDependencies(a.Context()).ToDeps
-	t, err := NewToTransformation(a.Context(), d, cache, s, deps)
+	deps := a.Dependencies()[ToKind].(ToDependencies)
+	ideps := a.Dependencies()[dependencies.InterpreterDepsKey].(dependencies.Interface)
+	t, err := NewToTransformation(a.Context(), d, cache, s, deps, ideps)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -277,6 +279,7 @@ type ToTransformation struct {
 	spec               *ToProcedureSpec
 	implicitTagColumns bool
 	deps               ToDependencies
+	ideps              dependencies.Interface
 	buf                *storage.BufferedPointsWriter
 }
 
@@ -286,7 +289,7 @@ func (t *ToTransformation) RetractTable(id execute.DatasetID, key flux.GroupKey)
 }
 
 // NewToTransformation returns a new *ToTransformation with the appropriate fields set.
-func NewToTransformation(ctx context.Context, d execute.Dataset, cache execute.TableBuilderCache, toSpec *ToProcedureSpec, deps ToDependencies) (x *ToTransformation, err error) {
+func NewToTransformation(ctx context.Context, d execute.Dataset, cache execute.TableBuilderCache, toSpec *ToProcedureSpec, deps ToDependencies, ideps dependencies.Interface) (x *ToTransformation, err error) {
 	var fn *execute.RowMapFn
 	//var err error
 	spec := toSpec.Spec
@@ -352,6 +355,7 @@ func NewToTransformation(ctx context.Context, d execute.Dataset, cache execute.T
 		spec:               toSpec,
 		implicitTagColumns: spec.TagColumns == nil,
 		deps:               deps,
+		ideps:              ideps,
 		buf:                storage.NewBufferedPointsWriter(DefaultBufferSize, deps.PointsWriter),
 	}, nil
 }
@@ -460,6 +464,15 @@ func (t *ToTransformation) Finish(id execute.DatasetID, err error) {
 		err = t.buf.Flush(t.Ctx)
 	}
 	t.d.Finish(err)
+}
+
+// InjectToDependencies adds the To dependencies to the engine.
+func InjectToDependencies(depsMap execute.Dependencies, deps ToDependencies) error {
+	if err := deps.Validate(); err != nil {
+		return err
+	}
+	depsMap[ToKind] = deps
+	return nil
 }
 
 // ToDependencies contains the dependencies for executing the `to` function.
@@ -605,7 +618,7 @@ func writeTable(ctx context.Context, t *ToTransformation, tbl flux.Table) (err e
 				if fieldValues, err = defaultFieldMapping(er, i); err != nil {
 					return err
 				}
-			} else if fieldValues, err = t.fn.Eval(t.Ctx, i, er); err != nil {
+			} else if fieldValues, err = t.fn.Eval(t.Ctx, t.ideps, i, er); err != nil {
 				return err
 			}
 

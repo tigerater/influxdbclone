@@ -27,6 +27,7 @@ import (
 
 	"github.com/influxdata/flux"
 	"github.com/influxdata/flux/codes"
+	"github.com/influxdata/flux/execute"
 	"github.com/influxdata/flux/lang"
 	"github.com/influxdata/flux/memory"
 	"github.com/influxdata/influxdb"
@@ -34,7 +35,7 @@ import (
 	"github.com/influxdata/influxdb/kit/prom"
 	"github.com/influxdata/influxdb/kit/tracing"
 	"github.com/influxdata/influxdb/query"
-	"github.com/opentracing/opentracing-go"
+	opentracing "github.com/opentracing/opentracing-go"
 	"github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -63,7 +64,7 @@ type Controller struct {
 
 	logger *zap.Logger
 
-	dependencies []flux.Dependency
+	dependencies execute.Dependencies
 }
 
 type Config struct {
@@ -84,7 +85,7 @@ type Config struct {
 	// The context value must be a string or an implementation of the Stringer interface.
 	MetricLabelKeys []string
 
-	ExecutorDependencies []flux.Dependency
+	ExecutorDependencies execute.Dependencies
 }
 
 func (c *Config) Validate() error {
@@ -145,10 +146,6 @@ func (c *Controller) Query(ctx context.Context, req *query.Request) (flux.Query,
 	ctx = query.ContextWithRequest(ctx, req)
 	// Set the org label value for controller metrics
 	ctx = context.WithValue(ctx, orgLabel, req.OrganizationID.String()) //lint:ignore SA1029 this is a temporary ignore until we have time to create an appropriate type
-	// The controller injects the dependencies for each incoming request.
-	for _, dep := range c.dependencies {
-		ctx = dep.Inject(ctx)
-	}
 	q, err := c.query(ctx, req.Compiler)
 	if err != nil {
 		return q, err
@@ -287,7 +284,8 @@ func (c *Controller) compileQuery(q *Query, compiler flux.Compiler) (err error) 
 		}
 	}
 
-	if p, ok := prog.(lang.LoggingProgram); ok {
+	if p, ok := prog.(lang.DependenciesAwareProgram); ok {
+		p.SetExecutorDependencies(c.dependencies)
 		p.SetLogger(c.logger)
 	}
 
@@ -427,8 +425,8 @@ func (c *Controller) Shutdown(ctx context.Context) error {
 // PrometheusCollectors satisfies the prom.PrometheusCollector interface.
 func (c *Controller) PrometheusCollectors() []prometheus.Collector {
 	collectors := c.metrics.PrometheusCollectors()
-	for _, dep := range c.dependencies {
-		if pc, ok := dep.(prom.PrometheusCollector); ok {
+	for _, v := range c.dependencies {
+		if pc, ok := v.(prom.PrometheusCollector); ok {
 			collectors = append(collectors, pc.PrometheusCollectors()...)
 		}
 	}
