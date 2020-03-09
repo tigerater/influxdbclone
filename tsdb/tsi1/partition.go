@@ -820,13 +820,7 @@ func (p *Partition) TagKeySeriesIDIterator(name, key []byte) (tsdb.SeriesIDItera
 	if err != nil {
 		return nil, err
 	}
-
-	itr, err := fs.TagKeySeriesIDIterator(name, key)
-	if err != nil {
-		fs.Release()
-		return nil, err
-	}
-	return newFileSetSeriesIDIterator(fs, itr), nil
+	return newFileSetSeriesIDIterator(fs, fs.TagKeySeriesIDIterator(name, key)), nil
 }
 
 // TagValueSeriesIDIterator returns a series iterator for a single key value.

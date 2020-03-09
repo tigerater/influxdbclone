@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"sort"
 	"strings"
 	"time"
@@ -99,36 +100,199 @@ func NewService(opts ...ServiceSetterFn) *Service {
 }
 
 // CreatePkgSetFn is a functional input for setting the pkg fields.
-type CreatePkgSetFn func(ctx context.Context, pkg *Pkg) error
+type CreatePkgSetFn func(opt *createOpt) error
 
-// WithMetadata sets the metadata on the pkg in a CreatePkg call.
-func WithMetadata(meta Metadata) CreatePkgSetFn {
-	return func(ctx context.Context, pkg *Pkg) error {
-		pkg.Metadata = meta
+type createOpt struct {
+	metadata  Metadata
+	resources []ResourceToClone
+}
+
+// CreateWithMetadata sets the metadata on the pkg in a CreatePkg call.
+func CreateWithMetadata(meta Metadata) CreatePkgSetFn {
+	return func(opt *createOpt) error {
+		opt.metadata = meta
+		return nil
+	}
+}
+
+// CreateWithExistingResources allows the create method to clone existing resources.
+func CreateWithExistingResources(resources ...ResourceToClone) CreatePkgSetFn {
+	return func(opt *createOpt) error {
+		for _, r := range resources {
+			if err := r.OK(); err != nil {
+				return err
+			}
+			r.Kind = newKind(string(r.Kind))
+		}
+		opt.resources = append(opt.resources, resources...)
 		return nil
 	}
 }
 
 // CreatePkg will produce a pkg from the parameters provided.
 func (s *Service) CreatePkg(ctx context.Context, setters ...CreatePkgSetFn) (*Pkg, error) {
-	pkg := &Pkg{
-		APIVersion: APIVersion,
-		Kind:       kindPackage.String(),
-		Spec: struct {
-			Resources []Resource `yaml:"resources" json:"resources"`
-		}{
-			Resources: []Resource{},
-		},
-	}
-
+	opt := new(createOpt)
 	for _, setter := range setters {
-		err := setter(ctx, pkg)
-		if err != nil {
+		if err := setter(opt); err != nil {
 			return nil, err
 		}
 	}
 
+	pkg := &Pkg{
+		APIVersion: APIVersion,
+		Kind:       KindPackage.String(),
+		Metadata:   opt.metadata,
+		Spec: struct {
+			Resources []Resource `yaml:"resources" json:"resources"`
+		}{
+			Resources: make([]Resource, 0, len(opt.resources)),
+		},
+	}
+	if pkg.Metadata.Name == "" {
+		// sudo randomness, this is not an attempt at making charts unique
+		// that is a problem for the consumer.
+		pkg.Metadata.Name = fmt.Sprintf("new_%7d", rand.Int())
+	}
+	if pkg.Metadata.Version == "" {
+		pkg.Metadata.Version = "v1"
+	}
+
+	cloneAssFn := s.resourceCloneAssociationsGen()
+	for _, r := range opt.resources {
+		newResources, err := s.resourceCloneToResource(ctx, r, cloneAssFn)
+		if err != nil {
+			return nil, err
+		}
+		pkg.Spec.Resources = append(pkg.Spec.Resources, newResources...)
+	}
+
+	if err := pkg.Validate(ValidWithoutResources()); err != nil {
+		return nil, err
+	}
+
+	var kindPriorities = map[Kind]int{
+		KindLabel:     1,
+		KindBucket:    2,
+		KindVariable:  3,
+		KindDashboard: 4,
+	}
+
+	sort.Slice(pkg.Spec.Resources, func(i, j int) bool {
+		iName, jName := pkg.Spec.Resources[i].Name(), pkg.Spec.Resources[j].Name()
+		iKind, _ := pkg.Spec.Resources[i].kind()
+		jKind, _ := pkg.Spec.Resources[j].kind()
+
+		if iKind.is(jKind) {
+			return iName < jName
+		}
+		return kindPriorities[iKind] < kindPriorities[jKind]
+	})
+
 	return pkg, nil
+}
+
+func (s *Service) resourceCloneToResource(ctx context.Context, r ResourceToClone, cFn cloneAssociationsFn) ([]Resource, error) {
+	var newResource Resource
+	switch {
+	case r.Kind.is(KindBucket):
+		bkt, err := s.bucketSVC.FindBucketByID(ctx, r.ID)
+		if err != nil {
+			return nil, err
+		}
+		newResource = bucketToResource(*bkt, r.Name)
+	case r.Kind.is(KindDashboard):
+		dash, err := s.dashSVC.FindDashboardByID(ctx, r.ID)
+		if err != nil {
+			return nil, err
+		}
+		var cellViews []cellView
+		for _, cell := range dash.Cells {
+			v, err := s.dashSVC.GetDashboardCellView(ctx, r.ID, cell.ID)
+			if err != nil {
+				return nil, err
+			}
+			cellViews = append(cellViews, cellView{c: *cell, v: *v})
+		}
+		newResource = dashboardToResource(*dash, cellViews, r.Name)
+	case r.Kind.is(KindLabel):
+		l, err := s.labelSVC.FindLabelByID(ctx, r.ID)
+		if err != nil {
+			return nil, err
+		}
+		newResource = labelToResource(*l, r.Name)
+	case r.Kind.is(KindVariable):
+		v, err := s.varSVC.FindVariableByID(ctx, r.ID)
+		if err != nil {
+			return nil, err
+		}
+		newResource = variableToResource(*v, r.Name)
+	default:
+		return nil, errors.New("unsupported kind provided: " + string(r.Kind))
+	}
+
+	ass, err := cFn(ctx, r)
+	if err != nil {
+		return nil, err
+	}
+	if len(ass.associations) > 0 {
+		newResource[fieldAssociations] = ass.associations
+	}
+
+	return append([]Resource{newResource}, ass.newLableResources...), nil
+}
+
+type (
+	associations struct {
+		associations      []Resource
+		newLableResources []Resource
+	}
+
+	cloneAssociationsFn func(context.Context, ResourceToClone) (associations, error)
+)
+
+func (s *Service) resourceCloneAssociationsGen() cloneAssociationsFn {
+	type key struct {
+		id   influxdb.ID
+		name string
+	}
+	// memoize the labels so we dont' create duplicates
+	m := make(map[key]bool)
+	return func(ctx context.Context, r ResourceToClone) (associations, error) {
+		var iResType influxdb.ResourceType
+		switch {
+		case r.Kind.is(KindBucket):
+			iResType = influxdb.BucketsResourceType
+		case r.Kind.is(KindDashboard):
+			iResType = influxdb.DashboardsResourceType
+		case r.Kind.is(KindVariable):
+			iResType = influxdb.VariablesResourceType
+		default:
+			return associations{}, nil
+		}
+
+		labels, err := s.labelSVC.FindResourceLabels(ctx, influxdb.LabelMappingFilter{
+			ResourceID:   r.ID,
+			ResourceType: iResType,
+		})
+		if err != nil {
+			return associations{}, err
+		}
+
+		var ass associations
+		for _, l := range labels {
+			ass.associations = append(ass.associations, Resource{
+				fieldKind: KindLabel.String(),
+				fieldName: l.Name,
+			})
+			k := key{id: l.ID, name: l.Name}
+			if m[k] {
+				continue
+			}
+			m[k] = true
+			ass.newLableResources = append(ass.newLableResources, labelToResource(*l, ""))
+		}
+		return ass, nil
+	}
 }
 
 // DryRun provides a dry run of the pkg application. The pkg will be marked verified
@@ -311,7 +475,9 @@ func (s *Service) dryRunLabelMappings(ctx context.Context, pkg *Pkg) ([]DiffLabe
 	var diffs []DiffLabelMapping
 	for _, b := range pkg.buckets() {
 		err := s.dryRunResourceLabelMapping(ctx, b, b.labels, func(labelID influxdb.ID, labelName string, isNew bool) {
-			pkg.mLabels[labelName].setBucketMapping(b, !isNew)
+			if l, ok := pkg.mLabels[labelName]; ok {
+				l.setBucketMapping(b, !isNew)
+			}
 			diffs = append(diffs, DiffLabelMapping{
 				IsNew:     isNew,
 				ResType:   b.ResourceType(),
@@ -657,6 +823,8 @@ func convertChartsToCells(ch []chart) ([]*influxdb.Cell, map[*influxdb.Cell]int)
 	for i, c := range ch {
 		icell := &influxdb.Cell{
 			CellProperty: influxdb.CellProperty{
+				X: int32(c.XPos),
+				Y: int32(c.YPos),
 				H: int32(c.Height),
 				W: int32(c.Width),
 			},
