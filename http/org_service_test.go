@@ -10,12 +10,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/influxdata/influxdb"
+	platform "github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/inmem"
 	kithttp "github.com/influxdata/influxdb/kit/transport/http"
 	"github.com/influxdata/influxdb/kv"
 	"github.com/influxdata/influxdb/mock"
-	influxdbtesting "github.com/influxdata/influxdb/testing"
+	platformtesting "github.com/influxdata/influxdb/testing"
 	"go.uber.org/zap/zaptest"
 )
 
@@ -33,14 +33,14 @@ func NewMockOrgBackend(t *testing.T) *OrgBackend {
 	}
 }
 
-func initOrganizationService(f influxdbtesting.OrganizationFields, t *testing.T) (influxdb.OrganizationService, string, func()) {
+func initOrganizationService(f platformtesting.OrganizationFields, t *testing.T) (platform.OrganizationService, string, func()) {
 	t.Helper()
 	svc := kv.NewService(zaptest.NewLogger(t), inmem.NewKVStore())
 	svc.IDGenerator = f.IDGenerator
 	svc.OrgBucketIDs = f.OrgBucketIDs
 	svc.TimeGenerator = f.TimeGenerator
 	if f.TimeGenerator == nil {
-		svc.TimeGenerator = influxdb.RealTimeGenerator{}
+		svc.TimeGenerator = platform.RealTimeGenerator{}
 	}
 
 	ctx := context.Background()
@@ -57,7 +57,6 @@ func initOrganizationService(f influxdbtesting.OrganizationFields, t *testing.T)
 	orgBackend := NewMockOrgBackend(t)
 	orgBackend.HTTPErrorHandler = kithttp.ErrorHandler(0)
 	orgBackend.OrganizationService = svc
-	orgBackend.SecretService = svc
 	handler := NewOrgHandler(zaptest.NewLogger(t), orgBackend)
 	server := httptest.NewServer(handler)
 	client := OrganizationService{
@@ -68,52 +67,17 @@ func initOrganizationService(f influxdbtesting.OrganizationFields, t *testing.T)
 	return &client, "", done
 }
 
-func initSecretService(f influxdbtesting.SecretServiceFields, t *testing.T) (influxdb.SecretService, func()) {
-	t.Helper()
-	svc := kv.NewService(zaptest.NewLogger(t), inmem.NewKVStore())
-
-	ctx := context.Background()
-	if err := svc.Initialize(ctx); err != nil {
-		t.Fatal(err)
-	}
-
-	for _, ss := range f.Secrets {
-		if err := svc.PutSecrets(ctx, ss.OrganizationID, ss.Env); err != nil {
-			t.Fatalf("failed to populate secrets")
-		}
-	}
-
-	scrBackend := NewMockOrgBackend(t)
-	scrBackend.HTTPErrorHandler = kithttp.ErrorHandler(0)
-	scrBackend.SecretService = svc
-	handler := NewOrgHandler(zaptest.NewLogger(t), scrBackend)
-	server := httptest.NewServer(handler)
-	client := SecretService{
-		Client: mustNewHTTPClient(t, server.URL, ""),
-	}
-	done := server.Close
-
-	return &client, done
-}
-
 func TestOrganizationService(t *testing.T) {
 	t.Parallel()
-	influxdbtesting.OrganizationService(initOrganizationService, t)
-}
-
-func TestSecretService(t *testing.T) {
-	t.Parallel()
-	influxdbtesting.DeleteSecrets(initSecretService, t)
-	influxdbtesting.GetSecretKeys(initSecretService, t)
-	influxdbtesting.PatchSecrets(initSecretService, t)
+	platformtesting.OrganizationService(initOrganizationService, t)
 }
 
 func TestSecretService_handleGetSecrets(t *testing.T) {
 	type fields struct {
-		SecretService influxdb.SecretService
+		SecretService platform.SecretService
 	}
 	type args struct {
-		orgID influxdb.ID
+		orgID platform.ID
 	}
 	type wants struct {
 		statusCode  int
@@ -131,7 +95,7 @@ func TestSecretService_handleGetSecrets(t *testing.T) {
 			name: "get basic secrets",
 			fields: fields{
 				&mock.SecretService{
-					GetSecretKeysFn: func(ctx context.Context, orgID influxdb.ID) ([]string, error) {
+					GetSecretKeysFn: func(ctx context.Context, orgID platform.ID) ([]string, error) {
 						return []string{"hello", "world"}, nil
 					},
 				},
@@ -160,7 +124,7 @@ func TestSecretService_handleGetSecrets(t *testing.T) {
 			name: "get secrets when there are none",
 			fields: fields{
 				&mock.SecretService{
-					GetSecretKeysFn: func(ctx context.Context, orgID influxdb.ID) ([]string, error) {
+					GetSecretKeysFn: func(ctx context.Context, orgID platform.ID) ([]string, error) {
 						return []string{}, nil
 					},
 				},
@@ -186,9 +150,9 @@ func TestSecretService_handleGetSecrets(t *testing.T) {
 			name: "get secrets when organization has no secret keys",
 			fields: fields{
 				&mock.SecretService{
-					GetSecretKeysFn: func(ctx context.Context, orgID influxdb.ID) ([]string, error) {
-						return []string{}, &influxdb.Error{
-							Code: influxdb.ENotFound,
+					GetSecretKeysFn: func(ctx context.Context, orgID platform.ID) ([]string, error) {
+						return []string{}, &platform.Error{
+							Code: platform.ENotFound,
 							Msg:  "organization has no secret keys",
 						}
 
@@ -251,10 +215,10 @@ func TestSecretService_handleGetSecrets(t *testing.T) {
 
 func TestSecretService_handlePatchSecrets(t *testing.T) {
 	type fields struct {
-		SecretService influxdb.SecretService
+		SecretService platform.SecretService
 	}
 	type args struct {
-		orgID   influxdb.ID
+		orgID   platform.ID
 		secrets map[string]string
 	}
 	type wants struct {
@@ -273,7 +237,7 @@ func TestSecretService_handlePatchSecrets(t *testing.T) {
 			name: "get basic secrets",
 			fields: fields{
 				&mock.SecretService{
-					PatchSecretsFn: func(ctx context.Context, orgID influxdb.ID, s map[string]string) error {
+					PatchSecretsFn: func(ctx context.Context, orgID platform.ID, s map[string]string) error {
 						return nil
 					},
 				},
@@ -333,10 +297,10 @@ func TestSecretService_handlePatchSecrets(t *testing.T) {
 
 func TestSecretService_handleDeleteSecrets(t *testing.T) {
 	type fields struct {
-		SecretService influxdb.SecretService
+		SecretService platform.SecretService
 	}
 	type args struct {
-		orgID   influxdb.ID
+		orgID   platform.ID
 		secrets []string
 	}
 	type wants struct {
@@ -355,7 +319,7 @@ func TestSecretService_handleDeleteSecrets(t *testing.T) {
 			name: "get basic secrets",
 			fields: fields{
 				&mock.SecretService{
-					DeleteSecretFn: func(ctx context.Context, orgID influxdb.ID, s ...string) error {
+					DeleteSecretFn: func(ctx context.Context, orgID platform.ID, s ...string) error {
 						return nil
 					},
 				},
