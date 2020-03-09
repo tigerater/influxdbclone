@@ -126,18 +126,15 @@ func (p *syncRunPromise) Cancel() {
 
 func (p *syncRunPromise) finish(res *runResult, err error) {
 	p.finishOnce.Do(func() {
-		defer func() {
-			// Always cancel p's context.
-			// If finish is called before p.qs.Query completes, the query will be interrupted.
-			// If afterwards, then p.cancel is just a resource cleanup.
-			p.cancel()
+		defer p.logEnd()
 
-			p.logEnd()
-
-			close(p.ready)
-		}()
+		// Always cancel p's context.
+		// If finish is called before p.qs.Query completes, the query will be interrupted.
+		// If afterwards, then p.cancel is just a resource cleanup.
+		defer p.cancel()
 
 		p.res, p.err = res, err
+		close(p.ready)
 
 		if err != nil {
 			p.log.Debug("Execution failed to get result", zap.Error(err))
