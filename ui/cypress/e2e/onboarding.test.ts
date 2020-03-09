@@ -5,19 +5,6 @@ interface TestUser {
   bucket: string
 }
 
-describe('Onboarding Redirect', () => {
-  
-  beforeEach(() => {
-    cy.flush()
-    cy.visit('/')
-  })
-
-  it('Can redirect to onboarding page', () => {
-    cy.getByTestID('init-step--head-main')
-    cy.location('pathname').should('include', 'onboarding/0')
-  })
-})
-
 describe('Onboarding', () => {
   let user: TestUser
 
@@ -28,16 +15,17 @@ describe('Onboarding', () => {
       user = u
     })
 
-    cy.visit('onboarding/0')
+    cy.visit('/')
   })
 
-  it('Can Onboard to Quick Start', () => {
+  it.skip('Can Onboard to Quick Start', () => {
     cy.server()
 
     //Will want to capture response from this
     cy.route('POST', 'api/v2/setup').as('orgSetup')
 
-    //Check and visit splash page
+    //Check splash page
+    cy.location('pathname').should('include', 'onboarding/0')
     cy.getByTestID('init-step--head-main').contains('Welcome to InfluxDB 2.0')
     cy.getByTestID('credits').contains('Powered by')
     cy.getByTestID('credits').contains('InfluxData')
@@ -127,10 +115,13 @@ describe('Onboarding', () => {
     })
   })
 
-  it('Can onboard to advanced', () => {
+  it.skip('Can onboard to advanced', () => {
     cy.server()
 
     cy.route('POST', 'api/v2/setup').as('orgSetup')
+
+    //Check splash page
+    cy.location('pathname').should('include', 'onboarding/0')
 
     //Continue
     cy.getByTestID('onboarding-get-started').click()
@@ -157,17 +148,19 @@ describe('Onboarding', () => {
       cy.getByTestID('button--advanced').click()
 
       //wait for new page to load
-
       cy.location('pathname').should('match', /orgs\/.*\/buckets/)
 
       cy.location('pathname').should('include', orgId)
     })
   })
 
-  it('Can onboard to configure later', () => {
+  it.skip('Can onboard to configure later', () => {
     cy.server()
 
     cy.route('POST', 'api/v2/setup').as('orgSetup')
+
+    //Check splash page
+    cy.location('pathname').should('include', 'onboarding/0')
 
     //Continue
     cy.getByTestID('onboarding-get-started').click()
