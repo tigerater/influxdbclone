@@ -32,7 +32,7 @@ func (s *HTTP) GenerateFlux(e influxdb.NotificationEndpoint) (string, error) {
 func (s *HTTP) GenerateFluxAST(e *endpoint.HTTP) (*ast.Package, error) {
 	f := flux.File(
 		s.Name,
-		flux.Imports("influxdata/influxdb/monitor", "http", "json", "experimental"),
+		flux.Imports("influxdata/influxdb/monitor", "http", "json"),
 		s.generateFluxASTBody(e),
 	)
 	return &ast.Package{Package: "main", Files: []*ast.File{f}}, nil
@@ -44,7 +44,6 @@ func (s *HTTP) generateFluxASTBody(e *endpoint.HTTP) []ast.Statement {
 	statements = append(statements, s.generateFluxASTEndpoint(e))
 	statements = append(statements, s.generateFluxASTNotificationDefinition(e))
 	statements = append(statements, s.generateFluxASTStatuses())
-	statements = append(statements, s.generateAllStateChanges()...)
 	statements = append(statements, s.generateFluxASTNotifyPipe())
 
 	return statements
@@ -70,7 +69,7 @@ func (s *HTTP) generateFluxASTNotifyPipe() ast.Statement {
 
 	call := flux.Call(flux.Member("monitor", "notify"), flux.Object(props...))
 
-	return flux.ExpressionStatement(flux.Pipe(flux.Identifier("all_statuses"), call))
+	return flux.ExpressionStatement(flux.Pipe(flux.Identifier("statuses"), call))
 }
 
 type httpAlias HTTP

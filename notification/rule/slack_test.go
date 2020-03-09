@@ -19,19 +19,14 @@ func mustDuration(d string) *notification.Duration {
 	return (*notification.Duration)(dur)
 }
 
-func statusRulePtr(r notification.CheckLevel) *notification.CheckLevel {
-	return &r
-}
-
 func TestSlack_GenerateFlux(t *testing.T) {
 	want := `package main
 // foo
 import "influxdata/influxdb/monitor"
 import "slack"
 import "influxdata/influxdb/secrets"
-import "experimental"
 
-option task = {name: "foo", every: 2h}
+option task = {name: "foo", every: 1h}
 
 slack_secret = secrets.get(key: "slack_token")
 slack_endpoint = slack.endpoint(token: slack_secret, url: "http://localhost:7777")
@@ -41,18 +36,10 @@ notification = {
 	_notification_endpoint_id: "0000000000000002",
 	_notification_endpoint_name: "foo",
 }
-statuses = monitor.from(start: -2h, fn: (r) =>
+statuses = monitor.from(start: -1h, fn: (r) =>
 	(r.foo == "bar" and r.baz == "bang"))
-any_to_crit = statuses
-	|> monitor.stateChanges(fromLevel: "any", toLevel: "crit")
-info_to_warn = statuses
-	|> monitor.stateChanges(fromLevel: "info", toLevel: "warn")
-all_statuses = union(tables: [any_to_crit, info_to_warn])
-	|> sort(columns: ["_time"])
-	|> filter(fn: (r) =>
-		(r._time > experimental.subDuration(from: now(), d: 1h)))
 
-all_statuses
+statuses
 	|> monitor.notify(data: notification, endpoint: slack_endpoint(mapFn: (r) =>
 		({channel: "bar", text: "blah"})))`
 
@@ -78,15 +65,6 @@ all_statuses
 						Value: "bang",
 					},
 					Operator: notification.Equal,
-				},
-			},
-			StatusRules: []notification.StatusRule{
-				{
-					CurrentLevel: notification.Critical,
-				},
-				{
-					CurrentLevel:  notification.Warn,
-					PreviousLevel: statusRulePtr(notification.Info),
 				},
 			},
 		},
