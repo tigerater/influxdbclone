@@ -113,7 +113,6 @@ const ThresholdCondition: FC<Props> = ({
         color={LEVEL_COMPONENT_COLORS[level]}
         size={ComponentSize.Large}
         onClick={addLevel}
-        testID={`add-threshold-condition-${level}`}
       />
     )
   }

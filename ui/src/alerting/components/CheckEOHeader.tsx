@@ -86,7 +86,7 @@ const CheckEOHeader: FC<Props> = ({
   }
 
   const saveButtonStatus = () => {
-    if (!isCheckSaveable(draftQueries, check)) {
+    if (!isCheckSaveable(draftQueries, check.type)) {
       return ComponentStatus.Disabled
     }
 
@@ -98,10 +98,6 @@ const CheckEOHeader: FC<Props> = ({
   }
 
   const {singleField, singleAggregateFunc} = isDraftQueryAlertable(draftQueries)
-  const oneOrMoreThresholds =
-    check.type === 'threshold'
-      ? check.thresholds && !!check.thresholds.length
-      : false
 
   return (
     <Page.Header fullWidth={true}>
@@ -134,7 +130,6 @@ const CheckEOHeader: FC<Props> = ({
           checkType={check.type}
           singleField={singleField}
           singleAggregateFunc={singleAggregateFunc}
-          oneOrMoreThresholds={oneOrMoreThresholds}
         />
       </Page.Header.Right>
     </Page.Header>

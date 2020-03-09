@@ -8,7 +8,13 @@ import CSVVariableBuilder from 'src/variables/components/CSVVariableBuilder'
 import {Form, Grid} from '@influxdata/clockface'
 
 // Types
-import {KeyValueMap, VariableArguments} from 'src/types'
+import {
+  MapArguments,
+  KeyValueMap,
+  QueryArguments,
+  VariableArguments,
+  CSVArguments,
+} from 'src/types'
 
 interface Props {
   args: VariableArguments
@@ -20,6 +26,7 @@ interface Props {
 class VariableArgumentsEditor extends PureComponent<Props> {
   render() {
     const {args, onSelectMapDefault, selected} = this.props
+
     switch (args.type) {
       case 'query':
         return (
@@ -60,7 +67,7 @@ class VariableArgumentsEditor extends PureComponent<Props> {
   private handleChangeCSV = (values: string[]) => {
     const {onChange} = this.props
 
-    const updatedArgs = {type: 'constant' as 'constant', values}
+    const updatedArgs: CSVArguments = {type: 'constant', values}
     const isValid = values.length > 0
 
     onChange({args: updatedArgs, isValid})
@@ -70,7 +77,7 @@ class VariableArgumentsEditor extends PureComponent<Props> {
     const {onChange} = this.props
 
     const values = {language: 'flux' as 'flux', query}
-    const updatedArgs = {type: 'query' as 'query', values}
+    const updatedArgs: QueryArguments = {type: 'query', values}
 
     const isValid = !query.match(/^\s*$/)
 
@@ -83,7 +90,7 @@ class VariableArgumentsEditor extends PureComponent<Props> {
   }) => {
     const {onChange} = this.props
 
-    const updatedArgs = {type: 'map' as 'map', values: update.values}
+    const updatedArgs: MapArguments = {type: 'map', values: update.values}
 
     const isValid =
       update.errors.length === 0 && Object.keys(update.values).length > 0

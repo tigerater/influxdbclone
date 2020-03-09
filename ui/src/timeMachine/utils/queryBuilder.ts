@@ -1,5 +1,5 @@
 import {get, isEmpty} from 'lodash'
-import {BuilderConfig, DashboardDraftQuery, Check} from 'src/types'
+import {BuilderConfig, DashboardDraftQuery} from 'src/types'
 import {FUNCTIONS} from 'src/timeMachine/constants/queryBuilder'
 import {
   TIME_RANGE_START,
@@ -48,7 +48,7 @@ export const isDraftQueryAlertable = (
 
 export const isCheckSaveable = (
   draftQueries: DashboardDraftQuery[],
-  check: Partial<Check>
+  checkType: string
 ): boolean => {
   const {
     oneQuery,
@@ -57,18 +57,11 @@ export const isCheckSaveable = (
     singleField,
   } = isDraftQueryAlertable(draftQueries)
 
-  if (check.type === 'deadman') {
+  if (checkType === 'deadman') {
     return oneQuery && builderMode && singleField
   }
 
-  return (
-    oneQuery &&
-    builderMode &&
-    singleAggregateFunc &&
-    singleField &&
-    check.thresholds &&
-    !!check.thresholds.length
-  )
+  return oneQuery && builderMode && singleAggregateFunc && singleField
 }
 
 export function buildQuery(builderConfig: BuilderConfig): string {
