@@ -67,8 +67,8 @@ export default class DashboardHeader extends Component<Props> {
       zoomedTimeRange: {upper: zoomedUpper, lower: zoomedLower},
       toggleVariablesControlBar,
       isShowingVariablesControlBar,
-      onRenameDashboard,
       onAddCell,
+      onRenameDashboard,
       activeDashboard,
       autoRefresh,
     } = this.props
