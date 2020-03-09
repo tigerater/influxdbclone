@@ -145,7 +145,6 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 	}
 
 	orgID = org.ID
-	span.LogKV("org_id", orgID)
 
 	var bucket *influxdb.Bucket
 	if id, err := influxdb.IDFromString(req.Bucket); err == nil {
@@ -174,7 +173,6 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 
 		bucket = b
 	}
-	span.LogKV("bucket_id", bucket.ID)
 
 	p, err := influxdb.NewPermissionAtID(bucket.ID, influxdb.WriteAction, influxdb.BucketsResourceType, org.ID)
 	if err != nil {
@@ -199,10 +197,7 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 	// TODO(jeff): we should be publishing with the org and bucket instead of
 	// parsing, rewriting, and publishing, but the interface isn't quite there yet.
 	// be sure to remove this when it is there!
-	span, _ = tracing.StartSpanFromContextWithOperationName(ctx, "read request body")
 	data, err := ioutil.ReadAll(in)
-	span.LogKV("request_bytes", len(data))
-	span.Finish()
 	if err != nil {
 		logger.Error("Error reading body", zap.Error(err))
 		h.HandleHTTPError(ctx, &influxdb.Error{
@@ -224,12 +219,9 @@ func (h *WriteHandler) handleWrite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	span, _ = tracing.StartSpanFromContextWithOperationName(ctx, "encoding and parsing")
 	encoded := tsdb.EncodeName(org.ID, bucket.ID)
 	mm := models.EscapeMeasurement(encoded[:])
 	points, err := models.ParsePointsWithPrecision(data, mm, time.Now(), req.Precision)
-	span.LogKV("values_total", len(points))
-	span.Finish()
 	if err != nil {
 		logger.Error("Error parsing points", zap.Error(err))
 		h.HandleHTTPError(ctx, &influxdb.Error{
