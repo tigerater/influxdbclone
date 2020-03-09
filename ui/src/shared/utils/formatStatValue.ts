@@ -20,7 +20,7 @@ export const formatStatValue = (
   value: number | string = 0,
   {decimalPlaces, prefix, suffix}: FormatStatValueOptions = {}
 ): string => {
-  let localeFormattedValue // undefined, string, or number
+  let localeFormattedValue = ''
 
   if (isNumber(value)) {
     let digits: number
@@ -45,7 +45,7 @@ export const formatStatValue = (
     return 'Data cannot be displayed'
   }
 
-  localeFormattedValue = preventNegativeZero(localeFormattedValue)
+  localeFormattedValue = '' + preventNegativeZero(localeFormattedValue)
   const formattedValue = `${prefix || ''}${localeFormattedValue}${suffix || ''}`
 
   return formattedValue

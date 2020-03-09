@@ -2269,11 +2269,9 @@ func (c chart) properties() influxdb.ViewProperties {
 		}
 	case chartKindSingleStat:
 		return influxdb.SingleStatViewProperties{
-			Type:       influxdb.ViewPropertyTypeSingleStat,
-			Prefix:     c.Prefix,
-			TickPrefix: c.TickPrefix,
-			Suffix:     c.Suffix,
-			TickSuffix: c.TickSuffix,
+			Type:   influxdb.ViewPropertyTypeSingleStat,
+			Prefix: c.Prefix,
+			Suffix: c.Suffix,
 			DecimalPlaces: influxdb.DecimalPlaces{
 				IsEnforced: c.EnforceDecimals,
 				Digits:     int32(c.DecimalPlaces),

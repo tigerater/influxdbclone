@@ -236,7 +236,8 @@ class InlineLabelsEditor extends Component<Props, State> {
       await onCreateLabel(label)
       const newLabel = this.props.labels.find(l => l.name === label.name)
       await onAddLabel(newLabel)
-    } catch (error) {}
+    } catch (error) {
+    }
   }
 
   private handleStartCreatingLabel = (): void => {
