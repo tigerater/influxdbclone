@@ -7,7 +7,6 @@ import (
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/notification"
 	"github.com/influxdata/influxdb/notification/check"
-	"github.com/stretchr/testify/assert"
 )
 
 func TestThreshold_GenerateFlux(t *testing.T) {
@@ -40,7 +39,18 @@ func TestThreshold_GenerateFlux(t *testing.T) {
 						Every:                 mustDuration("1h"),
 						StatusMessageTemplate: "whoa! {r.usage_user}",
 						Query: influxdb.DashboardQuery{
-							Text: `from(bucket: "foo") |> range(start: -1d, stop: now()) |> filter(fn: (r) => r._field == "usage_user") |> aggregateWindow(every: 1m, fn: mean) |> yield()`,
+							Text: `from(bucket: "foo") |> range(start: -1d, stop: now()) |> aggregateWindow(every: 1m, fn: mean) |> yield()`,
+							BuilderConfig: influxdb.BuilderConfig{
+								Tags: []struct {
+									Key    string   `json:"key"`
+									Values []string `json:"values"`
+								}{
+									{
+										Key:    "_field",
+										Values: []string{"usage_user"},
+									},
+								},
+							},
 						},
 					},
 					Thresholds: []check.ThresholdConfig{
@@ -82,8 +92,6 @@ import "influxdata/influxdb/v1"
 
 data = from(bucket: "foo")
 	|> range(start: -1h)
-	|> filter(fn: (r) =>
-		(r._field == "usage_user"))
 	|> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
 
 option task = {name: "moo", every: 1h}
@@ -131,7 +139,18 @@ data
 						Every:                 mustDuration("1h"),
 						StatusMessageTemplate: "whoa! {r.usage_user}",
 						Query: influxdb.DashboardQuery{
-							Text: `from(bucket: "foo") |> range(start: -1d) |> filter(fn: (r) => r._field == "usage_user") |> aggregateWindow(every: 1m, fn: mean) |> yield()`,
+							Text: `from(bucket: "foo") |> range(start: -1d) |> aggregateWindow(every: 1m, fn: mean) |> yield()`,
+							BuilderConfig: influxdb.BuilderConfig{
+								Tags: []struct {
+									Key    string   `json:"key"`
+									Values []string `json:"values"`
+								}{
+									{
+										Key:    "_field",
+										Values: []string{"usage_user"},
+									},
+								},
+							},
 						},
 					},
 					Thresholds: []check.ThresholdConfig{
@@ -173,8 +192,6 @@ import "influxdata/influxdb/v1"
 
 data = from(bucket: "foo")
 	|> range(start: -1h)
-	|> filter(fn: (r) =>
-		(r._field == "usage_user"))
 	|> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
 
 option task = {name: "moo", every: 1h}
@@ -222,7 +239,18 @@ data
 						Every:                 mustDuration("1h"),
 						StatusMessageTemplate: "whoa! {r.usage_user}",
 						Query: influxdb.DashboardQuery{
-							Text: `from(bucket: "foo") |> range(start: -1d) |> filter(fn: (r) => r._field == "usage_user") |> aggregateWindow(every: 1m, fn: mean)`,
+							Text: `from(bucket: "foo") |> range(start: -1d) |> aggregateWindow(every: 1m, fn: mean)`,
+							BuilderConfig: influxdb.BuilderConfig{
+								Tags: []struct {
+									Key    string   `json:"key"`
+									Values []string `json:"values"`
+								}{
+									{
+										Key:    "_field",
+										Values: []string{"usage_user"},
+									},
+								},
+							},
 						},
 					},
 					Thresholds: []check.ThresholdConfig{
@@ -264,8 +292,6 @@ import "influxdata/influxdb/v1"
 
 data = from(bucket: "foo")
 	|> range(start: -1h)
-	|> filter(fn: (r) =>
-		(r._field == "usage_user"))
 	|> aggregateWindow(every: 1h, fn: mean, createEmpty: false)
 
 option task = {name: "moo", every: 1h}
@@ -310,7 +336,9 @@ data
 				t.Fatalf("unexpected error: %v", err)
 			}
 
-			assert.Equal(t, tt.wants.script, ast.Format(p))
+			if exp, got := tt.wants.script, ast.Format(p); exp != got {
+				t.Errorf("expected:\n%v\n\ngot:\n%v\n", exp, got)
+			}
 		})
 	}
 

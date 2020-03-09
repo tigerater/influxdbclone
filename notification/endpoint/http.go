@@ -103,13 +103,15 @@ func (s HTTP) Valid() error {
 			Msg:  "invalid http auth method",
 		}
 	}
-	if s.AuthMethod == "basic" && (s.Username.Key == "" || s.Password.Key == "") {
+	if s.AuthMethod == "basic" &&
+		(s.Username.Key != s.ID.String()+httpUsernameSuffix ||
+			s.Password.Key != s.ID.String()+httpPasswordSuffix) {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  "invalid http username/password for basic auth",
 		}
 	}
-	if s.AuthMethod == "bearer" && s.Token.Key == "" {
+	if s.AuthMethod == "bearer" && s.Token.Key != s.ID.String()+httpTokenSuffix {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  "invalid http token for bearer auth",

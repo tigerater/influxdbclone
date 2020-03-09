@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	tracetesting "github.com/influxdata/influxdb/kit/tracing/testing"
+	"github.com/influxdata/influxdb/kit/tracing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/influxdata/flux"
@@ -323,7 +323,7 @@ var _ metric.EventRecorder = noopEventRecorder{}
 
 // Certain error cases must be encoded as influxdb.Error so they can be properly decoded clientside.
 func TestFluxHandler_PostQuery_Errors(t *testing.T) {
-	defer tracetesting.SetupInMemoryTracing(t.Name())()
+	defer tracing.JaegerTestSetupAndTeardown(t.Name())()
 
 	i := inmem.NewService()
 	b := &FluxBackend{

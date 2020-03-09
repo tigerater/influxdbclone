@@ -11,6 +11,7 @@ import (
 	"github.com/go-chi/chi/middleware"
 	"github.com/influxdata/influxdb"
 	pctx "github.com/influxdata/influxdb/context"
+	"github.com/influxdata/influxdb/kit/tracing"
 	"github.com/influxdata/influxdb/pkg/httpc"
 	"github.com/influxdata/influxdb/pkger"
 	"go.uber.org/zap"
@@ -332,4 +333,13 @@ func newDecodeErr(encoding string, err error) *influxdb.Error {
 		Code: influxdb.EInvalid,
 		Err:  err,
 	}
+}
+
+func traceMW(next http.Handler) http.Handler {
+	fn := func(w http.ResponseWriter, r *http.Request) {
+		span, ctx := tracing.StartSpanFromContext(r.Context())
+		defer span.Finish()
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
+	return http.HandlerFunc(fn)
 }

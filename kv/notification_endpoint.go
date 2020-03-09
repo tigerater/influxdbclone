@@ -121,7 +121,7 @@ func (s *Service) createNotificationEndpoint(ctx context.Context, tx Tx, edp inf
 	}
 
 	urm := &influxdb.UserResourceMapping{
-		ResourceID:   edp.GetID(),
+		ResourceID:   id,
 		UserID:       userID,
 		UserType:     influxdb.Owner,
 		ResourceType: influxdb.NotificationEndpointResourceType,
@@ -130,7 +130,7 @@ func (s *Service) createNotificationEndpoint(ctx context.Context, tx Tx, edp inf
 }
 
 func (s *Service) findNotificationEndpointByName(ctx context.Context, tx Tx, orgID influxdb.ID, n string) (influxdb.NotificationEndpoint, error) {
-	span, _ := tracing.StartSpanFromContext(ctx)
+	span, ctx := tracing.StartSpanFromContext(ctx)
 	defer span.Finish()
 
 	key, err := notificationEndpointIndexKey(orgID, n)
@@ -164,7 +164,7 @@ func (s *Service) findNotificationEndpointByName(ctx context.Context, tx Tx, org
 			Err: err,
 		}
 	}
-	edp, _, _, err := s.findNotificationEndpointByID(tx, id)
+	edp, _, _, err := s.findNotificationEndpointByID(ctx, tx, id)
 	return edp, err
 }
 
@@ -180,7 +180,7 @@ func (s *Service) UpdateNotificationEndpoint(ctx context.Context, id influxdb.ID
 }
 
 func (s *Service) updateNotificationEndpoint(ctx context.Context, tx Tx, id influxdb.ID, edp influxdb.NotificationEndpoint, userID influxdb.ID) (influxdb.NotificationEndpoint, error) {
-	current, _, _, err := s.findNotificationEndpointByID(tx, id)
+	current, _, _, err := s.findNotificationEndpointByID(ctx, tx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -193,17 +193,14 @@ func (s *Service) updateNotificationEndpoint(ctx context.Context, tx Tx, id infl
 				Msg:  "notification endpoint name is not unique",
 			}
 		}
-
 		key, err := notificationEndpointIndexKey(current.GetOrgID(), current.GetName())
 		if err != nil {
 			return nil, err
 		}
-
 		idx, err := s.notificationEndpointIndexBucket(tx)
 		if err != nil {
 			return nil, err
 		}
-
 		if err := idx.Delete(key); err != nil {
 			return nil, err
 		}
@@ -214,7 +211,11 @@ func (s *Service) updateNotificationEndpoint(ctx context.Context, tx Tx, id infl
 	edp.SetOrgID(current.GetOrgID())
 	edp.SetCreatedAt(current.GetCRUDLog().CreatedAt)
 	edp.SetUpdatedAt(s.TimeGenerator.Now())
-	return edp, s.putNotificationEndpoint(ctx, tx, edp)
+
+	edp.BackfillSecretKeys()
+
+	err = s.putNotificationEndpoint(ctx, tx, edp)
+	return edp, err
 }
 
 // PatchNotificationEndpoint updates a single  notification endpoint with changeset.
@@ -235,7 +236,7 @@ func (s *Service) PatchNotificationEndpoint(ctx context.Context, id influxdb.ID,
 }
 
 func (s *Service) patchNotificationEndpoint(ctx context.Context, tx Tx, id influxdb.ID, upd influxdb.NotificationEndpointUpdate) (influxdb.NotificationEndpoint, error) {
-	edp, _, _, err := s.findNotificationEndpointByID(tx, id)
+	edp, _, _, err := s.findNotificationEndpointByID(ctx, tx, id)
 	if err != nil {
 		return nil, err
 	}
@@ -291,14 +292,14 @@ func (s *Service) putNotificationEndpoint(ctx context.Context, tx Tx, edp influx
 	}
 	encodedID, _ := edp.GetID().Encode()
 
-	endpointBytes, err := json.Marshal(edp)
+	v, err := json.Marshal(edp)
 	if err != nil {
 		return err
 	}
 
-	key, err := notificationEndpointIndexKey(edp.GetOrgID(), edp.GetName())
+	key, pe := notificationEndpointIndexKey(edp.GetOrgID(), edp.GetName())
 	if err != nil {
-		return err
+		return pe
 	}
 
 	idx, err := s.notificationEndpointIndexBucket(tx)
@@ -317,10 +318,9 @@ func (s *Service) putNotificationEndpoint(ctx context.Context, tx Tx, edp influx
 		return err
 	}
 
-	if err := bucket.Put(encodedID, endpointBytes); err != nil {
+	if err := bucket.Put(encodedID, v); err != nil {
 		return UnavailableNotificationEndpointStoreError(err)
 	}
-
 	return nil
 }
 
@@ -335,7 +335,7 @@ func notificationEndpointIndexKey(orgID influxdb.ID, name string) ([]byte, error
 	}
 	k := make([]byte, influxdb.IDLength+len(name))
 	copy(k, orgIDEncoded)
-	copy(k[influxdb.IDLength:], name)
+	copy(k[influxdb.IDLength:], []byte(name))
 	return k, nil
 }
 
@@ -347,36 +347,34 @@ func (s *Service) FindNotificationEndpointByID(ctx context.Context, id influxdb.
 	)
 
 	err = s.kv.View(ctx, func(tx Tx) error {
-		edp, _, _, err = s.findNotificationEndpointByID(tx, id)
+		edp, _, _, err = s.findNotificationEndpointByID(ctx, tx, id)
 		return err
 	})
 
 	return edp, err
 }
 
-func (s *Service) findNotificationEndpointByID(tx Tx, id influxdb.ID) (influxdb.NotificationEndpoint, []byte, Bucket, error) {
-	encID, err := id.Encode()
+func (s *Service) findNotificationEndpointByID(ctx context.Context, tx Tx,
+	id influxdb.ID) (edp influxdb.NotificationEndpoint, encID []byte, bucket Bucket, err error) {
+	encID, err = id.Encode()
 	if err != nil {
-		return nil, nil, nil, ErrInvalidNotificationEndpointID
+		return nil, encID, bucket, ErrInvalidNotificationEndpointID
 	}
 
-	bucket, err := s.notificationEndpointBucket(tx)
+	bucket, err = s.notificationEndpointBucket(tx)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, encID, bucket, err
 	}
 
 	v, err := bucket.Get(encID)
 	if IsNotFound(err) {
-		return nil, nil, nil, ErrNotificationEndpointNotFound
+		return nil, encID, bucket, ErrNotificationEndpointNotFound
 	}
 	if err != nil {
-		return nil, nil, nil, InternalNotificationEndpointStoreError(err)
+		return nil, encID, bucket, InternalNotificationEndpointStoreError(err)
 	}
 
-	edp, err := endpoint.UnmarshalJSON(v)
-	if err != nil {
-		return nil, nil, nil, err
-	}
+	edp, err = endpoint.UnmarshalJSON(v)
 	return edp, encID, bucket, err
 }
 
@@ -511,7 +509,7 @@ func (s *Service) DeleteNotificationEndpoint(ctx context.Context, id influxdb.ID
 }
 
 func (s *Service) deleteNotificationEndpoint(ctx context.Context, tx Tx, id influxdb.ID) (flds []influxdb.SecretField, orgID influxdb.ID, err error) {
-	edp, encID, bucket, err := s.findNotificationEndpointByID(tx, id)
+	edp, encID, bucket, err := s.findNotificationEndpointByID(ctx, tx, id)
 	if err != nil {
 		return nil, 0, err
 	}

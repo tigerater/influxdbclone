@@ -12,7 +12,7 @@ import (
 	"github.com/influxdata/influxdb/notification/flux"
 )
 
-var _ influxdb.Check = (*Deadman)(nil)
+var _ influxdb.Check = &Deadman{}
 
 // Deadman is the deadman check.
 type Deadman struct {
@@ -74,7 +74,8 @@ func (c Deadman) generateFluxASTBody() []ast.Statement {
 	statements = append(statements, c.generateFluxASTCheckDefinition("deadman"))
 	statements = append(statements, c.generateLevelFn())
 	statements = append(statements, c.generateFluxASTMessageFunction())
-	return append(statements, c.generateFluxASTChecksFunction())
+	statements = append(statements, c.generateFluxASTChecksFunction())
+	return statements
 }
 
 func (c Deadman) generateLevelFn() ast.Statement {
