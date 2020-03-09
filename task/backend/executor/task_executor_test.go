@@ -421,10 +421,6 @@ func testErrorHandling(t *testing.T) {
 	t.Parallel()
 	tes := taskExecutorSystem(t)
 
-	metrics := tes.metrics
-	reg := prom.NewRegistry()
-	reg.MustRegister(metrics.PrometheusCollectors()...)
-
 	script := fmt.Sprintf(fmtTestScript, t.Name())
 	ctx := icontext.SetAuthorizer(context.Background(), tes.tc.Auth)
 	task, err := tes.i.CreateTask(ctx, influxdb.TaskCreate{OrganizationID: tes.tc.OrgID, OwnerID: tes.tc.Auth.GetUserID(), Flux: script, Status: "active"})
@@ -432,7 +428,7 @@ func testErrorHandling(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// encountering a bucket not found error should log an unrecoverable error in the metrics
+	// encountering a bucket not found error should deactivate the task
 	forcedErr := errors.New("could not find bucket")
 	tes.svc.FailNextQuery(forcedErr)
 
@@ -443,23 +439,12 @@ func testErrorHandling(t *testing.T) {
 
 	<-promise.Done()
 
-	mg := promtest.MustGather(t, reg)
-
-	m := promtest.MustFindMetric(t, mg, "task_executor_unrecoverable_counter", map[string]string{"taskID": task.ID.String(), "errorType": "internal error"})
-	if got := *m.Counter.Value; got != 1 {
-		t.Fatalf("expected 1 unrecoverable error, got %v", got)
+	inactive, err := tes.i.FindTaskByID(context.Background(), task.ID)
+	if err != nil {
+		t.Fatal(err)
 	}
 
-	// TODO (al): once user notification system is put in place, this code should be uncommented
-	// encountering a bucket not found error should deactivate the task
-	/*
-		inactive, err := tes.i.FindTaskByID(context.Background(), task.ID)
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if inactive.Status != "inactive" {
-			t.Fatal("expected task to be deactivated after permanent error")
-		}
-	*/
+	if inactive.Status != "inactive" {
+		t.Fatal("expected task to be deactivated after permanent error")
+	}
 }
