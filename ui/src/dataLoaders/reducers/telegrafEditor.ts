@@ -4,8 +4,9 @@ import {
   ActivePluginAction,
   EditorAction,
 } from 'src/dataLoaders/actions/telegrafEditor'
-export type TelegrafEditorPluginType =
+type TelegrafEditorPluginType =
   | 'system'
+  | 'bundle'
   | 'input'
   | 'output'
   | 'processor'
@@ -13,26 +14,24 @@ export type TelegrafEditorPluginType =
   | 'display'
 type TelegrafEditorPluginName = string
 
-export interface TelegrafEditorBasicPlugin {
+interface TelegrafEditorBasicPlugin {
   name: TelegrafEditorPluginName
   description: string
   code: string
   type: TelegrafEditorPluginType
 }
 
-export interface TelegrafEditorBundlePlugin {
+interface TelegrafEditorBundlePlugin {
   name: TelegrafEditorPluginName
   description: string
-  type: 'bundle'
+  type: string
   include: Array<TelegrafEditorPluginName>
 }
+export type TelegrafEditorPluginState = Array<
+  TelegrafEditorBasicPlugin | TelegrafEditorBundlePlugin
+>
 
-export type TelegrafEditorPlugin =
-  | TelegrafEditorBasicPlugin
-  | TelegrafEditorBundlePlugin
-export type TelegrafEditorPluginState = Array<TelegrafEditorPlugin>
-
-export interface TelegrafEditorActivePlugin {
+interface TelegrafEditorActivePlugin {
   name: string
   type: TelegrafEditorPluginType
   line: number
@@ -41,8 +40,7 @@ export interface TelegrafEditorActivePlugin {
 export type TelegrafEditorActivePluginState = Array<TelegrafEditorActivePlugin>
 
 type TelegrafEditorMode = 'adding' | 'indexing'
-
-export interface TelegrafEditorState {
+interface TelegrafEditorState {
   mode: TelegrafEditorMode
   bucket: Bucket | null
   text: string
@@ -54,8 +52,7 @@ const INITIAL_PLUGINS: TelegrafEditorPluginState = [
     name: 'cpu',
     type: 'input',
     description: 'watch your cpu yo',
-    code: `
-[[inputs.cpu]]
+    code: `[[inputs.cpu]]
   ## Whether to report per-cpu stats or not
   percpu = true
   ## Whether to report total system cpu stats or not
@@ -70,8 +67,7 @@ const INITIAL_PLUGINS: TelegrafEditorPluginState = [
     name: 'disk',
     type: 'input',
     description: 'watch your disks yo',
-    code: `
-[[inputs.disk]]
+    code: `[[inputs.disk]]
 ## By default stats will be gathered for all mount points.
 ## Set mount_points will restrict the stats to only the specified mount points.
 # mount_points = ["/"]
@@ -83,24 +79,21 @@ ignore_fs = ["tmpfs", "devtmpfs", "devfs", "overlay", "aufs", "squashfs"]
     name: 'diskio',
     type: 'input',
     description: 'watch your diskio yo',
-    code: `
-[[inputs.diskio]]
+    code: `[[inputs.diskio]]
 `,
   },
   {
     name: 'memory',
     type: 'input',
     description: 'watch your memory yo',
-    code: `
-[[inputs.mem]]
+    code: `[[inputs.mem]]
 `,
   },
   {
     name: 'network',
     type: 'input',
     description: 'watch your network yo',
-    code: `
-[[inputs.net]]
+    code: `[[inputs.net]]
 `,
   },
   {
@@ -113,11 +106,10 @@ ignore_fs = ["tmpfs", "devtmpfs", "devfs", "overlay", "aufs", "squashfs"]
     name: 'kubernetes',
     type: 'input',
     description: 'watch your cluster yo',
-    code: `
-[[inputs.kubernetes]]
-  ## URL for the kubelet
-  ## exp: http://1.1.1.1:10255
-  url = "http://url"
+    code: `[[inputs.kubernetes]]
+## URL for the kubelet
+## exp: http://1.1.1.1:10255
+url = "http://url"
 `,
   },
   {
@@ -184,8 +176,7 @@ omit_hostname = false
     name: 'influxdb_v2',
     type: 'output',
     description: 'output to the cloud',
-    code: `
-[[outputs.influxdb_v2]]
+    code: `[[outputs.influxdb_v2]]
 ## The URLs of the InfluxDB cluster nodes.
 ##
 ## Multiple URLs can be specified for a single cluster, only ONE of the
@@ -231,7 +222,7 @@ export function pluginsReducer(
 }
 
 export function activePluginsReducer(
-  state: TelegrafEditorActivePluginState = [],
+  state = [],
   action: ActivePluginAction
 ): TelegrafEditorActivePluginState {
   switch (action.type) {
