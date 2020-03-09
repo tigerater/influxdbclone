@@ -829,20 +829,20 @@ export const timeMachineReducer = (
       })
     }
 
-    case 'SET_TIME_MACHINE_CHECK_STATUS': {
+    case 'SET_TIMEMACHINE_CHECK_STATUS': {
       const {checkStatus} = action.payload
 
       return {...state, alerting: {...state.alerting, checkStatus}}
     }
 
-    case 'SET_TIME_MACHINE_CHECK':
+    case 'SET_TIMEMACHINE_CHECK':
       const alerting = {
         check: action.payload.check,
         checkStatus: action.payload.checkStatus,
       }
       return {...state, alerting}
 
-    case 'UPDATE_TIME_MACHINE_CHECK':
+    case 'UPDATE_TIMEMACHINE_CHECK':
       return produce(state, draftState => {
         draftState.alerting.check = {
           ...draftState.alerting.check,
@@ -862,7 +862,7 @@ export const timeMachineReducer = (
         }
       })
 
-    case 'CHANGE_TIME_MACHINE_CHECK_TYPE':
+    case 'CHANGE_TIMEMACHINE_CHECK_TYPE':
       return produce(state, draftState => {
         const exCheck = draftState.alerting.check
 

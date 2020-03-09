@@ -24,9 +24,6 @@ type RuleVariantFields =
   | PagerDutyNotificationRuleBase
   | HTTPNotificationRuleBase
 
-const defaultMessage =
-  'Notification Rule: ${ r._notification_rule_name } triggered by check: ${ r._check_name }'
-
 export const getRuleVariantDefaults = (
   endpoints: NotificationEndpoint[],
   id: string
@@ -35,11 +32,11 @@ export const getRuleVariantDefaults = (
 
   switch (endpoint.type) {
     case 'slack': {
-      return {messageTemplate: defaultMessage, channel: '', type: 'slack'}
+      return {messageTemplate: '', channel: '', type: 'slack'}
     }
 
     case 'pagerduty': {
-      return {messageTemplate: defaultMessage, type: 'pagerduty'}
+      return {messageTemplate: '', type: 'pagerduty'}
     }
 
     case 'http': {
