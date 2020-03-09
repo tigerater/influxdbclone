@@ -73,10 +73,7 @@ const AlertHistoryIndex: FC<Props> = ({params: {orgID}, resourceIDs}) => {
                 >
                   <Page.Header fullWidth={true}>
                     <div className="alert-history-page--header">
-                      <Page.Title
-                        title="Check Statuses"
-                        testID="alert-history-title"
-                      />
+                      <Page.Title title="Check Statuses" />
                       <AlertHistoryQueryParams
                         searchInput={props.state.searchInput}
                         historyType={historyType}
