@@ -9,11 +9,12 @@ import (
 
 	"github.com/influxdata/flux"
 	"github.com/influxdata/flux/ast"
+	"github.com/influxdata/flux/dependencies"
 	"github.com/influxdata/flux/parser"
 	"github.com/influxdata/flux/semantic"
 	"github.com/influxdata/flux/values"
 	"github.com/influxdata/influxdb/pkg/pointer"
-	"gopkg.in/robfig/cron.v2"
+	cron "gopkg.in/robfig/cron.v2"
 )
 
 const maxConcurrency = 100
@@ -206,11 +207,12 @@ func (s constantSecretService) LoadSecret(ctx context.Context, k string) (string
 	return "", nil
 }
 
-func newDeps() flux.Dependencies {
-	deps := flux.NewDefaultDependencies()
+func newDeps() dependencies.Dependencies {
+	deps := dependencies.NewDefaults()
 	deps.Deps.HTTPClient = nil
 	deps.Deps.URLValidator = nil
 	deps.Deps.SecretService = constantSecretService{}
+
 	return deps
 }
 
@@ -224,8 +226,8 @@ func FromScript(script string) (Options, error) {
 	}
 	durTypes := grabTaskOptionAST(fluxAST, optEvery, optOffset)
 	// TODO(desa): should be dependencies.NewEmpty(), but for now we'll hack things together
-	ctx := newDeps().Inject(context.Background())
-	_, scope, err := flux.EvalAST(ctx, fluxAST)
+	ctx, deps := context.Background(), newDeps()
+	_, scope, err := flux.EvalAST(ctx, deps, fluxAST)
 	if err != nil {
 		return opt, err
 	}

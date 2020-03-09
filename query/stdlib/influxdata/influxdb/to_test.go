@@ -792,27 +792,21 @@ m,tag1=c,tag2=ee _value=4 41`),
 	for _, tc := range testCases {
 		tc := tc
 		t.Run(tc.name, func(t *testing.T) {
-			deps := influxdb.Dependencies{
-				FluxDeps: dependenciestest.Default(),
-				StorageDeps: influxdb.StorageDependencies{
-					ToDeps: mockDependencies(),
-				},
-			}
+			deps := mockDependencies()
 			executetest.ProcessTestHelper(
 				t,
 				tc.data,
 				tc.want.tables,
 				nil,
 				func(d execute.Dataset, c execute.TableBuilderCache) execute.Transformation {
-					ctx := deps.Inject(context.Background())
-					newT, err := influxdb.NewToTransformation(ctx, d, c, tc.spec, deps.StorageDeps.ToDeps)
+					newT, err := influxdb.NewToTransformation(context.Background(), d, c, tc.spec, deps, dependenciestest.Default())
 					if err != nil {
 						t.Error(err)
 					}
 					return newT
 				},
 			)
-			pw := deps.StorageDeps.ToDeps.PointsWriter.(*mock.PointsWriter)
+			pw := deps.PointsWriter.(*mock.PointsWriter)
 			if len(pw.Points) != len(tc.want.result.Points) {
 				t.Errorf("Expected result values to have length of %d but got %d", len(tc.want.result.Points), len(pw.Points))
 			}

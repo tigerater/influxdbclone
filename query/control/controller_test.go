@@ -10,6 +10,7 @@ import (
 
 	"github.com/influxdata/flux"
 	"github.com/influxdata/flux/arrow"
+	_ "github.com/influxdata/flux/builtin"
 	"github.com/influxdata/flux/codes"
 	"github.com/influxdata/flux/execute"
 	"github.com/influxdata/flux/execute/executetest"
@@ -20,9 +21,7 @@ import (
 	"github.com/influxdata/flux/plan/plantest"
 	"github.com/influxdata/flux/stdlib/universe"
 	"github.com/influxdata/influxdb/query"
-	_ "github.com/influxdata/influxdb/query/builtin"
 	"github.com/influxdata/influxdb/query/control"
-	"github.com/influxdata/influxdb/query/stdlib/influxdata/influxdb"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 	"go.uber.org/zap/zaptest"
@@ -46,11 +45,7 @@ var (
 		ConcurrencyQuota:         1,
 		MemoryBytesQuotaPerQuery: 1024,
 		QueueSize:                1,
-		ExecutorDependencies: []flux.Dependency{
-			influxdb.Dependencies{
-				FluxDeps: executetest.NewTestExecuteDependencies(),
-			},
-		},
+		ExecutorDependencies:     executetest.NewTestExecuteDependencies(),
 	}
 )
 
