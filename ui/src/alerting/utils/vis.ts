@@ -6,7 +6,6 @@ import {useMemo} from 'react'
 import {parseDuration} from 'src/shared/utils/duration'
 import {useOneWayState} from 'src/shared/utils/useOneWayState'
 import {extent} from 'src/shared/utils/vis'
-import {flatMap} from 'lodash'
 
 // Types
 import {TimeRange, Threshold} from 'src/types'
@@ -34,7 +33,7 @@ export const getCheckVisTimeRange = (durationStr: string): TimeRange => {
 
 /*
   Obtain the y domain settings for a threshold check plot.
-
+  
   The y domain for a threshold check plot should be large enough to show every
   threshold value in addition to every y value in the plot.
 */
@@ -45,11 +44,8 @@ export const useCheckYDomain = (
   const dataDomain = useMemo(() => extent(data as number[]), [data])
 
   const initialDomain: number[] = useMemo(() => {
-    const extrema: number[] = flatMap(thresholds || [], (t: any) => [
-      t.value,
-      t.min,
-      t.max,
-    ])
+    const extrema: number[] = thresholds
+      .flatMap((t: any) => [t.value, t.min, t.max])
       .filter(v => v !== undefined && v !== null)
       .concat(dataDomain)
 

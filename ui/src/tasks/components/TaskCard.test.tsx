@@ -32,7 +32,7 @@ const setup = (override = {}) => {
 }
 
 describe('Tasks.Components.TaskCard', () => {
-  describe('if task has labels', () => {
+  describe.only('if task has labels', () => {
     it('renders with labels', () => {
       const {getAllByTestId} = setup()
 

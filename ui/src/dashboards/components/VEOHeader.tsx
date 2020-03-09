@@ -49,7 +49,6 @@ class VEOHeader extends PureComponent<Props> {
             icon={IconFont.Remove}
             onClick={onCancel}
             size={ComponentSize.Small}
-            testID="cancel-cell-edit--button"
           />
           <SquareButton
             className={saveButtonClass}

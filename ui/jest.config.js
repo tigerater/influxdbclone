@@ -3,7 +3,7 @@ module.exports = {
   displayName: 'test',
   testURL: 'http://localhost',
   testPathIgnorePatterns: [
-    '<rootDir>/build',
+    'build',
     '<rootDir>/node_modules/(?!(jest-test))',
     'cypress',
   ],
