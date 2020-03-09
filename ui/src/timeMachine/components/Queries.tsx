@@ -14,7 +14,6 @@ import TimeMachineQueryBuilder from 'src/timeMachine/components/QueryBuilder'
 import SubmitQueryButton from 'src/timeMachine/components/SubmitQueryButton'
 import RawDataToggle from 'src/timeMachine/components/RawDataToggle'
 import QueryTabs from 'src/timeMachine/components/QueryTabs'
-import EditorShortcutsToolTip from 'src/timeMachine/components/EditorShortcutsTooltip'
 import {
   ComponentSize,
   FlexBox,
@@ -58,7 +57,7 @@ type Props = StateProps & DispatchProps
 
 class TimeMachineQueries extends PureComponent<Props> {
   public render() {
-    const {timeRange, isInCheckOverlay, activeQuery} = this.props
+    const {timeRange, isInCheckOverlay} = this.props
 
     return (
       <div className="time-machine-queries">
@@ -70,9 +69,6 @@ class TimeMachineQueries extends PureComponent<Props> {
               justifyContent={JustifyContent.FlexEnd}
               margin={ComponentSize.Small}
             >
-              {activeQuery.editMode === 'advanced' && (
-                <EditorShortcutsToolTip />
-              )}
               <RawDataToggle />
               {!isInCheckOverlay && (
                 <>
