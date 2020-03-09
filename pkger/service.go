@@ -865,9 +865,9 @@ func (s *Service) dryRunNotificationRules(ctx context.Context, orgID influxdb.ID
 
 	diffs := make([]DiffNotificationRule, 0, len(mExisting))
 	for _, r := range pkg.notificationRules() {
-		e, ok := mExisting[r.endpointName.String()]
+		e, ok := mExisting[r.endpointName]
 		if !ok {
-			pkgerEndpoint, ok := pkg.mNotificationEndpoints[r.endpointName.String()]
+			pkgerEndpoint, ok := pkg.mNotificationEndpoints[r.endpointName]
 			if !ok {
 				err := fmt.Errorf("failed to find endpoint by name: %q", r.endpointName)
 				return nil, &influxdb.Error{Code: influxdb.EUnprocessableEntity, Err: err}
@@ -1066,20 +1066,11 @@ func (s *Service) dryRunResourceLabelMapping(ctx context.Context, la labelAssoci
 
 // ApplyOpt is an option for applying a package.
 type ApplyOpt struct {
-	EnvRefs        map[string]string
 	MissingSecrets map[string]string
 }
 
 // ApplyOptFn updates the ApplyOpt per the functional option.
 type ApplyOptFn func(opt *ApplyOpt) error
-
-// ApplyWithEnvRefs provides env refs to saturate the missing reference fields in the pkg.
-func ApplyWithEnvRefs(envRefs map[string]string) ApplyOptFn {
-	return func(o *ApplyOpt) error {
-		o.EnvRefs = envRefs
-		return nil
-	}
-}
 
 // ApplyWithSecrets provides secrets to the platform that the pkg will need.
 func ApplyWithSecrets(secrets map[string]string) ApplyOptFn {
@@ -1105,8 +1096,6 @@ func (s *Service) Apply(ctx context.Context, orgID, userID influxdb.ID, pkg *Pkg
 			return Summary{}, internalErr(err)
 		}
 	}
-
-	pkg.applyEnvRefs(opt.EnvRefs)
 
 	if !pkg.isVerified {
 		if _, _, err := s.DryRun(ctx, orgID, userID, pkg); err != nil {
@@ -1660,7 +1649,7 @@ func (s *Service) applyNotificationRulesGenerator(ctx context.Context, orgID inf
 
 	var errs applyErrs
 	for _, r := range rules {
-		v, ok := mEndpoints[r.endpointName.String()]
+		v, ok := mEndpoints[r.endpointName]
 		if !ok {
 			errs = append(errs, &applyErrBody{
 				name: r.Name(),
@@ -1851,7 +1840,7 @@ func (s *Service) applyTelegrafs(teles []*telegraf) applier {
 		var cfg influxdb.TelegrafConfig
 		mutex.Do(func() {
 			teles[i].config.OrgID = orgID
-			cfg = teles[i].summarize().TelegrafConfig
+			cfg = teles[i].config
 		})
 
 		err := s.teleSVC.CreateTelegrafConfig(ctx, &cfg, userID)

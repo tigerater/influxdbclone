@@ -113,14 +113,14 @@ metadata:
 				require.Len(t, labels, 2)
 
 				expectedLabel1 := label{
-					name:        &references{val: "label_1"},
+					name:        "label_1",
 					Description: "label 1 description",
 					Color:       "#FFFFFF",
 				}
 				assert.Equal(t, expectedLabel1, *labels[0])
 
 				expectedLabel2 := label{
-					name:        &references{val: "label_2"},
+					name:        "label_2",
 					Description: "label 2 description",
 					Color:       "#000000",
 				}
@@ -3305,13 +3305,6 @@ spec:
 	})
 
 	t.Run("referencing secrets", func(t *testing.T) {
-		hasSecret := func(t *testing.T, refs map[string]bool, key string) {
-			t.Helper()
-			b, ok := refs[key]
-			assert.True(t, ok)
-			assert.False(t, b)
-		}
-
 		testfileRunner(t, "testdata/notification_endpoint_secrets.yml", func(t *testing.T, pkg *Pkg) {
 			sum := pkg.Summary()
 
@@ -3324,7 +3317,7 @@ spec:
 					Status: influxdb.TaskStatusActive,
 				},
 				ClientURL:  "http://localhost:8080/orgs/7167eb6719fa34e5/alert-history",
-				RoutingKey: influxdb.SecretField{Key: "-routing-key", Value: strPtr("not empty")},
+				RoutingKey: influxdb.SecretField{Key: "-routing-key", Value: strPtr("not emtpy")},
 			}
 			actual, ok := endpoints[0].NotificationEndpoint.(*endpoint.PagerDuty)
 			require.True(t, ok)
@@ -3332,56 +3325,8 @@ spec:
 			require.Nil(t, actual.RoutingKey.Value)
 			assert.Equal(t, "routing-key", actual.RoutingKey.Key)
 
-			hasSecret(t, pkg.mSecrets, "routing-key")
-		})
-	})
-
-	t.Run("referencing env", func(t *testing.T) {
-		hasEnv := func(t *testing.T, refs map[string][]*references, key string) {
-			t.Helper()
-			_, ok := refs[key]
-			assert.True(t, ok)
-		}
-
-		testfileRunner(t, "testdata/env_refs.yml", func(t *testing.T, pkg *Pkg) {
-			sum := pkg.Summary()
-
-			require.Len(t, sum.Buckets, 1)
-			assert.Equal(t, "$bkt-1-name-ref", sum.Buckets[0].Name)
-			hasEnv(t, pkg.mEnv, "bkt-1-name-ref")
-
-			require.Len(t, sum.Checks, 1)
-			assert.Equal(t, "$check-1-name-ref", sum.Checks[0].Check.GetName())
-			hasEnv(t, pkg.mEnv, "check-1-name-ref")
-
-			require.Len(t, sum.Dashboards, 1)
-			assert.Equal(t, "$dash-1-name-ref", sum.Dashboards[0].Name)
-			hasEnv(t, pkg.mEnv, "dash-1-name-ref")
-
-			require.Len(t, sum.NotificationEndpoints, 1)
-			assert.Equal(t, "$endpoint-1-name-ref", sum.NotificationEndpoints[0].NotificationEndpoint.GetName())
-			hasEnv(t, pkg.mEnv, "endpoint-1-name-ref")
-
-			require.Len(t, sum.Labels, 1)
-			assert.Equal(t, "$label-1-name-ref", sum.Labels[0].Name)
-			hasEnv(t, pkg.mEnv, "label-1-name-ref")
-
-			require.Len(t, sum.NotificationRules, 1)
-			assert.Equal(t, "$rule-1-name-ref", sum.NotificationRules[0].Name)
-			assert.Equal(t, "$endpoint-1-name-ref", sum.NotificationRules[0].EndpointName)
-			hasEnv(t, pkg.mEnv, "rule-1-name-ref")
-
-			require.Len(t, sum.Tasks, 1)
-			assert.Equal(t, "$task-1-name-ref", sum.Tasks[0].Name)
-			hasEnv(t, pkg.mEnv, "task-1-name-ref")
-
-			require.Len(t, sum.TelegrafConfigs, 1)
-			assert.Equal(t, "$telegraf-1-name-ref", sum.TelegrafConfigs[0].TelegrafConfig.Name)
-			hasEnv(t, pkg.mEnv, "telegraf-1-name-ref")
-
-			require.Len(t, sum.Variables, 1)
-			assert.Equal(t, "$var-1-name-ref", sum.Variables[0].Name)
-			hasEnv(t, pkg.mEnv, "var-1-name-ref")
+			_, ok = pkg.mSecrets["routing-key"]
+			require.True(t, ok)
 		})
 	})
 
