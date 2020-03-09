@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/influxdata/flux"
-	"github.com/influxdata/flux/arrow"
 	_ "github.com/influxdata/flux/builtin"
 	"github.com/influxdata/flux/codes"
 	"github.com/influxdata/flux/execute"
@@ -627,16 +626,10 @@ func TestController_PerQueryMemoryLimit(t *testing.T) {
 		CompileFn: func(ctx context.Context) (flux.Program, error) {
 			return &mock.Program{
 				ExecuteFn: func(ctx context.Context, q *mock.Query, alloc *memory.Allocator) {
-					defer func() {
-						if err, ok := recover().(error); ok && err != nil {
-							q.SetErr(err)
-						}
-					}()
-
 					// This is emulating the behavior of exceeding the memory limit at runtime
-					mem := arrow.NewAllocator(alloc)
-					b := mem.Allocate(int(config.MemoryBytesQuotaPerQuery + 1))
-					mem.Free(b)
+					if err := alloc.Allocate(int(config.MemoryBytesQuotaPerQuery + 1)); err != nil {
+						q.SetErr(err)
+					}
 				},
 			}, nil
 		},
