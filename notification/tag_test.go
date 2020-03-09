@@ -1,28 +1,29 @@
-package influxdb_test
+package notification_test
 
 import (
 	"testing"
 
 	"github.com/influxdata/influxdb"
+	"github.com/influxdata/influxdb/notification"
 	influxTesting "github.com/influxdata/influxdb/testing"
 )
 
 func TestTagValid(t *testing.T) {
 	cases := []struct {
 		name string
-		src  influxdb.TagRule
+		src  notification.TagRule
 		err  error
 	}{
 		{
 			name: "regular status rule",
-			src: influxdb.TagRule{
+			src: notification.TagRule{
 				Tag:      influxdb.Tag{Key: "k1", Value: "v1"},
-				Operator: influxdb.Equal,
+				Operator: notification.Equal,
 			},
 		},
 		{
 			name: "empty",
-			src:  influxdb.TagRule{},
+			src:  notification.TagRule{},
 			err: &influxdb.Error{
 				Code: influxdb.EInvalid,
 				Msg:  "tag must contain a key and a value",
@@ -30,7 +31,7 @@ func TestTagValid(t *testing.T) {
 		},
 		{
 			name: "empty key",
-			src: influxdb.TagRule{
+			src: notification.TagRule{
 				Tag: influxdb.Tag{Value: "v1"},
 			},
 			err: &influxdb.Error{
@@ -40,7 +41,7 @@ func TestTagValid(t *testing.T) {
 		},
 		{
 			name: "empty value",
-			src: influxdb.TagRule{
+			src: notification.TagRule{
 				Tag: influxdb.Tag{Key: "k1"},
 			},
 			err: &influxdb.Error{
@@ -50,13 +51,12 @@ func TestTagValid(t *testing.T) {
 		},
 		{
 			name: "invalid operator",
-			src: influxdb.TagRule{
-				Tag:      influxdb.Tag{Key: "k1", Value: "v1"},
-				Operator: influxdb.Operator(-1),
+			src: notification.TagRule{
+				Tag: influxdb.Tag{Key: "k1", Value: "v1"},
 			},
 			err: &influxdb.Error{
 				Code: influxdb.EInvalid,
-				Msg:  "Operator is invalid",
+				Msg:  "Operator \"\" is invalid",
 			},
 		},
 	}

@@ -99,7 +99,7 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
                   />
                 </Form.Element>
                 <Form.Element label="">
-                  <GetResources resource={ResourceType.Buckets}>
+                  <GetResources resources={[ResourceType.Buckets]}>
                     <Grid.Row>
                       <Grid.Column
                         widthXS={Columns.Twelve}
@@ -196,7 +196,7 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
     this.setState({writeBuckets: []})
   }
 
-  private handleSave = async () => {
+  private handleSave = () => {
     const {
       params: {orgID},
       onCreateAuthorization,
@@ -223,7 +223,7 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
       permissions,
     }
 
-    await onCreateAuthorization(token)
+    onCreateAuthorization(token)
 
     this.handleDismiss()
   }

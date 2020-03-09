@@ -77,7 +77,7 @@ interface DispatchProps {
 }
 
 interface PassedProps {
-  resource: ResourceType
+  resources: Array<ResourceType>
 }
 
 type Props = StateProps & DispatchProps & PassedProps
@@ -101,62 +101,71 @@ export enum ResourceType {
 
 @ErrorHandling
 class GetResources extends PureComponent<Props, StateProps> {
-  public async componentDidMount() {
-    switch (this.props.resource) {
+  public componentDidMount() {
+    const {resources} = this.props
+    const promises = []
+    resources.forEach(resource => {
+      promises.push(this.getResourceDetails(resource))
+    })
+    Promise.all(promises)
+  }
+
+  private getResourceDetails(resource) {
+    switch (resource) {
       case ResourceType.Dashboards: {
-        return await this.props.getDashboards()
+        return this.props.getDashboards()
       }
 
       case ResourceType.Labels: {
-        return await this.props.getLabels()
+        return this.props.getLabels()
       }
 
       case ResourceType.Buckets: {
-        return await this.props.getBuckets()
+        return this.props.getBuckets()
       }
 
       case ResourceType.Telegrafs: {
-        return await this.props.getTelegrafs()
+        return this.props.getTelegrafs()
       }
 
       case ResourceType.Scrapers: {
-        return await this.props.getScrapers()
+        return this.props.getScrapers()
       }
 
       case ResourceType.Variables: {
-        return await this.props.getVariables()
+        return this.props.getVariables()
       }
 
       case ResourceType.Tasks: {
-        return await this.props.getTasks()
+        return this.props.getTasks()
       }
 
       case ResourceType.Authorizations: {
-        return await this.props.getAuthorizations()
+        return this.props.getAuthorizations()
       }
 
       case ResourceType.Templates: {
-        return await this.props.getTemplates()
+        return this.props.getTemplates()
       }
 
       case ResourceType.Members: {
-        return await this.props.getMembers()
+        return this.props.getMembers()
       }
 
       case ResourceType.Users: {
-        return await this.props.getUsers()
+        return this.props.getUsers()
       }
 
       case ResourceType.Checks: {
-        return await this.props.getChecks()
+        return this.props.getChecks()
       }
 
       case ResourceType.NotificationRules: {
-        return await this.props.getNotificationRules()
+        return this.props.getNotificationRules()
       }
 
       case ResourceType.NotificationEndpoints: {
-        return await this.props.getEndpoints()
+        return this.props.getEndpoints()
       }
 
       default: {
@@ -166,13 +175,33 @@ class GetResources extends PureComponent<Props, StateProps> {
   }
 
   public render() {
-    const {resource, children} = this.props
+    const {resources, children} = this.props
+    let status
+    for (let i = 0; i < resources.length; i++) {
+      const resource = resources[i]
+      // reduce the values of the status to 1 value
+      switch (this.props[resource].status) {
+        case 'NotStarted': {
+          status = 'NotStarted'
+          break
+        }
+        case 'Loading': {
+          status = 'Loading'
+          break
+        }
+        case 'Done': {
+          status = 'Done'
+          break
+        }
+        default: {
+          status = 'Error'
+          break
+        }
+      }
+    }
 
     return (
-      <SpinnerContainer
-        loading={this.props[resource].status}
-        spinnerComponent={<TechnoSpinner />}
-      >
+      <SpinnerContainer loading={status} spinnerComponent={<TechnoSpinner />}>
         <>{children}</>
       </SpinnerContainer>
     )

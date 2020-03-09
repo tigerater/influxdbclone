@@ -59,7 +59,7 @@ class TaskImportFromTemplateOverlay extends PureComponent<
 
   render() {
     return (
-      <GetResources resource={ResourceType.Templates}>
+      <GetResources resources={[ResourceType.Templates]}>
         <Overlay visible={true}>
           <Overlay.Container maxWidth={900}>
             <Overlay.Header
@@ -128,11 +128,11 @@ class TaskImportFromTemplateOverlay extends PureComponent<
     router.goBack()
   }
 
-  private onSubmit = async (): Promise<void> => {
+  private onSubmit = () => {
     const {createTaskFromTemplate} = this.props
     const taskTemplate = this.state.selectedTemplate as TaskTemplate
 
-    await createTaskFromTemplate(taskTemplate)
+    createTaskFromTemplate(taskTemplate)
     this.onDismiss()
   }
 }

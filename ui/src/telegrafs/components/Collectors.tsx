@@ -112,7 +112,7 @@ class Collectors extends PureComponent<Props, State> {
               widthSM={Columns.Eight}
               widthMD={Columns.Ten}
             >
-              <GetResources resource={ResourceType.Labels}>
+              <GetResources resources={[ResourceType.Labels]}>
                 <FilterList<Telegraf>
                   searchTerm={searchTerm}
                   searchKeys={['plugins.0.config.bucket', 'name']}
@@ -228,12 +228,12 @@ class Collectors extends PureComponent<Props, State> {
     )
   }
 
-  private handleDeleteTelegraf = async (telegraf: Telegraf) => {
-    await this.props.onDeleteTelegraf(telegraf.id, telegraf.name)
+  private handleDeleteTelegraf = (telegraf: Telegraf) => {
+    this.props.onDeleteTelegraf(telegraf.id, telegraf.name)
   }
 
-  private handleUpdateTelegraf = async (telegraf: Telegraf) => {
-    await this.props.onUpdateTelegraf(telegraf)
+  private handleUpdateTelegraf = (telegraf: Telegraf) => {
+    this.props.onUpdateTelegraf(telegraf)
   }
 
   private handleFilterChange = (searchTerm: string): void => {

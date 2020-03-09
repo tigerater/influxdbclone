@@ -146,14 +146,14 @@ func CreateNotificationRule(
 										Key:   "k1",
 										Value: "v1",
 									},
-									Operator: influxdb.NotEqual,
+									Operator: notification.NotEqual,
 								},
 								{
 									Tag: influxdb.Tag{
 										Key:   "k2",
 										Value: "v2",
 									},
-									Operator: influxdb.RegexEqual,
+									Operator: notification.RegexEqual,
 								},
 							},
 							CRUDLog: influxdb.CRUDLog{
@@ -196,14 +196,14 @@ func CreateNotificationRule(
 									Key:   "k1",
 									Value: "v1",
 								},
-								Operator: influxdb.NotEqual,
+								Operator: notification.NotEqual,
 							},
 							{
 								Tag: influxdb.Tag{
 									Key:   "k2",
 									Value: "v2",
 								},
-								Operator: influxdb.RegexEqual,
+								Operator: notification.RegexEqual,
 							},
 						},
 					},
@@ -233,14 +233,14 @@ func CreateNotificationRule(
 										Key:   "k1",
 										Value: "v1",
 									},
-									Operator: influxdb.NotEqual,
+									Operator: notification.NotEqual,
 								},
 								{
 									Tag: influxdb.Tag{
 										Key:   "k2",
 										Value: "v2",
 									},
-									Operator: influxdb.RegexEqual,
+									Operator: notification.RegexEqual,
 								},
 							},
 							CRUDLog: influxdb.CRUDLog{
@@ -272,14 +272,14 @@ func CreateNotificationRule(
 										Key:   "k1",
 										Value: "v1",
 									},
-									Operator: influxdb.NotEqual,
+									Operator: notification.NotEqual,
 								},
 								{
 									Tag: influxdb.Tag{
 										Key:   "k2",
 										Value: "v2",
 									},
-									Operator: influxdb.RegexEqual,
+									Operator: notification.RegexEqual,
 								},
 							},
 							CRUDLog: influxdb.CRUDLog{

@@ -67,7 +67,7 @@ class DashboardImportFromTemplateOverlay extends PureComponent<
 
   render() {
     return (
-      <GetResources resource={ResourceType.Templates}>
+      <GetResources resources={[ResourceType.Templates]}>
         <Overlay visible={true}>
           <Overlay.Container maxWidth={900}>
             <Overlay.Header
@@ -176,11 +176,11 @@ class DashboardImportFromTemplateOverlay extends PureComponent<
     router.goBack()
   }
 
-  private onSubmit = async (): Promise<void> => {
+  private onSubmit = () => {
     const {createDashboardFromTemplate} = this.props
     const dashboardTemplate = this.state.selectedTemplate as DashboardTemplate
 
-    await createDashboardFromTemplate(dashboardTemplate)
+    createDashboardFromTemplate(dashboardTemplate)
     this.onDismiss()
   }
 }
