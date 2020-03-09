@@ -115,15 +115,16 @@ type getVariablesRequest struct {
 }
 
 func decodeGetVariablesRequest(ctx context.Context, r *http.Request) (*getVariablesRequest, error) {
+	qp := r.URL.Query()
+	req := &getVariablesRequest{}
+
 	opts, err := decodeFindOptions(ctx, r)
 	if err != nil {
 		return nil, err
 	}
 
-	req := &getVariablesRequest{
-		opts: *opts,
-	}
-	qp := r.URL.Query()
+	req.opts = *opts
+
 	if orgID := qp.Get("orgID"); orgID != "" {
 		id, err := platform.IDFromString(orgID)
 		if err != nil {
@@ -457,21 +458,21 @@ func (s *VariableService) FindVariableByID(ctx context.Context, id platform.ID) 
 // FindVariables returns a list of variables that match filter.
 // Additional options provide pagination & sorting.
 func (s *VariableService) FindVariables(ctx context.Context, filter platform.VariableFilter, opts ...platform.FindOptions) ([]*platform.Variable, error) {
-	params := findOptionParams(opts...)
+	var queryPairs [][2]string
 	if filter.OrganizationID != nil {
-		params = append(params, [2]string{"orgID", filter.OrganizationID.String()})
+		queryPairs = append(queryPairs, [2]string{"orgID", filter.OrganizationID.String()})
 	}
 	if filter.Organization != nil {
-		params = append(params, [2]string{"org", *filter.Organization})
+		queryPairs = append(queryPairs, [2]string{"org", *filter.Organization})
 	}
 	if filter.ID != nil {
-		params = append(params, [2]string{"id", filter.ID.String()})
+		queryPairs = append(queryPairs, [2]string{"id", filter.ID.String()})
 	}
 
 	var ms getVariablesResponse
 	err := s.Client.
 		Get(variablePath).
-		QueryParams(params...).
+		QueryParams(queryPairs...).
 		DecodeJSON(&ms).
 		Do(ctx)
 	if err != nil {

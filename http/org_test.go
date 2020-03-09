@@ -59,14 +59,13 @@ func initOrganizationService(f platformtesting.OrganizationFields, t *testing.T)
 	handler := NewOrgHandler(zaptest.NewLogger(t), orgBackend)
 	server := httptest.NewServer(handler)
 	client := OrganizationService{
-		Client:   mustNewHTTPClient(t, server.URL, ""),
+		Addr:     server.URL,
 		OpPrefix: inmem.OpPrefix,
 	}
 	done := server.Close
 
 	return &client, inmem.OpPrefix, done
 }
-
 func TestOrganizationService(t *testing.T) {
 
 	t.Parallel()

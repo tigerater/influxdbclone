@@ -54,23 +54,19 @@ func orgCreateCmd() *cobra.Command {
 	return cmd
 }
 
-func newOrganizationService() (platform.OrganizationService, error) {
+func newOrganizationService(f Flags) (platform.OrganizationService, error) {
 	if flags.local {
 		return newLocalKVService()
 	}
-
-	client, err := newHTTPClient()
-	if err != nil {
-		return nil, err
-	}
-
 	return &http.OrganizationService{
-		Client: client,
+		Addr:               flags.host,
+		Token:              flags.token,
+		InsecureSkipVerify: flags.skipVerify,
 	}, nil
 }
 
 func organizationCreateF(cmd *cobra.Command, args []string) error {
-	orgSvc, err := newOrganizationService()
+	orgSvc, err := newOrganizationService(flags)
 	if err != nil {
 		return fmt.Errorf("failed to initialize org service client: %v", err)
 	}
@@ -119,7 +115,7 @@ func orgFindCmd() *cobra.Command {
 }
 
 func organizationFindF(cmd *cobra.Command, args []string) error {
-	orgSvc, err := newOrganizationService()
+	orgSvc, err := newOrganizationService(flags)
 	if err != nil {
 		return fmt.Errorf("failed to initialize org service client: %v", err)
 	}
@@ -181,7 +177,7 @@ func orgUpdateCmd() *cobra.Command {
 }
 
 func organizationUpdateF(cmd *cobra.Command, args []string) error {
-	orgSvc, err := newOrganizationService()
+	orgSvc, err := newOrganizationService(flags)
 	if err != nil {
 		return fmt.Errorf("failed to initialize org service client: %v", err)
 	}
@@ -223,7 +219,7 @@ type OrganizationDeleteFlags struct {
 var organizationDeleteFlags OrganizationDeleteFlags
 
 func organizationDeleteF(cmd *cobra.Command, args []string) error {
-	orgSvc, err := newOrganizationService()
+	orgSvc, err := newOrganizationService(flags)
 	if err != nil {
 		return fmt.Errorf("failed to initialize org service client: %v", err)
 	}
@@ -297,7 +293,7 @@ type OrganizationMembersListFlags struct {
 var organizationMembersListFlags OrganizationMembersListFlags
 
 func organizationMembersListF(cmd *cobra.Command, args []string) error {
-	orgSvc, err := newOrganizationService()
+	orgSvc, err := newOrganizationService(flags)
 	if err != nil {
 		return fmt.Errorf("failed to initialize org service client: %v", err)
 	}
@@ -363,7 +359,7 @@ func organizationMembersAddF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("must specify exactly one of id and name")
 	}
 
-	orgSvc, err := newOrganizationService()
+	orgSvc, err := newOrganizationService(flags)
 	if err != nil {
 		return fmt.Errorf("failed to initialize org service client: %v", err)
 	}
@@ -436,7 +432,7 @@ func organizationMembersRemoveF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("must specify exactly one of id and name")
 	}
 
-	orgSvc, err := newOrganizationService()
+	orgSvc, err := newOrganizationService(flags)
 	if err != nil {
 		return fmt.Errorf("failed to initialize org service client: %v", err)
 	}

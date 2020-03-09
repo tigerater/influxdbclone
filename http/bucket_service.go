@@ -808,24 +808,32 @@ func (s *BucketService) FindBuckets(ctx context.Context, filter influxdb.BucketF
 	span, _ := tracing.StartSpanFromContext(ctx)
 	defer span.Finish()
 
-	params := findOptionParams(opt...)
+	var queryPairs [][2]string
 	if filter.OrganizationID != nil {
-		params = append(params, [2]string{"orgID", filter.OrganizationID.String()})
+		queryPairs = append(queryPairs, [2]string{"orgID", filter.OrganizationID.String()})
 	}
 	if filter.Org != nil {
-		params = append(params, [2]string{"org", *filter.Org})
+		queryPairs = append(queryPairs, [2]string{"org", *filter.Org})
 	}
 	if filter.ID != nil {
-		params = append(params, [2]string{"id", filter.ID.String()})
+		queryPairs = append(queryPairs, [2]string{"id", filter.ID.String()})
 	}
 	if filter.Name != nil {
-		params = append(params, [2]string{"name", (*filter.Name)})
+		queryPairs = append(queryPairs, [2]string{"name", (*filter.Name)})
+	}
+
+	for _, findOption := range opt {
+		for k, vs := range findOption.QueryParams() {
+			for _, v := range vs {
+				queryPairs = append(queryPairs, [2]string{k, v})
+			}
+		}
 	}
 
 	var bs bucketsResponse
 	err := s.Client.
 		Get(bucketsPath).
-		QueryParams(params...).
+		QueryParams(queryPairs...).
 		DecodeJSON(&bs).
 		Do(ctx)
 	if err != nil {

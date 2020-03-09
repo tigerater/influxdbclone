@@ -83,12 +83,10 @@ func replF(cmd *cobra.Command, args []string) error {
 }
 
 func findOrgID(ctx context.Context, org string) (platform.ID, error) {
-	client, err := newHTTPClient()
-	if err != nil {
-		return 0, err
-	}
 	svc := &http.OrganizationService{
-		Client: client,
+		Addr:               flags.host,
+		Token:              flags.token,
+		InsecureSkipVerify: flags.skipVerify,
 	}
 
 	o, err := svc.FindOrganization(ctx, platform.OrganizationFilter{

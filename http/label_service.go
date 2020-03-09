@@ -541,18 +541,18 @@ func (s *LabelService) FindLabelByID(ctx context.Context, id influxdb.ID) (*infl
 
 // FindLabels is a client for the find labels response from the server.
 func (s *LabelService) FindLabels(ctx context.Context, filter influxdb.LabelFilter, opt ...influxdb.FindOptions) ([]*influxdb.Label, error) {
-	params := findOptionParams(opt...)
+	var queryPairs [][2]string
 	if filter.OrgID != nil {
-		params = append(params, [2]string{"orgID", filter.OrgID.String()})
+		queryPairs = append(queryPairs, [2]string{"orgID", filter.OrgID.String()})
 	}
 	if filter.Name != "" {
-		params = append(params, [2]string{"name", filter.Name})
+		queryPairs = append(queryPairs, [2]string{"name", filter.Name})
 	}
 
 	var lr labelsResponse
 	err := s.Client.
 		Get(labelsPath).
-		QueryParams(params...).
+		QueryParams(queryPairs...).
 		DecodeJSON(&lr).
 		Do(ctx)
 	if err != nil {
