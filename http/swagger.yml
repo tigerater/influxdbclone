@@ -2217,23 +2217,13 @@ paths:
               type: string
             required: true
             description: The ID of the dashboard to update.
-          - in: query
-            name: include
-            required: false
-            schema:
-              type: string
-              enum:
-                - properties
-            description: Includes the cell view properties in the response if set to `properties`
       responses:
           '200':
             description: Get a single dashboard
             content:
               application/json:
                 schema:
-                  oneOf:
-                    - $ref: "#/components/schemas/Dashboard"
-                    - $ref: "#/components/schemas/DashboardWithViewProperties"
+                  $ref: "#/components/schemas/Dashboard"
           '404':
             description: Dashboard not found
             content:
@@ -7379,11 +7369,12 @@ components:
         width:
           type: integer
         properties: # field name is properties
-          $ref: "#/components/schemas/ViewProperties"
+          ref: "#/components/schemas/ViewProperties"
     Runs:
       type: object
       properties:
         links:
+          readOnly: true
           $ref: "#/components/schemas/Links"
         runs:
           type: array
@@ -7992,7 +7983,6 @@ components:
         - legend
         - note
         - showNoteWhenEmpty
-        - position
       properties:
         type:
           type: string
@@ -8024,9 +8014,6 @@ components:
           type: string
         shadeBelow:
           type: boolean
-        position:
-          type: string
-          enum: [overlaid, stacked]
         geom:
           $ref: '#/components/schemas/XYGeom'
     XYGeom:
@@ -8046,7 +8033,6 @@ components:
         - prefix
         - suffix
         - decimalPlaces
-        - position
       properties:
         type:
           type: string
@@ -8078,9 +8064,6 @@ components:
           type: string
         shadeBelow:
           type: boolean
-        position:
-          type: string
-          enum: [overlaid, stacked]
         prefix:
           type: string
         suffix:
@@ -8732,16 +8715,6 @@ components:
                 type: integer
               message:
                 type: string
-    CellWithViewProperties:
-      type: object
-      allOf:
-        - $ref: "#/components/schemas/Cell"
-        - type: object
-          properties:
-            name:
-              type: string
-            properties:
-              $ref: "#/components/schemas/ViewProperties"
     Cell:
       type: object
       properties:
@@ -8769,10 +8742,6 @@ components:
         viewID:
           type: string
           description: The reference to a view from the views API.
-    CellsWithViewProperties:
-      type: array
-      items:
-        $ref: "#/components/schemas/CellWithViewProperties"
     Cells:
       type: array
       items:
@@ -8816,53 +8785,6 @@ components:
       required:
         - orgID
         - name
-    DashboardWithViewProperties:
-      type: object
-      allOf:
-        - $ref: "#/components/schemas/CreateDashboardRequest"
-        - type: object
-          properties:
-            links:
-              type: object
-              example:
-                self: "/api/v2/dashboards/1"
-                cells: "/api/v2/dashboards/1/cells"
-                owners: "/api/v2/dashboards/1/owners"
-                members: "/api/v2/dashboards/1/members"
-                logs: "/api/v2/dashboards/1/logs"
-                labels: "/api/v2/dashboards/1/labels"
-                org: "/api/v2/labels/1"
-              properties:
-                self:
-                  $ref: "#/components/schemas/Link"
-                cells:
-                  $ref: "#/components/schemas/Link"
-                members:
-                  $ref: "#/components/schemas/Link"
-                owners:
-                  $ref: "#/components/schemas/Link"
-                logs:
-                  $ref: "#/components/schemas/Link"
-                labels:
-                  $ref: "#/components/schemas/Link"
-                org:
-                  $ref: "#/components/schemas/Link"
-            id:
-              readOnly: true
-              type: string
-            meta:
-              type: object
-              properties:
-                createdAt:
-                  type: string
-                  format: date-time
-                updatedAt:
-                  type: string
-                  format: date-time
-            cells:
-              $ref: "#/components/schemas/CellsWithViewProperties"
-            labels:
-              $ref: "#/components/schemas/Labels"
     Dashboard:
       type: object
       allOf:

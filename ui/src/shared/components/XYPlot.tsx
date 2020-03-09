@@ -66,7 +66,6 @@ const XYPlot: FunctionComponent<Props> = ({
         base: yTickBase,
       },
     },
-    position,
   },
 }) => {
   const storedXDomain = useMemo(() => parseBounds(xBounds), [xBounds])
@@ -150,7 +149,6 @@ const XYPlot: FunctionComponent<Props> = ({
         y: yColumn,
         fill: groupKey,
         interpolation,
-        position,
         colors: colorHexes,
         shadeBelow: !!shadeBelow,
         shadeBelowOpacity: 0.08,

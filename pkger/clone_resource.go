@@ -141,7 +141,6 @@ func convertCellView(cv cellView) chart {
 		ch.Shade = p.ShadeBelow
 		ch.XCol = p.XColumn
 		ch.YCol = p.YColumn
-		ch.Position = p.Position
 	case influxdb.SingleStatViewProperties:
 		setCommon(chartKindSingleStat, p.ViewColors, p.DecimalPlaces, p.Queries)
 		setNoteFixes(p.Note, p.ShowNoteWhenEmpty, p.Prefix, p.Suffix)
@@ -166,7 +165,6 @@ func convertCellView(cv cellView) chart {
 		ch.Shade = p.ShadeBelow
 		ch.XCol = p.XColumn
 		ch.YCol = p.YColumn
-		ch.Position = p.Position
 	}
 
 	return ch

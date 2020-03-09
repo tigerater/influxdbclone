@@ -117,7 +117,7 @@ spec:
 
 				actual := buckets[0]
 				expectedBucket := bucket{
-					name:           "rucket_11",
+					Name:           "rucket_11",
 					Description:    "bucket 1 description",
 					RetentionRules: retentionRules{newRetentionRule(time.Hour)},
 				}
@@ -216,14 +216,14 @@ spec:
 				require.Len(t, labels, 2)
 
 				expectedLabel1 := label{
-					name:        "label_1",
+					Name:        "label_1",
 					Description: "label 1 description",
 					Color:       "#FFFFFF",
 				}
 				assert.Equal(t, expectedLabel1, *labels[0])
 
 				expectedLabel2 := label{
-					name:        "label_2",
+					Name:        "label_2",
 					Description: "label 2 description",
 					Color:       "#000000",
 				}
@@ -686,7 +686,7 @@ spec:
 			})
 		})
 
-		t.Run("single heatmap chart", func(t *testing.T) {
+		t.Run("single dashboard heatmap chart", func(t *testing.T) {
 			testfileRunner(t, "testdata/dashboard_heatmap", func(t *testing.T, pkg *Pkg) {
 				sum := pkg.Summary()
 				require.Len(t, sum.Dashboards, 1)
@@ -934,7 +934,7 @@ spec:
 			})
 		})
 
-		t.Run("single histogram chart", func(t *testing.T) {
+		t.Run("single dashboard histogram chart", func(t *testing.T) {
 			testfileRunner(t, "testdata/dashboard_histogram", func(t *testing.T, pkg *Pkg) {
 				sum := pkg.Summary()
 				require.Len(t, sum.Dashboards, 1)
@@ -1176,7 +1176,7 @@ spec:
 			})
 		})
 
-		t.Run("single markdown chart", func(t *testing.T) {
+		t.Run("single dashboard markdown chart", func(t *testing.T) {
 			testfileRunner(t, "testdata/dashboard_markdown", func(t *testing.T, pkg *Pkg) {
 				sum := pkg.Summary()
 				require.Len(t, sum.Dashboards, 1)
@@ -2029,7 +2029,6 @@ spec:
 				assert.Equal(t, int32(1), props.DecimalPlaces.Digits)
 				assert.Equal(t, "days", props.Suffix)
 				assert.Equal(t, "sumtin", props.Prefix)
-				assert.Equal(t, "overlaid", props.Position)
 				assert.Equal(t, "leg_type", props.Legend.Type)
 				assert.Equal(t, "horizontal", props.Legend.Orientation)
 
@@ -2401,7 +2400,6 @@ spec:
 					assert.Equal(t, true, props.ShadeBelow)
 					assert.Equal(t, "xy chart note", props.Note)
 					assert.True(t, props.ShowNoteWhenEmpty)
-					assert.Equal(t, "stacked", props.Position)
 
 					require.Len(t, props.Queries, 1)
 					q := props.Queries[0]
@@ -2697,48 +2695,6 @@ spec:
 
 			for _, tt := range tests {
 				testPkgErrors(t, KindDashboard, tt)
-			}
-		})
-	})
-
-	t.Run("pkg with telegraf and label associations", func(t *testing.T) {
-		t.Run("with valid fields", func(t *testing.T) {
-			testfileRunner(t, "testdata/telegraf", func(t *testing.T, pkg *Pkg) {
-				sum := pkg.Summary()
-				require.Len(t, sum.TelegrafConfigs, 1)
-
-				actual := sum.TelegrafConfigs[0]
-				assert.Equal(t, "first_tele_config", actual.Name)
-				assert.Equal(t, "desc", actual.Description)
-
-				require.Len(t, actual.LabelAssociations, 1)
-				assert.Equal(t, "label_1", actual.LabelAssociations[0].Name)
-			})
-		})
-
-		t.Run("handles bad config", func(t *testing.T) {
-			tests := []testPkgResourceError{
-				{
-					name:           "config missing",
-					validationErrs: 1,
-					valFields:      []string{"config"},
-					pkgStr: `apiVersion: 0.1.0
-kind: Package
-meta:
-  pkgName:      pkg_name
-  pkgVersion:   1
-  description:  pack description
-spec:
-  resources:
-    - kind: Telegraf
-      name: tele_name
-      description: desc
-`,
-				},
-			}
-
-			for _, tt := range tests {
-				testPkgErrors(t, KindTelegraf, tt)
 			}
 		})
 	})

@@ -207,27 +207,7 @@ func newDashboardResponse(d *platform.Dashboard, labels []*platform.Label) dashb
 
 type dashboardCellResponse struct {
 	platform.Cell
-	Properties platform.ViewProperties `json:"-"`
-	Name       string                  `json:"name,omitempty"`
-	Links      map[string]string       `json:"links"`
-}
-
-func (d *dashboardCellResponse) MarshalJSON() ([]byte, error) {
-	r := struct {
-		platform.Cell
-		Properties platform.ViewProperties `json:"properties,omitempty"`
-		Name       string                  `json:"name,omitempty"`
-		Links      map[string]string       `json:"links"`
-	}{
-		Cell:  d.Cell,
-		Links: d.Links,
-	}
-
-	if d.Cell.View != nil {
-		r.Properties = d.Cell.View.Properties
-		r.Name = d.Cell.View.Name
-	}
-	return json.Marshal(r)
+	Links map[string]string `json:"links"`
 }
 
 func (c dashboardCellResponse) toPlatform() *platform.Cell {
@@ -235,19 +215,13 @@ func (c dashboardCellResponse) toPlatform() *platform.Cell {
 }
 
 func newDashboardCellResponse(dashboardID platform.ID, c *platform.Cell) dashboardCellResponse {
-	resp := dashboardCellResponse{
+	return dashboardCellResponse{
 		Cell: *c,
 		Links: map[string]string{
 			"self": fmt.Sprintf("/api/v2/dashboards/%s/cells/%s", dashboardID, c.ID),
 			"view": fmt.Sprintf("/api/v2/dashboards/%s/cells/%s/view", dashboardID, c.ID),
 		},
 	}
-
-	if c.View != nil {
-		resp.Properties = c.View.Properties
-		resp.Name = c.View.Name
-	}
-	return resp
 }
 
 type dashboardCellsResponse struct {
@@ -502,20 +476,6 @@ func (h *DashboardHandler) handleGetDashboard(w http.ResponseWriter, r *http.Req
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
-	}
-
-	if r.URL.Query().Get("include") == "properties" {
-		for _, c := range dashboard.Cells {
-			view, err := h.DashboardService.GetDashboardCellView(ctx, dashboard.ID, c.ID)
-			if err != nil {
-				h.HandleHTTPError(ctx, err, w)
-				return
-			}
-
-			if view != nil {
-				c.View = view
-			}
-		}
 	}
 
 	labels, err := h.LabelService.FindResourceLabels(ctx, platform.LabelMappingFilter{ResourceID: dashboard.ID})
