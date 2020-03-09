@@ -11,15 +11,21 @@ import ThresholdMarkers from 'src/shared/components/ThresholdMarkers'
 
 // Utils
 import {getFormatter, filterNoisyColumns} from 'src/shared/utils/vis'
+import {useVisDomainSettings} from 'src/shared/utils/useVisDomainSettings'
 
 // Constants
 import {VIS_THEME} from 'src/shared/constants'
 import {INVALID_DATA_COPY} from 'src/shared/copy/cell'
 
 // Types
-import {RemoteDataState, CheckViewProperties, TimeZone, Check} from 'src/types'
+import {
+  RemoteDataState,
+  CheckViewProperties,
+  TimeZone,
+  Check,
+  Threshold,
+} from 'src/types'
 import {updateTimeMachineCheck} from 'src/timeMachine/actions'
-import {useCheckYDomain} from 'src/alerting/utils/vis'
 
 const X_COLUMN = '_time'
 const Y_COLUMN = '_value'
@@ -50,11 +56,18 @@ const CheckPlot: FunctionComponent<Props> = ({
   timeZone,
   viewProperties: {colors},
 }) => {
-  const thresholds = check && check.type === 'threshold' ? check.thresholds : []
+  let thresholds = []
+  if (check && check.type === 'threshold') {
+    thresholds = check.thresholds
+  }
 
-  const [yDomain, onSetYDomain, onResetYDomain] = useCheckYDomain(
-    table.getColumn(Y_COLUMN, 'number'),
-    thresholds
+  const updateTimeMachineCheckThresholds = (thresholds: Threshold[]) => {
+    updateTimeMachineCheck({thresholds})
+  }
+
+  const [yDomain, onSetYDomain, onResetYDomain] = useVisDomainSettings(
+    null,
+    table.getColumn(Y_COLUMN, 'number')
   )
 
   const columnKeys = table.columnKeys
@@ -117,7 +130,7 @@ const CheckPlot: FunctionComponent<Props> = ({
           <ThresholdMarkers
             key="custom"
             thresholds={thresholds || []}
-            onSetThresholds={thresholds => updateTimeMachineCheck({thresholds})}
+            onSetThresholds={updateTimeMachineCheckThresholds}
             yScale={yScale}
             yDomain={yDomain}
           />
