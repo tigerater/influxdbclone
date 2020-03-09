@@ -21,7 +21,7 @@ type User struct {
 	ID      ID     `json:"id,omitempty"`
 	Name    string `json:"name"`
 	OAuthID string `json:"oauthID,omitempty"`
-	Status  Status `json:"status"`
+	Status  Status `json:"status,omitempty"`
 }
 
 // Valid validates user

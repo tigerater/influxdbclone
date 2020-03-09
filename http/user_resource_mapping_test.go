@@ -43,7 +43,7 @@ func TestUserResourceMappingService_GetMembersHandler(t *testing.T) {
 			fields: fields{
 				userService: &mock.UserService{
 					FindUserByIDFn: func(ctx context.Context, id platform.ID) (*platform.User, error) {
-						return &platform.User{ID: id, Name: fmt.Sprintf("user%s", id), Status: platform.Active}, nil
+						return &platform.User{ID: id, Name: fmt.Sprintf("user%s", id)}, nil
 					},
 				},
 				userResourceMappingService: &mock.UserResourceMappingService{
@@ -86,8 +86,7 @@ func TestUserResourceMappingService_GetMembersHandler(t *testing.T) {
       },
       "id": "0000000000000001",
       "name": "user0000000000000001",
-			"role": "member",
-			"status": "active"
+      "role": "member"
     },
     {
       "links": {
@@ -96,8 +95,7 @@ func TestUserResourceMappingService_GetMembersHandler(t *testing.T) {
       },
       "id": "0000000000000002",
       "name": "user0000000000000002",
-      "role": "member",
-			"status": "active"
+      "role": "member"
     }
   ]
 }`,
@@ -109,7 +107,7 @@ func TestUserResourceMappingService_GetMembersHandler(t *testing.T) {
 			fields: fields{
 				userService: &mock.UserService{
 					FindUserByIDFn: func(ctx context.Context, id platform.ID) (*platform.User, error) {
-						return &platform.User{ID: id, Name: fmt.Sprintf("user%s", id), Status: platform.Active}, nil
+						return &platform.User{ID: id, Name: fmt.Sprintf("user%s", id)}, nil
 					},
 				},
 				userResourceMappingService: &mock.UserResourceMappingService{
@@ -152,8 +150,7 @@ func TestUserResourceMappingService_GetMembersHandler(t *testing.T) {
       },
       "id": "0000000000000001",
       "name": "user0000000000000001",
-      "role": "owner",
-			"status": "active"
+      "role": "owner"
     },
     {
       "links": {
@@ -162,8 +159,7 @@ func TestUserResourceMappingService_GetMembersHandler(t *testing.T) {
       },
       "id": "0000000000000002",
       "name": "user0000000000000002",
-			"role": "owner",
-			"status": "active"
+      "role": "owner"
     }
   ]
 }`,
@@ -251,7 +247,7 @@ func TestUserResourceMappingService_PostMembersHandler(t *testing.T) {
 			fields: fields{
 				userService: &mock.UserService{
 					FindUserByIDFn: func(ctx context.Context, id platform.ID) (*platform.User, error) {
-						return &platform.User{ID: id, Name: fmt.Sprintf("user%s", id), Status: platform.Active}, nil
+						return &platform.User{ID: id, Name: fmt.Sprintf("user%s", id)}, nil
 					},
 				},
 				userResourceMappingService: &mock.UserResourceMappingService{
@@ -263,9 +259,8 @@ func TestUserResourceMappingService_PostMembersHandler(t *testing.T) {
 			args: args{
 				resourceID: "0000000000000099",
 				user: platform.User{
-					ID:     1,
-					Name:   "user0000000000000001",
-					Status: platform.Active,
+					ID:   1,
+					Name: "user0000000000000001",
 				},
 				userType: platform.Member,
 			},
@@ -280,8 +275,7 @@ func TestUserResourceMappingService_PostMembersHandler(t *testing.T) {
 	},
 	"id": "0000000000000001",
 	"name": "user0000000000000001",
-	"role": "member",
-	"status": "active"
+	"role": "member"
 }`,
 			},
 		},
@@ -291,7 +285,7 @@ func TestUserResourceMappingService_PostMembersHandler(t *testing.T) {
 			fields: fields{
 				userService: &mock.UserService{
 					FindUserByIDFn: func(ctx context.Context, id platform.ID) (*platform.User, error) {
-						return &platform.User{ID: id, Name: fmt.Sprintf("user%s", id), Status: platform.Active}, nil
+						return &platform.User{ID: id, Name: fmt.Sprintf("user%s", id)}, nil
 					},
 				},
 				userResourceMappingService: &mock.UserResourceMappingService{
@@ -303,9 +297,8 @@ func TestUserResourceMappingService_PostMembersHandler(t *testing.T) {
 			args: args{
 				resourceID: "0000000000000099",
 				user: platform.User{
-					ID:     2,
-					Name:   "user0000000000000002",
-					Status: platform.Active,
+					ID:   2,
+					Name: "user0000000000000002",
 				},
 				userType: platform.Owner,
 			},
@@ -320,8 +313,7 @@ func TestUserResourceMappingService_PostMembersHandler(t *testing.T) {
 	},
 	"id": "0000000000000002",
 	"name": "user0000000000000002",
-	"role": "owner",
-	"status": "active"
+	"role": "owner"
 }`,
 			},
 		},

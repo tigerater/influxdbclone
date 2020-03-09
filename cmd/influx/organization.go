@@ -346,7 +346,7 @@ func init() {
 	organizationMembersCmd.AddCommand(organizationMembersListCmd)
 }
 
-// OrganizationMembersAddFlags includes flags to add a member
+// Add Member
 type OrganizationMembersAddFlags struct {
 	name     string
 	id       string
@@ -364,9 +364,14 @@ func organizationMembersAddF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("must specify exactly one of id and name")
 	}
 
-	orgSvc, err := newOrganizationService(flags)
-	if err != nil {
-		return fmt.Errorf("failed to initialize org service client: %v", err)
+	orgSvc := &http.OrganizationService{
+		Addr:  flags.host,
+		Token: flags.token,
+	}
+
+	mappingS := &http.UserResourceMappingService{
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
 	filter := platform.OrganizationFilter{}
@@ -394,13 +399,17 @@ func organizationMembersAddF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to decode member id %s: %v", organizationMembersAddFlags.memberID, err)
 	}
 
-	return membersAddF(platform.UserResourceMapping{
-		ResourceID:   organization.ID,
-		ResourceType: platform.OrgsResourceType,
-		MappingType:  platform.UserMappingType,
-		UserID:       memberID,
-		UserType:     platform.Member,
-	}, flags)
+	mapping := &platform.UserResourceMapping{
+		ResourceID: organization.ID,
+		UserID:     memberID,
+		UserType:   platform.Member,
+	}
+
+	if err = mappingS.CreateUserResourceMapping(context.Background(), mapping); err != nil {
+		return fmt.Errorf("failed to add member: %v", err)
+	}
+
+	return nil
 }
 
 func init() {
@@ -418,7 +427,7 @@ func init() {
 	organizationMembersCmd.AddCommand(organizationMembersAddCmd)
 }
 
-// OrganizationMembersRemoveFlags includes flags to remove a Member
+// Remove Member
 type OrganizationMembersRemoveFlags struct {
 	name     string
 	id       string
@@ -436,9 +445,14 @@ func organizationMembersRemoveF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("must specify exactly one of id and name")
 	}
 
-	orgSvc, err := newOrganizationService(flags)
-	if err != nil {
-		return fmt.Errorf("failed to initialize org service client: %v", err)
+	orgSvc := &http.OrganizationService{
+		Addr:  flags.host,
+		Token: flags.token,
+	}
+
+	mappingS := &http.UserResourceMappingService{
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
 	filter := platform.OrganizationFilter{}
@@ -466,7 +480,11 @@ func organizationMembersRemoveF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to decode member id %s: %v", organizationMembersRemoveFlags.memberID, err)
 	}
 
-	return membersRemoveF(organization.ID, memberID, flags)
+	if err = mappingS.DeleteUserResourceMapping(context.Background(), organization.ID, memberID); err != nil {
+		return fmt.Errorf("failed to remove member: %v", err)
+	}
+
+	return nil
 }
 
 func init() {

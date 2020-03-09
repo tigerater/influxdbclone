@@ -104,16 +104,14 @@ func CreateUser(
 			},
 			args: args{
 				user: &platform.User{
-					Name:   "name1",
-					Status: platform.Active,
+					Name: "name1",
 				},
 			},
 			wants: wants{
 				users: []*platform.User{
 					{
-						Name:   "name1",
-						ID:     MustIDBase16(userOneID),
-						Status: platform.Active,
+						Name: "name1",
+						ID:   MustIDBase16(userOneID),
 					},
 				},
 			},
@@ -124,29 +122,25 @@ func CreateUser(
 				IDGenerator: mock.NewIDGenerator(userTwoID, t),
 				Users: []*platform.User{
 					{
-						ID:     MustIDBase16(userOneID),
-						Name:   "user1",
-						Status: platform.Active,
+						ID:   MustIDBase16(userOneID),
+						Name: "user1",
 					},
 				},
 			},
 			args: args{
 				user: &platform.User{
-					Name:   "user2",
-					Status: platform.Active,
+					Name: "user2",
 				},
 			},
 			wants: wants{
 				users: []*platform.User{
 					{
-						ID:     MustIDBase16(userOneID),
-						Name:   "user1",
-						Status: platform.Active,
+						ID:   MustIDBase16(userOneID),
+						Name: "user1",
 					},
 					{
-						ID:     MustIDBase16(userTwoID),
-						Name:   "user2",
-						Status: platform.Active,
+						ID:   MustIDBase16(userTwoID),
+						Name: "user2",
 					},
 				},
 			},
@@ -778,9 +772,8 @@ func UpdateUser(
 	t *testing.T,
 ) {
 	type args struct {
-		name   string
-		id     platform.ID
-		status string
+		name string
+		id   platform.ID
 	}
 	type wants struct {
 		err  error
@@ -815,34 +808,6 @@ func UpdateUser(
 				user: &platform.User{
 					ID:   MustIDBase16(userOneID),
 					Name: "changed",
-				},
-			},
-		},
-		{
-			name: "update status",
-			fields: UserFields{
-				Users: []*platform.User{
-					{
-						ID:     MustIDBase16(userOneID),
-						Name:   "user1",
-						Status: platform.Active,
-					},
-					{
-						ID:     MustIDBase16(userTwoID),
-						Name:   "user2",
-						Status: platform.Active,
-					},
-				},
-			},
-			args: args{
-				id:     MustIDBase16(userOneID),
-				status: "inactive",
-			},
-			wants: wants{
-				user: &platform.User{
-					ID:     MustIDBase16(userOneID),
-					Name:   "user1",
-					Status: "inactive",
 				},
 			},
 		},
@@ -883,15 +848,6 @@ func UpdateUser(
 			upd := platform.UserUpdate{}
 			if tt.args.name != "" {
 				upd.Name = &tt.args.name
-			}
-
-			switch tt.args.status {
-			case "inactive":
-				status := platform.Inactive
-				upd.Status = &status
-			case "active":
-				status := platform.Inactive
-				upd.Status = &status
 			}
 
 			user, err := s.UpdateUser(ctx, tt.args.id, upd)

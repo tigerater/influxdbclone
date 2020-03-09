@@ -324,10 +324,6 @@ func (c *Client) updateUser(ctx context.Context, tx *bolt.Tx, id platform.ID, up
 		u.Name = *upd.Name
 	}
 
-	if upd.Status != nil {
-		u.Status = *upd.Status
-	}
-
 	if err := c.appendUserEventToLog(ctx, tx, u.ID, userUpdatedEvent); err != nil {
 		return nil, &platform.Error{
 			Err: err,

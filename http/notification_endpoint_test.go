@@ -1011,9 +1011,8 @@ func TestService_handlePostNotificationEndpointMember(t *testing.T) {
 				UserService: &mock.UserService{
 					FindUserByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.User, error) {
 						return &influxdb.User{
-							ID:     id,
-							Name:   "name",
-							Status: influxdb.Active,
+							ID:   id,
+							Name: "name",
 						}, nil
 					},
 				},
@@ -1035,8 +1034,7 @@ func TestService_handlePostNotificationEndpointMember(t *testing.T) {
   },
   "role": "member",
   "id": "6f626f7274697320",
-	"name": "name",
-	"status": "active"
+  "name": "name"
 }
 `,
 			},
@@ -1106,9 +1104,8 @@ func TestService_handlePostNotificationEndpointOwner(t *testing.T) {
 				UserService: &mock.UserService{
 					FindUserByIDFn: func(ctx context.Context, id influxdb.ID) (*influxdb.User, error) {
 						return &influxdb.User{
-							ID:     id,
-							Name:   "name",
-							Status: influxdb.Active,
+							ID:   id,
+							Name: "name",
 						}, nil
 					},
 				},
@@ -1130,8 +1127,7 @@ func TestService_handlePostNotificationEndpointOwner(t *testing.T) {
   },
   "role": "owner",
   "id": "6f626f7274697320",
-	"name": "name",
-	"status": "active"
+  "name": "name"
 }
 `,
 			},
