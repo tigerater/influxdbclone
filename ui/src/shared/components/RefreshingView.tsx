@@ -76,16 +76,8 @@ class RefreshingView extends PureComponent<Props, State> {
         queries={this.queries}
         key={manualRefresh}
         variables={this.variableAssignments}
-        check={check}
       >
-        {({
-          giraffeResult,
-          files,
-          loading,
-          errorMessage,
-          isInitialFetch,
-          statuses,
-        }) => {
+        {({giraffeResult, files, loading, errorMessage, isInitialFetch}) => {
           return (
             <EmptyQueryView
               errorFormat={ErrorFormat.Tooltip}
@@ -100,7 +92,6 @@ class RefreshingView extends PureComponent<Props, State> {
                 giraffeResult={giraffeResult}
                 files={files}
                 check={check}
-                statuses={statuses}
                 loading={loading}
                 properties={properties}
                 timeZone={timeZone}

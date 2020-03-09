@@ -74,6 +74,8 @@ export const NOTIFICATION_FIELDS: Fields = [
   },
 ]
 
+export const MONITORING_BUCKET = '_monitoring'
+
 export const EXAMPLE_STATUS_SEARCHES = [
   '"check" == "my check"',
   '"level" != "ok"',

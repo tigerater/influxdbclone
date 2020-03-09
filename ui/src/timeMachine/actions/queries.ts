@@ -4,7 +4,6 @@ import {
   RunQueryResult,
   RunQuerySuccessResult,
 } from 'src/shared/apis/query'
-import {runStatusesQuery} from 'src/alerting/utils/statusEvents'
 
 // Actions
 import {refreshVariableValues, selectValue} from 'src/variables/actions'
@@ -27,11 +26,10 @@ import {
 } from 'src/variables/selectors'
 import {getWindowVars} from 'src/variables/utils/getWindowVars'
 import {buildVarsOption} from 'src/variables/utils/buildVarsOption'
-import {isFlagEnabled} from 'src/shared/utils/featureFlag'
 
 // Types
 import {CancelBox} from 'src/types/promises'
-import {RemoteDataState, StatusRow} from 'src/types'
+import {RemoteDataState} from 'src/types'
 import {GetState} from 'src/types'
 
 export type Action = SetQueryResults | SaveDraftQueriesAction
@@ -43,7 +41,6 @@ interface SetQueryResults {
     files?: string[]
     fetchDuration?: number
     errorMessage?: string
-    statuses?: StatusRow[][]
   }
 }
 
@@ -51,8 +48,7 @@ const setQueryResults = (
   status: RemoteDataState,
   files?: string[],
   fetchDuration?: number,
-  errorMessage?: string,
-  statuses?: StatusRow[][]
+  errorMessage?: string
 ): SetQueryResults => ({
   type: 'SET_QUERY_RESULTS',
   payload: {
@@ -60,7 +56,6 @@ const setQueryResults = (
     files,
     fetchDuration,
     errorMessage,
-    statuses,
   },
 })
 
@@ -92,13 +87,9 @@ export const refreshTimeMachineVariableValues = () => async (
 }
 
 let pendingResults: Array<CancelBox<RunQueryResult>> = []
-let pendingCheckStatuses: CancelBox<StatusRow[][]> = null
 
 export const executeQueries = () => async (dispatch, getState: GetState) => {
-  const {
-    view,
-    alerting: {check},
-  } = getActiveTimeMachine(getState())
+  const {view} = getActiveTimeMachine(getState())
   const queries = view.properties.queries.filter(({text}) => !!text.trim())
 
   if (!queries.length) {
@@ -128,13 +119,6 @@ export const executeQueries = () => async (dispatch, getState: GetState) => {
     const results = await Promise.all(pendingResults.map(r => r.promise))
     const duration = Date.now() - startTime
 
-    let statuses = [[]] as StatusRow[][]
-    if (check && isFlagEnabled('eventMarkers')) {
-      const extern = buildVarsOption(variableAssignments)
-      pendingCheckStatuses = runStatusesQuery(orgID, check.id, extern)
-      statuses = await pendingCheckStatuses.promise // TODO handle errors
-    }
-
     for (const result of results) {
       if (result.type === 'UNKNOWN_ERROR') {
         throw new Error(result.message)
@@ -155,9 +139,7 @@ export const executeQueries = () => async (dispatch, getState: GetState) => {
 
     const files = (results as RunQuerySuccessResult[]).map(r => r.csv)
 
-    dispatch(
-      setQueryResults(RemoteDataState.Done, files, duration, null, statuses)
-    )
+    dispatch(setQueryResults(RemoteDataState.Done, files, duration))
   } catch (e) {
     if (e.name === 'CancellationError') {
       return
