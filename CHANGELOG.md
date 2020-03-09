@@ -1,8 +1,52 @@
-## v2.0.0-alpha.20 [unreleased]
+## v2.0.0-alpha.21 [unreleased]
+
+### Features
+
+1. [15836](https://github.com/influxdata/influxdb/pull/16077): Add stacked line layer option to graphs
 
 ### Bug Fixes
 
+1. [15655](https://github.com/influxdata/influxdb/pull/15655): Allow table columns to be draggable in table settings
+1. [15757](https://github.com/influxdata/influxdb/pull/15757): Light up the home page icon when active
+1. [15797](https://github.com/influxdata/influxdb/pull/15797): Make numeric inputs first class citizens
+1. [15853](https://github.com/influxdata/influxdb/pull/15853): Prompt users to make a dashboard when dashboards are empty
+1. [15884](https://github.com/influxdata/influxdb/pull/15884): Remove name editing from query definition during threshold check creation
+1. [15975](https://github.com/influxdata/influxdb/pull/15975): Wait until user stops dragging and releases marker before zooming in after threshold changes
+1. [16057](https://github.com/influxdata/influxdb/pull/16057): Adds `properties` to each cell on GET /dashboards/{dashboardID}
+1. [16101](https://github.com/influxdata/influxdb/pull/16101): Gracefully handle invalid user-supplied JSON
+1. [16105](https://github.com/influxdata/influxdb/pull/16105): Fix crash when loading queries built using Query Builder
+1. [16112](https://github.com/influxdata/influxdb/pull/16112): Create cell view properties on dashboard creation
+
+### UI Improvements
+
+
+## v2.0.0-alpha.20 [2019-11-20]
+
+### Features
+
+1. [15805](https://github.com/influxdata/influxdb/pull/15924): Add tls insecure skip verify to influx CLI.
+1. [15981](https://github.com/influxdata/influxdb/pull/15981): Extend influx cli user create to allow for organization ID and user passwords to be set on user.
+1. [15983](https://github.com/influxdata/influxdb/pull/15983): Autopopulate organization ids in the code samples
+1. [15749](https://github.com/influxdata/influxdb/pull/15749): Expose bundle analysis tools for frontend resources
+1. [15674](https://github.com/influxdata/influxdb/pull/15674): Allow users to view just the output section of a telegraf config
+1. [15923](https://github.com/influxdata/influxdb/pull/15923): Allow the users to see string data in the single stat graph type
+
+### Bug Fixes
+
+1. [15777](https://github.com/influxdata/influxdb/pull/15777): Fix long startup when running 'influx help'
+1. [15713](https://github.com/influxdata/influxdb/pull/15713): Mock missing Flux dependencies when creating tasks
 1. [15731](https://github.com/influxdata/influxdb/pull/15731): Ensure array cursor iterator stats accumulate all cursor stats
+1. [15866](https://github.com/influxdata/influxdb/pull/15866): Do not show Members section in Cloud environments
+1. [15801](https://github.com/influxdata/influxdb/pull/15801): Change how cloud mode is enabled
+1. [15820](https://github.com/influxdata/influxdb/pull/15820): Merge frontend development environments
+1. [15944](https://github.com/influxdata/influxdb/pull/15944): Refactor table state logic on the frontend
+1. [15920](https://github.com/influxdata/influxdb/pull/15920): Arrows in tables now show data in ascending and descening order
+1. [15728](https://github.com/influxdata/influxdb/pull/15728): Sort by retention rules now sorts by seconds
+1. [15628](https://github.com/influxdata/influxdb/pull/15628): Horizontal scrollbar no longer covering data
+
+### UI Improvements
+1. [15809](https://github.com/influxdata/influxdb/pull/15809): Redesign cards and animations on getting started page
+1. [15787](https://github.com/influxdata/influxdb/pull/15787): Allow the users to filter with labels in telegraph input search
 
 ## v2.0.0-alpha.19 [2019-10-30]
 
@@ -12,6 +56,7 @@
 1. [15650](https://github.com/influxdata/influxdb/pull/15650): Expose last run status and last run error in task API
 
 ### UI Improvements
+
 1. [15503](https://github.com/influxdata/influxdb/pull/15503): Redesign page headers to be more space efficient
 1. [15426](https://github.com/influxdata/influxdb/pull/15426): Add 403 handler that redirects back to the sign-in page on oats-generated routes.
 1. [15710](https://github.com/influxdata/influxdb/pull/15710): Add button to nginx and redis configuration sections to make interaction more clear

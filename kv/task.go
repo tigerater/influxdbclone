@@ -35,6 +35,52 @@ var (
 var _ influxdb.TaskService = (*Service)(nil)
 var _ backend.TaskControlService = (*Service)(nil)
 
+type kvTask struct {
+	ID              influxdb.ID            `json:"id"`
+	Type            string                 `json:"type,omitempty"`
+	OrganizationID  influxdb.ID            `json:"orgID"`
+	Organization    string                 `json:"org"`
+	OwnerID         influxdb.ID            `json:"ownerID"`
+	Name            string                 `json:"name"`
+	Description     string                 `json:"description,omitempty"`
+	Status          string                 `json:"status"`
+	Flux            string                 `json:"flux"`
+	Every           string                 `json:"every,omitempty"`
+	Cron            string                 `json:"cron,omitempty"`
+	LastRunStatus   string                 `json:"lastRunStatus,omitempty"`
+	LastRunError    string                 `json:"lastRunError,omitempty"`
+	Offset          influxdb.Duration      `json:"offset,omitempty"`
+	LatestCompleted time.Time              `json:"latestCompleted,omitempty"`
+	LatestScheduled time.Time              `json:"latestScheduled,omitempty"`
+	CreatedAt       time.Time              `json:"createdAt,omitempty"`
+	UpdatedAt       time.Time              `json:"updatedAt,omitempty"`
+	Metadata        map[string]interface{} `json:"metadata,omitempty"`
+}
+
+func kvToInfluxTask(k *kvTask) *influxdb.Task {
+	return &influxdb.Task{
+		ID:              k.ID,
+		Type:            k.Type,
+		OrganizationID:  k.OrganizationID,
+		Organization:    k.Organization,
+		OwnerID:         k.OwnerID,
+		Name:            k.Name,
+		Description:     k.Description,
+		Status:          k.Status,
+		Flux:            k.Flux,
+		Every:           k.Every,
+		Cron:            k.Cron,
+		LastRunStatus:   k.LastRunStatus,
+		LastRunError:    k.LastRunError,
+		Offset:          k.Offset.Duration,
+		LatestCompleted: k.LatestCompleted,
+		LatestScheduled: k.LatestScheduled,
+		CreatedAt:       k.CreatedAt,
+		UpdatedAt:       k.UpdatedAt,
+		Metadata:        k.Metadata,
+	}
+}
+
 func (s *Service) initializeTasks(ctx context.Context, tx Tx) error {
 	if _, err := tx.Bucket(taskBucket); err != nil {
 		return err
@@ -52,11 +98,19 @@ func (s *Service) initializeTasks(ctx context.Context, tx Tx) error {
 func (s *Service) FindTaskByID(ctx context.Context, id influxdb.ID) (*influxdb.Task, error) {
 	var t *influxdb.Task
 	err := s.kv.View(ctx, func(tx Tx) error {
-		task, err := s.findTaskByIDWithAuth(ctx, tx, id)
-		if err != nil {
-			return err
+		if influxdb.FindTaskAuthRequired(ctx) {
+			task, err := s.findTaskByIDWithAuth(ctx, tx, id)
+			if err != nil {
+				return err
+			}
+			t = task
+		} else {
+			task, err := s.findTaskByID(ctx, tx, id)
+			if err != nil {
+				return err
+			}
+			t = task
 		}
-		t = task
 		return nil
 	})
 	if err != nil {
@@ -113,28 +167,14 @@ func (s *Service) findTaskByID(ctx context.Context, tx Tx, id influxdb.ID) (*inf
 	if err != nil {
 		return nil, err
 	}
-	t := &influxdb.Task{}
-	if err := json.Unmarshal(v, t); err != nil {
+	kvTask := &kvTask{}
+	if err := json.Unmarshal(v, kvTask); err != nil {
 		return nil, influxdb.ErrInternalTaskServiceError(err)
 	}
-	latestCompletedRun, err := s.findLatestCompleted(ctx, tx, t.ID)
-	if err != nil {
-		return nil, err
-	}
-	if latestCompletedRun != nil {
-		latestCompleted := latestCompletedRun.ScheduledFor
-		if t.LatestCompleted != "" {
-			tlc, err := time.Parse(time.RFC3339, t.LatestCompleted)
-			if err == nil && latestCompleted.After(tlc) {
-				t.LatestCompleted = latestCompleted.Format(time.RFC3339)
 
-			}
-		} else {
-			t.LatestCompleted = latestCompleted.Format(time.RFC3339)
-		}
-	}
+	t := kvToInfluxTask(kvTask)
 
-	if t.LatestCompleted == "" {
+	if t.LatestCompleted.IsZero() {
 		t.LatestCompleted = t.CreatedAt
 	}
 
@@ -270,6 +310,8 @@ func (s *Service) findTasksByUser(ctx context.Context, tx Tx, filter influxdb.Ta
 		return nil, 0, err
 	}
 
+	matchFn := newTaskMatchFn(filter, org)
+
 	for _, m := range maps {
 		task, err := s.findTaskByIDWithAuth(ctx, tx, m.ResourceID)
 		if err != nil && err != influxdb.ErrTaskNotFound {
@@ -279,17 +321,14 @@ func (s *Service) findTasksByUser(ctx context.Context, tx Tx, filter influxdb.Ta
 			continue
 		}
 
-		if org != nil && task.OrganizationID != org.ID {
-			continue
-		}
-
-		if taskFilterMatch(filter.Type, task.Type) {
+		if matchFn == nil || matchFn(task) {
 			ts = append(ts, task)
+
+			if len(ts) >= filter.Limit {
+				break
+			}
 		}
 
-		if len(ts) >= filter.Limit {
-			break
-		}
 	}
 
 	return ts, len(ts), nil
@@ -326,6 +365,8 @@ func (s *Service) findTasksByOrg(ctx context.Context, tx Tx, filter influxdb.Tas
 	if err != nil {
 		return nil, 0, influxdb.ErrUnexpectedTaskBucketErr(err)
 	}
+
+	var k, v []byte
 	// we can filter by orgID
 	if filter.After != nil {
 		key, err := taskOrgKey(org.ID, *filter.After)
@@ -335,45 +376,20 @@ func (s *Service) findTasksByOrg(ctx context.Context, tx Tx, filter influxdb.Tas
 		// ignore the key:val returned in this seek because we are starting "after"
 		// this key
 		c.Seek(key)
+		k, v = c.Next()
 	} else {
-		// if we dont have an after we just move the cursor to the first instance of the
-		// orgID
+		// if we dont have an after we just move the cursor to the first instance of the orgID
 		key, err := org.ID.Encode()
 		if err != nil {
 			return nil, 0, influxdb.ErrInvalidTaskID
 		}
-		k, v := c.Seek(key)
-		if k != nil {
-			id, err := influxdb.IDFromString(string(v))
-			if err != nil {
-				return nil, 0, influxdb.ErrInvalidTaskID
-			}
 
-			t, err := s.findTaskByIDWithAuth(ctx, tx, *id)
-			if err != nil && err != influxdb.ErrTaskNotFound {
-				// we might have some crufty index's
-				return nil, 0, err
-			}
-
-			if t != nil {
-				if taskFilterMatch(filter.Type, t.Type) {
-					ts = append(ts, t)
-				}
-			}
-		}
+		k, v = c.Seek(key)
 	}
 
-	// if someone has a limit of 1
-	if len(ts) >= filter.Limit {
-		return ts, len(ts), nil
-	}
+	matchFn := newTaskMatchFn(filter, nil)
 
-	for {
-		k, v := c.Next()
-		if k == nil {
-			break
-		}
-
+	for k != nil {
 		id, err := influxdb.IDFromString(string(v))
 		if err != nil {
 			return nil, 0, influxdb.ErrInvalidTaskID
@@ -393,21 +409,15 @@ func (s *Service) findTasksByOrg(ctx context.Context, tx Tx, filter influxdb.Tas
 			break
 		}
 
-		if !taskFilterMatch(filter.Type, t.Type) {
-			continue
+		if matchFn == nil || matchFn(t) {
+			ts = append(ts, t)
+			// Check if we are over running the limit
+			if len(ts) >= filter.Limit {
+				break
+			}
 		}
 
-		// insert the new task into the list
-		ts = append(ts, t)
-
-		// Check if we are over running the limit
-		if len(ts) >= filter.Limit {
-			break
-		}
-	}
-
-	if filter.Name != nil {
-		ts = filterByName(ts, *filter.Name)
+		k, v = c.Next()
 	}
 
 	return ts, len(ts), err
@@ -449,6 +459,14 @@ func newTaskMatchFn(f influxdb.TaskFilter, org *influxdb.Organization) func(t *i
 		}
 	}
 
+	if f.Status != nil {
+		prevFn := fn
+		fn = func(t *influxdb.Task) bool {
+			res := prevFn == nil || prevFn(t)
+			return res && (t.Status == *f.Status)
+		}
+	}
+
 	return fn
 }
 
@@ -486,22 +504,14 @@ func (s *Service) findAllTasks(ctx context.Context, tx Tx, filter influxdb.TaskF
 	matchFn := newTaskMatchFn(filter, nil)
 
 	for k != nil {
-		t := &influxdb.Task{}
-		if err := json.Unmarshal(v, t); err != nil {
+		kvTask := &kvTask{}
+		if err := json.Unmarshal(v, kvTask); err != nil {
 			return nil, 0, influxdb.ErrInternalTaskServiceError(err)
 		}
 
-		if matchFn == nil || matchFn(t) {
-			latestCompleted, err := s.findLatestScheduledTimeForTask(ctx, tx, t)
-			if err != nil {
-				return nil, 0, err
-			}
-			if !latestCompleted.IsZero() {
-				t.LatestCompleted = latestCompleted.Format(time.RFC3339)
-			} else {
-				t.LatestCompleted = t.CreatedAt
-			}
+		t := kvToInfluxTask(kvTask)
 
+		if matchFn == nil || matchFn(t) {
 			ts = append(ts, t)
 
 			if len(ts) >= filter.Limit {
@@ -513,18 +523,6 @@ func (s *Service) findAllTasks(ctx context.Context, tx Tx, filter influxdb.TaskF
 	}
 
 	return ts, len(ts), err
-}
-
-func filterByName(ts []*influxdb.Task, taskName string) []*influxdb.Task {
-	filtered := []*influxdb.Task{}
-
-	for _, task := range ts {
-		if task.Name == taskName {
-			filtered = append(filtered, task)
-		}
-	}
-
-	return filtered
 }
 
 // CreateTask creates a new task.
@@ -579,7 +577,7 @@ func (s *Service) createTask(ctx context.Context, tx Tx, tc influxdb.TaskCreate)
 		tc.Status = string(backend.TaskActive)
 	}
 
-	createdAt := time.Now().UTC().Format(time.RFC3339)
+	createdAt := s.clock.Now().Truncate(time.Second).UTC()
 	task := &influxdb.Task{
 		ID:              s.IDGenerator.ID(),
 		Type:            tc.Type,
@@ -595,9 +593,16 @@ func (s *Service) createTask(ctx context.Context, tx Tx, tc influxdb.TaskCreate)
 		Cron:            opt.Cron,
 		CreatedAt:       createdAt,
 		LatestCompleted: createdAt,
+		LatestScheduled: createdAt,
 	}
+
 	if opt.Offset != nil {
-		task.Offset = opt.Offset.String()
+		off, err := time.ParseDuration(opt.Offset.String())
+		if err != nil {
+			return nil, influxdb.ErrTaskTimeParse(err)
+		}
+		task.Offset = off
+
 	}
 
 	taskBucket, err := tx.Bucket(taskBucket)
@@ -638,7 +643,7 @@ func (s *Service) createTask(ctx context.Context, tx Tx, tc influxdb.TaskCreate)
 	}
 
 	if err := s.createTaskURM(ctx, tx, task); err != nil {
-		s.Logger.Info("error creating user resource mapping for task", zap.Stringer("taskID", task.ID), zap.Error(err))
+		s.log.Info("Error creating user resource mapping for task", zap.Stringer("taskID", task.ID), zap.Error(err))
 	}
 
 	// populate permissions so the task can be used immediately
@@ -692,7 +697,7 @@ func (s *Service) updateTask(ctx context.Context, tx Tx, id influxdb.ID, upd inf
 		return nil, err
 	}
 
-	updatedAt := time.Now().UTC().Format(time.RFC3339)
+	updatedAt := s.clock.Now().UTC()
 
 	// update the flux script
 	if !upd.Options.IsZero() || upd.Flux != nil {
@@ -708,24 +713,33 @@ func (s *Service) updateTask(ctx context.Context, tx Tx, id influxdb.ID, upd inf
 		task.Name = options.Name
 		task.Every = options.Every.String()
 		task.Cron = options.Cron
-		if options.Offset == nil {
-			task.Offset = ""
-		} else {
-			task.Offset = options.Offset.String()
+
+		var off time.Duration
+		if options.Offset != nil {
+			off, err = time.ParseDuration(options.Offset.String())
+			if err != nil {
+				return nil, influxdb.ErrTaskTimeParse(err)
+			}
 		}
+		task.Offset = off
 		task.UpdatedAt = updatedAt
 	}
 
 	if upd.Description != nil {
 		task.Description = *upd.Description
 		task.UpdatedAt = updatedAt
-
 	}
 
-	if upd.Status != nil {
+	if upd.Status != nil && task.Status != *upd.Status {
 		task.Status = *upd.Status
 		task.UpdatedAt = updatedAt
 
+		// task is transitioning from inactive to active, ensure scheduled and completed are updated
+		if task.Status == influxdb.TaskStatusActive {
+			updatedAtTrunc := updatedAt.Truncate(time.Second).UTC()
+			task.LatestCompleted = updatedAtTrunc
+			task.LatestScheduled = updatedAtTrunc
+		}
 	}
 
 	if upd.Metadata != nil {
@@ -735,11 +749,18 @@ func (s *Service) updateTask(ctx context.Context, tx Tx, id influxdb.ID, upd inf
 
 	if upd.LatestCompleted != nil {
 		// make sure we only update latest completed one way
-		tlc, _ := time.Parse(time.RFC3339, task.LatestCompleted)
-		ulc, _ := time.Parse(time.RFC3339, *upd.LatestCompleted)
+		tlc := task.LatestCompleted
+		ulc := *upd.LatestCompleted
 
 		if !ulc.IsZero() && ulc.After(tlc) {
 			task.LatestCompleted = *upd.LatestCompleted
+		}
+	}
+
+	if upd.LatestScheduled != nil {
+		// make sure we only update latest scheduled one way
+		if upd.LatestScheduled.After(task.LatestScheduled) {
+			task.LatestScheduled = *upd.LatestScheduled
 		}
 	}
 
@@ -857,7 +878,7 @@ func (s *Service) deleteTask(ctx context.Context, tx Tx, id influxdb.ID) error {
 	if err := s.deleteUserResourceMapping(ctx, tx, influxdb.UserResourceMappingFilter{
 		ResourceID: task.ID,
 	}); err != nil {
-		s.Logger.Info("error deleting user resource mapping for task", zap.Stringer("taskID", task.ID), zap.Error(err))
+		s.log.Info("Error deleting user resource mapping for task", zap.Stringer("taskID", task.ID), zap.Error(err))
 	}
 
 	return nil
@@ -1317,7 +1338,7 @@ func (s *Service) createNextRun(ctx context.Context, tx Tx, taskID influxdb.ID, 
 
 	nextScheduled := sch.Next(time.Unix(scheduledFor, 0)).UTC()
 	offset := &options.Duration{}
-	if err := offset.Parse(task.Offset); err != nil {
+	if err := offset.Parse(task.Offset.String()); err != nil {
 		return backend.RunCreation{}, influxdb.ErrTaskTimeParse(err)
 	}
 	nextDueAt, err := offset.Add(nextScheduled)
@@ -1577,9 +1598,9 @@ func (s *Service) finishRun(ctx context.Context, tx Tx, taskID, runID influxdb.I
 	}
 
 	// tell task to update latest completed
-	scheduledStr := r.ScheduledFor.Format(time.RFC3339)
+	scheduled := r.ScheduledFor
 	_, err = s.updateTask(ctx, tx, taskID, influxdb.TaskUpdate{
-		LatestCompleted: &scheduledStr,
+		LatestCompleted: &scheduled,
 		LastRunStatus:   &r.Status,
 		LastRunError: func() *string {
 			if r.Status == "failed" {
@@ -1678,7 +1699,7 @@ func (s *Service) nextDueRun(ctx context.Context, tx Tx, taskID influxdb.ID) (in
 
 	nextScheduled := sch.Next(latestCompleted).UTC()
 	offset := &options.Duration{}
-	if err := offset.Parse(task.Offset); err != nil {
+	if err := offset.Parse(task.Offset.String()); err != nil {
 		return 0, 0, influxdb.ErrTaskTimeParse(err)
 	}
 	dueAt, err := offset.Add(nextScheduled)
@@ -1783,31 +1804,6 @@ func (s *Service) addRunLog(ctx context.Context, tx Tx, taskID, runID influxdb.I
 	return nil
 }
 
-func (s *Service) findLatestCompleted(ctx context.Context, tx Tx, id influxdb.ID) (*influxdb.Run, error) {
-	bucket, err := tx.Bucket(taskRunBucket)
-	if err != nil {
-		return nil, influxdb.ErrUnexpectedTaskBucketErr(err)
-	}
-	key, err := taskLatestCompletedKey(id)
-	if err != nil {
-		return nil, err
-	}
-
-	bytes, err := bucket.Get(key)
-	if err != nil {
-		if err == ErrKeyNotFound {
-			return nil, nil
-		}
-		return nil, influxdb.ErrUnexpectedTaskBucketErr(err)
-	}
-
-	run := &influxdb.Run{}
-	if err = json.Unmarshal(bytes, run); err != nil {
-		return nil, influxdb.ErrInternalTaskServiceError(err)
-	}
-
-	return run, nil
-}
 func (s *Service) findLatestScheduledTimeForTask(ctx context.Context, tx Tx, task *influxdb.Task) (time.Time, error) {
 
 	// Get the latest completed time
@@ -1821,29 +1817,10 @@ func (s *Service) findLatestScheduledTimeForTask(ctx context.Context, tx Tx, tas
 		err             error
 	)
 
-	if task.LatestCompleted == "" {
-		latestCompleted, err = time.Parse(time.RFC3339, task.CreatedAt)
-		if err != nil {
-			return time.Time{}, influxdb.ErrTaskTimeParse(err)
-		}
+	if task.LatestCompleted.IsZero() {
+		latestCompleted = task.CreatedAt
 	} else {
-		latestCompleted, err = time.Parse(time.RFC3339, task.LatestCompleted)
-		if err != nil {
-			return time.Time{}, influxdb.ErrTaskTimeParse(err)
-		}
-	}
-
-	// look to see if we have a "latest completed run"
-	lRun, err := s.findLatestCompleted(ctx, tx, task.ID)
-	if err != nil {
-		return time.Time{}, err
-	}
-
-	if lRun != nil {
-		runTime := lRun.ScheduledFor
-		if runTime.After(latestCompleted) {
-			latestCompleted = runTime
-		}
+		latestCompleted = task.LatestCompleted
 	}
 
 	// find out if we have a currently running schedule that is after the latest completed
@@ -1918,20 +1895,4 @@ func taskRunKey(taskID, runID influxdb.ID) ([]byte, error) {
 	}
 
 	return []byte(string(encodedID) + "/" + string(encodedRunID)), nil
-}
-
-func taskFilterMatch(filter *string, ttype string) bool {
-	// if they want a system task the record may be system or an empty string
-	if filter != nil {
-		// if the task is either "system" or "" it qaulifies as a system task
-		if *filter == influxdb.TaskSystemType && (ttype == influxdb.TaskSystemType || ttype == "") {
-			return true
-		}
-
-		// otherwise check task type against the filter
-		if *filter != ttype {
-			return false
-		}
-	}
-	return true
 }

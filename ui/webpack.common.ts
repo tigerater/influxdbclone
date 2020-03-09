@@ -1,5 +1,7 @@
 const path = require('path')
 const HtmlWebpackPlugin = require('html-webpack-plugin')
+const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin')
+const MiniCssExtractPlugin = require('mini-css-extract-plugin')
 const {CleanWebpackPlugin} = require('clean-webpack-plugin')
 const webpack = require('webpack')
 const {
@@ -31,7 +33,8 @@ module.exports = {
     rules: [
       {
         test: /\.wasm$/,
-        type: 'webassembly/experimental',
+        loader: "file-loader",
+        type: "javascript/auto",
       },
       {
         test: /\.tsx?$/,
@@ -40,6 +43,20 @@ module.exports = {
             loader: 'ts-loader',
             options: {
               transpileOnly: true,
+            },
+          },
+        ],
+      },
+      {
+        test: /\.s?css$/i,
+        use: [
+          MiniCssExtractPlugin.loader,
+          'css-loader',
+          {
+            loader: 'sass-loader',
+            options: {
+              implementation: require('sass'),
+              hmr: true,
             },
           },
         ],
@@ -83,10 +100,16 @@ module.exports = {
       header: process.env.INJECT_HEADER || '',
       body: process.env.INJECT_BODY || '',
     }),
-    new webpack.ProgressPlugin(),
-    new webpack.DefinePlugin({
-      ENABLE_MONACO: JSON.stringify(false)
+    new MiniCssExtractPlugin({
+      filename: `${STATIC_DIRECTORY}[contenthash:10].css`,
+      chunkFilename: `${STATIC_DIRECTORY}[id].[contenthash:10].css`,
     }),
+    new webpack.DllReferencePlugin({
+      context: path.join(__dirname, 'build'),
+      manifest: require('./build/vendor-manifest.json'),
+    }),
+    new ForkTsCheckerWebpackPlugin(),
+    new webpack.ProgressPlugin(),
     new webpack.EnvironmentPlugin({...process.env, GIT_SHA, API_PREFIX: API_BASE_PATH, STATIC_PREFIX: BASE_PATH}),
   ],
   stats: {

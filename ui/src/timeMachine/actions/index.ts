@@ -32,10 +32,11 @@ import {
   GetState,
 } from 'src/types'
 import {Color} from 'src/types/colors'
-import {HistogramPosition} from '@influxdata/giraffe'
+import {HistogramPosition, LinePosition} from '@influxdata/giraffe'
 import {RemoteDataState} from '@influxdata/clockface'
 import {createView} from 'src/shared/utils/view'
 import {setValues} from 'src/variables/actions'
+import {getTimeRangeByDashboardID} from 'src/dashboards/selectors/index'
 
 export type Action =
   | QueryBuilderAction
@@ -71,6 +72,7 @@ export type Action =
   | EditActiveQueryWithBuilderAction
   | UpdateActiveQueryNameAction
   | SetFieldOptionsAction
+  | UpdateFieldOptionAction
   | SetTableOptionsAction
   | SetTimeFormatAction
   | SetXColumnAction
@@ -81,6 +83,7 @@ export type Action =
   | SetSymbolColumnsAction
   | SetBinCountAction
   | SetHistogramPositionAction
+  | ReturnType<typeof setLinePosition>
   | SetXDomainAction
   | SetYDomainAction
   | SetXAxisLabelAction
@@ -465,6 +468,20 @@ export const setFieldOptions = (
   payload: {fieldOptions},
 })
 
+interface UpdateFieldOptionAction {
+  type: 'UPDATE_FIELD_OPTION'
+  payload: {
+    option: FieldOption
+  }
+}
+
+export const updateFieldOption = (
+  option: FieldOption
+): UpdateFieldOptionAction => ({
+  type: 'UPDATE_FIELD_OPTION',
+  payload: {option},
+})
+
 interface SetTableOptionsAction {
   type: 'SET_TABLE_OPTIONS'
   payload: {
@@ -587,6 +604,11 @@ export const setHistogramPosition = (
   payload: {position},
 })
 
+export const setLinePosition = (position: LinePosition) => ({
+  type: 'SET_LINE_POSITION' as 'SET_LINE_POSITION',
+  payload: {position},
+})
+
 interface SetXDomainAction {
   type: 'SET_VIEW_X_DOMAIN'
   payload: {xDomain: [number, number]}
@@ -650,15 +672,22 @@ export const removeCheckThreshold = (level: CheckStatusLevel) => ({
   payload: {level},
 })
 
-export const loadNewVEO = (fromContextID: string) => (
+export const loadNewVEO = (dashboardID: string) => (
   dispatch: Dispatch<Action>,
   getState: GetState
 ): void => {
+  const state = getState()
+
+  const timeRange = getTimeRangeByDashboardID(state.ranges, dashboardID)
+
   dispatch(
-    setActiveTimeMachine('veo', {view: createView<XYViewProperties>('xy')})
+    setActiveTimeMachine('veo', {
+      view: createView<XYViewProperties>('xy'),
+      timeRange,
+    })
   )
 
-  const values = get(getState(), `variables.values.${fromContextID}.values`, {})
+  const values = get(getState(), `variables.values.${dashboardID}.values`, {})
 
   if (!isEmpty(values)) {
     dispatch(setValues('veo', RemoteDataState.Done, values))

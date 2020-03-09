@@ -27,9 +27,9 @@ type Executor interface {
 
 // TaskCoordinator (temporary name) is the intermediary between the scheduling/executing system and the rest of the task system
 type TaskCoordinator struct {
-	logger *zap.Logger
-	sch    scheduler.Scheduler
-	ex     Executor
+	log *zap.Logger
+	sch scheduler.Scheduler
+	ex  Executor
 
 	limit int
 }
@@ -53,14 +53,19 @@ func (t SchedulableTask) Schedule() scheduler.Schedule {
 
 // Offset returns a time.Duration for the Task's offset property
 func (t SchedulableTask) Offset() time.Duration {
-	offset, _ := t.OffsetDuration()
-	return offset
+	return t.Task.Offset
 }
 
 // LastScheduled parses the task's LatestCompleted value as a Time object
 func (t SchedulableTask) LastScheduled() time.Time {
-	tm, _ := t.LatestCompletedTime()
-	return tm
+	if !t.LatestScheduled.IsZero() {
+		return t.LatestScheduled
+	}
+	if !t.LatestCompleted.IsZero() {
+		return t.LatestCompleted
+	}
+
+	return t.CreatedAt
 }
 
 func WithLimitOpt(i int) CoordinatorOption {
@@ -71,20 +76,11 @@ func WithLimitOpt(i int) CoordinatorOption {
 
 // NewSchedulableTask transforms an influxdb task to a schedulable task type
 func NewSchedulableTask(task *influxdb.Task) (SchedulableTask, error) {
-	if offset, err := task.OffsetDuration(); offset != time.Duration(0) && err != nil {
-		return SchedulableTask{}, errors.New("could not create schedulable task: offset duration could not be parsed")
-	}
 
-	if _, err := task.LatestCompletedTime(); err != nil {
-		return SchedulableTask{}, errors.New("could not create schedulable task: latest completed time could not be parsed")
-	}
 	if task.Cron == "" && task.Every == "" {
 		return SchedulableTask{}, errors.New("invalid cron or every")
 	}
-	effCron, err := task.TaskEffectiveCron()
-	if err != nil {
-		return SchedulableTask{}, err
-	}
+	effCron := task.EffectiveCron()
 	sch, err := scheduler.NewSchedule(effCron)
 	if err != nil {
 		return SchedulableTask{}, err
@@ -94,12 +90,12 @@ func NewSchedulableTask(task *influxdb.Task) (SchedulableTask, error) {
 	return t, nil
 }
 
-func NewCoordinator(logger *zap.Logger, scheduler scheduler.Scheduler, executor Executor, opts ...CoordinatorOption) *TaskCoordinator {
+func NewCoordinator(log *zap.Logger, scheduler scheduler.Scheduler, executor Executor, opts ...CoordinatorOption) *TaskCoordinator {
 	c := &TaskCoordinator{
-		logger: logger,
-		sch:    scheduler,
-		ex:     executor,
-		limit:  DefaultLimit,
+		log:   log,
+		sch:   scheduler,
+		ex:    executor,
+		limit: DefaultLimit,
 	}
 
 	for _, opt := range opts {

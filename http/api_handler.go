@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/go-chi/chi"
 	"github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/authorizer"
 	"github.com/influxdata/influxdb/chronograf/server"
@@ -18,29 +19,31 @@ import (
 // APIHandler is a collection of all the service handlers.
 type APIHandler struct {
 	influxdb.HTTPErrorHandler
-	BucketHandler               *BucketHandler
-	UserHandler                 *UserHandler
-	OrgHandler                  *OrgHandler
-	AuthorizationHandler        *AuthorizationHandler
-	DashboardHandler            *DashboardHandler
-	LabelHandler                *LabelHandler
 	AssetHandler                *AssetHandler
-	ChronografHandler           *ChronografHandler
-	ScraperHandler              *ScraperHandler
-	SourceHandler               *SourceHandler
-	VariableHandler             *VariableHandler
-	TaskHandler                 *TaskHandler
+	AuthorizationHandler        *AuthorizationHandler
+	BucketHandler               *BucketHandler
 	CheckHandler                *CheckHandler
-	TelegrafHandler             *TelegrafHandler
-	QueryHandler                *FluxHandler
-	WriteHandler                *WriteHandler
+	ChronografHandler           *ChronografHandler
+	DashboardHandler            *DashboardHandler
 	DeleteHandler               *DeleteHandler
 	DocumentHandler             *DocumentHandler
-	SetupHandler                *SetupHandler
-	SessionHandler              *SessionHandler
-	SwaggerHandler              http.Handler
-	NotificationRuleHandler     *NotificationRuleHandler
+	LabelHandler                *LabelHandler
 	NotificationEndpointHandler *NotificationEndpointHandler
+	NotificationRuleHandler     *NotificationRuleHandler
+	OrgHandler                  *OrgHandler
+	QueryHandler                *FluxHandler
+	ScraperHandler              *ScraperHandler
+	SessionHandler              *SessionHandler
+	SetupHandler                *SetupHandler
+	SourceHandler               *SourceHandler
+	SwaggerHandler              http.Handler
+	TaskHandler                 *TaskHandler
+	TelegrafHandler             *TelegrafHandler
+	UserHandler                 *UserHandler
+	VariableHandler             *VariableHandler
+	WriteHandler                *WriteHandler
+
+	Gateway chi.Router
 }
 
 // APIBackend is all services and associated parameters required to construct
@@ -105,94 +108,118 @@ func (b *APIBackend) PrometheusCollectors() []prometheus.Collector {
 	return cs
 }
 
+// ResourceHandler is an HTTP handler for a resource. The prefix
+// describes the url path prefix that relates to the handler
+// endpoints.
+type ResourceHandler interface {
+	Prefix() string
+	http.Handler
+}
+
+// APIHandlerOptFn is a functional input param to set parameters on
+// the APIHandler.
+type APIHandlerOptFn func(*APIHandler)
+
+// WithResourceHandler registers a resource handler on the APIHandler.
+func WithResourceHandler(resHandler ResourceHandler) APIHandlerOptFn {
+	return func(h *APIHandler) {
+		h.Gateway.Mount(resHandler.Prefix(), resHandler)
+	}
+}
+
 // NewAPIHandler constructs all api handlers beneath it and returns an APIHandler
-func NewAPIHandler(b *APIBackend) *APIHandler {
+func NewAPIHandler(b *APIBackend, opts ...APIHandlerOptFn) *APIHandler {
 	h := &APIHandler{
 		HTTPErrorHandler: b.HTTPErrorHandler,
+		Gateway:          newBaseChiRouter(b.HTTPErrorHandler),
+	}
+	for _, o := range opts {
+		o(h)
 	}
 
 	internalURM := b.UserResourceMappingService
 	b.UserResourceMappingService = authorizer.NewURMService(b.OrgLookupService, b.UserResourceMappingService)
 
-	documentBackend := NewDocumentBackend(b)
+	documentBackend := NewDocumentBackend(b.Logger.With(zap.String("handler", "document")), b)
 	h.DocumentHandler = NewDocumentHandler(documentBackend)
 
-	sessionBackend := NewSessionBackend(b)
-	h.SessionHandler = NewSessionHandler(sessionBackend)
+	sessionBackend := newSessionBackend(b.Logger.With(zap.String("handler", "session")), b)
+	h.SessionHandler = NewSessionHandler(b.Logger, sessionBackend)
 
-	bucketBackend := NewBucketBackend(b)
+	bucketBackend := NewBucketBackend(b.Logger.With(zap.String("handler", "bucket")), b)
 	bucketBackend.BucketService = authorizer.NewBucketService(b.BucketService)
-	h.BucketHandler = NewBucketHandler(bucketBackend)
+	h.BucketHandler = NewBucketHandler(b.Logger, bucketBackend)
 
-	orgBackend := NewOrgBackend(b)
+	orgBackend := NewOrgBackend(b.Logger.With(zap.String("handler", "org")), b)
 	orgBackend.OrganizationService = authorizer.NewOrgService(b.OrganizationService)
-	h.OrgHandler = NewOrgHandler(orgBackend)
+	h.OrgHandler = NewOrgHandler(b.Logger, orgBackend)
 
-	userBackend := NewUserBackend(b)
+	userBackend := NewUserBackend(b.Logger.With(zap.String("handler", "user")), b)
 	userBackend.UserService = authorizer.NewUserService(b.UserService)
-	h.UserHandler = NewUserHandler(userBackend)
+	userBackend.PasswordsService = authorizer.NewPasswordService(b.PasswordsService)
+	h.UserHandler = NewUserHandler(b.Logger, userBackend)
 
-	dashboardBackend := NewDashboardBackend(b)
+	dashboardBackend := NewDashboardBackend(b.Logger.With(zap.String("handler", "dashboard")), b)
 	dashboardBackend.DashboardService = authorizer.NewDashboardService(b.DashboardService)
-	h.DashboardHandler = NewDashboardHandler(dashboardBackend)
+	h.DashboardHandler = NewDashboardHandler(b.Logger, dashboardBackend)
 
-	variableBackend := NewVariableBackend(b)
+	variableBackend := NewVariableBackend(b.Logger.With(zap.String("handler", "variable")), b)
 	variableBackend.VariableService = authorizer.NewVariableService(b.VariableService)
-	h.VariableHandler = NewVariableHandler(variableBackend)
+	h.VariableHandler = NewVariableHandler(b.Logger, variableBackend)
 
-	authorizationBackend := NewAuthorizationBackend(b)
+	authorizationBackend := NewAuthorizationBackend(b.Logger.With(zap.String("handler", "authorization")), b)
 	authorizationBackend.AuthorizationService = authorizer.NewAuthorizationService(b.AuthorizationService)
-	h.AuthorizationHandler = NewAuthorizationHandler(authorizationBackend)
+	h.AuthorizationHandler = NewAuthorizationHandler(b.Logger, authorizationBackend)
 
-	scraperBackend := NewScraperBackend(b)
+	scraperBackend := NewScraperBackend(b.Logger.With(zap.String("handler", "scraper")), b)
 	scraperBackend.ScraperStorageService = authorizer.NewScraperTargetStoreService(b.ScraperTargetStoreService,
 		b.UserResourceMappingService,
 		b.OrganizationService)
-	h.ScraperHandler = NewScraperHandler(scraperBackend)
+	h.ScraperHandler = NewScraperHandler(b.Logger, scraperBackend)
 
-	sourceBackend := NewSourceBackend(b)
+	sourceBackend := NewSourceBackend(b.Logger.With(zap.String("handler", "source")), b)
 	sourceBackend.SourceService = authorizer.NewSourceService(b.SourceService)
 	sourceBackend.BucketService = authorizer.NewBucketService(b.BucketService)
-	h.SourceHandler = NewSourceHandler(sourceBackend)
+	h.SourceHandler = NewSourceHandler(b.Logger, sourceBackend)
 
-	setupBackend := NewSetupBackend(b)
-	h.SetupHandler = NewSetupHandler(setupBackend)
+	setupBackend := NewSetupBackend(b.Logger.With(zap.String("handler", "setup")), b)
+	h.SetupHandler = NewSetupHandler(b.Logger, setupBackend)
 
-	taskBackend := NewTaskBackend(b)
-	h.TaskHandler = NewTaskHandler(taskBackend)
+	taskBackend := NewTaskBackend(b.Logger.With(zap.String("handler", "task")), b)
+	h.TaskHandler = NewTaskHandler(b.Logger, taskBackend)
 	h.TaskHandler.UserResourceMappingService = internalURM
 
-	telegrafBackend := NewTelegrafBackend(b)
+	telegrafBackend := NewTelegrafBackend(b.Logger.With(zap.String("handler", "telegraf")), b)
 	telegrafBackend.TelegrafService = authorizer.NewTelegrafConfigService(b.TelegrafService, b.UserResourceMappingService)
-	h.TelegrafHandler = NewTelegrafHandler(telegrafBackend)
+	h.TelegrafHandler = NewTelegrafHandler(b.Logger, telegrafBackend)
 
-	notificationRuleBackend := NewNotificationRuleBackend(b)
+	notificationRuleBackend := NewNotificationRuleBackend(b.Logger.With(zap.String("handler", "notification_rule")), b)
 	notificationRuleBackend.NotificationRuleStore = authorizer.NewNotificationRuleStore(b.NotificationRuleStore,
 		b.UserResourceMappingService, b.OrganizationService)
-	h.NotificationRuleHandler = NewNotificationRuleHandler(notificationRuleBackend)
+	h.NotificationRuleHandler = NewNotificationRuleHandler(b.Logger, notificationRuleBackend)
 
-	notificationEndpointBackend := NewNotificationEndpointBackend(b)
+	notificationEndpointBackend := NewNotificationEndpointBackend(b.Logger.With(zap.String("handler", "notificationEndpoint")), b)
 	notificationEndpointBackend.NotificationEndpointService = authorizer.NewNotificationEndpointService(b.NotificationEndpointService,
 		b.UserResourceMappingService, b.OrganizationService)
-	h.NotificationEndpointHandler = NewNotificationEndpointHandler(notificationEndpointBackend)
+	h.NotificationEndpointHandler = NewNotificationEndpointHandler(notificationEndpointBackend.Logger(), notificationEndpointBackend)
 
-	checkBackend := NewCheckBackend(b)
+	checkBackend := NewCheckBackend(b.Logger.With(zap.String("handler", "check")), b)
 	checkBackend.CheckService = authorizer.NewCheckService(b.CheckService,
 		b.UserResourceMappingService, b.OrganizationService)
-	h.CheckHandler = NewCheckHandler(checkBackend)
+	h.CheckHandler = NewCheckHandler(b.Logger, checkBackend)
 
-	writeBackend := NewWriteBackend(b)
-	h.WriteHandler = NewWriteHandler(writeBackend)
+	writeBackend := NewWriteBackend(b.Logger.With(zap.String("handler", "write")), b)
+	h.WriteHandler = NewWriteHandler(b.Logger, writeBackend)
 
-	deleteBackend := NewDeleteBackend(b)
-	h.DeleteHandler = NewDeleteHandler(deleteBackend)
+	deleteBackend := NewDeleteBackend(b.Logger.With(zap.String("handler", "delete")), b)
+	h.DeleteHandler = NewDeleteHandler(b.Logger, deleteBackend)
 
-	fluxBackend := NewFluxBackend(b)
-	h.QueryHandler = NewFluxHandler(fluxBackend)
+	fluxBackend := NewFluxBackend(b.Logger.With(zap.String("handler", "query")), b)
+	h.QueryHandler = NewFluxHandler(b.Logger, fluxBackend)
 
 	h.ChronografHandler = NewChronografHandler(b.ChronografService, b.HTTPErrorHandler)
 	h.SwaggerHandler = newSwaggerLoader(b.Logger.With(zap.String("service", "swagger-loader")), b.HTTPErrorHandler)
-	h.LabelHandler = NewLabelHandler(authorizer.NewLabelService(b.LabelService), b.HTTPErrorHandler)
+	h.LabelHandler = NewLabelHandler(b.Logger, authorizer.NewLabelService(b.LabelService), b.HTTPErrorHandler)
 
 	return h
 }
@@ -372,5 +399,9 @@ func (h *APIHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	baseHandler{HTTPErrorHandler: h.HTTPErrorHandler}.notFound(w, r)
+	// router has not found route registered on it directly
+	// if a route slips through, then the same 404 as before
+	// if a route matches on the gateway router, it will use
+	// whatever handler that matches the router in question.
+	h.Gateway.ServeHTTP(w, r)
 }
