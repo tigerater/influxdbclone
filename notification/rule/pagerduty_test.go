@@ -57,14 +57,14 @@ statuses
 						Key:   "foo",
 						Value: "bar",
 					},
-					Operator: influxdb.Equal,
+					Operator: notification.Equal,
 				},
 				{
 					Tag: influxdb.Tag{
 						Key:   "baz",
 						Value: "bang",
 					},
-					Operator: influxdb.Equal,
+					Operator: notification.Equal,
 				},
 			},
 		},
