@@ -148,29 +148,34 @@ class SideNav extends PureComponent<Props, State> {
           )}
           active={getNavItemActivation(['tasks'], location.pathname)}
         />
-        <NavMenu.Item
-          titleLink={className => (
-            <Link className={className} to={alertingLink}>
-              Monitoring & Alerting
-            </Link>
-          )}
-          iconLink={className => (
-            <Link to={alertingLink} className={className}>
-              <Icon glyph={IconFont.Bell} />
-            </Link>
-          )}
-          active={getNavItemActivation(['alerting'], location.pathname)}
-        >
-          <NavMenu.SubItem
+        <FeatureFlag name="alerting">
+          <NavMenu.Item
             titleLink={className => (
-              <Link to={alertHistoryLink} className={className}>
-                History
+              <Link className={className} to={alertingLink}>
+                Monitoring & Alerting
               </Link>
             )}
-            active={getNavItemActivation(['alert-history'], location.pathname)}
-            key="alert-history"
-          />
-        </NavMenu.Item>
+            iconLink={className => (
+              <Link to={alertingLink} className={className}>
+                <Icon glyph={IconFont.Bell} />
+              </Link>
+            )}
+            active={getNavItemActivation(['alerting'], location.pathname)}
+          >
+            <NavMenu.SubItem
+              titleLink={className => (
+                <Link to={alertHistoryLink} className={className}>
+                  History
+                </Link>
+              )}
+              active={getNavItemActivation(
+                ['alert-history'],
+                location.pathname
+              )}
+              key="alert-history"
+            />
+          </NavMenu.Item>
+        </FeatureFlag>
         <NavMenu.Item
           titleLink={className => (
             <Link className={className} to={loadDataLink}>

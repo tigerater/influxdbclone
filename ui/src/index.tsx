@@ -358,40 +358,42 @@ class Root extends PureComponent {
                               />
                             </Route>
                           </Route>
-                          <Route path="alerting" component={AlertingIndex}>
+                          <FeatureFlag name="alerting">
+                            <Route path="alerting" component={AlertingIndex}>
+                              <Route
+                                path="checks/new-threshold"
+                                component={NewThresholdCheckEO}
+                              />
+                              <Route
+                                path="checks/new-deadman"
+                                component={NewDeadmanCheckEO}
+                              />
+                              <Route
+                                path="checks/:checkID/edit"
+                                component={EditCheckEO}
+                              />
+                              <Route
+                                path="rules/new"
+                                component={NewRuleOverlay}
+                              />
+                              <Route
+                                path="rules/:ruleID/edit"
+                                component={EditRuleOverlay}
+                              />
+                              <Route
+                                path="endpoints/new"
+                                component={NewEndpointOverlay}
+                              />
+                              <Route
+                                path="endpoints/:endpointID/edit"
+                                component={EditEndpointOverlay}
+                              />
+                            </Route>
                             <Route
-                              path="checks/new-threshold"
-                              component={NewThresholdCheckEO}
+                              path="alert-history"
+                              component={AlertHistoryIndex}
                             />
-                            <Route
-                              path="checks/new-deadman"
-                              component={NewDeadmanCheckEO}
-                            />
-                            <Route
-                              path="checks/:checkID/edit"
-                              component={EditCheckEO}
-                            />
-                            <Route
-                              path="rules/new"
-                              component={NewRuleOverlay}
-                            />
-                            <Route
-                              path="rules/:ruleID/edit"
-                              component={EditRuleOverlay}
-                            />
-                            <Route
-                              path="endpoints/new"
-                              component={NewEndpointOverlay}
-                            />
-                            <Route
-                              path="endpoints/:endpointID/edit"
-                              component={EditEndpointOverlay}
-                            />
-                          </Route>
-                          <Route
-                            path="alert-history"
-                            component={AlertHistoryIndex}
-                          />
+                          </FeatureFlag>
                         </Route>
                       </Route>
                     </Route>
