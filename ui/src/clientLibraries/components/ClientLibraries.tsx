@@ -1,6 +1,6 @@
 // Libraries
 import _ from 'lodash'
-import React, {FunctionComponent, createElement} from 'react'
+import React, {FunctionComponent} from 'react'
 import {withRouter, WithRouterProps, Link} from 'react-router'
 
 // Components
@@ -51,7 +51,7 @@ const ClientLibraries: FunctionComponent<Props> = ({orgID, router}) => {
                   testID={`client-libraries-cards--${cl.id}`}
                   selected={false}
                   onClick={handleClick}
-                  image={createElement(cl.image)}
+                  image={<img src={cl.logoUrl} />}
                 />
               )
             })}

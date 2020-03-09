@@ -9,14 +9,13 @@ import (
 )
 
 type ExecutorMetrics struct {
-	totalRunsComplete    *prometheus.CounterVec
-	activeRuns           prometheus.Collector
-	queueDelta           *prometheus.SummaryVec
-	runDuration          *prometheus.SummaryVec
-	errorsCounter        *prometheus.CounterVec
-	manualRunsCounter    *prometheus.CounterVec
-	resumeRunsCounter    *prometheus.CounterVec
-	unrecoverableCounter *prometheus.CounterVec
+	totalRunsComplete *prometheus.CounterVec
+	activeRuns        prometheus.Collector
+	queueDelta        *prometheus.SummaryVec
+	runDuration       *prometheus.SummaryVec
+	errorsCounter     *prometheus.CounterVec
+	manualRunsCounter *prometheus.CounterVec
+	resumeRunsCounter *prometheus.CounterVec
 }
 
 type runCollector struct {
@@ -62,13 +61,6 @@ func NewExecutorMetrics(te *TaskExecutor) *ExecutorMetrics {
 			Name:      "errors_counter",
 			Help:      "The number of errors thrown by the executor with the type of error (ex. Invalid, Internal, etc.)",
 		}, []string{"task_type", "errorType"}),
-
-		unrecoverableCounter: prometheus.NewCounterVec(prometheus.CounterOpts{
-			Namespace: namespace,
-			Subsystem: subsystem,
-			Name:      "unrecoverable_counter",
-			Help:      "The number of errors by taskID that must be manually resolved or have the task deactivated.",
-		}, []string{"taskID", "errorType"}),
 
 		manualRunsCounter: prometheus.NewCounterVec(prometheus.CounterOpts{
 			Namespace: namespace,
@@ -121,7 +113,6 @@ func (em *ExecutorMetrics) PrometheusCollectors() []prometheus.Collector {
 		em.runDuration,
 		em.manualRunsCounter,
 		em.resumeRunsCounter,
-		em.unrecoverableCounter,
 	}
 }
 
@@ -139,25 +130,13 @@ func (em *ExecutorMetrics) FinishRun(task *influxdb.Task, status backend.RunStat
 	em.runDuration.WithLabelValues("", task.ID.String()).Observe(runDuration.Seconds())
 }
 
-// LogError increments the count of errors by error code.
+// LogError increments the count of errors.
 func (em *ExecutorMetrics) LogError(taskType string, err error) {
 	switch e := err.(type) {
 	case *influxdb.Error:
 		em.errorsCounter.WithLabelValues(taskType, e.Code).Inc()
 	default:
 		em.errorsCounter.WithLabelValues(taskType, "unknown").Inc()
-	}
-}
-
-// LogUnrecoverableError increments the count of unrecoverable errors, which require admin intervention to resolve or deactivate
-// This count is separate from the errors count so that the errors metric can be used to identify only internal, rather than user errors
-// and so that unrecoverable errors can be quickly identified for deactivation
-func (em *ExecutorMetrics) LogUnrecoverableError(taskID influxdb.ID, err error) {
-	switch e := err.(type) {
-	case *influxdb.Error:
-		em.unrecoverableCounter.WithLabelValues(taskID.String(), e.Code).Inc()
-	default:
-		em.unrecoverableCounter.WithLabelValues(taskID.String(), "unknown").Inc()
 	}
 }
 
