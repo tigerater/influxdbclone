@@ -3,16 +3,12 @@ import React, {FC} from 'react'
 import {withRouter, WithRouterProps} from 'react-router'
 import {connect} from 'react-redux'
 
-// Constants
-import {getNotificationRuleFailed} from 'src/shared/copy/notifications'
-
 // Components
 import {Overlay} from '@influxdata/clockface'
 import RuleOverlayContents from 'src/alerting/components/notifications/RuleOverlayContents'
 
 // Actions
 import {updateRule} from 'src/alerting/actions/notifications/rules'
-import {notify} from 'src/shared/actions/notifications'
 
 // Utils
 import RuleOverlayProvider from './RuleOverlayProvider'
@@ -25,27 +21,23 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onNotify: typeof notify
   onUpdateRule: (rule: NotificationRuleDraft) => Promise<void>
 }
 
 type Props = WithRouterProps & StateProps & DispatchProps
 
 const EditRuleOverlay: FC<Props> = ({
-  params,
+  params: {orgID},
   router,
   stateRule,
   onUpdateRule,
-  onNotify,
 }) => {
-  const handleDismiss = () => {
-    router.push(`/orgs/${params.orgID}/alerting`)
+  if (!stateRule) {
+    return null
   }
 
-  if (!stateRule) {
-    onNotify(getNotificationRuleFailed(params.ruleID))
-    handleDismiss()
-    return null
+  const handleDismiss = () => {
+    router.push(`/orgs/${orgID}/alerting`)
   }
 
   const handleUpdateRule = async (rule: NotificationRuleDraft) => {
@@ -83,7 +75,6 @@ const mstp = ({rules}: AppState, {params}: Props): StateProps => {
 }
 
 const mdtp = {
-  onNotify: notify,
   onUpdateRule: updateRule as any,
 }
 

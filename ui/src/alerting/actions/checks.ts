@@ -1,6 +1,5 @@
 // Libraries
 import {Dispatch} from 'react'
-import {push} from 'react-router-redux'
 
 // Constants
 import * as copy from 'src/shared/copy/notifications'
@@ -98,12 +97,8 @@ export const getChecks = () => async (
 }
 
 export const getCheckForTimeMachine = (checkID: string) => async (
-  dispatch: Dispatch<TimeMachineAction | NotificationAction>,
-  getState: GetState
+  dispatch: Dispatch<TimeMachineAction | NotificationAction>
 ) => {
-  const {
-    orgs: {org},
-  } = getState()
   try {
     dispatch(setCheckStatus(RemoteDataState.Loading))
 
@@ -128,7 +123,6 @@ export const getCheckForTimeMachine = (checkID: string) => async (
     )
   } catch (e) {
     console.error(e)
-    dispatch(push(`/orgs/${org.id}/alerting`))
     dispatch(setCheckStatus(RemoteDataState.Error))
     dispatch(notify(copy.getCheckFailed(e.message)))
   }
