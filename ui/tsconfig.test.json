@@ -4,16 +4,7 @@
     "assets",
     "build",
     "node_modules",
-    "webpack.tsconfig.json",
-    "webpack.*.ts",
-    "coverage"
-  ],
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "cypress/**/*.ts",
-    "cypress/**/*.js",
-    "mocks/**/*.ts",
-    "mocks/**/*.tsx"
+    "cypress",
+    "webpack.tsconfig.json"
   ]
 }

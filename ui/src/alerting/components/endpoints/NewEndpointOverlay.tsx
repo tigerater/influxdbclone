@@ -27,8 +27,9 @@ const NewRuleOverlay: FC<Props> = ({params, router, onCreateEndpoint}) => {
     router.push(`/orgs/${params.orgID}/alerting`)
   }
 
-  const handleCreateEndpoint = (endpoint: NotificationEndpoint) => {
-    onCreateEndpoint(endpoint)
+  const handleCreateEndpoint = async (endpoint: NotificationEndpoint) => {
+    await onCreateEndpoint(endpoint)
+
     handleDismiss()
   }
 

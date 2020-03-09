@@ -60,7 +60,7 @@ export const setNote = (note: string): SetNoteAction => ({
   payload: {note},
 })
 
-export const createNoteCell = (dashboardID: string) => (
+export const createNoteCell = (dashboardID: string) => async (
   dispatch: Dispatch<Action>,
   getState: GetState
 ) => {
@@ -98,7 +98,7 @@ export const setNoteState = (
   payload: noteState,
 })
 
-export const loadNote = (id: string) => (
+export const loadNote = (id: string) => async (
   dispatch: Dispatch<Action>,
   getState: GetState
 ) => {
@@ -130,7 +130,7 @@ export const loadNote = (id: string) => (
   dispatch(setNoteState(initialState))
 }
 
-export const updateViewNote = (id: string) => (
+export const updateViewNote = (id: string) => async (
   dispatch: Dispatch<Action>,
   getState: GetState
 ) => {

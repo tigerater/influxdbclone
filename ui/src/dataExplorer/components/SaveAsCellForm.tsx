@@ -68,9 +68,9 @@ class SaveAsCellForm extends PureComponent<Props, State> {
     newDashboardName: '',
   }
 
-  public componentDidMount() {
+  public async componentDidMount() {
     const {handleGetDashboards} = this.props
-    handleGetDashboards()
+    await handleGetDashboards()
   }
 
   public render() {
@@ -150,7 +150,7 @@ class SaveAsCellForm extends PureComponent<Props, State> {
     return !_.isEmpty(targetDashboardIDs)
   }
 
-  private handleSubmit = () => {
+  private handleSubmit = async () => {
     const {onCreateCellWithView, dashboards, view, dismiss, notify} = this.props
     const {targetDashboardIDs} = this.state
 

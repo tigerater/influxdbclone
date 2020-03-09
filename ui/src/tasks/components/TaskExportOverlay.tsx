@@ -31,7 +31,7 @@ interface StateProps {
 type Props = OwnProps & StateProps & DispatchProps & WithRouterProps
 
 class TaskExportOverlay extends PureComponent<Props> {
-  public componentDidMount() {
+  public async componentDidMount() {
     const {
       params: {id},
       convertToTemplate,

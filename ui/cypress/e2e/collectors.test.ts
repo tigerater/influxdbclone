@@ -133,8 +133,6 @@ describe('Collectors', () => {
         cy.createTelegraf(thirdTelegraf, description, id)
       })
 
-      cy.reload()
-
       cy.getByTestID('search-widget').type(firstTelegraf)
 
       cy.getByTestID('resource-card').should('have.length', 1)

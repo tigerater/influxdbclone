@@ -101,62 +101,62 @@ export enum ResourceType {
 
 @ErrorHandling
 class GetResources extends PureComponent<Props, StateProps> {
-  public componentDidMount() {
+  public async componentDidMount() {
     switch (this.props.resource) {
       case ResourceType.Dashboards: {
-        return this.props.getDashboards()
+        return await this.props.getDashboards()
       }
 
       case ResourceType.Labels: {
-        return this.props.getLabels()
+        return await this.props.getLabels()
       }
 
       case ResourceType.Buckets: {
-        return this.props.getBuckets()
+        return await this.props.getBuckets()
       }
 
       case ResourceType.Telegrafs: {
-        return this.props.getTelegrafs()
+        return await this.props.getTelegrafs()
       }
 
       case ResourceType.Scrapers: {
-        return this.props.getScrapers()
+        return await this.props.getScrapers()
       }
 
       case ResourceType.Variables: {
-        return this.props.getVariables()
+        return await this.props.getVariables()
       }
 
       case ResourceType.Tasks: {
-        return this.props.getTasks()
+        return await this.props.getTasks()
       }
 
       case ResourceType.Authorizations: {
-        return this.props.getAuthorizations()
+        return await this.props.getAuthorizations()
       }
 
       case ResourceType.Templates: {
-        return this.props.getTemplates()
+        return await this.props.getTemplates()
       }
 
       case ResourceType.Members: {
-        return this.props.getMembers()
+        return await this.props.getMembers()
       }
 
       case ResourceType.Users: {
-        return this.props.getUsers()
+        return await this.props.getUsers()
       }
 
       case ResourceType.Checks: {
-        return this.props.getChecks()
+        return await this.props.getChecks()
       }
 
       case ResourceType.NotificationRules: {
-        return this.props.getNotificationRules()
+        return await this.props.getNotificationRules()
       }
 
       case ResourceType.NotificationEndpoints: {
-        return this.props.getEndpoints()
+        return await this.props.getEndpoints()
       }
 
       default: {

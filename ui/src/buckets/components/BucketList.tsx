@@ -163,8 +163,8 @@ class BucketList extends PureComponent<Props & WithRouterProps, State> {
     router.push(link)
   }
 
-  private handleUpdateBucket = (updatedBucket: PrettyBucket) => {
-    this.props.onUpdateBucket(updatedBucket)
+  private handleUpdateBucket = async (updatedBucket: PrettyBucket) => {
+    await this.props.onUpdateBucket(updatedBucket)
     this.setState({bucketOverlayState: OverlayState.Closed})
   }
 }

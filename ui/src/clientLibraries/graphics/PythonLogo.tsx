@@ -1,7 +1,6 @@
 // Libraries
 import React, {SFC} from 'react'
 
-/* eslint-disable no-mixed-spaces-and-tabs */
 const PythonLogo: SFC = () => {
   return (
     <svg
@@ -64,5 +63,4 @@ const PythonLogo: SFC = () => {
   )
 }
 
-/* eslint-enable */
 export default PythonLogo

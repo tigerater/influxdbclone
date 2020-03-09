@@ -16,8 +16,8 @@ const setup = (override = {}) => {
 }
 
 describe('TelegrafInstructions', () => {
-  it('renders', () => {
-    const wrapper = setup()
+  it('renders', async () => {
+    const wrapper = await setup()
     expect(wrapper.exists()).toBe(true)
   })
 

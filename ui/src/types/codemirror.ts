@@ -1,4 +1,3 @@
-/* eslint-disable */
 import {Editor, Position} from 'codemirror'
 
 export interface Hints {

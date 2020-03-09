@@ -36,7 +36,7 @@ describe('checksReducer', () => {
       expect(actual).toEqual(expected)
     })
     it('updates check in list if it exists', () => {
-      const initialState = defaultChecksState
+      let initialState = defaultChecksState
       initialState.list = [CHECK_FIXTURE_1]
       const actual = checksReducer(
         initialState,

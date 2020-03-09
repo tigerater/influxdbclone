@@ -69,7 +69,6 @@ class CreateLabelOverlay extends Component<Props, State> {
               color={label.properties.color}
               onNameValidation={onNameValidation}
               onInputChange={this.handleInputChange}
-              onLabelPropertyChange={this.handleLabelPropertyChange}
               onColorChange={this.handleColorChange}
               description={label.properties.description}
             />
@@ -81,9 +80,8 @@ class CreateLabelOverlay extends Component<Props, State> {
 
   private get isFormValid(): boolean {
     const {label, colorStatus} = this.state
-    const {onNameValidation} = this.props
 
-    const nameIsValid = onNameValidation(label.name) === null && !!label.name
+    const nameIsValid = this.props.onNameValidation(label.name) === null
     const colorIsValid =
       colorStatus === ComponentStatus.Default ||
       colorStatus === ComponentStatus.Valid
@@ -96,9 +94,10 @@ class CreateLabelOverlay extends Component<Props, State> {
 
     try {
       onCreateLabel(this.state.label)
+      // clear form on successful submit
+      this.resetForm()
     } finally {
       onDismiss()
-      this.resetForm()
     }
   }
 
@@ -109,24 +108,23 @@ class CreateLabelOverlay extends Component<Props, State> {
   }
 
   private handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
-    const {value, name} = e.target
+    const value = e.target.value
+    const key = e.target.name
 
-    this.setState(prevState => ({
-      label: {...prevState.label, [name]: value},
-    }))
-  }
+    if (key === 'description' || key === 'color') {
+      const properties = {...this.state.label.properties, [key]: value}
+      const label = {...this.state.label, properties}
 
-  private handleLabelPropertyChange = (
-    e: ChangeEvent<HTMLInputElement>
-  ): void => {
-    const {value, name} = e.target
+      this.setState({
+        label,
+      })
+    } else {
+      const label = {...this.state.label, [key]: value}
 
-    this.setState(prevState => ({
-      label: {
-        ...prevState.label,
-        properties: {...prevState.label.properties, [name]: value},
-      },
-    }))
+      this.setState({
+        label,
+      })
+    }
   }
 
   private handleColorChange = (

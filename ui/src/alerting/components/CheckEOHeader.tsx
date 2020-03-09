@@ -40,7 +40,7 @@ interface OwnProps {
   name: string
   onSetName: (name: string) => void
   onCancel: () => void
-  onSave: () => void
+  onSave: () => Promise<void>
 }
 
 interface StateProps {
@@ -69,13 +69,13 @@ const CheckEOHeader: FC<Props> = ({
 }) => {
   const [saveStatus, setSaveStatus] = useState(RemoteDataState.NotStarted)
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (saveStatus === RemoteDataState.Loading) {
       return
     }
 
     setSaveStatus(RemoteDataState.Loading)
-    onSave()
+    await onSave()
     setSaveStatus(RemoteDataState.NotStarted)
   }
 

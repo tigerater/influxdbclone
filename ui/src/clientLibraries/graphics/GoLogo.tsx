@@ -1,7 +1,6 @@
 // Libraries
 import React, {SFC} from 'react'
 
-/* eslint-disable no-mixed-spaces-and-tabs */
 const GoLogo: SFC = () => {
   return (
     <svg
@@ -82,5 +81,5 @@ const GoLogo: SFC = () => {
     </svg>
   )
 }
-/* eslint-enable */
+
 export default GoLogo

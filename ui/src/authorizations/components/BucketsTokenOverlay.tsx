@@ -196,7 +196,7 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
     this.setState({writeBuckets: []})
   }
 
-  private handleSave = () => {
+  private handleSave = async () => {
     const {
       params: {orgID},
       onCreateAuthorization,
@@ -223,7 +223,7 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
       permissions,
     }
 
-    onCreateAuthorization(token)
+    await onCreateAuthorization(token)
 
     this.handleDismiss()
   }

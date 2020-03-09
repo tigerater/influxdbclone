@@ -67,17 +67,17 @@ const CheckCard: FunctionComponent<Props> = ({
   labels,
   router,
 }) => {
-  const onUpdateName = (name: string) => {
+  const onUpdateName = async (name: string) => {
     try {
-      updateCheck({...check, name})
+      await updateCheck({...check, name})
     } catch (e) {
       onNotify(updateCheckFailed(e.message))
     }
   }
 
-  const onUpdateDescription = (description: string) => {
+  const onUpdateDescription = async (description: string) => {
     try {
-      updateCheck({...check, description})
+      await updateCheck({...check, description})
     } catch (e) {
       onNotify(updateCheckFailed(e.message))
     }
@@ -91,11 +91,11 @@ const CheckCard: FunctionComponent<Props> = ({
     onCloneCheck(check)
   }
 
-  const onToggle = () => {
+  const onToggle = async () => {
     const status = check.status === 'active' ? 'inactive' : 'active'
 
     try {
-      updateCheck({...check, status})
+      await updateCheck({...check, status})
     } catch (e) {
       onNotify(updateCheckFailed(e.message))
     }

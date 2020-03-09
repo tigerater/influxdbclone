@@ -30,8 +30,8 @@ import {ErrorHandling} from 'src/shared/decorators/errors'
 interface Props {
   selectedLabels: Label[]
   labels: Label[]
-  onAddLabel: (label: Label) => Promise<void> | void
-  onCreateLabel: (label: Label) => Promise<void> | void
+  onAddLabel: (label: Label) => void
+  onCreateLabel: (label: Label) => Promise<void>
 }
 
 interface State {
@@ -125,14 +125,14 @@ class InlineLabelsEditor extends Component<Props, State> {
     )
   }
 
-  private handleAddLabel = async (labelID: string) => {
+  private handleAddLabel = (labelID: string): void => {
     const {onAddLabel, labels} = this.props
 
     const label = labels.find(label => label.id === labelID)
 
     if (label) {
       this.selectAvailableItem()
-      await onAddLabel(label)
+      onAddLabel(label)
     }
   }
 
@@ -170,7 +170,9 @@ class InlineLabelsEditor extends Component<Props, State> {
     this.setState({isPopoverVisible: false})
   }
 
-  private handleInputChange = (e: ChangeEvent<HTMLInputElement>): void => {
+  private handleInputChange = async (
+    e: ChangeEvent<HTMLInputElement>
+  ): Promise<void> => {
     const searchTerm = e.target.value
     const filteredLabels = this.filterLabels(searchTerm)
 

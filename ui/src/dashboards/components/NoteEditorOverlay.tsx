@@ -161,7 +161,7 @@ class NoteEditorOverlay extends PureComponent<Props, State> {
     return ComponentStatus.Default
   }
 
-  private handleSave = () => {
+  private handleSave = async () => {
     const {
       cellID,
       dashboardID,
@@ -174,9 +174,9 @@ class NoteEditorOverlay extends PureComponent<Props, State> {
 
     try {
       if (cellID) {
-        onUpdateViewNote(cellID)
+        await onUpdateViewNote(cellID)
       } else {
-        onCreateNoteCell(dashboardID)
+        await onCreateNoteCell(dashboardID)
       }
       this.handleDismiss()
     } catch (error) {

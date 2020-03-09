@@ -84,10 +84,10 @@ const EditCheckEditorOverlay: FunctionComponent<Props> = ({
     onSetTimeMachineCheck(RemoteDataState.NotStarted, null)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     // todo: update view when check has own view
     try {
-      onUpdateCheck({...check, query})
+      await onUpdateCheck({...check, query})
       handleClose()
     } catch (e) {
       console.error(e)

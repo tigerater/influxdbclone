@@ -107,9 +107,13 @@ class VariableCard extends PureComponent<Props & WithRouterProps> {
     onRemoveVariableLabels(variable.id, [label])
   }
 
-  private handleCreateLabel = (label: ILabel): void => {
-    const {name, properties} = label
-    this.props.onCreateLabel(name, properties)
+  private handleCreateLabel = async (label: ILabel): Promise<void> => {
+    try {
+      const {name, properties} = label
+      await this.props.onCreateLabel(name, properties)
+    } catch (err) {
+      throw err
+    }
   }
 
   private handleExport = () => {
@@ -121,7 +125,7 @@ class VariableCard extends PureComponent<Props & WithRouterProps> {
     router.push(`/orgs/${orgID}/settings/variables/${variable.id}/export`)
   }
 
-  private handleRenameVariable = () => {
+  private handleRenameVariable = async () => {
     const {
       router,
       variable,

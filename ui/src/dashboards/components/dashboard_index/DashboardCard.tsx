@@ -99,8 +99,8 @@ class DashboardCard extends PureComponent<Props> {
     )
   }
 
-  private handleUpdateDashboard = (name: string) => {
-    this.props.onUpdateDashboard({...this.props.dashboard, name})
+  private handleUpdateDashboard = async (name: string) => {
+    await this.props.onUpdateDashboard({...this.props.dashboard, name})
   }
 
   private get contextMenu(): JSX.Element {
@@ -154,27 +154,35 @@ class DashboardCard extends PureComponent<Props> {
     onResetViews()
   }
 
-  private handleUpdateDescription = (description: string) => {
+  private handleUpdateDescription = (description: string): void => {
     const {onUpdateDashboard} = this.props
     const dashboard = {...this.props.dashboard, description}
 
     onUpdateDashboard(dashboard)
   }
 
-  private handleAddLabel = (label: Label) => {
+  private handleAddLabel = (label: Label): void => {
     const {dashboard, onAddDashboardLabels} = this.props
 
-    onAddDashboardLabels(dashboard.id, [label])
+    onAddDashboardLabels(dashboard.id, [label as any])
   }
 
-  private handleRemoveLabel = (label: Label) => {
+  private handleRemoveLabel = (label: Label): void => {
     const {dashboard, onRemoveDashboardLabels} = this.props
 
-    onRemoveDashboardLabels(dashboard.id, [label])
+    onRemoveDashboardLabels(dashboard.id, [label as any])
   }
 
-  private handleCreateLabel = async (label: Label) => {
-    await this.props.onCreateLabel(label.name, label.properties) // eslint-disable-line
+  private handleCreateLabel = async (label: Label): Promise<void> => {
+    try {
+      await this.props.onCreateLabel(label.name, label.properties)
+
+      // notify success
+    } catch (err) {
+      console.error(err)
+      // notify of fail
+      throw err
+    }
   }
 
   private handleExport = () => {

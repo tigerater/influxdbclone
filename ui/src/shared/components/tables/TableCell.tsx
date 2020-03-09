@@ -138,7 +138,7 @@ class TableCell extends PureComponent<Props> {
   }
 
   private get isNumerical(): boolean {
-    return !isNaN(Number.parseFloat(this.props.data))
+    return !isNaN(Number.parseFloat(this.props.data as string))
   }
 
   private get isFixed(): boolean {

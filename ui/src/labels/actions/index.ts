@@ -5,7 +5,7 @@ import {client} from 'src/utils/api'
 import {RemoteDataState} from 'src/types'
 import {ILabel, ILabelProperties} from '@influxdata/influx'
 import {LabelProperties} from 'src/types/labels'
-import {Dispatch, ThunkAction} from 'redux-thunk'
+import {Dispatch} from 'redux-thunk'
 
 // Actions
 import {notify} from 'src/shared/actions/notifications'
@@ -90,10 +90,7 @@ export const getLabels = () => async (
 export const createLabel = (
   name: string,
   properties: LabelProperties
-): ThunkAction<Promise<void>, GetState> => async (
-  dispatch: Dispatch<Action>,
-  getState: GetState
-): Promise<void> => {
+) => async (dispatch: Dispatch<Action>, getState: GetState) => {
   const {
     orgs: {org},
   } = getState()

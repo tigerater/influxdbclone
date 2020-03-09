@@ -104,9 +104,9 @@ class TokenRow extends PureComponent<Props> {
     onClickDescription(auth.id)
   }
 
-  private handleUpdateName = (value: string) => {
+  private handleUpdateName = async (value: string) => {
     const {auth, onUpdate} = this.props
-    onUpdate({...auth, description: value})
+    await onUpdate({...auth, description: value})
   }
 }
 

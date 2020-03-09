@@ -492,9 +492,12 @@ export const deleteCellAsync = (dashboard: Dashboard, cell: Cell) => async (
   }
 }
 
-export const copyDashboardCellAsync = (dashboard: Dashboard, cell: Cell) => (
+export const copyDashboardCellAsync = (
+  dashboard: Dashboard,
+  cell: Cell
+) => async (
   dispatch: Dispatch<Action | PublishNotificationAction>
-) => {
+): Promise<void> => {
   try {
     const clonedCell = getClonedDashboardCell(dashboard, cell)
     const updatedDashboard = {

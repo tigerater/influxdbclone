@@ -81,9 +81,9 @@ class TaskRunsRow extends PureComponent<Props, State> {
     return formatted
   }
 
-  private handleToggleOverlay = () => {
+  private handleToggleOverlay = async () => {
     const {taskID, run, getLogs} = this.props
-    getLogs(taskID, run.id)
+    await getLogs(taskID, run.id)
 
     this.setState({isImportOverlayVisible: !this.state.isImportOverlayVisible})
   }

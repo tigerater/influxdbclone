@@ -238,7 +238,7 @@ export const loadNextRows = async (
   }
 }
 
-export const search = (
+export const search = async (
   state: State,
   dispatch: Dispatch,
   loadRows: LoadRows,
@@ -264,9 +264,10 @@ export const search = (
   } else if (searchImmediately) {
     performSearch(state, dispatch, loadRows, searchExpr)
   } else {
-    const searchTimeoutID = setTimeout(() => {
-      performSearch(state, dispatch, loadRows, searchExpr)
-    }, 500)
+    const searchTimeoutID = setTimeout(
+      () => performSearch(state, dispatch, loadRows, searchExpr),
+      500
+    )
 
     dispatch({type: 'SEARCH_SCHEDULED', searchTimeoutID})
   }

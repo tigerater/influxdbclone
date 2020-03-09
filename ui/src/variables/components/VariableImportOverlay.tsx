@@ -35,11 +35,13 @@ class VariableImportOverlay extends PureComponent<Props> {
     router.goBack()
   }
 
-  private handleImportVariable = (uploadContent: string) => {
+  private handleImportVariable = async (
+    uploadContent: string
+  ): Promise<void> => {
     const {createVariableFromTemplate, getVariables} = this.props
 
     const template = JSON.parse(uploadContent)
-    createVariableFromTemplate(template)
+    await createVariableFromTemplate(template)
     getVariables()
 
     this.onDismiss()

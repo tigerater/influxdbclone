@@ -163,17 +163,17 @@ class Scrapers extends PureComponent<Props, State> {
     )
   }
 
-  private handleUpdateScraper = (scraper: ScraperTargetResponse) => {
+  private handleUpdateScraper = async (scraper: ScraperTargetResponse) => {
     const {onUpdateScraper} = this.props
     onUpdateScraper(scraper)
   }
 
-  private handleDeleteScraper = (scraper: ScraperTargetResponse) => {
+  private handleDeleteScraper = async (scraper: ScraperTargetResponse) => {
     const {onDeleteScraper} = this.props
     onDeleteScraper(scraper)
   }
 
-  private handleShowOverlay = () => {
+  private handleShowOverlay = (): void => {
     const {
       router,
       params: {orgID},
@@ -186,7 +186,7 @@ class Scrapers extends PureComponent<Props, State> {
     router.push(`/orgs/${orgID}/load-data/scrapers/new`)
   }
 
-  private handleFilterChange = (searchTerm: string) => {
+  private handleFilterChange = (searchTerm: string): void => {
     this.setState({searchTerm})
   }
 }

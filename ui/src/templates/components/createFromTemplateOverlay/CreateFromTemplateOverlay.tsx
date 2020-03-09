@@ -176,11 +176,11 @@ class DashboardImportFromTemplateOverlay extends PureComponent<
     router.goBack()
   }
 
-  private onSubmit = () => {
+  private onSubmit = async (): Promise<void> => {
     const {createDashboardFromTemplate} = this.props
     const dashboardTemplate = this.state.selectedTemplate as DashboardTemplate
 
-    createDashboardFromTemplate(dashboardTemplate)
+    await createDashboardFromTemplate(dashboardTemplate)
     this.onDismiss()
   }
 }

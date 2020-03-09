@@ -99,7 +99,7 @@ export class LineProtocol extends PureComponent<Props> {
     onIncrementCurrentStepIndex()
   }
 
-  private handleUpload = () => {
+  private handleUpload = async () => {
     const {bucket, org, lineProtocolBody, precision} = this.props
     this.props.writeLineProtocolAction(org, bucket, lineProtocolBody, precision)
   }

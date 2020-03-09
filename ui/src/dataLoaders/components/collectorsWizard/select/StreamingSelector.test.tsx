@@ -39,7 +39,7 @@ describe('Onboarding.Components.SelectionStep.StreamingSelector', () => {
   })
 
   describe('if searchTerm is not empty', () => {
-    it('filters the plugin bundles', () => {
+    it('filters the plugin bundles', async () => {
       const wrapper = setup()
       const searchTerm = 'syste'
       wrapper.setState({searchTerm})

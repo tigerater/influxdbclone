@@ -13,7 +13,6 @@ const setup = (override?) => {
     ...override,
   }
 
-  // eslint-disable-next-line
   document.addEventListener = jest.fn((event, cb) => {
     map[event] = cb
   })

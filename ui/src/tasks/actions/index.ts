@@ -352,7 +352,7 @@ export const selectTaskByID = (id: string) => async (
   }
 }
 
-export const selectTask = (task: Task) => (
+export const selectTask = (task: Task) => async (
   dispatch,
   getState: GetStateFunc
 ) => {
@@ -363,7 +363,7 @@ export const selectTask = (task: Task) => (
   dispatch(push(`/orgs/${org.id}/tasks/${task.id}`))
 }
 
-export const goToTasks = () => (dispatch, getState: GetStateFunc) => {
+export const goToTasks = () => async (dispatch, getState: GetStateFunc) => {
   const {
     orgs: {org},
   } = getState()
@@ -371,7 +371,7 @@ export const goToTasks = () => (dispatch, getState: GetStateFunc) => {
   dispatch(push(`/orgs/${org.id}/tasks`))
 }
 
-export const cancel = () => dispatch => {
+export const cancel = () => async dispatch => {
   dispatch(setCurrentTask(null))
   dispatch(goBack())
 }
@@ -515,7 +515,7 @@ export const createTaskFromTemplate = (template: TaskTemplate) => async (
   try {
     const {
       orgs: {org},
-    } = getState()
+    } = await getState()
 
     await createTaskFromTemplateAJAX(template, org.id)
 

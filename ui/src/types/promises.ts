@@ -4,8 +4,8 @@ export interface CancelBox<T> {
 }
 
 export class CancellationError extends Error {
-  constructor(...args) {
-    super(...args)
+  constructor() {
+    super(...arguments)
 
     this.name = 'CancellationError'
   }

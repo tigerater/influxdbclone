@@ -112,14 +112,14 @@ type Props = PassedProps &
 
 @ErrorHandling
 class DashboardPage extends Component<Props> {
-  public componentDidMount() {
+  public async componentDidMount() {
     const {autoRefresh} = this.props
 
     if (autoRefresh.status === AutoRefreshStatus.Active) {
       GlobalAutoRefresher.poll(autoRefresh.interval)
     }
 
-    this.getDashboard()
+    await this.getDashboard()
   }
 
   public componentDidUpdate(prevProps: Props) {
@@ -206,10 +206,10 @@ class DashboardPage extends Component<Props> {
     )
   }
 
-  private getDashboard = () => {
+  private getDashboard = async () => {
     const {params, getDashboard} = this.props
 
-    getDashboard(params.dashboardID)
+    await getDashboard(params.dashboardID)
   }
 
   private handleChooseTimeRange = (timeRange: TimeRange): void => {
@@ -249,17 +249,17 @@ class DashboardPage extends Component<Props> {
     this.handleSetAutoRefreshStatus(AutoRefreshStatus.Active)
   }
 
-  private handlePositionChange = (cells: Cell[]) => {
+  private handlePositionChange = async (cells: Cell[]): Promise<void> => {
     const {dashboard, updateCells} = this.props
-    updateCells(dashboard, cells)
+    await updateCells(dashboard, cells)
   }
 
-  private handleAddCell = () => {
+  private handleAddCell = async (): Promise<void> => {
     const {router, location} = this.props
     router.push(`${location.pathname}/cells/new`)
   }
 
-  private showNoteOverlay = (id?: string) => {
+  private showNoteOverlay = async (id?: string): Promise<void> => {
     if (id) {
       this.props.router.push(`${this.props.location.pathname}/notes/${id}/edit`)
     } else {
@@ -272,24 +272,24 @@ class DashboardPage extends Component<Props> {
     router.push(`${location.pathname}/cells/${cellID}/edit`)
   }
 
-  private handleCloneCell = (cell: Cell) => {
+  private handleCloneCell = async (cell: Cell): Promise<void> => {
     const {dashboard, onCreateCellWithView, views} = this.props
     const viewEntry = views[cell.id]
     if (viewEntry && viewEntry.view) {
-      onCreateCellWithView(dashboard.id, viewEntry.view, cell)
+      await onCreateCellWithView(dashboard.id, viewEntry.view, cell)
     }
   }
 
-  private handleRenameDashboard = (name: string) => {
+  private handleRenameDashboard = async (name: string): Promise<void> => {
     const {dashboard, updateDashboard} = this.props
     const renamedDashboard = {...dashboard, name}
 
-    updateDashboard(renamedDashboard)
+    await updateDashboard(renamedDashboard)
   }
 
-  private handleDeleteDashboardCell = (cell: Cell) => {
+  private handleDeleteDashboardCell = async (cell: Cell): Promise<void> => {
     const {dashboard, deleteCell} = this.props
-    deleteCell(dashboard, cell)
+    await deleteCell(dashboard, cell)
   }
 
   private get pageTitle(): string {

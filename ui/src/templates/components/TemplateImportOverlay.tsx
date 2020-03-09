@@ -48,11 +48,13 @@ class TemplateImportOverlay extends PureComponent<Props> {
     router.goBack()
   }
 
-  private handleImportTemplate = (importString: string) => {
+  private handleImportTemplate = async (
+    importString: string
+  ): Promise<void> => {
     const {createTemplate, getTemplates} = this.props
 
     const template = JSON.parse(importString)
-    createTemplate(template)
+    await createTemplate(template)
 
     getTemplates()
 

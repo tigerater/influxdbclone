@@ -1,6 +1,5 @@
 // Libraries
 import _ from 'lodash'
-import {ThunkAction} from 'redux-thunk'
 
 // Constants
 import {StepStatus} from 'src/clockface/constants/wizard'
@@ -68,9 +67,9 @@ export const setBucketID = (bucketID: string): SetBucketID => ({
   payload: {bucketID},
 })
 
-export const setupAdmin = (
-  params: ISetupParams
-): ThunkAction<Promise<void>> => async (dispatch): Promise<boolean> => {
+export const setupAdmin = (params: ISetupParams) => async (
+  dispatch
+): Promise<boolean> => {
   try {
     dispatch(setSetupParams(params))
     const response = await client.setup.create(params)
@@ -94,7 +93,7 @@ export const setupAdmin = (
     return true
   } catch (err) {
     console.error(err)
-    const message = _.get(err, 'response.data.message', '')
+    let message = _.get(err, 'response.data.message', '')
     dispatch(notify(SetupError(message)))
     dispatch(setStepStatus(1, StepStatus.Error))
   }

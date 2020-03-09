@@ -141,7 +141,7 @@ class ExportOverlay extends PureComponent<Props> {
     onDismissOverlay()
   }
 
-  private handleConvertToTemplate = () => {
+  private handleConvertToTemplate = async (): Promise<void> => {
     const {
       resource,
       onDismissOverlay,

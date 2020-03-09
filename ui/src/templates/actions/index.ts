@@ -202,7 +202,7 @@ export const convertToTemplate = (id: string) => async (
   }
 }
 
-export const clearExportTemplate = () => dispatch => {
+export const clearExportTemplate = () => async dispatch => {
   dispatch(setExportTemplate(RemoteDataState.NotStarted, null))
 }
 
@@ -243,7 +243,7 @@ export const cloneTemplate = (templateID: string) => async (
   }
 }
 
-const createFromTemplate = template => dispatch => {
+const createFromTemplate = template => async dispatch => {
   const {
     content: {
       data: {type},
@@ -271,8 +271,10 @@ const createFromTemplate = template => dispatch => {
   }
 }
 
-export const createResourceFromStaticTemplate = (name: string) => dispatch => {
-  const template = staticTemplates[name]
+export const createResourceFromStaticTemplate = (
+  name: string
+) => async dispatch => {
+  const template = await staticTemplates[name]
   dispatch(createFromTemplate(template))
 }
 

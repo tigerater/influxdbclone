@@ -56,7 +56,7 @@ describe('tokens', () => {
         },
       ]
 
-      // check out array.reduce for the nested calls here
+      //check out array.reduce for the nested calls here
       cy.request('api/v2/authorizations').then(resp => {
         expect(resp.body).to.exist
         authData.push({
@@ -100,7 +100,7 @@ describe('tokens', () => {
           : 0
       )
 
-      for (let i = 0; i < rows.length; i++) {
+      for (var i = 0; i < rows.length; i++) {
         cy.getByTestID('editable-name')
           .eq(i)
           .children('a')
@@ -121,21 +121,21 @@ describe('tokens', () => {
   })
 
   it('can filter tokens', () => {
-    // basic filter
+    //basic filter
     cy.getByTestID('input-field--filter').type('test')
     cy.getByTestID('table-row').should('have.length', 3)
 
-    // clear filter
+    //clear filter
     cy.getByTestID('input-field--filter').clear()
     cy.getByTestID('table-row').should('have.length', 4)
 
-    // exotic filter
+    //exotic filter
     cy.getByTestID('input-field--filter').type('\u0950')
     cy.getByTestID('table-row').should('have.length', 1)
   })
 
   it('can change token activation status', () => {
-    // toggle on
+    //toggle on
     cy.getByTestID('table-row')
       .contains('token test 02')
       .parents('[data-testid=table-row]')
@@ -143,10 +143,11 @@ describe('tokens', () => {
         cy.getByTestID('slide-toggle')
           .click()
           .then(() => {
-            // wait for backend to sync
+            //wait for backend to sync
             cy.wait(1000)
 
-            // check for status update on backend
+            //check for status update on backend
+            // @ts-ignore
             cy.request(
               'api/v2/authorizations/' +
                 (authData.find(function(item) {
@@ -172,10 +173,11 @@ describe('tokens', () => {
         cy.getByTestID('slide-toggle')
           .click()
           .then(() => {
-            // wait for backend to sync
+            //wait for backend to sync
             cy.wait(1000)
 
-            // check for status update on backend
+            //check for status update on backend
+            // @ts-ignore
             cy.request(
               'api/v2/authorizations/' +
                 (authData.find(function(item) {
@@ -220,7 +222,7 @@ describe('tokens', () => {
   it('can generate a read/write token', () => {
     cy.getByTestID('table-row').should('have.length', 4)
 
-    // create some extra buckets for filters
+    //create some extra buckets for filters
     cy.get<Organization>('@org').then(({id, name}) => {
       cy.createBucket(id, name, 'Magna Carta').then(() => {
         cy.createBucket(id, name, 'Sicilsky Bull').then(() => {
@@ -234,7 +236,7 @@ describe('tokens', () => {
       cy.getByTestID('dropdown-item generate-token--read-write').click()
       cy.getByTestID('overlay--container').should('be.visible')
 
-      // check cancel
+      //check cancel
       cy.getByTestID('button--cancel').click()
       cy.getByTestID('overlay--container').should('not.be.visible')
       cy.getByTestID('table-row').should('have.length', 4)
@@ -245,7 +247,7 @@ describe('tokens', () => {
       cy.getByTestID('dropdown-item generate-token--read-write').click()
       cy.getByTestID('overlay--container').should('be.visible')
 
-      // Create a token  //todo filters in this or seperate test
+      //Create a token  //todo filters in this or seperate test
       cy.getByTestID('input-field--descr').type('Jeton 01')
       cy.getByTestID('builder-card--body')
         .eq(0)
@@ -261,7 +263,7 @@ describe('tokens', () => {
 
       cy.getByTestID('button--save').click()
 
-      // Verify token
+      //Verify token
       cy.getByTestID('table-row')
         .should('have.length', 5)
         .contains('Jeton 01')
@@ -310,11 +312,11 @@ describe('tokens', () => {
         .contains('token test \u0950')
         .click()
 
-      // title match
+      //title match
       cy.getByTestID('overlay--container').should('be.visible')
       cy.getByTestID('overlay--header').should('contain', 'token test \u0950')
 
-      // summary match
+      //summary match
       cy.getByTestID('permissions-section').should('have.length', 4)
       cy.getByTestID('permissions-section')
         .contains('views')
@@ -329,14 +331,14 @@ describe('tokens', () => {
         .contains('buckets')
         .should('be.visible')
 
-      // copy to clipboard + notification
+      //copy to clipboard + notification
       cy.getByTestID('button-copy').click()
       cy.getByTestID('notification-success').should($msg => {
         expect($msg).to.contain('has been copied to clipboard')
       })
-      // todo check system clipboard
+      //todo check system clipboard
 
-      // close button
+      //close button
       cy.getByTestID('overlay--header').within(() => {
         cy.get('button').click()
       })

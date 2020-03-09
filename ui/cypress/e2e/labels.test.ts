@@ -18,11 +18,11 @@ describe('labels', () => {
 
   function hex2BgColor(hex: string): string {
     hex = hex.replace('#', '')
-    const subvals = hex.match(/.{1,2}/g) as string[]
-    const red: number = parseInt(subvals[0], 16)
-    const green: number = parseInt(subvals[1], 16)
-    const blue: number = parseInt(subvals[2], 16)
-    // background-color: rgb(50, 107, 186);
+    let subvals = hex.match(/.{1,2}/g) as string[]
+    let red: number = parseInt(subvals[0], 16)
+    let green: number = parseInt(subvals[1], 16)
+    let blue: number = parseInt(subvals[2], 16)
+    //background-color: rgb(50, 107, 186);
 
     return `background-color: rgb(${red}, ${green}, ${blue});`
   }
@@ -35,14 +35,14 @@ describe('labels', () => {
 
     cy.getByTestID('table-row').should('have.length', 0)
 
-    // open create - first button
+    //open create - first button
     cy.getByTestID('button-create-initial').click()
 
     cy.getByTestID('overlay--container').within(() => {
       cy.getByTestID('overlay--header')
         .contains('Create Label')
         .should('be.visible')
-      // dismiss
+      //dismiss
       cy.getByTestID('overlay--header')
         .children('button')
         .click()
@@ -50,37 +50,26 @@ describe('labels', () => {
 
     cy.getByTestID('overlay--container').should('not.be.visible')
 
-    // open create 2 - by standard button
+    //open create 2 - by standard button
     cy.getByTestID('button-create').click()
     cy.getByTestID('overlay--container').should('be.visible')
 
-    // cancel
+    //cancel
     cy.getByTestID('create-label-form--cancel').click()
     cy.getByTestID('overlay--container').should('not.be.visible')
     cy.getByTestID('label-card').should('have.length', 0)
 
-    // open create - and proceed with overlay
+    //open create - and proceed with overlay
     cy.getByTestID('button-create-initial').click()
 
-    // Try to save without name (required field) todo - issue 13940
-    // https://github.com/influxdata/influxdb/issues/13940
-    // assert that the button is disabled without any name
-    cy.getByTestID('create-label-form--submit').should('be.disabled')
-    // check to see if warning-text testid exists when input is blank after they type
-    cy.getByTestID('form--element-error').should('not.exist')
-    cy.getByTestID('input-error').should('not.exist')
-    cy.getByTestID('create-label-form--name')
-      .type(newLabelName)
-      .clear()
-    cy.getByTestID('form--element-error').should('exist')
-    cy.getByTestID('input-error').should('exist')
+    //Try to save without name (required field) todo - issue 13940
+    //cy.getByTestID('create-label-form--submit').click()
 
+    //enter name
     cy.getByTestID('create-label-form--name').type(newLabelName)
-    cy.getByTestID('form--element-error').should('not.exist')
-    cy.getByTestID('input-error').should('not.exist')
-    //  enter description
+    //enter description
     cy.getByTestID('create-label-form--description').type(newLabelDescription)
-    // select color
+    //select color
     cy.getByTestID('color-picker--input')
       .invoke('attr', 'value')
       .should('contain', '#326BBA')
@@ -112,7 +101,7 @@ describe('labels', () => {
       .invoke('attr', 'style')
       .should('equal', 'background-color: rgb(255, 210, 85);')
 
-    // clear color select
+    //clear color select
     cy.getByTestID('color-picker--input').clear()
     cy.getByTestID('form--element-error').should(
       'contain',
@@ -122,7 +111,7 @@ describe('labels', () => {
       expect($ie).to.have.class('alert-triangle')
     })
 
-    // Type nonsense string - color input
+    //Type nonsense string - color input
     cy.getByTestID('color-picker--input').type('zzzzzz')
     cy.getByTestID('form--element-error').should(
       'contain',
@@ -132,7 +121,7 @@ describe('labels', () => {
       expect($ie).to.have.class('alert-triangle')
     })
 
-    // feel lucky
+    //feel lucky
     cy.getByTestID('color-picker--randomize').click()
     cy.getByTestID('color-picker--input')
       .invoke('val')
@@ -144,7 +133,7 @@ describe('labels', () => {
           .invoke('attr', 'style')
           .should('equal', hex2BgColor(hex))
       })
-    // enter color
+    //enter color
     cy.getByTestID('color-picker--input').clear()
     cy.getByTestID('color-picker--input').type(newLabelColor)
     cy.getByTestID('color-picker--input')
@@ -158,10 +147,10 @@ describe('labels', () => {
           .should('equal', hex2BgColor(newLabelColor))
       })
 
-    // save
+    //save
     cy.getByTestID('create-label-form--submit').click()
 
-    // verify name, descr, color
+    //verify name, descr, color
     cy.getByTestID('label-card').should('have.length', 1)
     cy.getByTestID('label-card')
       .contains(newLabelName)
@@ -188,16 +177,16 @@ describe('labels', () => {
       "(\u03944) J'entends par attribut ce que l'entendement perçoit d'une substance comme constituant son essence. "
     const newLabelColor = '#B0D0FF'
 
-    //  create label
+    // create label
 
-    cy.get('@org').then(({id}: Organization) => {
+    cy.get<Organization>('@org').then(({id}) => {
       cy.createLabel(oldLabelName, id, {
         description: oldLabelDescription,
         color: oldLabelColor,
       })
     })
 
-    //  verify name, descr, color
+    // verify name, descr, color
     cy.getByTestID('label-card').should('have.length', 1)
     cy.getByTestID('label-card')
       .contains(oldLabelName)
@@ -223,12 +212,12 @@ describe('labels', () => {
       .invoke('text')
       .should('equal', 'Edit Label')
 
-    //  dismiss
+    // dismiss
     cy.getByTestID('overlay--header')
       .children('button')
       .click()
 
-    //  modify
+    // modify
     cy.getByTestID('label-card')
       .contains(oldLabelName)
       .click()
@@ -244,7 +233,7 @@ describe('labels', () => {
       .type(newLabelColor)
     cy.getByTestID('create-label-form--submit').click()
 
-    //  verify name, descr, color
+    // verify name, descr, color
     cy.getByTestID('label-card').should('have.length', 1)
     cy.getByTestID('label-card')
       .contains(newLabelName)
@@ -266,8 +255,8 @@ describe('labels', () => {
       '(\u03945) Per modum intelligo substantiae affectiones sive id quod in alio est, per quod etiam concipitur.'
     const labelColor = '#88AACC'
 
-    // Create labels
-    cy.get('@org').then(({id}: Organization) => {
+    //Create labels
+    cy.get<Organization>('@org').then(({id}) => {
       cy.createLabel(labelName, id, {
         description: labelDescription,
         color: labelColor,
@@ -291,7 +280,7 @@ describe('labels', () => {
   })
 
   it('can sort labels by name', () => {
-    // Create labels
+    //Create labels
     let names: {name: string; description: string; color: string}[] = [
       {name: 'Baboon', description: 'Savanah primate', color: '#FFAA88'},
       {name: 'Chimpanzee', description: 'Pan the forest ape', color: '#445511'},
@@ -301,7 +290,7 @@ describe('labels', () => {
       {name: 'Lemur', description: 'Madagascar primate', color: '#BBBBBB'},
     ]
 
-    cy.get('@org').then(({id}: Organization) => {
+    cy.get<Organization>('@org').then(({id}) => {
       names.forEach(n => {
         cy.createLabel(n.name, id, {description: n.description, color: n.color})
       })
@@ -309,15 +298,15 @@ describe('labels', () => {
 
     cy.reload()
 
-    // set sort of local names
+    //set sort of local names
     names = names.sort((a, b) =>
-      //  eslint-disable-next-line
+      // eslint-disable-next-line
       a.name < b.name ? -1 : a.name > b.name ? 1 : 0
     )
 
-    // Check initial sort asc
+    //Check initial sort asc
     cy.getByTestIDSubStr('label--pill').then(labels => {
-      for (let i = 0; i < labels.length; i++) {
+      for (var i = 0; i < labels.length; i++) {
         cy.getByTestIDSubStr('label--pill')
           .eq(i)
           .should('have.text', names[i].name)
@@ -326,20 +315,20 @@ describe('labels', () => {
 
     cy.getByTestID('sorter--name').click()
 
-    // check sort desc
+    //check sort desc
     cy.getByTestIDSubStr('label--pill').then(labels => {
-      for (let i = 0; i < labels.length; i++) {
+      for (var i = 0; i < labels.length; i++) {
         cy.getByTestIDSubStr('label--pill')
           .eq(i)
           .should('have.text', names[labels.length - (i + 1)].name)
       }
     })
 
-    // reset to asc
+    //reset to asc
     cy.getByTestID('sorter--name').click()
 
     cy.getByTestIDSubStr('label--pill').then(labels => {
-      for (let i = 0; i < labels.length; i++) {
+      for (var i = 0; i < labels.length; i++) {
         cy.getByTestIDSubStr('label--pill')
           .eq(i)
           .should('have.text', names[i].name)
@@ -348,10 +337,10 @@ describe('labels', () => {
   })
 
   it.skip('can sort labels by description', () => {
-    // waiting on issue 13950
+    //waiting on issue 13950
   })
 
   it.skip('can filter labels', () => {
-    // waiting on issue 13930
+    //waiting on issue 13930
   })
 })

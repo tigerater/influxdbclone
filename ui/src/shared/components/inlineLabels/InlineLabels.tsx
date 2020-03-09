@@ -23,7 +23,7 @@ interface Props {
   labels: Label[]
   onRemoveLabel?: (label: Label) => void
   onAddLabel?: (label: Label) => void
-  onCreateLabel?: (label: Label) => void
+  onCreateLabel?: (label: Label) => Promise<void>
   onFilterChange?: (searchTerm: string) => void
 }
 
@@ -78,7 +78,7 @@ export default class InlineLabels extends Component<Props> {
     return this.props.editMode === LabelsEditMode.Editable
   }
 
-  private handleLabelClick = (labelID: string) => {
+  private handleLabelClick = (labelID: string): void => {
     const {onFilterChange, labels} = this.props
 
     const labelName = labels.find(l => l.id === labelID).name
@@ -86,7 +86,7 @@ export default class InlineLabels extends Component<Props> {
     onFilterChange(labelName)
   }
 
-  private handleDeleteLabel = (labelID: string) => {
+  private handleDeleteLabel = (labelID: string): void => {
     const {onRemoveLabel, selectedLabels} = this.props
     const label = selectedLabels.find(label => label.id === labelID)
 

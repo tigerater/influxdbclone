@@ -101,11 +101,11 @@ class RenamablePageTitle extends PureComponent<Props, State> {
     this.setState({isEditing: true})
   }
 
-  private handleStopEditing = e => {
+  private handleStopEditing = async (e): Promise<void> => {
     const {workingName} = this.state
     const {onRename, onClickOutside} = this.props
 
-    onRename(workingName)
+    await onRename(workingName)
 
     if (onClickOutside) {
       onClickOutside(e)
@@ -118,12 +118,14 @@ class RenamablePageTitle extends PureComponent<Props, State> {
     this.setState({workingName: e.target.value})
   }
 
-  private handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+  private handleKeyDown = async (
+    e: KeyboardEvent<HTMLInputElement>
+  ): Promise<void> => {
     const {onRename, name} = this.props
     const {workingName} = this.state
 
     if (e.key === 'Enter') {
-      onRename(workingName)
+      await onRename(workingName)
       this.setState({isEditing: false})
     }
 

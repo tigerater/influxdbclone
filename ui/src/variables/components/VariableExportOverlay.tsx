@@ -31,7 +31,7 @@ interface StateProps {
 type Props = OwnProps & StateProps & DispatchProps & WithRouterProps
 
 class VariableExportOverlay extends PureComponent<Props> {
-  public componentDidMount() {
+  public async componentDidMount() {
     const {
       params: {id},
       convertToTemplate,

@@ -128,11 +128,11 @@ class TaskImportFromTemplateOverlay extends PureComponent<
     router.goBack()
   }
 
-  private onSubmit = () => {
+  private onSubmit = async (): Promise<void> => {
     const {createTaskFromTemplate} = this.props
     const taskTemplate = this.state.selectedTemplate as TaskTemplate
 
-    createTaskFromTemplate(taskTemplate)
+    await createTaskFromTemplate(taskTemplate)
     this.onDismiss()
   }
 }

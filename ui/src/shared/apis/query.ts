@@ -121,7 +121,9 @@ const processSuccessResponse = async (
   }
 }
 
-const processRateLimitResponse = (response: Response): RunQueryLimitResult => {
+const processRateLimitResponse = async (
+  response: Response
+): Promise<RunQueryLimitResult> => {
   const retryAfter = response.headers.get('Retry-After')
 
   return {

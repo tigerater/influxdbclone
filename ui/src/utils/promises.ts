@@ -3,12 +3,14 @@ import {CancelBox} from 'src/types/promises'
 export const makeCancelable = <T>(promise: Promise<T>): CancelBox<T> => {
   let isCanceled = false
 
-  const wrappedPromise = new Promise<T>((resolve, reject) => {
+  const wrappedPromise = new Promise<T>(async (resolve, reject) => {
     try {
+      const value = await promise
+
       if (isCanceled) {
         reject({isCanceled})
       } else {
-        resolve(promise)
+        resolve(value)
       }
     } catch (error) {
       if (isCanceled) {
