@@ -160,6 +160,9 @@ describe('Dashboard', () => {
           cy.window()
             .pipe(getSelectedVariable(dashboard.id, variable.id))
             .should('equal', secondKey)
+
+          // graph tips responds to mouse over
+          cy.getByTestID('graphtips-question-mark').click()
         })
       })
     })
