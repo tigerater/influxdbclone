@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/BurntSushi/toml"
 	"github.com/influxdata/influxdb"
 	"gopkg.in/yaml.v3"
 )
@@ -134,8 +135,9 @@ type Pkg struct {
 
 	mLabels     map[string]*label
 	mBuckets    map[string]*bucket
-	mDashboards map[string]*dashboard
+	mDashboards []*dashboard
 	mVariables  map[string]*variable
+	mTelegrafs  []*telegraf
 
 	isVerified bool // dry run has verified pkg resources with existing resources
 	isParsed   bool // indicates the pkg has been parsed and all resources graphed accordingly
@@ -165,6 +167,10 @@ func (p *Pkg) Summary() Summary {
 			LabelName:    m.LabelName,
 			LabelMapping: m.LabelMapping,
 		})
+	}
+
+	for _, t := range p.telegrafs() {
+		sum.TelegrafConfigs = append(sum.TelegrafConfigs, t.summarize())
 	}
 
 	for _, v := range p.variables() {
@@ -231,37 +237,32 @@ func (p *Pkg) buckets() []*bucket {
 		buckets = append(buckets, b)
 	}
 
-	sort.Slice(buckets, func(i, j int) bool {
-		return buckets[i].Name < buckets[j].Name
-	})
+	sort.Slice(buckets, func(i, j int) bool { return buckets[i].name < buckets[j].name })
 
 	return buckets
 }
 
 func (p *Pkg) labels() []*label {
-	labels := make([]*label, 0, len(p.mLabels))
+	labels := make(sortedLogos, 0, len(p.mLabels))
 	for _, b := range p.mLabels {
 		labels = append(labels, b)
 	}
 
-	sort.Slice(labels, func(i, j int) bool {
-		return labels[i].Name < labels[j].Name
-	})
+	sort.Sort(labels)
 
 	return labels
 }
 
 func (p *Pkg) dashboards() []*dashboard {
-	dashes := make([]*dashboard, 0, len(p.mDashboards))
-	for _, d := range p.mDashboards {
-		dashes = append(dashes, d)
-	}
-
-	sort.Slice(dashes, func(i, j int) bool {
-		return dashes[i].Name < dashes[j].Name
-	})
-
+	dashes := p.mDashboards[:]
+	sort.Slice(dashes, func(i, j int) bool { return dashes[i].name < dashes[j].name })
 	return dashes
+}
+
+func (p *Pkg) telegrafs() []*telegraf {
+	teles := p.mTelegrafs[:]
+	sort.Slice(teles, func(i, j int) bool { return teles[i].Name() < teles[j].Name() })
+	return teles
 }
 
 func (p *Pkg) variables() []*variable {
@@ -270,9 +271,7 @@ func (p *Pkg) variables() []*variable {
 		vars = append(vars, v)
 	}
 
-	sort.Slice(vars, func(i, j int) bool {
-		return vars[i].Name < vars[j].Name
-	})
+	sort.Slice(vars, func(i, j int) bool { return vars[i].name < vars[j].name })
 
 	return vars
 }
@@ -382,6 +381,7 @@ func (p *Pkg) graphResources() error {
 		p.graphVariables,
 		p.graphBuckets,
 		p.graphDashboards,
+		p.graphTelegrafs,
 	}
 
 	var pErr parseErr
@@ -408,14 +408,7 @@ func (p *Pkg) graphResources() error {
 
 func (p *Pkg) graphBuckets() error {
 	p.mBuckets = make(map[string]*bucket)
-	return p.eachResource(KindBucket, func(r Resource) []validationErr {
-		if r.Name() == "" {
-			return []validationErr{{
-				Field: "name",
-				Msg:   "must be a string of at least 2 chars in length",
-			}}
-		}
-
+	return p.eachResource(KindBucket, 2, func(r Resource) []validationErr {
 		if _, ok := p.mBuckets[r.Name()]; ok {
 			return []validationErr{{
 				Field: "name",
@@ -424,7 +417,7 @@ func (p *Pkg) graphBuckets() error {
 		}
 
 		bkt := &bucket{
-			Name:        r.Name(),
+			name:        r.Name(),
 			Description: r.stringShort(fieldDescription),
 		}
 		if rules, ok := r[fieldBucketRetentionRules].(retentionRules); ok {
@@ -440,12 +433,10 @@ func (p *Pkg) graphBuckets() error {
 
 		failures := p.parseNestedLabels(r, func(l *label) error {
 			bkt.labels = append(bkt.labels, l)
-			p.mLabels[l.Name].setBucketMapping(bkt, false)
+			p.mLabels[l.Name()].setMapping(bkt, false)
 			return nil
 		})
-		sort.Slice(bkt.labels, func(i, j int) bool {
-			return bkt.labels[i].Name < bkt.labels[j].Name
-		})
+		sort.Sort(bkt.labels)
 
 		p.mBuckets[r.Name()] = bkt
 
@@ -455,14 +446,7 @@ func (p *Pkg) graphBuckets() error {
 
 func (p *Pkg) graphLabels() error {
 	p.mLabels = make(map[string]*label)
-	return p.eachResource(KindLabel, func(r Resource) []validationErr {
-		if r.Name() == "" {
-			return []validationErr{{
-				Field: "name",
-				Msg:   "must be a string of at least 2 chars in length",
-			}}
-		}
-
+	return p.eachResource(KindLabel, 2, func(r Resource) []validationErr {
 		if _, ok := p.mLabels[r.Name()]; ok {
 			return []validationErr{{
 				Field: "name",
@@ -470,7 +454,7 @@ func (p *Pkg) graphLabels() error {
 			}}
 		}
 		p.mLabels[r.Name()] = &label{
-			Name:        r.Name(),
+			name:        r.Name(),
 			Color:       r.stringShort(fieldLabelColor),
 			Description: r.stringShort(fieldDescription),
 		}
@@ -480,28 +464,19 @@ func (p *Pkg) graphLabels() error {
 }
 
 func (p *Pkg) graphDashboards() error {
-	p.mDashboards = make(map[string]*dashboard)
-	return p.eachResource(KindDashboard, func(r Resource) []validationErr {
-		if r.Name() == "" {
-			return []validationErr{{
-				Field: "name",
-				Msg:   "must be a string of at least 2 chars in length",
-			}}
-		}
-
+	p.mDashboards = make([]*dashboard, 0)
+	return p.eachResource(KindDashboard, 2, func(r Resource) []validationErr {
 		dash := &dashboard{
-			Name:        r.Name(),
+			name:        r.Name(),
 			Description: r.stringShort(fieldDescription),
 		}
 
 		failures := p.parseNestedLabels(r, func(l *label) error {
 			dash.labels = append(dash.labels, l)
-			p.mLabels[l.Name].setDashboardMapping(dash)
+			p.mLabels[l.Name()].setMapping(dash, false)
 			return nil
 		})
-		sort.Slice(dash.labels, func(i, j int) bool {
-			return dash.labels[i].Name < dash.labels[j].Name
-		})
+		sort.Sort(dash.labels)
 
 		for i, cr := range r.slcResource(fieldDashCharts) {
 			ch, fails := parseChart(cr)
@@ -516,7 +491,7 @@ func (p *Pkg) graphDashboards() error {
 			dash.Charts = append(dash.Charts, ch)
 		}
 
-		p.mDashboards[r.Name()] = dash
+		p.mDashboards = append(p.mDashboards, dash)
 
 		return failures
 	})
@@ -524,14 +499,7 @@ func (p *Pkg) graphDashboards() error {
 
 func (p *Pkg) graphVariables() error {
 	p.mVariables = make(map[string]*variable)
-	return p.eachResource(KindVariable, func(r Resource) []validationErr {
-		if r.Name() == "" {
-			return []validationErr{{
-				Field: "name",
-				Msg:   "must be provided",
-			}}
-		}
-
+	return p.eachResource(KindVariable, 1, func(r Resource) []validationErr {
 		if _, ok := p.mVariables[r.Name()]; ok {
 			return []validationErr{{
 				Field: "name",
@@ -540,7 +508,7 @@ func (p *Pkg) graphVariables() error {
 		}
 
 		newVar := &variable{
-			Name:        r.Name(),
+			name:        r.Name(),
 			Description: r.stringShort(fieldDescription),
 			Type:        strings.ToLower(r.stringShort(fieldType)),
 			Query:       strings.TrimSpace(r.stringShort(fieldQuery)),
@@ -551,12 +519,11 @@ func (p *Pkg) graphVariables() error {
 
 		failures := p.parseNestedLabels(r, func(l *label) error {
 			newVar.labels = append(newVar.labels, l)
-			p.mLabels[l.Name].setVariableMapping(newVar, false)
+			p.mLabels[l.Name()].setMapping(newVar, false)
+			//p.mLabels[l.Name()].setVariableMapping(newVar, false)
 			return nil
 		})
-		sort.Slice(newVar.labels, func(i, j int) bool {
-			return newVar.labels[i].Name < newVar.labels[j].Name
-		})
+		sort.Sort(newVar.labels)
 
 		p.mVariables[r.Name()] = newVar
 
@@ -564,7 +531,34 @@ func (p *Pkg) graphVariables() error {
 	})
 }
 
-func (p *Pkg) eachResource(resourceKind Kind, fn func(r Resource) []validationErr) error {
+func (p *Pkg) graphTelegrafs() error {
+	p.mTelegrafs = make([]*telegraf, 0)
+	return p.eachResource(KindTelegraf, 0, func(r Resource) []validationErr {
+		tele := new(telegraf)
+		failures := p.parseNestedLabels(r, func(l *label) error {
+			tele.labels = append(tele.labels, l)
+			p.mLabels[l.Name()].setMapping(tele, false)
+			return nil
+		})
+		sort.Sort(tele.labels)
+
+		cfgBytes := []byte(r.stringShort(fieldTelegrafConfig))
+		if err := toml.Unmarshal(cfgBytes, &tele.config); err != nil {
+			failures = append(failures, validationErr{
+				Field: fieldTelegrafConfig,
+				Msg:   err.Error(),
+			})
+		}
+		tele.config.Name = r.Name()
+		tele.config.Description = r.stringShort(fieldDescription)
+
+		p.mTelegrafs = append(p.mTelegrafs, tele)
+
+		return failures
+	})
+}
+
+func (p *Pkg) eachResource(resourceKind Kind, minNameLen int, fn func(r Resource) []validationErr) error {
 	var pErr parseErr
 	for i, r := range p.Spec.Resources {
 		k, err := r.kind()
@@ -582,6 +576,20 @@ func (p *Pkg) eachResource(resourceKind Kind, fn func(r Resource) []validationEr
 			continue
 		}
 		if !k.is(resourceKind) {
+			continue
+		}
+
+		if len(r.Name()) < minNameLen {
+			pErr.append(resourceErr{
+				Kind: k.String(),
+				Idx:  intPtr(i),
+				ValidationErrs: []validationErr{
+					{
+						Field: "name",
+						Msg:   fmt.Sprintf("must be a string of at least %d chars in length", minNameLen),
+					},
+				},
+			})
 			continue
 		}
 
@@ -619,10 +627,10 @@ func (p *Pkg) parseNestedLabels(r Resource, fn func(lb *label) error) []validati
 	var failures []validationErr
 	for i, nr := range r.slcResource(fieldAssociations) {
 		fail := p.parseNestedLabel(nr, func(l *label) error {
-			if _, ok := nestedLabels[l.Name]; ok {
-				return fmt.Errorf("duplicate nested label: %q", l.Name)
+			if _, ok := nestedLabels[l.Name()]; ok {
+				return fmt.Errorf("duplicate nested label: %q", l.Name())
 			}
-			nestedLabels[l.Name] = l
+			nestedLabels[l.Name()] = l
 
 			return fn(l)
 		})

@@ -443,6 +443,12 @@ export const timeMachineReducer = (
       return setViewProperties(state, {position})
     }
 
+    case 'SET_LINE_POSITION': {
+      const {position} = action.payload
+
+      return setViewProperties(state, {position})
+    }
+
     case 'SET_BIN_COUNT': {
       const {binCount} = action.payload
 
@@ -1097,7 +1103,10 @@ const initialQueryBuilderState = (
     bucketsStatus: RemoteDataState.NotStarted,
     functions: [],
     aggregateWindow: {period: 'auto'},
-    tags: initialStateHelper().queryBuilder.tags,
+    tags: builderConfig.tags.map(() => {
+      const [defaultTag] = initialStateHelper().queryBuilder.tags
+      return defaultTag
+    }),
   }
 }
 
