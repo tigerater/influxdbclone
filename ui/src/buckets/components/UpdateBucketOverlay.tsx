@@ -4,7 +4,7 @@ import {withRouter, WithRouterProps} from 'react-router'
 import {connect} from 'react-redux'
 
 // Components
-import {Overlay} from '@influxdata/clockface'
+import {Overlay, ComponentStatus} from '@influxdata/clockface'
 import BucketOverlayForm from 'src/buckets/components/BucketOverlayForm'
 
 // Actions
@@ -18,7 +18,9 @@ import {AppState, Bucket} from 'src/types'
 
 interface State {
   bucket: Bucket
+  nameErrorMessage: string
   ruleType: 'expire'
+  nameInputStatus: ComponentStatus
 }
 
 interface StateProps {
@@ -40,11 +42,13 @@ class UpdateBucketOverlay extends PureComponent<Props, State> {
     this.state = {
       ruleType: this.ruleType(bucket),
       bucket,
+      nameInputStatus: ComponentStatus.Default,
+      nameErrorMessage: '',
     }
   }
 
   public render() {
-    const {bucket, ruleType} = this.state
+    const {bucket, nameErrorMessage, ruleType} = this.state
 
     return (
       <Overlay visible={true}>
@@ -56,8 +60,9 @@ class UpdateBucketOverlay extends PureComponent<Props, State> {
               buttonText="Save Changes"
               ruleType={ruleType}
               onCloseModal={this.handleClose}
+              nameErrorMessage={nameErrorMessage}
               onSubmit={this.handleSubmit}
-              disableRenaming={true}
+              nameInputStatus={ComponentStatus.Disabled}
               onChangeInput={this.handleChangeInput}
               retentionSeconds={this.retentionSeconds}
               onChangeRuleType={this.handleChangeRuleType}
@@ -122,7 +127,19 @@ class UpdateBucketOverlay extends PureComponent<Props, State> {
     const key = e.target.name
     const bucket = {...this.state.bucket, [key]: value}
 
-    this.setState({bucket})
+    if (!value) {
+      return this.setState({
+        bucket,
+        nameInputStatus: ComponentStatus.Error,
+        nameErrorMessage: `Bucket ${key} cannot be empty`,
+      })
+    }
+
+    this.setState({
+      bucket,
+      nameInputStatus: ComponentStatus.Valid,
+      nameErrorMessage: '',
+    })
   }
 
   private handleClose = () => {

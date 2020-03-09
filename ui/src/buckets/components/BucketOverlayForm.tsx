@@ -8,7 +8,6 @@ import Retention from 'src/buckets/components/Retention'
 
 // Constants
 import {MIN_RETENTION_SECONDS} from 'src/buckets/constants'
-import {isSystemBucket} from 'src/buckets/constants/index'
 
 // Types
 import {
@@ -19,6 +18,7 @@ import {
 
 interface Props {
   name: string
+  nameErrorMessage: string
   retentionSeconds: number
   ruleType: 'expire'
   onSubmit: (e: FormEvent<HTMLFormElement>) => void
@@ -26,7 +26,7 @@ interface Props {
   onChangeRetentionRule: (seconds: number) => void
   onChangeRuleType: (t: 'expire') => void
   onChangeInput: (e: ChangeEvent<HTMLInputElement>) => void
-  disableRenaming: boolean
+  nameInputStatus: ComponentStatus
   buttonText: string
 }
 
@@ -37,38 +37,34 @@ export default class BucketOverlayForm extends PureComponent<Props> {
       onSubmit,
       ruleType,
       buttonText,
+      nameErrorMessage,
       retentionSeconds,
-      disableRenaming,
+      nameInputStatus,
       onCloseModal,
       onChangeInput,
       onChangeRuleType,
       onChangeRetentionRule,
     } = this.props
 
-    const nameInputStatus = disableRenaming && ComponentStatus.Disabled
-
     return (
       <Form onSubmit={onSubmit}>
         <Grid>
           <Grid.Row>
             <Grid.Column>
-              <Form.ValidationElement
-                value={name}
+              <Form.Element
                 label="Name"
+                errorMessage={nameErrorMessage}
                 helpText={this.nameHelpText}
-                validationFunc={this.handleNameValidation}
               >
-                {status => (
-                  <Input
-                    status={nameInputStatus || status}
-                    placeholder="Give your bucket a name"
-                    name="name"
-                    autoFocus={true}
-                    value={name}
-                    onChange={onChangeInput}
-                  />
-                )}
-              </Form.ValidationElement>
+                <Input
+                  placeholder="Give your bucket a name"
+                  name="name"
+                  autoFocus={true}
+                  value={name}
+                  onChange={onChangeInput}
+                  status={nameInputStatus}
+                />
+              </Form.Element>
               <Form.Element
                 label="Delete data older than"
                 errorMessage={this.ruleErrorMessage}
@@ -104,24 +100,12 @@ export default class BucketOverlayForm extends PureComponent<Props> {
     )
   }
 
-  private handleNameValidation = (name: string): string | null => {
-    if (isSystemBucket(name)) {
-      return 'Only system bucket names can begin with _'
-    }
-
-    if (!name) {
-      return 'This bucket needs a name'
-    }
-
-    return null
-  }
-
   private get nameHelpText(): string {
-    if (this.props.disableRenaming) {
-      return 'To rename the bucket use the RENAME button. Bucket renaming is not allowed here.'
+    if (this.props.nameInputStatus !== ComponentStatus.Disabled) {
+      return ''
     }
 
-    return ''
+    return 'To rename the bucket use the rename button. Bucket renaming is not allowed here.'
   }
 
   private get submitButtonColor(): ComponentColor {
@@ -136,9 +120,10 @@ export default class BucketOverlayForm extends PureComponent<Props> {
 
   private get submitButtonStatus(): ComponentStatus {
     const {name} = this.props
-    const nameHasErrors = this.handleNameValidation(name)
 
-    if (nameHasErrors || this.retentionIsTooShort) {
+    const nameEmpty = name === ''
+
+    if (nameEmpty || this.retentionIsTooShort) {
       return ComponentStatus.Disabled
     }
 
