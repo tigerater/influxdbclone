@@ -293,7 +293,7 @@ func authorizationCreateF(cmd *cobra.Command, args []string) error {
 	}
 
 	if userName := authorizationCreateFlags.user; userName != "" {
-		userSvc, err := newUserService()
+		userSvc, err := newUserService(flags)
 		if err != nil {
 			return err
 		}
@@ -374,9 +374,8 @@ func newAuthorizationService(f Flags) (platform.AuthorizationService, error) {
 		return newLocalKVService()
 	}
 	return &http.AuthorizationService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}, nil
 }
 

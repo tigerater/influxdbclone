@@ -635,34 +635,35 @@ func (v *variable) influxVarArgs() *influxdb.VariableArguments {
 	return args
 }
 
-func (v *variable) valid() []ValidationErr {
-	var failures []ValidationErr
+func (v *variable) valid() []failure {
+	var failures []failure
 	switch v.Type {
 	case "map":
 		if len(v.MapValues) == 0 {
-			failures = append(failures, ValidationErr{
+			failures = append(failures, failure{
 				Field: "values",
 				Msg:   "map variable must have at least 1 key/val pair",
 			})
 		}
 	case "constant":
 		if len(v.ConstValues) == 0 {
-			failures = append(failures, ValidationErr{
+			failures = append(failures, failure{
 				Field: "values",
 				Msg:   "constant variable must have a least 1 value provided",
 			})
 		}
 	case "query":
 		if v.Query == "" {
-			failures = append(failures, ValidationErr{
+			failures = append(failures, failure{
 				Field: "query",
 				Msg:   "query variable must provide a query string",
 			})
 		}
 		if v.Language != "influxql" && v.Language != "flux" {
-			failures = append(failures, ValidationErr{
+			const msgFmt = "query variable language must be either %q or %q; got %q"
+			failures = append(failures, failure{
 				Field: "language",
-				Msg:   fmt.Sprintf(`query variable language must be either "influxql" or "flux"; got %q`, v.Language),
+				Msg:   fmt.Sprintf(msgFmt, "influxql", "flux", v.Language),
 			})
 		}
 	}
@@ -732,7 +733,6 @@ const (
 	fieldChartYCol          = "yCol"
 	fieldChartYPos          = "yPos"
 	fieldChartBinSize       = "binSize"
-	fieldChartDomain        = "domain"
 )
 
 type chart struct {
@@ -750,10 +750,12 @@ type chart struct {
 	Queries         queries
 	Axes            axes
 	Geom            string
-	XCol, YCol      string
-	XPos, YPos      int
-	Height, Width   int
-	BinSize         int
+
+	XCol, YCol    string
+	XPos, YPos    int
+	Height, Width int
+
+	BinSize int
 }
 
 func (c chart) properties() influxdb.ViewProperties {
@@ -773,6 +775,7 @@ func (c chart) properties() influxdb.ViewProperties {
 			ShowNoteWhenEmpty: c.NoteOnEmpty,
 		}
 	case chartKindHeatMap:
+		ia := c.Axes.influxAxes()
 		return influxdb.HeatmapViewProperties{
 			Type:              influxdb.ViewPropertyTypeHeatMap,
 			Queries:           c.Queries.influxDashQueries(),
@@ -780,14 +783,12 @@ func (c chart) properties() influxdb.ViewProperties {
 			BinSize:           int32(c.BinSize),
 			XColumn:           c.XCol,
 			YColumn:           c.YCol,
-			XDomain:           c.Axes.get("x").Domain,
-			YDomain:           c.Axes.get("y").Domain,
-			XPrefix:           c.Axes.get("x").Prefix,
-			YPrefix:           c.Axes.get("y").Prefix,
-			XSuffix:           c.Axes.get("x").Suffix,
-			YSuffix:           c.Axes.get("y").Suffix,
-			XAxisLabel:        c.Axes.get("x").Label,
-			YAxisLabel:        c.Axes.get("y").Label,
+			XAxisLabel:        ia["x"].Label,
+			XPrefix:           ia["x"].Prefix,
+			XSuffix:           ia["x"].Suffix,
+			YAxisLabel:        ia["y"].Label,
+			YPrefix:           ia["y"].Prefix,
+			YSuffix:           ia["y"].Suffix,
 			Note:              c.Note,
 			ShowNoteWhenEmpty: c.NoteOnEmpty,
 		}
@@ -797,20 +798,19 @@ func (c chart) properties() influxdb.ViewProperties {
 			Note: c.Note,
 		}
 	case chartKindScatter:
+		ia := c.Axes.influxAxes()
 		return influxdb.ScatterViewProperties{
 			Type:              influxdb.ViewPropertyTypeScatter,
 			Queries:           c.Queries.influxDashQueries(),
 			ViewColors:        c.Colors.strings(),
 			XColumn:           c.XCol,
 			YColumn:           c.YCol,
-			XDomain:           c.Axes.get("x").Domain,
-			YDomain:           c.Axes.get("y").Domain,
-			XPrefix:           c.Axes.get("x").Prefix,
-			YPrefix:           c.Axes.get("y").Prefix,
-			XSuffix:           c.Axes.get("x").Suffix,
-			YSuffix:           c.Axes.get("y").Suffix,
-			XAxisLabel:        c.Axes.get("x").Label,
-			YAxisLabel:        c.Axes.get("y").Label,
+			XAxisLabel:        ia["x"].Label,
+			XPrefix:           ia["x"].Prefix,
+			XSuffix:           ia["x"].Suffix,
+			YAxisLabel:        ia["y"].Label,
+			YPrefix:           ia["y"].Prefix,
+			YSuffix:           ia["y"].Suffix,
 			Note:              c.Note,
 			ShowNoteWhenEmpty: c.NoteOnEmpty,
 		}
@@ -866,19 +866,20 @@ func (c chart) properties() influxdb.ViewProperties {
 	}
 }
 
-func (c chart) validProperties() []ValidationErr {
+func (c chart) validProperties() []failure {
 	if c.Kind == chartKindMarkdown {
 		// at the time of writing, there's nothing to validate for markdown types
 		return nil
 	}
 
-	var fails []ValidationErr
+	var fails []failure
 
-	validatorFns := []func() []ValidationErr{
+	validatorFns := []func() []failure{
 		c.validBaseProps,
 		c.Queries.valid,
 		c.Colors.valid,
 	}
+
 	for _, validatorFn := range validatorFns {
 		fails = append(fails, validatorFn()...)
 	}
@@ -911,13 +912,13 @@ var geometryTypes = map[string]bool{
 	"bar":     true,
 }
 
-func validGeometry(geom string) []ValidationErr {
+func validGeometry(geom string) []failure {
 	if !geometryTypes[geom] {
 		msg := "type not found"
 		if geom != "" {
 			msg = "type provided is not supported"
 		}
-		return []ValidationErr{{
+		return []failure{{
 			Field: "geom",
 			Msg:   fmt.Sprintf("%s: %q", msg, geom),
 		}}
@@ -926,17 +927,17 @@ func validGeometry(geom string) []ValidationErr {
 	return nil
 }
 
-func (c chart) validBaseProps() []ValidationErr {
-	var fails []ValidationErr
+func (c chart) validBaseProps() []failure {
+	var fails []failure
 	if c.Width <= 0 {
-		fails = append(fails, ValidationErr{
+		fails = append(fails, failure{
 			Field: "width",
 			Msg:   "must be greater than 0",
 		})
 	}
 
 	if c.Height <= 0 {
-		fails = append(fails, ValidationErr{
+		fails = append(fails, failure{
 			Field: "height",
 			Msg:   "must be greater than 0",
 		})
@@ -1008,16 +1009,16 @@ func (c colors) strings() []string {
 // TODO: looks like much of these are actually getting defaults in
 //  the UI. looking at sytem charts, seeign lots of failures for missing
 //  color types or no colors at all.
-func (c colors) hasTypes(types ...string) []ValidationErr {
+func (c colors) hasTypes(types ...string) []failure {
 	tMap := make(map[string]bool)
 	for _, cc := range c {
 		tMap[cc.Type] = true
 	}
 
-	var failures []ValidationErr
+	var failures []failure
 	for _, t := range types {
 		if !tMap[t] {
-			failures = append(failures, ValidationErr{
+			failures = append(failures, failure{
 				Field: "colors",
 				Msg:   fmt.Sprintf("type not found: %q", t),
 			})
@@ -1027,21 +1028,14 @@ func (c colors) hasTypes(types ...string) []ValidationErr {
 	return failures
 }
 
-func (c colors) valid() []ValidationErr {
-	var fails []ValidationErr
+func (c colors) valid() []failure {
+	var fails []failure
 	for i, cc := range c {
-		cErr := ValidationErr{
-			Field: "colors",
-			Index: intPtr(i),
-		}
 		if cc.Hex == "" {
-			cErr.Nested = append(cErr.Nested, ValidationErr{
-				Field: "hex",
+			fails = append(fails, failure{
+				Field: fmt.Sprintf("colors[%d].hex", i),
 				Msg:   "a color must have a hex value provided",
 			})
-		}
-		if len(cErr.Nested) > 0 {
-			fails = append(fails, cErr)
 		}
 	}
 
@@ -1068,28 +1062,21 @@ func (q queries) influxDashQueries() []influxdb.DashboardQuery {
 	return iQueries
 }
 
-func (q queries) valid() []ValidationErr {
-	var fails []ValidationErr
+func (q queries) valid() []failure {
+	var fails []failure
 	if len(q) == 0 {
-		fails = append(fails, ValidationErr{
+		fails = append(fails, failure{
 			Field: "queries",
 			Msg:   "at least 1 query must be provided",
 		})
 	}
 
 	for i, qq := range q {
-		qErr := ValidationErr{
-			Field: "queries",
-			Index: intPtr(i),
-		}
 		if qq.Query == "" {
-			qErr.Nested = append(fails, ValidationErr{
-				Field: "query",
+			fails = append(fails, failure{
+				Field: fmt.Sprintf("queries[%d].query", i),
 				Msg:   "a query must be provided",
 			})
-		}
-		if len(qErr.Nested) > 0 {
-			fails = append(fails, qErr)
 		}
 	}
 
@@ -1103,25 +1090,15 @@ const (
 )
 
 type axis struct {
-	Base   string    `json:"base,omitempty" yaml:"base,omitempty"`
-	Label  string    `json:"label,omitempty" yaml:"label,omitempty"`
-	Name   string    `json:"name,omitempty" yaml:"name,omitempty"`
-	Prefix string    `json:"prefix,omitempty" yaml:"prefix,omitempty"`
-	Scale  string    `json:"scale,omitempty" yaml:"scale,omitempty"`
-	Suffix string    `json:"suffix,omitempty" yaml:"suffix,omitempty"`
-	Domain []float64 `json:"domain,omitempty" yaml:"domain,omitempty"`
+	Base   string `json:"base,omitempty" yaml:"base,omitempty"`
+	Label  string `json:"label,omitempty" yaml:"label,omitempty"`
+	Name   string `json:"name,omitempty" yaml:"name,omitempty"`
+	Prefix string `json:"prefix,omitempty" yaml:"prefix,omitempty"`
+	Scale  string `json:"scale,omitempty" yaml:"scale,omitempty"`
+	Suffix string `json:"suffix,omitempty" yaml:"suffix,omitempty"`
 }
 
 type axes []axis
-
-func (a axes) get(name string) axis {
-	for _, ax := range a {
-		if name == ax.Name {
-			return ax
-		}
-	}
-	return axis{}
-}
 
 func (a axes) influxAxes() map[string]influxdb.Axis {
 	m := make(map[string]influxdb.Axis)
@@ -1138,16 +1115,16 @@ func (a axes) influxAxes() map[string]influxdb.Axis {
 	return m
 }
 
-func (a axes) hasAxes(expectedAxes ...string) []ValidationErr {
+func (a axes) hasAxes(expectedAxes ...string) []failure {
 	mAxes := make(map[string]bool)
 	for _, ax := range a {
 		mAxes[ax.Name] = true
 	}
 
-	var failures []ValidationErr
+	var failures []failure
 	for _, expected := range expectedAxes {
 		if !mAxes[expected] {
-			failures = append(failures, ValidationErr{
+			failures = append(failures, failure{
 				Field: "axes",
 				Msg:   fmt.Sprintf("axis not found: %q", expected),
 			})
@@ -1179,8 +1156,4 @@ func flt64Ptr(f float64) *float64 {
 		return &f
 	}
 	return nil
-}
-
-func intPtr(i int) *int {
-	return &i
 }

@@ -34,15 +34,13 @@
                   "name": "x",
                   "label": "x_label",
                   "prefix": "x_prefix",
-                  "suffix": "x_suffix",
-                  "domain": [0, 10]
+                  "suffix": "x_suffix"
                 },
                 {
                   "name": "y",
                   "label": "y_label",
                   "prefix": "y_prefix",
-                  "suffix": "y_suffix",
-                  "domain": [0, 100]
+                  "suffix": "y_suffix"
                 }
               ],
               "colors": [

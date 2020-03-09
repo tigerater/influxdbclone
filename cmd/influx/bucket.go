@@ -52,9 +52,8 @@ func newBucketService(f Flags) (platform.BucketService, error) {
 		return newLocalKVService()
 	}
 	return &http.BucketService{
-		Addr:               f.host,
-		Token:              f.token,
-		InsecureSkipVerify: f.skipVerify,
+		Addr:  f.host,
+		Token: f.token,
 	}, nil
 }
 

@@ -48,9 +48,8 @@ func newOrganizationService(f Flags) (platform.OrganizationService, error) {
 		return newLocalKVService()
 	}
 	return &http.OrganizationService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}, nil
 }
 
@@ -309,7 +308,7 @@ func organizationMembersListF(cmd *cobra.Command, args []string) error {
 		ResourceType: platform.OrgsResourceType,
 		ResourceID:   organization.ID,
 		UserType:     platform.Member,
-	})
+	}, flags)
 }
 
 func init() {
@@ -380,7 +379,7 @@ func organizationMembersAddF(cmd *cobra.Command, args []string) error {
 		MappingType:  platform.UserMappingType,
 		UserID:       memberID,
 		UserType:     platform.Member,
-	})
+	}, flags)
 }
 
 func init() {
@@ -447,7 +446,7 @@ func organizationMembersRemoveF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to decode member id %s: %v", organizationMembersRemoveFlags.memberID, err)
 	}
 
-	return membersRemoveF(ctx, organization.ID, memberID)
+	return membersRemoveF(ctx, organization.ID, memberID, flags)
 }
 
 func init() {

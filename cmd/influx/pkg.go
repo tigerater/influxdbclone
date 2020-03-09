@@ -125,9 +125,8 @@ func newDashboardService(f Flags) (influxdb.DashboardService, error) {
 		return newLocalKVService()
 	}
 	return &http.DashboardService{
-		Addr:               f.host,
-		Token:              f.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  f.host,
+		Token: f.token,
 	}, nil
 }
 
@@ -136,9 +135,8 @@ func newLabelService(f Flags) (influxdb.LabelService, error) {
 		return newLocalKVService()
 	}
 	return &http.LabelService{
-		Addr:               f.host,
-		Token:              f.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  f.host,
+		Token: f.token,
 	}, nil
 }
 
@@ -147,9 +145,8 @@ func newVariableService(f Flags) (influxdb.VariableService, error) {
 		return newLocalKVService()
 	}
 	return &http.VariableService{
-		Addr:               f.host,
-		Token:              f.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  f.host,
+		Token: f.token,
 	}, nil
 }
 
