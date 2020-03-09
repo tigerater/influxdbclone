@@ -189,7 +189,6 @@ func (s *Service) findBucketByName(ctx context.Context, tx Tx, orgID influxdb.ID
 				Name:            influxdb.TasksSystemBucketName,
 				RetentionPeriod: influxdb.TasksSystemBucketRetention,
 				Description:     "System bucket for task logs",
-				OrgID:           orgID,
 			}, nil
 		case influxdb.MonitoringSystemBucketName:
 			return &influxdb.Bucket{
@@ -198,7 +197,6 @@ func (s *Service) findBucketByName(ctx context.Context, tx Tx, orgID influxdb.ID
 				Name:            influxdb.MonitoringSystemBucketName,
 				RetentionPeriod: influxdb.MonitoringSystemBucketRetention,
 				Description:     "System bucket for monitoring logs",
-				OrgID:           orgID,
 			}, nil
 		default:
 			return nil, &influxdb.Error{
