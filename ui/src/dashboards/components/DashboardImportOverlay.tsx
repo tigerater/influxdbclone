@@ -4,9 +4,6 @@ import {withRouter, WithRouterProps} from 'react-router'
 import _ from 'lodash'
 import {connect} from 'react-redux'
 
-// Components
-import ImportOverlay from 'src/shared/components/ImportOverlay'
-
 // Copy
 import {invalidJSON} from 'src/shared/copy/notifications'
 
@@ -18,14 +15,7 @@ import {
 import {notify as notifyAction} from 'src/shared/actions/notifications'
 
 // Types
-import {ComponentStatus} from '@influxdata/clockface'
-
-// Utils
-import jsonlint from 'jsonlint-mod'
-
-interface State {
-  status: ComponentStatus
-}
+import ImportOverlay from 'src/shared/components/ImportOverlay'
 
 interface DispatchProps {
   createDashboardFromTemplate: typeof createDashboardFromTemplateAction
@@ -40,10 +30,6 @@ interface OwnProps extends WithRouterProps {
 type Props = OwnProps & DispatchProps
 
 class DashboardImportOverlay extends PureComponent<Props> {
-  public state: State = {
-    status: ComponentStatus.Default,
-  }
-
   public render() {
     return (
       <ImportOverlay
@@ -51,24 +37,17 @@ class DashboardImportOverlay extends PureComponent<Props> {
         onDismissOverlay={this.onDismiss}
         resourceName="Dashboard"
         onSubmit={this.handleImportDashboard}
-        status={this.state.status}
-        updateStatus={this.updateOverlayStatus}
       />
     )
   }
-
-  private updateOverlayStatus = (status: ComponentStatus) =>
-    this.setState(() => ({status}))
 
   private handleImportDashboard = (uploadContent: string) => {
     const {createDashboardFromTemplate, notify, populateDashboards} = this.props
 
     let template
-    this.updateOverlayStatus(ComponentStatus.Default)
     try {
-      template = jsonlint.parse(uploadContent)
+      template = JSON.parse(uploadContent)
     } catch (error) {
-      this.updateOverlayStatus(ComponentStatus.Error)
       notify(invalidJSON(error.message))
       return
     }

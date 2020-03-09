@@ -56,7 +56,8 @@ func init() {
 
 // TaskCreateFlags define the Create Command
 type TaskCreateFlags struct {
-	organization
+	org   string
+	orgID string
 }
 
 var taskCreateFlags TaskCreateFlags
@@ -69,15 +70,16 @@ func init() {
 		RunE:  wrapCheckSetup(taskCreateF),
 	}
 
-	taskCreateFlags.organization.register(taskCreateCmd)
+	taskCreateCmd.Flags().StringVarP(&taskCreateFlags.org, "org", "o", "", "organization name")
+	taskCreateCmd.Flags().StringVarP(&taskCreateFlags.orgID, "org-id", "", "", "id of the organization that owns the task")
 	taskCreateCmd.MarkFlagRequired("flux")
 
 	taskCmd.AddCommand(taskCreateCmd)
 }
 
 func taskCreateF(cmd *cobra.Command, args []string) error {
-	if err := taskCreateFlags.organization.validOrgFlags(); err != nil {
-		return err
+	if taskCreateFlags.org != "" && taskCreateFlags.orgID != "" {
+		return fmt.Errorf("must specify exactly one of org or org-id")
 	}
 
 	s := &http.TaskService{
@@ -93,18 +95,14 @@ func taskCreateF(cmd *cobra.Command, args []string) error {
 
 	tc := platform.TaskCreate{
 		Flux:         flux,
-		Organization: taskCreateFlags.organization.name,
+		Organization: taskCreateFlags.org,
 	}
-	if taskCreateFlags.organization.id != "" || taskCreateFlags.organization.name != "" {
-		svc, err := newOrganizationService()
-		if err != nil {
-			return nil
-		}
-		oid, err := taskCreateFlags.organization.getID(svc)
+	if taskCreateFlags.orgID != "" {
+		oid, err := platform.IDFromString(taskCreateFlags.orgID)
 		if err != nil {
 			return fmt.Errorf("error parsing organization ID: %s", err)
 		}
-		tc.OrganizationID = oid
+		tc.OrganizationID = *oid
 	}
 
 	t, err := s.CreateTask(context.Background(), tc)
@@ -141,8 +139,9 @@ func taskCreateF(cmd *cobra.Command, args []string) error {
 type TaskFindFlags struct {
 	user  string
 	id    string
+	org   string
+	orgID string
 	limit int
-	organization
 }
 
 var taskFindFlags TaskFindFlags
@@ -156,15 +155,18 @@ func init() {
 
 	taskFindCmd.Flags().StringVarP(&taskFindFlags.id, "id", "i", "", "task ID")
 	taskFindCmd.Flags().StringVarP(&taskFindFlags.user, "user-id", "n", "", "task owner ID")
-	taskFindFlags.organization.register(taskFindCmd)
+	taskFindCmd.Flags().StringVarP(&taskFindFlags.org, "org", "o", "", "task organization name")
+	taskFindCmd.Flags().StringVarP(&taskFindFlags.orgID, "org-id", "", "", "task organization ID")
 	taskFindCmd.Flags().IntVarP(&taskFindFlags.limit, "limit", "", platform.TaskDefaultPageSize, "the number of tasks to find")
 
 	taskCmd.AddCommand(taskFindCmd)
 }
 
 func taskFindF(cmd *cobra.Command, args []string) error {
-	if err := taskFindFlags.organization.validOrgFlags(); err != nil {
-		return err
+	if taskFindFlags.orgID == "" && taskFindFlags.org == "" {
+		return fmt.Errorf("must specify org-id, or org name")
+	} else if taskFindFlags.orgID != "" && taskFindFlags.org != "" {
+		return fmt.Errorf("must specify org-id, or org name not both")
 	}
 	s := &http.TaskService{
 		Addr:               flags.host,
@@ -181,11 +183,11 @@ func taskFindF(cmd *cobra.Command, args []string) error {
 		filter.User = id
 	}
 
-	if taskFindFlags.organization.name != "" {
-		filter.Organization = taskFindFlags.organization.name
+	if taskFindFlags.org != "" {
+		filter.Organization = taskFindFlags.org
 	}
-	if taskFindFlags.organization.id != "" {
-		id, err := platform.IDFromString(taskFindFlags.organization.id)
+	if taskFindFlags.orgID != "" {
+		id, err := platform.IDFromString(taskFindFlags.orgID)
 		if err != nil {
 			return err
 		}

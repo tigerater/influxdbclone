@@ -13,17 +13,8 @@ import {
   createVariableFromTemplate as createVariableFromTemplateAction,
   getVariables as getVariablesAction,
 } from 'src/variables/actions'
+
 import {notify as notifyAction} from 'src/shared/actions/notifications'
-
-// Types
-import {ComponentStatus} from '@influxdata/clockface'
-
-// Utils
-import jsonlint from 'jsonlint-mod'
-
-interface State {
-  status: ComponentStatus
-}
 
 interface DispatchProps {
   createVariableFromTemplate: typeof createVariableFromTemplateAction
@@ -34,18 +25,12 @@ interface DispatchProps {
 type Props = DispatchProps & WithRouterProps
 
 class VariableImportOverlay extends PureComponent<Props> {
-  public state: State = {
-    status: ComponentStatus.Default,
-  }
-
   public render() {
     return (
       <ImportOverlay
         onDismissOverlay={this.onDismiss}
         resourceName="Variable"
         onSubmit={this.handleImportVariable}
-        status={this.state.status}
-        updateStatus={this.updateOverlayStatus}
       />
     )
   }
@@ -56,18 +41,13 @@ class VariableImportOverlay extends PureComponent<Props> {
     router.goBack()
   }
 
-  private updateOverlayStatus = (status: ComponentStatus) =>
-    this.setState(() => ({status}))
-
   private handleImportVariable = (uploadContent: string) => {
     const {createVariableFromTemplate, getVariables, notify} = this.props
 
     let template
-    this.updateOverlayStatus(ComponentStatus.Default)
     try {
-      template = jsonlint.parse(uploadContent)
+      template = JSON.parse(uploadContent)
     } catch (error) {
-      this.updateOverlayStatus(ComponentStatus.Error)
       notify(invalidJSON(error.message))
       return
     }

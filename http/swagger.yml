@@ -339,29 +339,6 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Error"
-  /telegraf/plugins:
-    get:
-      operationId: GetTelegrafPlugins
-      parameters:
-          - $ref: '#/components/parameters/TraceSpan'
-          - in: query
-            name: type
-            description: The type of plugin desired.
-            schema:
-              type: string
-      responses:
-        '200':
-          description: A list of Telegraf plugins.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TelegrafPlugins"
-        default:
-          description: Unexpected error
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
   /telegrafs:
     get:
       operationId: GetTelegrafs
@@ -7154,7 +7131,6 @@ components:
                 - bucket
                 - dashboard
                 - label
-                - notification_endpoint
                 - variable
             name:
               type: string
@@ -9658,28 +9634,6 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Telegraf"
-    TelegrafPlugin:
-      type: object
-      properties:
-        type:
-          type: string
-        name:
-          type: string
-        description:
-          type: string
-        config:
-          type: string
-    TelegrafPlugins:
-      type: object
-      properties:
-        version:
-          type: string
-        os:
-          type: string
-        plugins:
-          type: array
-          items:
-            $ref: "#/components/schemas/TelegrafPlugin"
     TelegrafPluginInputDockerConfig:
       type: object
       required:

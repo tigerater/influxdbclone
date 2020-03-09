@@ -45,10 +45,10 @@ func (s Slack) Valid() error {
 	if err := s.Base.valid(); err != nil {
 		return err
 	}
-	if s.URL == "" {
+	if s.URL == "" && s.Token.Key == "" {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
-			Msg:  "slack endpoint URL must be provided",
+			Msg:  "slack endpoint URL and token are empty",
 		}
 	}
 	if s.URL != "" {
@@ -57,6 +57,13 @@ func (s Slack) Valid() error {
 				Code: influxdb.EInvalid,
 				Msg:  fmt.Sprintf("slack endpoint URL is invalid: %s", err.Error()),
 			}
+		}
+	}
+	// TODO(desa): this requirement seems odd
+	if s.Token.Key != "" && s.Token.Key != s.ID.String()+slackTokenSuffix {
+		return &influxdb.Error{
+			Code: influxdb.EInvalid,
+			Msg:  "slack endpoint token is invalid",
 		}
 	}
 	return nil
