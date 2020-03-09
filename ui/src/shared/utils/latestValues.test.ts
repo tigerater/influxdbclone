@@ -56,7 +56,7 @@ describe('latestValues', () => {
 
     const result = latestValues(fromFlux(resp).table)
 
-    expect(result).toEqual(['howdy'])
+    expect(result).toEqual([4])
   })
 
   test('falls back to _stop column if _time column does not exist', () => {
@@ -82,7 +82,7 @@ describe('latestValues', () => {
 
     const result = latestValues(fromFlux(resp).table)
 
-    expect(result).toEqual(['howdy'])
+    expect(result).toEqual([])
   })
 
   test('returns latest values if no time column exists but table has single row', () => {
@@ -142,6 +142,6 @@ describe('latestValues', () => {
     const table = fromFlux(resp).table
     const result = latestValues(table)
 
-    expect(result).toEqual([51.3, 'used_percent', 'mem', 'oox4k.local'])
+    expect(result).toEqual([51.3])
   })
 })
