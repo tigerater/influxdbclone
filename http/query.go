@@ -27,9 +27,8 @@ import (
 )
 
 const (
-	PreferHeaderKey                = "Prefer"
-	PreferNoContentHeaderValue     = "return-no-content"
-	PreferNoContentWErrHeaderValue = "return-no-content-with-error"
+	PreferHeaderKey            = "Prefer"
+	PreferNoContentHeaderValue = "return-no-content"
 )
 
 // QueryRequest is a flux query request.
@@ -53,12 +52,6 @@ type QueryRequest struct {
 	// To obtain a QueryRequest with no result, add the header
 	// `Prefer: return-no-content` to the HTTP request.
 	PreferNoContent bool
-	// PreferNoContentWithError is the same as above, but it forces the
-	// Response to contain an error if that is a Flux runtime error encoded
-	// in the response body.
-	// To obtain a QueryRequest with no result but runtime errors,
-	// add the header `Prefer: return-no-content-with-error` to the HTTP request.
-	PreferNoContentWithError bool
 }
 
 // QueryDialect is the formatting options for the query response.
@@ -284,19 +277,12 @@ func (r QueryRequest) proxyRequest(now func() time.Time) (*query.ProxyRequest, e
 	} else {
 		// TODO(nathanielc): Use commentPrefix and dateTimeFormat
 		// once they are supported.
-		encConfig := csv.ResultEncoderConfig{
-			NoHeader:    noHeader,
-			Delimiter:   delimiter,
-			Annotations: r.Dialect.Annotations,
-		}
-		if r.PreferNoContentWithError {
-			dialect = &query.NoContentWithErrorDialect{
-				ResultEncoderConfig: encConfig,
-			}
-		} else {
-			dialect = &csv.Dialect{
-				ResultEncoderConfig: encConfig,
-			}
+		dialect = &csv.Dialect{
+			ResultEncoderConfig: csv.ResultEncoderConfig{
+				NoHeader:    noHeader,
+				Delimiter:   delimiter,
+				Annotations: r.Dialect.Annotations,
+			},
 		}
 	}
 
@@ -337,8 +323,6 @@ func QueryRequestFromProxyRequest(req *query.ProxyRequest) (*QueryRequest, error
 		qr.Dialect.Annotations = d.ResultEncoderConfig.Annotations
 	case *query.NoContentDialect:
 		qr.PreferNoContent = true
-	case *query.NoContentWithErrorDialect:
-		qr.PreferNoContentWithError = true
 	default:
 		return nil, fmt.Errorf("unsupported dialect %T", d)
 	}
@@ -372,11 +356,8 @@ func decodeQueryRequest(ctx context.Context, r *http.Request, svc influxdb.Organ
 		}
 	}
 
-	switch hv := r.Header.Get(PreferHeaderKey); hv {
-	case PreferNoContentHeaderValue:
+	if r.Header.Get(PreferHeaderKey) == PreferNoContentHeaderValue {
 		req.PreferNoContent = true
-	case PreferNoContentWErrHeaderValue:
-		req.PreferNoContentWithError = true
 	}
 
 	req = req.WithDefaults()
