@@ -24,8 +24,7 @@
     "checkJs": false,
     "sourceMap": true,
     "esModuleInterop": true,
-    "baseUrl": "./",
-    "resolveJsonModule": true
+    "baseUrl": "./"
   },
   "exclude": [
     "assets",

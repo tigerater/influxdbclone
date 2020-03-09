@@ -71,13 +71,13 @@ func TestValidEndpoint(t *testing.T) {
 			},
 		},
 		{
-			name: "empty slack url",
+			name: "empty slack url and token",
 			src: &endpoint.Slack{
 				Base: goodBase,
 			},
 			err: &influxdb.Error{
 				Code: influxdb.EInvalid,
-				Msg:  "slack endpoint URL must be provided",
+				Msg:  "slack endpoint URL and token are empty",
 			},
 		},
 		{
@@ -98,6 +98,30 @@ func TestValidEndpoint(t *testing.T) {
 				URL:  "localhost",
 			},
 			err: nil,
+		},
+		{
+			name: "invalid slack token",
+			src: &endpoint.Slack{
+				Base:  goodBase,
+				URL:   "localhost",
+				Token: influxdb.SecretField{Key: "bad-key"},
+			},
+			err: &influxdb.Error{
+				Code: influxdb.EInvalid,
+				Msg:  "slack endpoint token is invalid",
+			},
+		},
+		{
+			name: "invalid routine key",
+			src: &endpoint.PagerDuty{
+				Base:       goodBase,
+				ClientURL:  "localhost",
+				RoutingKey: influxdb.SecretField{Key: "bad-key"},
+			},
+			err: &influxdb.Error{
+				Code: influxdb.EInvalid,
+				Msg:  "pagerduty routing key is invalid",
+			},
 		},
 		{
 			name: "empty http http method",

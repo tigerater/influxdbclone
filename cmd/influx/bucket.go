@@ -10,7 +10,6 @@ import (
 	"github.com/influxdata/influxdb/cmd/influx/internal"
 	"github.com/influxdata/influxdb/http"
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 )
 
 // Bucket Command
@@ -26,8 +25,9 @@ func bucketF(cmd *cobra.Command, args []string) {
 
 // BucketCreateFlags define the Create Command
 type BucketCreateFlags struct {
-	name string
-	organization
+	name      string
+	orgID     string
+	org       string
 	retention time.Duration
 }
 
@@ -42,8 +42,9 @@ func init() {
 
 	bucketCreateCmd.Flags().StringVarP(&bucketCreateFlags.name, "name", "n", "", "Name of bucket that will be created")
 	bucketCreateCmd.Flags().DurationVarP(&bucketCreateFlags.retention, "retention", "r", 0, "Duration in nanoseconds data will live in bucket")
+	bucketCreateCmd.Flags().StringVarP(&bucketCreateFlags.orgID, "org-id", "", "", "The ID of the organization that owns the bucket")
+	bucketCreateCmd.Flags().StringVarP(&bucketCreateFlags.org, "org", "o", "", "The org name")
 	bucketCreateCmd.MarkFlagRequired("name")
-	bucketCreateFlags.organization.register(bucketCreateCmd)
 
 	bucketCmd.AddCommand(bucketCreateCmd)
 }
@@ -64,8 +65,10 @@ func newBucketService(f Flags) (platform.BucketService, error) {
 }
 
 func bucketCreateF(cmd *cobra.Command, args []string) error {
-	if err := bucketCreateFlags.organization.validOrgFlags(); err != nil {
-		return err
+	if bucketCreateFlags.orgID == "" && bucketCreateFlags.org == "" {
+		return fmt.Errorf("must specify org-id, or org name")
+	} else if bucketCreateFlags.orgID != "" && bucketCreateFlags.org != "" {
+		return fmt.Errorf("must specify org-id, or org name not both")
 	}
 
 	s, err := newBucketService(flags)
@@ -83,7 +86,7 @@ func bucketCreateF(cmd *cobra.Command, args []string) error {
 		return nil
 	}
 
-	b.OrgID, err = bucketCreateFlags.organization.getID(orgSvc)
+	b.OrgID, err = getOrgID(orgSvc, bucketCreateFlags.orgID, bucketCreateFlags.org)
 	if err != nil {
 		return err
 	}
@@ -114,8 +117,9 @@ func bucketCreateF(cmd *cobra.Command, args []string) error {
 type BucketFindFlags struct {
 	name    string
 	id      string
+	org     string
+	orgID   string
 	headers bool
-	organization
 }
 
 var bucketFindFlags BucketFindFlags
@@ -128,13 +132,10 @@ func init() {
 	}
 
 	bucketFindCmd.Flags().StringVarP(&bucketFindFlags.name, "name", "n", "", "The bucket name")
-	viper.BindEnv("BUCKET_NAME")
-	if h := viper.GetString("BUCKET_NAME"); h != "" {
-		bucketFindFlags.name = h
-	}
 	bucketFindCmd.Flags().StringVarP(&bucketFindFlags.id, "id", "i", "", "The bucket ID")
+	bucketFindCmd.Flags().StringVarP(&bucketFindFlags.orgID, "org-id", "", "", "The bucket organization ID")
+	bucketFindCmd.Flags().StringVarP(&bucketFindFlags.org, "org", "o", "", "The bucket organization name")
 	bucketFindCmd.Flags().BoolVar(&bucketFindFlags.headers, "headers", true, "To print the table headers; defaults true")
-	bucketFindFlags.organization.register(bucketFindCmd)
 
 	bucketCmd.AddCommand(bucketFindCmd)
 }
@@ -158,20 +159,20 @@ func bucketFindF(cmd *cobra.Command, args []string) error {
 		filter.ID = id
 	}
 
-	if err := bucketFindFlags.organization.validOrgFlags(); err != nil {
-		return err
+	if bucketFindFlags.orgID != "" && bucketFindFlags.org != "" {
+		return fmt.Errorf("must specify at exactly one of org and org-id")
 	}
 
-	if bucketFindFlags.organization.id != "" {
-		orgID, err := platform.IDFromString(bucketFindFlags.organization.id)
+	if bucketFindFlags.orgID != "" {
+		orgID, err := platform.IDFromString(bucketFindFlags.orgID)
 		if err != nil {
-			return fmt.Errorf("failed to decode org id %q: %v", bucketFindFlags.organization.id, err)
+			return fmt.Errorf("failed to decode org id %q: %v", bucketFindFlags.orgID, err)
 		}
 		filter.OrganizationID = orgID
 	}
 
-	if bucketFindFlags.organization.name != "" {
-		filter.Org = &bucketFindFlags.organization.name
+	if bucketFindFlags.org != "" {
+		filter.Org = &bucketFindFlags.org
 	}
 
 	buckets, _, err := s.FindBuckets(context.Background(), filter)
@@ -218,11 +219,6 @@ func init() {
 
 	bucketUpdateCmd.Flags().StringVarP(&bucketUpdateFlags.id, "id", "i", "", "The bucket ID (required)")
 	bucketUpdateCmd.Flags().StringVarP(&bucketUpdateFlags.name, "name", "n", "", "New bucket name")
-	viper.BindEnv("BUCKET_NAME")
-	if h := viper.GetString("BUCKET_NAME"); h != "" {
-		bucketFindFlags.name = h
-	}
-
 	bucketUpdateCmd.Flags().DurationVarP(&bucketUpdateFlags.retention, "retention", "r", 0, "New duration data will live in bucket")
 	bucketUpdateCmd.MarkFlagRequired("id")
 

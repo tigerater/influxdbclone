@@ -335,10 +335,6 @@ func (tl *TestLauncher) BucketService(tb testing.TB) *http.BucketService {
 	return &http.BucketService{Client: tl.HTTPClient(tb), OpPrefix: kv.OpPrefix}
 }
 
-func (tl *TestLauncher) CheckService() platform.CheckService {
-	return tl.kvService
-}
-
 func (tl *TestLauncher) DashboardService(tb testing.TB) *http.DashboardService {
 	tb.Helper()
 	return &http.DashboardService{Client: tl.HTTPClient(tb)}
@@ -368,8 +364,8 @@ func (tl *TestLauncher) VariableService(tb testing.TB) *http.VariableService {
 	return &http.VariableService{Client: tl.HTTPClient(tb)}
 }
 
-func (tl *TestLauncher) AuthorizationService(tb testing.TB) *http.AuthorizationService {
-	return &http.AuthorizationService{Client: tl.HTTPClient(tb)}
+func (tl *TestLauncher) AuthorizationService() *http.AuthorizationService {
+	return &http.AuthorizationService{Addr: tl.URL(), Token: tl.Auth.Token}
 }
 
 func (tl *TestLauncher) TaskService() *http.TaskService {

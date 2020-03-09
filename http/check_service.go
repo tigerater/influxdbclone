@@ -1,10 +1,10 @@
 package http
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/influxdata/httprouter"
@@ -369,54 +369,56 @@ type decodeStatus struct {
 	Status influxdb.Status `json:"status"`
 }
 
-func decodePostCheckRequest(r *http.Request) (postCheckRequest, error) {
-	b, err := ioutil.ReadAll(r.Body)
+func decodePostCheckRequest(ctx context.Context, r *http.Request) (postCheckRequest, error) {
+	var req postCheckRequest
+
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
-		return postCheckRequest{}, &influxdb.Error{
+		return req, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Err:  err,
 		}
 	}
 	defer r.Body.Close()
-
-	chk, err := check.UnmarshalJSON(b)
+	chk, err := check.UnmarshalJSON(buf.Bytes())
 	if err != nil {
-		return postCheckRequest{}, &influxdb.Error{
+		return req, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Err:  err,
 		}
 	}
 
 	var ds decodeStatus
-	if err := json.Unmarshal(b, &ds); err != nil {
-		return postCheckRequest{}, &influxdb.Error{
+	err = json.Unmarshal(buf.Bytes(), &ds)
+	if err != nil {
+		return req, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Err:  err,
 		}
 	}
 
 	var dl decodeLabels
-	if err := json.Unmarshal(b, &dl); err != nil {
-		return postCheckRequest{}, &influxdb.Error{
+	err = json.Unmarshal(buf.Bytes(), &dl)
+	if err != nil {
+		return req, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Err:  err,
 		}
 	}
 
-	return postCheckRequest{
-		CheckCreate: influxdb.CheckCreate{
-			Check:  chk,
-			Status: ds.Status,
-		},
-		Labels: dl.Labels,
-	}, nil
+	req = postCheckRequest{CheckCreate: influxdb.CheckCreate{Check: chk, Status: ds.Status}, Labels: dl.Labels}
+
+	return req, nil
 }
 
 func decodePutCheckRequest(ctx context.Context, r *http.Request) (influxdb.CheckCreate, error) {
+	var cc influxdb.CheckCreate
+
 	params := httprouter.ParamsFromContext(ctx)
 	id := params.ByName("id")
 	if id == "" {
-		return influxdb.CheckCreate{}, &influxdb.Error{
+		return cc, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  "url missing id",
 		}
@@ -424,25 +426,26 @@ func decodePutCheckRequest(ctx context.Context, r *http.Request) (influxdb.Check
 
 	i := new(influxdb.ID)
 	if err := i.DecodeFromString(id); err != nil {
-		return influxdb.CheckCreate{}, &influxdb.Error{
+		return cc, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  "invalid check id format",
 		}
 	}
 
-	b, err := ioutil.ReadAll(r.Body)
+	defer r.Body.Close()
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
-		return influxdb.CheckCreate{}, &influxdb.Error{
+		return cc, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  "unable to read HTTP body",
 			Err:  err,
 		}
 	}
-	defer r.Body.Close()
 
-	chk, err := check.UnmarshalJSON(b)
+	chk, err := check.UnmarshalJSON(buf.Bytes())
 	if err != nil {
-		return influxdb.CheckCreate{}, &influxdb.Error{
+		return cc, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  "malformed check body",
 			Err:  err,
@@ -451,22 +454,21 @@ func decodePutCheckRequest(ctx context.Context, r *http.Request) (influxdb.Check
 	chk.SetID(*i)
 
 	if err := chk.Valid(); err != nil {
-		return influxdb.CheckCreate{}, err
+		return cc, err
 	}
 
 	var ds decodeStatus
-	err = json.Unmarshal(b, &ds)
+	err = json.Unmarshal(buf.Bytes(), &ds)
 	if err != nil {
-		return influxdb.CheckCreate{}, &influxdb.Error{
+		return cc, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Err:  err,
 		}
 	}
 
-	return influxdb.CheckCreate{
-		Check:  chk,
-		Status: ds.Status,
-	}, nil
+	cc = influxdb.CheckCreate{Check: chk, Status: ds.Status}
+
+	return cc, nil
 }
 
 type patchCheckRequest struct {
@@ -475,7 +477,9 @@ type patchCheckRequest struct {
 }
 
 func decodePatchCheckRequest(ctx context.Context, r *http.Request) (*patchCheckRequest, error) {
-	id := httprouter.ParamsFromContext(ctx).ByName("id")
+	req := &patchCheckRequest{}
+	params := httprouter.ParamsFromContext(ctx)
+	id := params.ByName("id")
 	if id == "" {
 		return nil, &influxdb.Error{
 			Code: influxdb.EInvalid,
@@ -487,9 +491,10 @@ func decodePatchCheckRequest(ctx context.Context, r *http.Request) (*patchCheckR
 	if err := i.DecodeFromString(id); err != nil {
 		return nil, err
 	}
+	req.ID = i
 
-	var upd influxdb.CheckUpdate
-	if err := json.NewDecoder(r.Body).Decode(&upd); err != nil {
+	upd := &influxdb.CheckUpdate{}
+	if err := json.NewDecoder(r.Body).Decode(upd); err != nil {
 		return nil, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  err.Error(),
@@ -502,16 +507,14 @@ func decodePatchCheckRequest(ctx context.Context, r *http.Request) (*patchCheckR
 		}
 	}
 
-	return &patchCheckRequest{
-		ID:     i,
-		Update: upd,
-	}, nil
+	req.Update = *upd
+	return req, nil
 }
 
 // handlePostCheck is the HTTP handler for the POST /api/v2/checks route.
 func (h *CheckHandler) handlePostCheck(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	chk, err := decodePostCheckRequest(r)
+	chk, err := decodePostCheckRequest(ctx, r)
 	if err != nil {
 		h.log.Debug("Failed to decode request", zap.Error(err))
 		h.HandleHTTPError(ctx, err, w)

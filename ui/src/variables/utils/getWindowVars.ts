@@ -51,9 +51,6 @@ export const getWindowPeriod = (
   query: string,
   variables: VariableAssignment[]
 ): number | null => {
-  if (query.length === 0) {
-    return null
-  }
   try {
     const ast = parse(query)
 
@@ -67,11 +64,7 @@ export const getWindowPeriod = (
 
     return Math.round(queryDuration / DESIRED_POINTS_PER_GRAPH)
   } catch (error) {
-    console.error(error)
-    reportError(error, {
-      context: {query},
-      name: 'getWindowPeriod function',
-    })
+    reportError(error)
     return null
   }
 }

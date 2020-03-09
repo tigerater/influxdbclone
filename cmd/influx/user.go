@@ -52,13 +52,10 @@ func newUserService() (platform.UserService, error) {
 	if flags.local {
 		return newLocalKVService()
 	}
-
-	client, err := newHTTPClient()
-	if err != nil {
-		return nil, err
-	}
 	return &http.UserService{
-		Client: client,
+		Addr:               flags.host,
+		Token:              flags.token,
+		InsecureSkipVerify: flags.skipVerify,
 	}, nil
 }
 
@@ -115,7 +112,8 @@ func userUpdateF(cmd *cobra.Command, args []string) error {
 var userCreateFlags struct {
 	name     string
 	password string
-	organization
+	orgID    string
+	org      string
 }
 
 func userCreateCmd() *cobra.Command {
@@ -128,14 +126,17 @@ func userCreateCmd() *cobra.Command {
 	cmd.Flags().StringVarP(&userCreateFlags.name, "name", "n", "", "The user name (required)")
 	cmd.MarkFlagRequired("name")
 	cmd.Flags().StringVarP(&userCreateFlags.password, "password", "p", "", "The user password")
-	userCreateFlags.organization.register(cmd)
+	cmd.Flags().StringVarP(&userCreateFlags.orgID, "org-id", "", "", "The organization id the user belongs to. Is required if password provided.")
+	cmd.Flags().StringVarP(&userCreateFlags.org, "org", "o", "", "The organization name the user belongs to. Is required if password provided.")
 
 	return cmd
 }
 
 func userCreateF(cmd *cobra.Command, args []string) error {
-	if err := userCreateFlags.organization.validOrgFlags(); err != nil {
-		return err
+	if userCreateFlags.orgID == "" && userCreateFlags.org == "" {
+		return errors.New("must specify org-id, or org name")
+	} else if userCreateFlags.orgID != "" && userCreateFlags.org != "" {
+		return errors.New("must specify org-id, or org name not both")
 	}
 
 	s, err := newUserService()
@@ -173,7 +174,7 @@ func userCreateF(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	orgID, err := userCreateFlags.organization.getID(orgSVC)
+	orgID, err := getOrgID(orgSVC, userCreateFlags.orgID, userCreateFlags.org)
 	if err != nil {
 		return err
 	}
@@ -210,7 +211,11 @@ func userCreateF(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	passSVC := &http.PasswordService{Client: c}
+	passSVC := &http.PasswordService{
+		Addr:               flags.host,
+		Token:              flags.token,
+		InsecureSkipVerify: flags.skipVerify,
+	}
 
 	ctx := context.Background()
 	if err := passSVC.SetPassword(ctx, user.ID, pass); err != nil {

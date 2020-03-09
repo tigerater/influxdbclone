@@ -2,7 +2,6 @@
 import {Dispatch} from 'redux'
 import {ThunkAction} from 'redux-thunk'
 import {push, RouterAction} from 'react-router-redux'
-import HoneyBadger from 'honeybadger-js'
 
 // APIs
 import {getErrorMessage} from 'src/utils/api'
@@ -81,9 +80,6 @@ export interface SetOrg {
 }
 
 export const setOrg = (org: Organization): SetOrg => {
-  HoneyBadger.setContext({
-    orgID: org.id,
-  })
   return {
     type: ActionTypes.SetOrg,
     payload: {org},

@@ -40,7 +40,7 @@ func (s PagerDuty) Valid() error {
 	if err := s.Base.valid(); err != nil {
 		return err
 	}
-	if s.RoutingKey.Key == "" {
+	if s.RoutingKey.Key != s.ID.String()+routingKeySuffix {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  "pagerduty routing key is invalid",

@@ -13,9 +13,6 @@ import (
 	"go.uber.org/zap"
 )
 
-// check that *KVStore implement kv.Store interface.
-var _ (kv.Store) = (*KVStore)(nil)
-
 // KVStore is a kv.Store backed by boltdb.
 type KVStore struct {
 	path string
@@ -194,22 +191,6 @@ func (b *Bucket) Delete(key []byte) error {
 	return err
 }
 
-// ForwardCursor retrieves a cursor for iterating through the entries
-// in the key value store in a given direction (ascending / descending).
-func (b *Bucket) ForwardCursor(seek []byte, opts ...kv.CursorOption) (kv.ForwardCursor, error) {
-	var (
-		cursor     = b.bucket.Cursor()
-		key, value = cursor.Seek(seek)
-	)
-
-	return &Cursor{
-		cursor: cursor,
-		key:    key,
-		value:  value,
-		config: kv.NewCursorConfig(opts...),
-	}, nil
-}
-
 // Cursor retrieves a cursor for iterating through the entries
 // in the key value store.
 func (b *Bucket) Cursor(opts ...kv.CursorHint) (kv.Cursor, error) {
@@ -222,26 +203,10 @@ func (b *Bucket) Cursor(opts ...kv.CursorHint) (kv.Cursor, error) {
 // in the key value store.
 type Cursor struct {
 	cursor *bolt.Cursor
-
-	// previously seeked key/value
-	key, value []byte
-
-	config kv.CursorConfig
-	closed bool
-}
-
-// Close sets the closed to closed
-func (c *Cursor) Close() error {
-	c.closed = true
-
-	return nil
 }
 
 // Seek seeks for the first key that matches the prefix provided.
 func (c *Cursor) Seek(prefix []byte) ([]byte, []byte) {
-	if c.closed {
-		return nil, nil
-	}
 	k, v := c.cursor.Seek(prefix)
 	if len(k) == 0 && len(v) == 0 {
 		return nil, nil
@@ -251,9 +216,6 @@ func (c *Cursor) Seek(prefix []byte) ([]byte, []byte) {
 
 // First retrieves the first key value pair in the bucket.
 func (c *Cursor) First() ([]byte, []byte) {
-	if c.closed {
-		return nil, nil
-	}
 	k, v := c.cursor.First()
 	if len(k) == 0 && len(v) == 0 {
 		return nil, nil
@@ -263,9 +225,6 @@ func (c *Cursor) First() ([]byte, []byte) {
 
 // Last retrieves the last key value pair in the bucket.
 func (c *Cursor) Last() ([]byte, []byte) {
-	if c.closed {
-		return nil, nil
-	}
 	k, v := c.cursor.Last()
 	if len(k) == 0 && len(v) == 0 {
 		return nil, nil
@@ -274,22 +233,8 @@ func (c *Cursor) Last() ([]byte, []byte) {
 }
 
 // Next retrieves the next key in the bucket.
-func (c *Cursor) Next() (k []byte, v []byte) {
-	if c.closed {
-		return nil, nil
-	}
-	// get and unset previously seeked values if they exist
-	k, v, c.key, c.value = c.key, c.value, nil, nil
-	if len(k) > 0 && len(v) > 0 {
-		return
-	}
-
-	next := c.cursor.Next
-	if c.config.Direction == kv.CursorDescending {
-		next = c.cursor.Prev
-	}
-
-	k, v = next()
+func (c *Cursor) Next() ([]byte, []byte) {
+	k, v := c.cursor.Next()
 	if len(k) == 0 && len(v) == 0 {
 		return nil, nil
 	}
@@ -297,29 +242,10 @@ func (c *Cursor) Next() (k []byte, v []byte) {
 }
 
 // Prev retrieves the previous key in the bucket.
-func (c *Cursor) Prev() (k []byte, v []byte) {
-	if c.closed {
-		return nil, nil
-	}
-	// get and unset previously seeked values if they exist
-	k, v, c.key, c.value = c.key, c.value, nil, nil
-	if len(k) > 0 && len(v) > 0 {
-		return
-	}
-
-	prev := c.cursor.Prev
-	if c.config.Direction == kv.CursorDescending {
-		prev = c.cursor.Next
-	}
-
-	k, v = prev()
+func (c *Cursor) Prev() ([]byte, []byte) {
+	k, v := c.cursor.Prev()
 	if len(k) == 0 && len(v) == 0 {
 		return nil, nil
 	}
 	return k, v
-}
-
-// Err always returns nil as nothing can go wrong™ during iteration
-func (c *Cursor) Err() error {
-	return nil
 }

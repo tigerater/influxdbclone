@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net/http"
 
 	"github.com/influxdata/httprouter"
@@ -27,6 +26,7 @@ type NotificationEndpointBackend struct {
 	LabelService                influxdb.LabelService
 	UserService                 influxdb.UserService
 	OrganizationService         influxdb.OrganizationService
+	SecretService               influxdb.SecretService
 }
 
 // NewNotificationEndpointBackend returns a new instance of NotificationEndpointBackend.
@@ -40,6 +40,7 @@ func NewNotificationEndpointBackend(log *zap.Logger, b *APIBackend) *Notificatio
 		LabelService:                b.LabelService,
 		UserService:                 b.UserService,
 		OrganizationService:         b.OrganizationService,
+		SecretService:               b.SecretService,
 	}
 }
 
@@ -58,6 +59,7 @@ type NotificationEndpointHandler struct {
 	LabelService                influxdb.LabelService
 	UserService                 influxdb.UserService
 	OrganizationService         influxdb.OrganizationService
+	SecretService               influxdb.SecretService
 }
 
 const (
@@ -83,6 +85,7 @@ func NewNotificationEndpointHandler(log *zap.Logger, b *NotificationEndpointBack
 		LabelService:                b.LabelService,
 		UserService:                 b.UserService,
 		OrganizationService:         b.OrganizationService,
+		SecretService:               b.SecretService,
 	}
 	h.HandlerFunc("POST", prefixNotificationEndpoints, h.handlePostNotificationEndpoint)
 	h.HandlerFunc("GET", prefixNotificationEndpoints, h.handleGetNotificationEndpoints)
@@ -304,34 +307,36 @@ func decodeNotificationEndpointFilter(ctx context.Context, r *http.Request) (inf
 }
 
 func decodePostNotificationEndpointRequest(r *http.Request) (postNotificationEndpointRequest, error) {
-	b, err := ioutil.ReadAll(r.Body)
+	var req postNotificationEndpointRequest
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
-		return postNotificationEndpointRequest{}, &influxdb.Error{
+		return req, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Err:  err,
 		}
 	}
 	defer r.Body.Close()
-	edp, err := endpoint.UnmarshalJSON(b)
+	edp, err := endpoint.UnmarshalJSON(buf.Bytes())
 	if err != nil {
-		return postNotificationEndpointRequest{}, &influxdb.Error{
+		return req, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Err:  err,
 		}
 	}
 
 	var dl decodeLabels
-	if err := json.Unmarshal(b, &dl); err != nil {
-		return postNotificationEndpointRequest{}, &influxdb.Error{
+	if err := json.Unmarshal(buf.Bytes(), &dl); err != nil {
+		return req, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Err:  err,
 		}
 	}
 
-	return postNotificationEndpointRequest{
-		NotificationEndpoint: edp,
-		Labels:               dl.Labels,
-	}, nil
+	req.NotificationEndpoint = edp
+	req.Labels = dl.Labels
+
+	return req, nil
 }
 
 func decodePutNotificationEndpointRequest(ctx context.Context, r *http.Request) (influxdb.NotificationEndpoint, error) {
@@ -410,10 +415,21 @@ func (h *NotificationEndpointHandler) handlePostNotificationEndpoint(w http.Resp
 		return
 	}
 
-	err = h.NotificationEndpointService.CreateNotificationEndpoint(ctx, edp.NotificationEndpoint, auth.GetUserID())
-	if err != nil {
+	if err := h.NotificationEndpointService.CreateNotificationEndpoint(ctx, edp.NotificationEndpoint, auth.GetUserID()); err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
+	}
+	for _, fld := range edp.SecretFields() {
+		if fld.Value != nil {
+			if err := h.SecretService.PutSecret(ctx, edp.GetOrgID(),
+				fld.Key, *fld.Value); err != nil {
+				h.HandleHTTPError(ctx, &influxdb.Error{
+					Op:  "http/handlePostNotificationEndpoint",
+					Err: err,
+				}, w)
+				return
+			}
+		}
 	}
 
 	labels := h.mapNewNotificationEndpointLabels(ctx, edp.NotificationEndpoint, edp.Labels)
@@ -478,6 +494,19 @@ func (h *NotificationEndpointHandler) handlePutNotificationEndpoint(w http.Respo
 		return
 	}
 
+	for _, fld := range edp.SecretFields() {
+		if fld.Value != nil {
+			if err := h.SecretService.PutSecret(ctx, edp.GetOrgID(),
+				fld.Key, *fld.Value); err != nil {
+				h.HandleHTTPError(ctx, &influxdb.Error{
+					Op:  "http/handlePutNotificationEndpoint",
+					Err: err,
+				}, w)
+				return
+			}
+		}
+	}
+
 	labels, err := h.LabelService.FindResourceLabels(ctx, influxdb.LabelMappingFilter{ResourceID: edp.GetID()})
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
@@ -528,7 +557,7 @@ func (h *NotificationEndpointHandler) handleDeleteNotificationEndpoint(w http.Re
 		return
 	}
 
-	flds, _, err := h.NotificationEndpointService.DeleteNotificationEndpoint(ctx, i)
+	flds, orgID, err := h.NotificationEndpointService.DeleteNotificationEndpoint(ctx, i)
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
@@ -543,6 +572,13 @@ func (h *NotificationEndpointHandler) handleDeleteNotificationEndpoint(w http.Re
 			return
 		}
 		keys[k] = fld.Key
+	}
+	if err := h.SecretService.DeleteSecret(ctx, orgID, keys...); err != nil {
+		h.HandleHTTPError(ctx, &influxdb.Error{
+			Op:  "http/handleDeleteNotificationEndpoint",
+			Err: err,
+		}, w)
+		return
 	}
 	h.log.Debug("NotificationEndpoint deleted", zap.String("notificationEndpointID", fmt.Sprint(i)))
 
