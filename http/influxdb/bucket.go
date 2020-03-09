@@ -14,10 +14,6 @@ type BucketService struct {
 	Source *platform.Source
 }
 
-func (s *BucketService) FindBucketByName(ctx context.Context, orgID platform.ID, n string) (*platform.Bucket, error) {
-	return nil, fmt.Errorf("not supported")
-}
-
 func (s *BucketService) FindBucketByID(ctx context.Context, id platform.ID) (*platform.Bucket, error) {
 	return nil, fmt.Errorf("not supported")
 }

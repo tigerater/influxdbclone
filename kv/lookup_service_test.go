@@ -5,16 +5,14 @@ import (
 	"testing"
 
 	"github.com/influxdata/influxdb"
-	platform "github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/kv"
 	"github.com/influxdata/influxdb/mock"
 	influxdbtesting "github.com/influxdata/influxdb/testing"
 )
 
 var (
-	existingBucketID = platform.ID(mock.FirstMockID + 3)
-	firstMockID      = platform.ID(mock.FirstMockID)
-	nonexistantID    = platform.ID(10001)
+	testID    = influxdb.ID(10000)
+	testIDStr = testID.String()
 )
 
 type StoreFn func() (kv.Store, func(), error)
@@ -63,7 +61,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.AuthorizationsResourceType,
-					ID:   &firstMockID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 			},
 			want: "",
@@ -73,7 +71,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.TasksResourceType,
-					ID:   &firstMockID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 			},
 			want: "",
@@ -83,7 +81,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.BucketsResourceType,
-					ID:   &existingBucketID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 				init: func(ctx context.Context, s *kv.Service) error {
 					o1 := &influxdb.Organization{
@@ -93,7 +91,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 					t.Log(o1)
 					return s.CreateBucket(ctx, &influxdb.Bucket{
 						Name:  "b1",
-						OrgID: o1.ID,
+						OrgID: testID,
 					})
 				},
 			},
@@ -104,7 +102,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.BucketsResourceType,
-					ID:   &nonexistantID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 			},
 			wantErr: true,
@@ -114,7 +112,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.DashboardsResourceType,
-					ID:   &firstMockID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 				init: func(ctx context.Context, s *kv.Service) error {
 					return s.CreateDashboard(ctx, &influxdb.Dashboard{
@@ -130,7 +128,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.DashboardsResourceType,
-					ID:   &nonexistantID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 			},
 			wantErr: true,
@@ -140,7 +138,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.OrgsResourceType,
-					ID:   &firstMockID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 				init: func(ctx context.Context, s *kv.Service) error {
 					return s.CreateOrganization(ctx, &influxdb.Organization{
@@ -155,7 +153,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.OrgsResourceType,
-					ID:   &nonexistantID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 			},
 			wantErr: true,
@@ -165,7 +163,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.SourcesResourceType,
-					ID:   &firstMockID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 				init: func(ctx context.Context, s *kv.Service) error {
 					return s.CreateSource(ctx, &influxdb.Source{
@@ -180,7 +178,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.SourcesResourceType,
-					ID:   &nonexistantID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 			},
 			wantErr: true,
@@ -190,13 +188,13 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.TelegrafsResourceType,
-					ID:   &firstMockID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 				init: func(ctx context.Context, s *kv.Service) error {
 					return s.CreateTelegrafConfig(ctx, &influxdb.TelegrafConfig{
 						OrgID: influxdbtesting.MustIDBase16("0000000000000009"),
 						Name:  "telegraf1",
-					}, existingBucketID)
+					}, testID)
 				},
 			},
 			want: "telegraf1",
@@ -206,7 +204,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.TelegrafsResourceType,
-					ID:   &nonexistantID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 			},
 			wantErr: true,
@@ -216,7 +214,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.UsersResourceType,
-					ID:   &firstMockID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 				init: func(ctx context.Context, s *kv.Service) error {
 					return s.CreateUser(ctx, &influxdb.User{
@@ -231,7 +229,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			args: args{
 				resource: influxdb.Resource{
 					Type: influxdb.UsersResourceType,
-					ID:   &nonexistantID,
+					ID:   influxdbtesting.IDPtr(testID),
 				},
 			},
 			wantErr: true,
@@ -246,8 +244,7 @@ func testLookupName(newStore StoreFn, t *testing.T) {
 			svc := kv.NewService(store)
 			defer done()
 
-			svc.IDGenerator = mock.NewMockIDGenerator()
-			svc.OrgBucketIDs = mock.NewMockIDGenerator()
+			svc.IDGenerator = mock.NewIDGenerator(testIDStr, t)
 			svc.WithSpecialOrgBucketIDs(svc.IDGenerator)
 			ctx := context.Background()
 			if tt.args.init != nil {
