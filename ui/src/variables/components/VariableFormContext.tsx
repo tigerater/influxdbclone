@@ -67,10 +67,9 @@ type Props = ComponentProps & DispatchProps & StateProps
 class VariableFormContext extends PureComponent<Props> {
   render() {
     const props = {
-      ...this.props,
       onHideOverlay: this.handleHideOverlay,
+      ...this.props,
     }
-
     return <VariableForm {...props} />
   }
 
