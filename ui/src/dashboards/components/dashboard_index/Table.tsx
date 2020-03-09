@@ -70,10 +70,7 @@ class DashboardsTable extends PureComponent<Props, State> {
             onClick={this.handleClickColumn}
           />
         </ResourceList.Header>
-        <ResourceList.Body
-          emptyState={this.emptyState}
-          className="dashboards-card-grid"
-        >
+        <ResourceList.Body emptyState={this.emptyState}>
           {!!dashboards.length && (
             <DashboardCards
               dashboards={dashboards}

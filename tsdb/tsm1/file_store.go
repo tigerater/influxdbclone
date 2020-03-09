@@ -1496,6 +1496,10 @@ func (c *KeyCursor) nextAscending() {
 			continue
 		}
 
+		if !c.seeks[i].entry.Contains(c.current[0].entry.MaxTime) {
+			continue
+		}
+
 		c.current = append(c.current, c.seeks[i])
 	}
 }
@@ -1521,6 +1525,10 @@ func (c *KeyCursor) nextDescending() {
 	// If we have overlapping blocks, append all their values so we can dedup
 	for i := c.pos; i >= 0; i-- {
 		if c.seeks[i].read() {
+			continue
+		}
+
+		if !c.seeks[i].entry.Contains(c.current[0].entry.MinTime) {
 			continue
 		}
 

@@ -53,7 +53,7 @@ const NewCheckOverlay: FunctionComponent<Props> = ({
   notify,
 }) => {
   useEffect(() => {
-    const view = createView<CheckViewProperties>('deadman')
+    const view = createView<CheckViewProperties>('deadmanCheck')
     onSetActiveTimeMachine('alerting', {
       view,
       alerting: {

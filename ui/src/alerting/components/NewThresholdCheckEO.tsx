@@ -53,7 +53,7 @@ const NewCheckOverlay: FunctionComponent<Props> = ({
   notify,
 }) => {
   useEffect(() => {
-    const view = createView<CheckViewProperties>('threshold')
+    const view = createView<CheckViewProperties>('thresholdCheck')
     onSetActiveTimeMachine('alerting', {
       view,
       alerting: {
