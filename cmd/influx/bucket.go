@@ -15,10 +15,13 @@ import (
 
 // Bucket Command
 var bucketCmd = &cobra.Command{
-	Use:              "bucket",
-	Short:            "Bucket management commands",
-	TraverseChildren: true,
-	Run:              seeHelp,
+	Use:   "bucket",
+	Short: "Bucket management commands",
+	Run:   bucketF,
+}
+
+func bucketF(cmd *cobra.Command, args []string) {
+	cmd.Usage()
 }
 
 // BucketCreateFlags define the Create Command

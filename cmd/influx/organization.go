@@ -17,7 +17,7 @@ func organizationCmd() *cobra.Command {
 		Use:     "org",
 		Aliases: []string{"organization"},
 		Short:   "Organization management commands",
-		Run:     seeHelp,
+		Run:     organizationF,
 	}
 
 	cmd.AddCommand(
@@ -29,6 +29,10 @@ func organizationCmd() *cobra.Command {
 	)
 
 	return cmd
+}
+
+func organizationF(cmd *cobra.Command, args []string) {
+	cmd.Usage()
 }
 
 // Create Command
@@ -294,7 +298,7 @@ func orgMembersCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "members",
 		Short: "Organization membership commands",
-		Run:   seeHelp,
+		Run:   organizationF,
 	}
 
 	cmd.AddCommand(

@@ -25,20 +25,24 @@ func taskF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("local flag not supported for task command")
 	}
 
-	seeHelp(cmd, args)
+	cmd.Usage()
 	return nil
 }
 
 var logCmd = &cobra.Command{
 	Use:   "log",
 	Short: "Log related commands",
-	Run:   seeHelp,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Usage()
+	},
 }
 
 var runCmd = &cobra.Command{
 	Use:   "run",
 	Short: "Run related commands",
-	Run:   seeHelp,
+	Run: func(cmd *cobra.Command, args []string) {
+		cmd.Usage()
+	},
 }
 
 func init() {
