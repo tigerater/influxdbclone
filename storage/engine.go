@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/influxdata/influxdb"
 	platform "github.com/influxdata/influxdb"
 	"github.com/influxdata/influxdb/kit/tracing"
 	"github.com/influxdata/influxdb/logger"
@@ -139,14 +138,6 @@ func WithCompactionPlanner(planner tsm1.CompactionPlanner) Option {
 func WithCompactionLimiter(limiter limiter.Fixed) Option {
 	return func(e *Engine) {
 		e.engine.WithCompactionLimiter(limiter)
-	}
-}
-
-// WithCompactionSemaphore sets the semaphore used to coordinate full compactions
-// across multiple storage engines.
-func WithCompactionSemaphore(s influxdb.Semaphore) Option {
-	return func(e *Engine) {
-		e.engine.SetSemaphore(s)
 	}
 }
 
