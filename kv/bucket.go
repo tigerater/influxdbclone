@@ -675,15 +675,6 @@ func (s *Service) updateBucket(ctx context.Context, tx Tx, id influxdb.ID, upd i
 		return nil, err
 	}
 
-	if upd.Name != nil && b.Type == influxdb.BucketTypeSystem {
-		err = &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Msg:  "system buckets cannot be renamed",
-		}
-
-		return nil, err
-	}
-
 	if upd.RetentionPeriod != nil {
 		b.RetentionPeriod = *upd.RetentionPeriod
 	}
@@ -732,19 +723,6 @@ func (s *Service) updateBucket(ctx context.Context, tx Tx, id influxdb.ID, upd i
 func (s *Service) DeleteBucket(ctx context.Context, id influxdb.ID) error {
 	return s.kv.Update(ctx, func(tx Tx) error {
 		var err error
-
-		bucket, err := s.findBucketByID(ctx, tx, id)
-		if err != nil && !IsNotFound(err) {
-			return err
-		}
-
-		if !IsNotFound(err) && bucket.Type == influxdb.BucketTypeSystem {
-			return &influxdb.Error{
-				Code: influxdb.EInvalid,
-				Msg:  "system buckets cannot be deleted",
-			}
-		}
-
 		if pe := s.deleteBucket(ctx, tx, id); pe != nil {
 			err = pe
 		}

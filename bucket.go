@@ -54,14 +54,6 @@ func (bt BucketType) String() string {
 	return "user"
 }
 
-// ParseBucketType parses a bucket type from a string
-func ParseBucketType(s string) BucketType {
-	if s == "system" {
-		return BucketTypeSystem
-	}
-	return BucketTypeUser
-}
-
 // ops for buckets error and buckets op logs.
 var (
 	OpFindBucketByID = "FindBucketByID"

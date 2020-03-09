@@ -182,7 +182,6 @@ func (b *bucket) toInfluxDB() (*influxdb.Bucket, error) {
 	return &influxdb.Bucket{
 		ID:                  b.ID,
 		OrgID:               b.OrgID,
-		Type:                influxdb.ParseBucketType(b.Type),
 		Description:         b.Description,
 		Name:                b.Name,
 		RetentionPolicyName: b.RetentionPolicyName,
