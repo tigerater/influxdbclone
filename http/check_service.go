@@ -342,6 +342,22 @@ func decodePostCheckRequest(ctx context.Context, r *http.Request) (influxdb.Chec
 }
 
 func decodePutCheckRequest(ctx context.Context, r *http.Request) (influxdb.Check, error) {
+	buf := new(bytes.Buffer)
+	_, err := buf.ReadFrom(r.Body)
+	if err != nil {
+		return nil, &influxdb.Error{
+			Code: influxdb.EInvalid,
+			Err:  err,
+		}
+	}
+	defer r.Body.Close()
+	chk, err := check.UnmarshalJSON(buf.Bytes())
+	if err != nil {
+		return nil, &influxdb.Error{
+			Code: influxdb.EInvalid,
+			Err:  err,
+		}
+	}
 	params := httprouter.ParamsFromContext(ctx)
 	id := params.ByName("id")
 	if id == "" {
@@ -350,40 +366,11 @@ func decodePutCheckRequest(ctx context.Context, r *http.Request) (influxdb.Check
 			Msg:  "url missing id",
 		}
 	}
-
 	i := new(influxdb.ID)
 	if err := i.DecodeFromString(id); err != nil {
-		return nil, &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Msg:  "invalid check id format",
-		}
-	}
-
-	defer r.Body.Close()
-	buf := new(bytes.Buffer)
-	_, err := buf.ReadFrom(r.Body)
-	if err != nil {
-		return nil, &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Msg:  "unable to read HTTP body",
-			Err:  err,
-		}
-	}
-
-	chk, err := check.UnmarshalJSON(buf.Bytes())
-	if err != nil {
-		return nil, &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Msg:  "malformed check body",
-			Err:  err,
-		}
-	}
-	chk.SetID(*i)
-
-	if err := chk.Valid(); err != nil {
 		return nil, err
 	}
-
+	chk.SetID(*i)
 	return chk, nil
 }
 
