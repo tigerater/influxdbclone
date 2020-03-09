@@ -31,18 +31,6 @@ type APIBackend struct {
 	// in a single points batch
 	MaxBatchSizeBytes int64
 
-	// WriteParserMaxBytes specifies the maximum number of bytes that may be allocated when processing a single
-	// write request. A value of zero specifies there is no limit.
-	WriteParserMaxBytes int
-
-	// WriteParserMaxLines specifies the maximum number of lines that may be parsed when processing a single
-	// write request. A value of zero specifies there is no limit.
-	WriteParserMaxLines int
-
-	// WriteParserMaxValues specifies the maximum number of values that may be parsed when processing a single
-	// write request. A value of zero specifies there is no limit.
-	WriteParserMaxValues int
-
 	NewBucketService func(*influxdb.Source) (influxdb.BucketService, error)
 	NewQueryService  func(*influxdb.Source) (query.ProxyQueryService, error)
 
@@ -51,8 +39,6 @@ type APIBackend struct {
 
 	PointsWriter                    storage.PointsWriter
 	DeleteService                   influxdb.DeleteService
-	BackupService                   influxdb.BackupService
-	KVBackupService                 influxdb.KVBackupService
 	AuthorizationService            influxdb.AuthorizationService
 	BucketService                   influxdb.BucketService
 	SessionService                  influxdb.SessionService
@@ -215,17 +201,8 @@ func NewAPIHandler(b *APIBackend, opts ...APIHandlerOptFn) *APIHandler {
 	variableBackend.VariableService = authorizer.NewVariableService(b.VariableService)
 	h.Mount(prefixVariables, NewVariableHandler(b.Logger, variableBackend))
 
-	backupBackend := NewBackupBackend(b)
-	backupBackend.BackupService = authorizer.NewBackupService(backupBackend.BackupService)
-	h.Mount(prefixBackup, NewBackupHandler(backupBackend))
-
 	writeBackend := NewWriteBackend(b.Logger.With(zap.String("handler", "write")), b)
-	h.Mount(prefixWrite, NewWriteHandler(b.Logger, writeBackend,
-		WithMaxBatchSizeBytes(b.MaxBatchSizeBytes),
-		WithParserMaxBytes(b.WriteParserMaxBytes),
-		WithParserMaxLines(b.WriteParserMaxLines),
-		WithParserMaxValues(b.WriteParserMaxValues),
-	))
+	h.Mount(prefixWrite, NewWriteHandler(b.Logger, writeBackend, WithMaxBatchSizeBytes(b.MaxBatchSizeBytes)))
 
 	for _, o := range opts {
 		o(h)
@@ -237,7 +214,6 @@ var apiLinks = map[string]interface{}{
 	// when adding new links, please take care to keep this list alphabetical
 	// as this makes it easier to verify values against the swagger document.
 	"authorizations": "/api/v2/authorizations",
-	"backup":         "/api/v2/backup",
 	"buckets":        "/api/v2/buckets",
 	"dashboards":     "/api/v2/dashboards",
 	"external": map[string]string{

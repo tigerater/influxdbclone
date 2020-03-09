@@ -18,20 +18,13 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type (
-	// ReaderFn is used for functional inputs to abstract the individual
-	// entrypoints for the reader itself.
-	ReaderFn func() (io.Reader, error)
+// ReaderFn is used for functional inputs to abstract the individual
+// entrypoints for the reader itself.
+type ReaderFn func() (io.Reader, error)
 
-	// Encoder is an encodes a type.
-	Encoder interface {
-		Encode(v interface{}) error
-	}
-
-	// Encoding describes the encoding for the raw package data. The
-	// encoding determines how the raw data is parsed.
-	Encoding int
-)
+// Encoding describes the encoding for the raw package data. The
+// encoding determines how the raw data is parsed.
+type Encoding int
 
 // encoding types
 const (
@@ -62,7 +55,7 @@ func (e Encoding) String() string {
 var ErrInvalidEncoding = errors.New("invalid encoding provided")
 
 // Parse parses a pkg defined by the encoding and readerFns. As of writing this
-// we can parse both a YAML, JSON, and Jsonnet formats of the Pkg model.
+// we can parse both a YAML and JSON format of the Pkg model.
 func Parse(encoding Encoding, readerFn ReaderFn, opts ...ValidateOptFn) (*Pkg, error) {
 	r, err := readerFn()
 	if err != nil {
@@ -151,7 +144,7 @@ func parseSource(r io.Reader, opts ...ValidateOptFn) (*Pkg, error) {
 		b = bb
 	}
 
-	contentType := http.DetectContentType(b[:512])
+	contentType := http.DetectContentType(b)
 	switch {
 	case strings.Contains(contentType, "jsonnet"):
 		// highly unlikely to fall in here with supported content type detection as is
@@ -162,33 +155,12 @@ func parseSource(r io.Reader, opts ...ValidateOptFn) (*Pkg, error) {
 		strings.Contains(contentType, "yml"):
 		return parseYAML(bytes.NewReader(b), opts...)
 	default:
-		return parseYAML(bytes.NewReader(b), opts...)
+		return parseJsonnet(r, opts...)
 	}
 }
 
 func parseYAML(r io.Reader, opts ...ValidateOptFn) (*Pkg, error) {
-	dec := yaml.NewDecoder(r)
-
-	var pkg Pkg
-	for {
-		// forced to use this for loop b/c the yaml dependency does not
-		// decode multi documents.
-		var k Object
-		err := dec.Decode(&k)
-		if err == io.EOF {
-			break
-		}
-		if err != nil {
-			return nil, err
-		}
-		pkg.Objects = append(pkg.Objects, k)
-	}
-
-	if err := pkg.Validate(opts...); err != nil {
-		return nil, err
-	}
-
-	return &pkg, nil
+	return parse(yaml.NewDecoder(r), opts...)
 }
 
 type decoder interface {
@@ -197,7 +169,7 @@ type decoder interface {
 
 func parse(dec decoder, opts ...ValidateOptFn) (*Pkg, error) {
 	var pkg Pkg
-	if err := dec.Decode(&pkg.Objects); err != nil {
+	if err := dec.Decode(&pkg); err != nil {
 		return nil, err
 	}
 
@@ -206,19 +178,6 @@ func parse(dec decoder, opts ...ValidateOptFn) (*Pkg, error) {
 	}
 
 	return &pkg, nil
-}
-
-// Object describes the metadata and raw spec for an entity of a package kind.
-type Object struct {
-	APIVersion string   `json:"apiVersion" yaml:"apiVersion"`
-	Type       Kind     `json:"kind" yaml:"kind"`
-	Metadata   Metadata `json:"metadata" yaml:"metadata"`
-	Spec       Resource `json:"spec" yaml:"spec"`
-}
-
-// Name returns the name of the kind.
-func (k Object) Name() string {
-	return k.Metadata.Name
 }
 
 // Pkg is the model for a package. The resources are more generic that one might
@@ -228,7 +187,12 @@ func (k Object) Name() string {
 // lib (looking at you yaml/v2). This allows us to parse it and leave the matching
 // to another power, the graphing of the package is handled within itself.
 type Pkg struct {
-	Objects []Object `json:"-" yaml:"-"`
+	APIVersion string   `yaml:"apiVersion" json:"apiVersion"`
+	Kind       Kind     `yaml:"kind" json:"kind"`
+	Metadata   Metadata `yaml:"meta" json:"meta"`
+	Spec       struct {
+		Resources []Resource `yaml:"resources" json:"resources"`
+	} `yaml:"spec" json:"spec"`
 
 	mLabels                map[string]*label
 	mBuckets               map[string]*bucket
@@ -244,33 +208,6 @@ type Pkg struct {
 
 	isVerified bool // dry run has verified pkg resources with existing resources
 	isParsed   bool // indicates the pkg has been parsed and all resources graphed accordingly
-}
-
-// Encode is a helper for encoding the pkg correctly.
-func (p *Pkg) Encode(encoding Encoding) ([]byte, error) {
-	var (
-		buf bytes.Buffer
-		err error
-	)
-	switch encoding {
-	case EncodingJSON, EncodingJsonnet:
-		enc := json.NewEncoder(&buf)
-		enc.SetIndent("", "\t")
-		err = enc.Encode(p.Objects)
-	case EncodingYAML:
-		enc := yaml.NewEncoder(&buf)
-		for _, k := range p.Objects {
-			if err = enc.Encode(k); err != nil {
-				break
-			}
-		}
-	default:
-		return nil, ErrInvalidEncoding
-	}
-	if err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
 }
 
 // Summary returns a package Summary that describes all the resources and
@@ -378,8 +315,9 @@ func (p *Pkg) Validate(opts ...ValidateOptFn) error {
 	for _, o := range opts {
 		o(opt)
 	}
-
-	var setupFns []func() error
+	setupFns := []func() error{
+		p.validMetadata,
+	}
 	if opt.minResources {
 		setupFns = append(setupFns, p.validResources)
 	}
@@ -532,16 +470,66 @@ func (p *Pkg) labelMappings() []SummaryLabelMapping {
 	return mappings
 }
 
+func (p *Pkg) validMetadata() error {
+	var failures []validationErr
+	if p.APIVersion != APIVersion {
+		failures = append(failures, validationErr{
+			Field: "apiVersion",
+			Msg:   "must be version " + APIVersion,
+		})
+	}
+
+	if !p.Kind.is(KindPackage) {
+		failures = append(failures, validationErr{
+			Field: "kind",
+			Msg:   `must be of kind "Package"`,
+		})
+	}
+
+	var metaFails []validationErr
+	if p.Metadata.Version == "" {
+		metaFails = append(metaFails, validationErr{
+			Field: "pkgVersion",
+			Msg:   "version is required",
+		})
+	}
+
+	if p.Metadata.Name == "" {
+		metaFails = append(metaFails, validationErr{
+			Field: "pkgName",
+			Msg:   "must be at least 1 char",
+		})
+	}
+
+	if len(metaFails) > 0 {
+		failures = append(failures, validationErr{
+			Field:  "meta",
+			Nested: metaFails,
+		})
+	}
+
+	if len(failures) == 0 {
+		return nil
+	}
+
+	var err parseErr
+	err.append(resourceErr{
+		Kind:     KindPackage.String(),
+		RootErrs: failures,
+	})
+	return &err
+}
+
 func (p *Pkg) validResources() error {
-	if len(p.Objects) > 0 {
+	if len(p.Spec.Resources) > 0 {
 		return nil
 	}
 
 	res := resourceErr{
-		Kind: KindPackage.String(),
+		Kind: "Package",
 		RootErrs: []validationErr{{
 			Field: "resources",
-			Msg:   "at least 1 kind must be provided",
+			Msg:   "at least 1 resource must be provided",
 		}},
 	}
 	var err parseErr
@@ -585,22 +573,22 @@ func (p *Pkg) graphResources() error {
 
 func (p *Pkg) graphBuckets() *parseErr {
 	p.mBuckets = make(map[string]*bucket)
-	return p.eachResource(KindBucket, 2, func(k Object) []validationErr {
-		if _, ok := p.mBuckets[k.Name()]; ok {
+	return p.eachResource(KindBucket, 2, func(r Resource) []validationErr {
+		if _, ok := p.mBuckets[r.Name()]; ok {
 			return []validationErr{{
 				Field: "name",
-				Msg:   "duplicate name: " + k.Name(),
+				Msg:   "duplicate name: " + r.Name(),
 			}}
 		}
 
 		bkt := &bucket{
-			name:        k.Name(),
-			Description: k.Spec.stringShort(fieldDescription),
+			name:        r.Name(),
+			Description: r.stringShort(fieldDescription),
 		}
-		if rules, ok := k.Spec[fieldBucketRetentionRules].(retentionRules); ok {
+		if rules, ok := r[fieldBucketRetentionRules].(retentionRules); ok {
 			bkt.RetentionRules = rules
 		} else {
-			for _, r := range k.Spec.slcResource(fieldBucketRetentionRules) {
+			for _, r := range r.slcResource(fieldBucketRetentionRules) {
 				bkt.RetentionRules = append(bkt.RetentionRules, retentionRule{
 					Type:    r.stringShort(fieldType),
 					Seconds: r.intShort(fieldRetentionRulesEverySeconds),
@@ -608,14 +596,14 @@ func (p *Pkg) graphBuckets() *parseErr {
 			}
 		}
 
-		failures := p.parseNestedLabels(k.Spec, func(l *label) error {
+		failures := p.parseNestedLabels(r, func(l *label) error {
 			bkt.labels = append(bkt.labels, l)
 			p.mLabels[l.Name()].setMapping(bkt, false)
 			return nil
 		})
 		sort.Sort(bkt.labels)
 
-		p.mBuckets[k.Name()] = bkt
+		p.mBuckets[r.Name()] = bkt
 
 		return append(failures, bkt.valid()...)
 	})
@@ -623,17 +611,17 @@ func (p *Pkg) graphBuckets() *parseErr {
 
 func (p *Pkg) graphLabels() *parseErr {
 	p.mLabels = make(map[string]*label)
-	return p.eachResource(KindLabel, 2, func(k Object) []validationErr {
-		if _, ok := p.mLabels[k.Name()]; ok {
+	return p.eachResource(KindLabel, 2, func(r Resource) []validationErr {
+		if _, ok := p.mLabels[r.Name()]; ok {
 			return []validationErr{{
 				Field: "name",
-				Msg:   "duplicate name: " + k.Name(),
+				Msg:   "duplicate name: " + r.Name(),
 			}}
 		}
-		p.mLabels[k.Name()] = &label{
-			name:        k.Name(),
-			Color:       k.Spec.stringShort(fieldLabelColor),
-			Description: k.Spec.stringShort(fieldDescription),
+		p.mLabels[r.Name()] = &label{
+			name:        r.Name(),
+			Color:       r.stringShort(fieldLabelColor),
+			Description: r.stringShort(fieldDescription),
 		}
 
 		return nil
@@ -651,36 +639,36 @@ func (p *Pkg) graphChecks() *parseErr {
 		{kind: KindCheckDeadman, checkKind: checkKindDeadman},
 	}
 	var pErr parseErr
-	for _, checkKind := range checkKinds {
-		err := p.eachResource(checkKind.kind, 1, func(k Object) []validationErr {
-			if _, ok := p.mChecks[k.Name()]; ok {
+	for _, k := range checkKinds {
+		err := p.eachResource(k.kind, 1, func(r Resource) []validationErr {
+			if _, ok := p.mChecks[r.Name()]; ok {
 				return []validationErr{{
 					Field: "name",
-					Msg:   "duplicate name: " + k.Name(),
+					Msg:   "duplicate name: " + r.Name(),
 				}}
 			}
 
 			ch := &check{
-				kind:          checkKind.checkKind,
-				name:          k.Name(),
-				description:   k.Spec.stringShort(fieldDescription),
-				every:         k.Spec.durationShort(fieldEvery),
-				level:         k.Spec.stringShort(fieldLevel),
-				offset:        k.Spec.durationShort(fieldOffset),
-				query:         strings.TrimSpace(k.Spec.stringShort(fieldQuery)),
-				reportZero:    k.Spec.boolShort(fieldCheckReportZero),
-				staleTime:     k.Spec.durationShort(fieldCheckStaleTime),
-				status:        normStr(k.Spec.stringShort(fieldStatus)),
-				statusMessage: k.Spec.stringShort(fieldCheckStatusMessageTemplate),
-				timeSince:     k.Spec.durationShort(fieldCheckTimeSince),
+				kind:          k.checkKind,
+				name:          r.Name(),
+				description:   r.stringShort(fieldDescription),
+				every:         r.durationShort(fieldEvery),
+				level:         r.stringShort(fieldLevel),
+				offset:        r.durationShort(fieldOffset),
+				query:         strings.TrimSpace(r.stringShort(fieldQuery)),
+				reportZero:    r.boolShort(fieldCheckReportZero),
+				staleTime:     r.durationShort(fieldCheckStaleTime),
+				status:        normStr(r.stringShort(fieldStatus)),
+				statusMessage: r.stringShort(fieldCheckStatusMessageTemplate),
+				timeSince:     r.durationShort(fieldCheckTimeSince),
 			}
-			for _, tagRes := range k.Spec.slcResource(fieldCheckTags) {
+			for _, tagRes := range r.slcResource(fieldCheckTags) {
 				ch.tags = append(ch.tags, struct{ k, v string }{
 					k: tagRes.stringShort(fieldKey),
 					v: tagRes.stringShort(fieldValue),
 				})
 			}
-			for _, th := range k.Spec.slcResource(fieldCheckThresholds) {
+			for _, th := range r.slcResource(fieldCheckThresholds) {
 				ch.thresholds = append(ch.thresholds, threshold{
 					threshType: thresholdType(normStr(th.stringShort(fieldType))),
 					allVals:    th.boolShort(fieldCheckAllValues),
@@ -691,7 +679,7 @@ func (p *Pkg) graphChecks() *parseErr {
 				})
 			}
 
-			failures := p.parseNestedLabels(k.Spec, func(l *label) error {
+			failures := p.parseNestedLabels(r, func(l *label) error {
 				ch.labels = append(ch.labels, l)
 				p.mLabels[l.Name()].setMapping(ch, false)
 				return nil
@@ -713,24 +701,24 @@ func (p *Pkg) graphChecks() *parseErr {
 
 func (p *Pkg) graphDashboards() *parseErr {
 	p.mDashboards = make([]*dashboard, 0)
-	return p.eachResource(KindDashboard, 2, func(k Object) []validationErr {
+	return p.eachResource(KindDashboard, 2, func(r Resource) []validationErr {
 		dash := &dashboard{
-			name:        k.Name(),
-			Description: k.Spec.stringShort(fieldDescription),
+			name:        r.Name(),
+			Description: r.stringShort(fieldDescription),
 		}
 
-		failures := p.parseNestedLabels(k.Spec, func(l *label) error {
+		failures := p.parseNestedLabels(r, func(l *label) error {
 			dash.labels = append(dash.labels, l)
 			p.mLabels[l.Name()].setMapping(dash, false)
 			return nil
 		})
 		sort.Sort(dash.labels)
 
-		for i, cr := range k.Spec.slcResource(fieldDashCharts) {
+		for i, cr := range r.slcResource(fieldDashCharts) {
 			ch, fails := parseChart(cr)
 			if fails != nil {
 				failures = append(failures, validationErr{
-					Field:  fieldDashCharts,
+					Field:  "charts",
 					Index:  intPtr(i),
 					Nested: fails,
 				})
@@ -768,28 +756,28 @@ func (p *Pkg) graphNotificationEndpoints() *parseErr {
 
 	var pErr parseErr
 	for _, nk := range notificationKinds {
-		err := p.eachResource(nk.kind, 1, func(k Object) []validationErr {
-			if _, ok := p.mNotificationEndpoints[k.Name()]; ok {
+		err := p.eachResource(nk.kind, 1, func(r Resource) []validationErr {
+			if _, ok := p.mNotificationEndpoints[r.Name()]; ok {
 				return []validationErr{{
 					Field: "name",
-					Msg:   "duplicate name: " + k.Name(),
+					Msg:   "duplicate name: " + r.Name(),
 				}}
 			}
 
 			endpoint := &notificationEndpoint{
 				kind:        nk.notificationKind,
-				name:        k.Name(),
-				description: k.Spec.stringShort(fieldDescription),
-				method:      strings.TrimSpace(strings.ToUpper(k.Spec.stringShort(fieldNotificationEndpointHTTPMethod))),
-				httpType:    normStr(k.Spec.stringShort(fieldType)),
-				password:    k.Spec.references(fieldNotificationEndpointPassword),
-				routingKey:  k.Spec.references(fieldNotificationEndpointRoutingKey),
-				status:      normStr(k.Spec.stringShort(fieldStatus)),
-				token:       k.Spec.references(fieldNotificationEndpointToken),
-				url:         k.Spec.stringShort(fieldNotificationEndpointURL),
-				username:    k.Spec.references(fieldNotificationEndpointUsername),
+				name:        r.Name(),
+				description: r.stringShort(fieldDescription),
+				method:      strings.TrimSpace(strings.ToUpper(r.stringShort(fieldNotificationEndpointHTTPMethod))),
+				httpType:    normStr(r.stringShort(fieldType)),
+				password:    r.references(fieldNotificationEndpointPassword),
+				routingKey:  r.references(fieldNotificationEndpointRoutingKey),
+				status:      normStr(r.stringShort(fieldStatus)),
+				token:       r.references(fieldNotificationEndpointToken),
+				url:         r.stringShort(fieldNotificationEndpointURL),
+				username:    r.references(fieldNotificationEndpointUsername),
 			}
-			failures := p.parseNestedLabels(k.Spec, func(l *label) error {
+			failures := p.parseNestedLabels(r, func(l *label) error {
 				endpoint.labels = append(endpoint.labels, l)
 				p.mLabels[l.Name()].setMapping(endpoint, false)
 				return nil
@@ -818,26 +806,26 @@ func (p *Pkg) graphNotificationEndpoints() *parseErr {
 
 func (p *Pkg) graphNotificationRules() *parseErr {
 	p.mNotificationRules = make([]*notificationRule, 0)
-	return p.eachResource(KindNotificationRule, 1, func(k Object) []validationErr {
+	return p.eachResource(KindNotificationRule, 1, func(r Resource) []validationErr {
 		rule := &notificationRule{
-			name:         k.Name(),
-			endpointName: k.Spec.stringShort(fieldNotificationRuleEndpointName),
-			description:  k.Spec.stringShort(fieldDescription),
-			channel:      k.Spec.stringShort(fieldNotificationRuleChannel),
-			every:        k.Spec.durationShort(fieldEvery),
-			msgTemplate:  k.Spec.stringShort(fieldNotificationRuleMessageTemplate),
-			offset:       k.Spec.durationShort(fieldOffset),
-			status:       normStr(k.Spec.stringShort(fieldStatus)),
+			name:         r.Name(),
+			endpointName: r.stringShort(fieldNotificationRuleEndpointName),
+			description:  r.stringShort(fieldDescription),
+			channel:      r.stringShort(fieldNotificationRuleChannel),
+			every:        r.durationShort(fieldEvery),
+			msgTemplate:  r.stringShort(fieldNotificationRuleMessageTemplate),
+			offset:       r.durationShort(fieldOffset),
+			status:       normStr(r.stringShort(fieldStatus)),
 		}
 
-		for _, sRule := range k.Spec.slcResource(fieldNotificationRuleStatusRules) {
+		for _, sRule := range r.slcResource(fieldNotificationRuleStatusRules) {
 			rule.statusRules = append(rule.statusRules, struct{ curLvl, prevLvl string }{
 				curLvl:  strings.TrimSpace(strings.ToUpper(sRule.stringShort(fieldNotificationRuleCurrentLevel))),
 				prevLvl: strings.TrimSpace(strings.ToUpper(sRule.stringShort(fieldNotificationRulePreviousLevel))),
 			})
 		}
 
-		for _, tRule := range k.Spec.slcResource(fieldNotificationRuleTagRules) {
+		for _, tRule := range r.slcResource(fieldNotificationRuleTagRules) {
 			rule.tagRules = append(rule.tagRules, struct{ k, v, op string }{
 				k:  tRule.stringShort(fieldKey),
 				v:  tRule.stringShort(fieldValue),
@@ -845,7 +833,7 @@ func (p *Pkg) graphNotificationRules() *parseErr {
 			})
 		}
 
-		failures := p.parseNestedLabels(k.Spec, func(l *label) error {
+		failures := p.parseNestedLabels(r, func(l *label) error {
 			rule.labels = append(rule.labels, l)
 			p.mLabels[l.Name()].setMapping(rule, false)
 			return nil
@@ -859,18 +847,18 @@ func (p *Pkg) graphNotificationRules() *parseErr {
 
 func (p *Pkg) graphTasks() *parseErr {
 	p.mTasks = make([]*task, 0)
-	return p.eachResource(KindTask, 1, func(k Object) []validationErr {
+	return p.eachResource(KindTask, 1, func(r Resource) []validationErr {
 		t := &task{
-			name:        k.Name(),
-			cron:        k.Spec.stringShort(fieldTaskCron),
-			description: k.Spec.stringShort(fieldDescription),
-			every:       k.Spec.durationShort(fieldEvery),
-			offset:      k.Spec.durationShort(fieldOffset),
-			query:       strings.TrimSpace(k.Spec.stringShort(fieldQuery)),
-			status:      normStr(k.Spec.stringShort(fieldStatus)),
+			name:        r.Name(),
+			cron:        r.stringShort(fieldTaskCron),
+			description: r.stringShort(fieldDescription),
+			every:       r.durationShort(fieldEvery),
+			offset:      r.durationShort(fieldOffset),
+			query:       strings.TrimSpace(r.stringShort(fieldQuery)),
+			status:      normStr(r.stringShort(fieldStatus)),
 		}
 
-		failures := p.parseNestedLabels(k.Spec, func(l *label) error {
+		failures := p.parseNestedLabels(r, func(l *label) error {
 			t.labels = append(t.labels, l)
 			p.mLabels[l.Name()].setMapping(t, false)
 			return nil
@@ -884,19 +872,19 @@ func (p *Pkg) graphTasks() *parseErr {
 
 func (p *Pkg) graphTelegrafs() *parseErr {
 	p.mTelegrafs = make([]*telegraf, 0)
-	return p.eachResource(KindTelegraf, 0, func(k Object) []validationErr {
+	return p.eachResource(KindTelegraf, 0, func(r Resource) []validationErr {
 		tele := new(telegraf)
-		tele.config.Name = k.Name()
-		tele.config.Description = k.Spec.stringShort(fieldDescription)
+		tele.config.Name = r.Name()
+		tele.config.Description = r.stringShort(fieldDescription)
 
-		failures := p.parseNestedLabels(k.Spec, func(l *label) error {
+		failures := p.parseNestedLabels(r, func(l *label) error {
 			tele.labels = append(tele.labels, l)
 			p.mLabels[l.Name()].setMapping(tele, false)
 			return nil
 		})
 		sort.Sort(tele.labels)
 
-		tele.config.Config = k.Spec.stringShort(fieldTelegrafConfig)
+		tele.config.Config = r.stringShort(fieldTelegrafConfig)
 		if tele.config.Config == "" {
 			failures = append(failures, validationErr{
 				Field: fieldTelegrafConfig,
@@ -912,74 +900,62 @@ func (p *Pkg) graphTelegrafs() *parseErr {
 
 func (p *Pkg) graphVariables() *parseErr {
 	p.mVariables = make(map[string]*variable)
-	return p.eachResource(KindVariable, 1, func(k Object) []validationErr {
-		if _, ok := p.mVariables[k.Name()]; ok {
+	return p.eachResource(KindVariable, 1, func(r Resource) []validationErr {
+		if _, ok := p.mVariables[r.Name()]; ok {
 			return []validationErr{{
 				Field: "name",
-				Msg:   "duplicate name: " + k.Name(),
+				Msg:   "duplicate name: " + r.Name(),
 			}}
 		}
 
 		newVar := &variable{
-			name:        k.Name(),
-			Description: k.Spec.stringShort(fieldDescription),
-			Type:        normStr(k.Spec.stringShort(fieldType)),
-			Query:       strings.TrimSpace(k.Spec.stringShort(fieldQuery)),
-			Language:    normStr(k.Spec.stringShort(fieldLanguage)),
-			ConstValues: k.Spec.slcStr(fieldValues),
-			MapValues:   k.Spec.mapStrStr(fieldValues),
+			name:        r.Name(),
+			Description: r.stringShort(fieldDescription),
+			Type:        normStr(r.stringShort(fieldType)),
+			Query:       strings.TrimSpace(r.stringShort(fieldQuery)),
+			Language:    normStr(r.stringShort(fieldLanguage)),
+			ConstValues: r.slcStr(fieldValues),
+			MapValues:   r.mapStrStr(fieldValues),
 		}
 
-		failures := p.parseNestedLabels(k.Spec, func(l *label) error {
+		failures := p.parseNestedLabels(r, func(l *label) error {
 			newVar.labels = append(newVar.labels, l)
 			p.mLabels[l.Name()].setMapping(newVar, false)
+			//p.mLabels[l.Name()].setVariableMapping(newVar, false)
 			return nil
 		})
 		sort.Sort(newVar.labels)
 
-		p.mVariables[k.Name()] = newVar
+		p.mVariables[r.Name()] = newVar
 
 		return append(failures, newVar.valid()...)
 	})
 }
 
-func (p *Pkg) eachResource(resourceKind Kind, minNameLen int, fn func(r Object) []validationErr) *parseErr {
+func (p *Pkg) eachResource(resourceKind Kind, minNameLen int, fn func(r Resource) []validationErr) *parseErr {
 	var pErr parseErr
-	for i, k := range p.Objects {
-		if err := k.Type.OK(); err != nil {
+	for i, r := range p.Spec.Resources {
+		k, err := r.kind()
+		if err != nil {
 			pErr.append(resourceErr{
-				Kind: k.Type.String(),
+				Kind: k.String(),
 				Idx:  intPtr(i),
 				ValidationErrs: []validationErr{
 					{
-						Field: fieldKind,
+						Field: "kind",
 						Msg:   err.Error(),
 					},
 				},
 			})
 			continue
 		}
-		if !k.Type.is(resourceKind) {
+		if !k.is(resourceKind) {
 			continue
 		}
 
-		if k.APIVersion != APIVersion {
+		if len(r.Name()) < minNameLen {
 			pErr.append(resourceErr{
-				Kind: k.Type.String(),
-				Idx:  intPtr(i),
-				ValidationErrs: []validationErr{
-					{
-						Field: fieldAPIVersion,
-						Msg:   fmt.Sprintf("invalid API version provided %q; must be 1 in [%s]", k.APIVersion, APIVersion),
-					},
-				},
-			})
-			continue
-		}
-
-		if len(k.Name()) < minNameLen {
-			pErr.append(resourceErr{
-				Kind: k.Type.String(),
+				Kind: k.String(),
 				Idx:  intPtr(i),
 				ValidationErrs: []validationErr{
 					{
@@ -991,7 +967,7 @@ func (p *Pkg) eachResource(resourceKind Kind, minNameLen int, fn func(r Object) 
 			continue
 		}
 
-		if failures := fn(k); failures != nil {
+		if failures := fn(r); failures != nil {
 			err := resourceErr{
 				Kind: resourceKind.String(),
 				Idx:  intPtr(i),
@@ -1088,9 +1064,7 @@ func parseChart(r Resource) (chart, []validationErr) {
 		Kind:        ck,
 		Name:        r.Name(),
 		Prefix:      r.stringShort(fieldPrefix),
-		TickPrefix:  r.stringShort(fieldChartTickPrefix),
 		Suffix:      r.stringShort(fieldSuffix),
-		TickSuffix:  r.stringShort(fieldChartTickSuffix),
 		Note:        r.stringShort(fieldChartNote),
 		NoteOnEmpty: r.boolShort(fieldChartNoteOnEmpty),
 		Shade:       r.boolShort(fieldChartShade),
@@ -1136,6 +1110,8 @@ func parseChart(r Resource) (chart, []validationErr) {
 	} else {
 		for _, rc := range r.slcResource(fieldChartColors) {
 			c.Colors = append(c.Colors, &color{
+				// TODO: think we can just axe the stub here
+				id:    influxdb.ID(int(time.Now().UnixNano())).String(),
 				Name:  rc.Name(),
 				Type:  rc.stringShort(fieldType),
 				Hex:   rc.stringShort(fieldColorHex),
@@ -1201,13 +1177,13 @@ func (r Resource) kind() (Kind, error) {
 		return KindUnknown, errors.New("no kind provided")
 	}
 
-	k := Kind(resKind)
+	k := NewKind(resKind)
 	return k, k.OK()
 }
 
 func (r Resource) chartKind() (chartKind, error) {
 	ck, _ := r.kind()
-	chartKind := chartKind(normStr(string(ck)))
+	chartKind := chartKind(ck)
 	if !chartKind.ok() {
 		return chartKindUnknown, errors.New("invalid chart kind provided: " + string(chartKind))
 	}
@@ -1431,36 +1407,40 @@ func ifaceToStr(v interface{}) (string, bool) {
 	return "", false
 }
 
-func uniqResources(kinds []Object) []Object {
+func uniqResources(resources []Resource) []Resource {
 	type key struct {
 		kind Kind
 		name string
 	}
 
 	// these 2 maps are used to eliminate duplicates that come
-	// from dependencies while keeping the Object that has any
-	// associations. If there are no associations, then the kinds
+	// from dependencies while keeping the Resource that has any
+	// associations. If there are no associations, then the resources
 	// are no different from one another.
 	m := make(map[key]bool)
-	res := make(map[key]Object)
+	res := make(map[key]Resource)
 
-	out := make([]Object, 0, len(kinds))
-	for _, k := range kinds {
-		if err := k.Type.OK(); err != nil {
+	out := make([]Resource, 0, len(resources))
+	for _, r := range resources {
+		k, err := r.kind()
+		if err != nil {
+			continue
+		}
+		if err := k.OK(); err != nil {
 			continue
 		}
 
-		if kindsUniqByName[k.Type] {
-			rKey := key{kind: k.Type, name: k.Name()}
+		if kindsUniqByName[k] {
+			rKey := key{kind: k, name: r.Name()}
 			if hasAssociations, ok := m[rKey]; ok && hasAssociations {
 				continue
 			}
-			_, hasAssociations := k.Spec[fieldAssociations]
+			_, hasAssociations := r[fieldAssociations]
 			m[rKey] = hasAssociations
-			res[rKey] = k
+			res[rKey] = r
 			continue
 		}
-		out = append(out, k)
+		out = append(out, r)
 	}
 
 	for _, r := range res {
@@ -1532,7 +1512,7 @@ func (e *parseErr) ValidationErrs() []ValidationErr {
 		}
 
 		rootErr.Indexes = []*int{r.Idx}
-		rootErr.Fields = []string{"root"}
+		rootErr.Fields = []string{"spec.resources"}
 		for _, v := range append(r.ValidationErrs, r.AssociationErrs...) {
 			errs = append(errs, traverseErrs(rootErr, v)...)
 		}

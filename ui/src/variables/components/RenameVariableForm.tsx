@@ -72,7 +72,6 @@ class RenameVariableOverlayForm extends PureComponent<Props, State> {
                       value={workingVariable.name}
                       onChange={this.handleChangeInput}
                       status={status}
-                      testID="rename-variable-input"
                     />
                   )}
                 </Form.ValidationElement>
@@ -96,7 +95,6 @@ class RenameVariableOverlayForm extends PureComponent<Props, State> {
                       ? ComponentStatus.Default
                       : ComponentStatus.Disabled
                   }
-                  testID="rename-variable-submit"
                 />
               </Form.Footer>
             </Grid.Column>

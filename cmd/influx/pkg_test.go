@@ -31,13 +31,89 @@ func TestCmdPkg(t *testing.T) {
 		}
 	}
 
+	hasNotZeroDefault := func(t *testing.T, expected, actual string) {
+		t.Helper()
+		if expected == "" {
+			assert.NotZero(t, actual)
+			return
+		}
+		assert.Equal(t, expected, actual)
+	}
+
 	setViperOptions()
+
+	t.Run("new", func(t *testing.T) {
+		tests := []struct {
+			expectedMeta pkger.Metadata
+			args         pkgFileArgs
+		}{
+			{
+				args: pkgFileArgs{
+					name:     "yaml out",
+					encoding: pkger.EncodingYAML,
+					filename: "pkg_0.yml",
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
+				},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
+				},
+			},
+			{
+				args: pkgFileArgs{
+					name:     "json out",
+					encoding: pkger.EncodingJSON,
+					filename: "pkg_1.json",
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
+				},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
+				},
+			},
+			{
+				args: pkgFileArgs{
+					name:     "quiet mode",
+					encoding: pkger.EncodingJSON,
+					filename: "pkg_1.json",
+					flags: []flagArg{
+						{name: "quiet", val: "true"},
+					},
+				},
+			},
+		}
+
+		cmdFn := func() *cobra.Command {
+			builder := newCmdPkgBuilder(fakeSVCFn(pkger.NewService()), in(new(bytes.Buffer)))
+			cmd := builder.cmdPkgNew()
+			return cmd
+		}
+
+		for _, tt := range tests {
+			testPkgWrites(t, cmdFn, tt.args, func(t *testing.T, pkg *pkger.Pkg) {
+				assert.Equal(t, tt.expectedMeta.Description, pkg.Metadata.Description)
+				hasNotZeroDefault(t, tt.expectedMeta.Name, pkg.Metadata.Name)
+				hasNotZeroDefault(t, tt.expectedMeta.Version, pkg.Metadata.Version)
+			})
+		}
+	})
 
 	t.Run("export all", func(t *testing.T) {
 		expectedOrgID := influxdb.ID(9000)
 
 		tests := []struct {
 			pkgFileArgs
+			expectedMeta pkger.Metadata
 		}{
 			{
 				pkgFileArgs: pkgFileArgs{
@@ -45,8 +121,16 @@ func TestCmdPkg(t *testing.T) {
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
 					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
 						{name: "org-id", val: expectedOrgID.String()},
 					},
+				},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
 				},
 			},
 			{
@@ -55,8 +139,16 @@ func TestCmdPkg(t *testing.T) {
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
 					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
 						{name: "org", val: "influxdata"},
 					},
+				},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
 				},
 			},
 			{
@@ -64,7 +156,17 @@ func TestCmdPkg(t *testing.T) {
 					name:     "yaml out with org name env var",
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
-					envVars:  map[string]string{"INFLUX_ORG": "influxdata"},
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
+					envVars: map[string]string{"INFLUX_ORG": "influxdata"},
+				},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
 				},
 			},
 			{
@@ -72,7 +174,17 @@ func TestCmdPkg(t *testing.T) {
 					name:     "yaml out with org id env var",
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
-					envVars:  map[string]string{"INFLUX_ORG_ID": expectedOrgID.String()},
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
+					envVars: map[string]string{"INFLUX_ORG_ID": expectedOrgID.String()},
+				},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
 				},
 			},
 		}
@@ -90,11 +202,14 @@ func TestCmdPkg(t *testing.T) {
 						return nil, errors.New("did not provide expected orgID")
 					}
 
-					var pkg pkger.Pkg
-					pkg.Objects = append(pkg.Objects, pkger.Object{
+					pkg := pkger.Pkg{
 						APIVersion: pkger.APIVersion,
-						Type:       pkger.KindBucket,
-						Metadata:   pkger.Metadata{Name: "bucket1"},
+						Kind:       pkger.KindPackage,
+						Metadata:   opt.Metadata,
+					}
+					pkg.Spec.Resources = append(pkg.Spec.Resources, pkger.Resource{
+						"name": "bucket1",
+						"kind": pkger.KindBucket.String(),
 					})
 					return &pkg, nil
 				},
@@ -104,6 +219,10 @@ func TestCmdPkg(t *testing.T) {
 		}
 		for _, tt := range tests {
 			testPkgWrites(t, cmdFn, tt.pkgFileArgs, func(t *testing.T, pkg *pkger.Pkg) {
+				assert.Equal(t, tt.expectedMeta.Description, pkg.Metadata.Description)
+				hasNotZeroDefault(t, tt.expectedMeta.Name, pkg.Metadata.Name)
+				hasNotZeroDefault(t, tt.expectedMeta.Version, pkg.Metadata.Version)
+
 				sum := pkg.Summary()
 
 				require.Len(t, sum.Buckets, 1)
@@ -116,78 +235,159 @@ func TestCmdPkg(t *testing.T) {
 		tests := []struct {
 			name string
 			pkgFileArgs
-			bucketIDs   []influxdb.ID
-			dashIDs     []influxdb.ID
-			endpointIDs []influxdb.ID
-			labelIDs    []influxdb.ID
-			ruleIDs     []influxdb.ID
-			taskIDs     []influxdb.ID
-			telegrafIDs []influxdb.ID
-			varIDs      []influxdb.ID
+			bucketIDs    []influxdb.ID
+			dashIDs      []influxdb.ID
+			endpointIDs  []influxdb.ID
+			labelIDs     []influxdb.ID
+			ruleIDs      []influxdb.ID
+			taskIDs      []influxdb.ID
+			telegrafIDs  []influxdb.ID
+			varIDs       []influxdb.ID
+			expectedMeta pkger.Metadata
 		}{
 			{
 				pkgFileArgs: pkgFileArgs{
 					name:     "buckets",
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
 				},
 				bucketIDs: []influxdb.ID{1, 2},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
+				},
 			},
 			{
 				pkgFileArgs: pkgFileArgs{
 					name:     "dashboards",
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
 				},
 				dashIDs: []influxdb.ID{1, 2},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
+				},
 			},
 			{
 				pkgFileArgs: pkgFileArgs{
 					name:     "endpoints",
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
 				},
 				endpointIDs: []influxdb.ID{1, 2},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
+				},
 			},
 			{
 				pkgFileArgs: pkgFileArgs{
 					name:     "labels",
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
 				},
 				labelIDs: []influxdb.ID{1, 2},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
+				},
 			},
 			{
 				pkgFileArgs: pkgFileArgs{
 					name:     "rules",
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
 				},
 				ruleIDs: []influxdb.ID{1, 2},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
+				},
 			},
 			{
 				pkgFileArgs: pkgFileArgs{
 					name:     "tasks",
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
 				},
 				taskIDs: []influxdb.ID{1, 2},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
+				},
 			},
 			{
 				pkgFileArgs: pkgFileArgs{
 					name:     "telegrafs",
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
 				},
 				telegrafIDs: []influxdb.ID{1, 2},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
+				},
 			},
 			{
 				pkgFileArgs: pkgFileArgs{
 					name:     "variables",
 					encoding: pkger.EncodingYAML,
 					filename: "pkg_0.yml",
+					flags: []flagArg{
+						{name: "name", val: "new name"},
+						{name: "description", val: "new desc"},
+						{name: "version", val: "new version"},
+					},
 				},
 				varIDs: []influxdb.ID{1, 2},
+				expectedMeta: pkger.Metadata{
+					Name:        "new name",
+					Description: "new desc",
+					Version:     "new version",
+				},
 			},
 		}
 
@@ -201,16 +401,19 @@ func TestCmdPkg(t *testing.T) {
 						}
 					}
 
-					var pkg pkger.Pkg
+					pkg := pkger.Pkg{
+						APIVersion: pkger.APIVersion,
+						Kind:       pkger.KindPackage,
+						Metadata:   opt.Metadata,
+					}
 					for _, rc := range opt.Resources {
 						if rc.Kind == pkger.KindNotificationEndpoint {
 							rc.Kind = pkger.KindNotificationEndpointHTTP
 						}
 						name := rc.Kind.String() + strconv.Itoa(int(rc.ID))
-						pkg.Objects = append(pkg.Objects, pkger.Object{
-							APIVersion: pkger.APIVersion,
-							Type:       rc.Kind,
-							Metadata:   pkger.Metadata{Name: name},
+						pkg.Spec.Resources = append(pkg.Spec.Resources, pkger.Resource{
+							"kind": rc.Kind,
+							"name": name,
 						})
 					}
 
@@ -233,47 +436,51 @@ func TestCmdPkg(t *testing.T) {
 			)
 
 			testPkgWrites(t, cmdFn, tt.pkgFileArgs, func(t *testing.T, pkg *pkger.Pkg) {
+				assert.Equal(t, tt.expectedMeta.Description, pkg.Metadata.Description)
+				hasNotZeroDefault(t, tt.expectedMeta.Name, pkg.Metadata.Name)
+				hasNotZeroDefault(t, tt.expectedMeta.Version, pkg.Metadata.Version)
+
 				sum := pkg.Summary()
 
 				require.Len(t, sum.Buckets, len(tt.bucketIDs))
 				for i, id := range tt.bucketIDs {
 					actual := sum.Buckets[i]
-					assert.Equal(t, pkger.KindBucket.String()+strconv.Itoa(int(id)), actual.Name)
+					assert.Equal(t, "bucket"+strconv.Itoa(int(id)), actual.Name)
 				}
 				require.Len(t, sum.Dashboards, len(tt.dashIDs))
 				for i, id := range tt.dashIDs {
 					actual := sum.Dashboards[i]
-					assert.Equal(t, pkger.KindDashboard.String()+strconv.Itoa(int(id)), actual.Name)
+					assert.Equal(t, "dashboard"+strconv.Itoa(int(id)), actual.Name)
 				}
 				require.Len(t, sum.NotificationEndpoints, len(tt.endpointIDs))
 				for i, id := range tt.endpointIDs {
 					actual := sum.NotificationEndpoints[i]
-					assert.Equal(t, pkger.KindNotificationEndpointHTTP.String()+strconv.Itoa(int(id)), actual.NotificationEndpoint.GetName())
+					assert.Equal(t, "notification_endpoint_http"+strconv.Itoa(int(id)), actual.NotificationEndpoint.GetName())
 				}
 				require.Len(t, sum.Labels, len(tt.labelIDs))
 				for i, id := range tt.labelIDs {
 					actual := sum.Labels[i]
-					assert.Equal(t, pkger.KindLabel.String()+strconv.Itoa(int(id)), actual.Name)
+					assert.Equal(t, "label"+strconv.Itoa(int(id)), actual.Name)
 				}
 				require.Len(t, sum.NotificationRules, len(tt.ruleIDs))
 				for i, id := range tt.ruleIDs {
 					actual := sum.NotificationRules[i]
-					assert.Equal(t, pkger.KindNotificationRule.String()+strconv.Itoa(int(id)), actual.Name)
+					assert.Equal(t, "notification_rule"+strconv.Itoa(int(id)), actual.Name)
 				}
 				require.Len(t, sum.Tasks, len(tt.taskIDs))
 				for i, id := range tt.taskIDs {
 					actual := sum.Tasks[i]
-					assert.Equal(t, pkger.KindTask.String()+strconv.Itoa(int(id)), actual.Name)
+					assert.Equal(t, "task"+strconv.Itoa(int(id)), actual.Name)
 				}
 				require.Len(t, sum.TelegrafConfigs, len(tt.telegrafIDs))
 				for i, id := range tt.telegrafIDs {
 					actual := sum.TelegrafConfigs[i]
-					assert.Equal(t, pkger.KindTelegraf.String()+strconv.Itoa(int(id)), actual.TelegrafConfig.Name)
+					assert.Equal(t, "telegraf"+strconv.Itoa(int(id)), actual.TelegrafConfig.Name)
 				}
 				require.Len(t, sum.Variables, len(tt.varIDs))
 				for i, id := range tt.varIDs {
 					actual := sum.Variables[i]
-					assert.Equal(t, pkger.KindVariable.String()+strconv.Itoa(int(id)), actual.Name)
+					assert.Equal(t, "variable"+strconv.Itoa(int(id)), actual.Name)
 				}
 			})
 		}
@@ -287,11 +494,16 @@ func TestCmdPkg(t *testing.T) {
 		})
 
 		t.Run("pkg is invalid returns error", func(t *testing.T) {
-			// pkgYml is invalid because it is missing a name and wrong apiVersion
+			// pkgYml is invalid because it is missing a name
 			const pkgYml = `apiVersion: 0.1.0
-kind: Bucket
-metadata:
-`
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+spec:
+  resources:
+    - kind: Bucket`
+
 			b := newCmdPkgBuilder(fakeSVCFn(new(fakePkgSVC)), in(strings.NewReader(pkgYml)), out(ioutil.Discard))
 			cmd := b.cmdPkgValidate()
 			require.Error(t, cmd.Execute())
@@ -344,6 +556,8 @@ func testPkgWritesFile(newCmdFn func() *cobra.Command, args pkgFileArgs, assertF
 		pkg, err := pkger.Parse(args.encoding, pkger.FromFile(pathToFile), pkger.ValidWithoutResources(), pkger.ValidSkipParseError())
 		require.NoError(t, err)
 
+		require.Equal(t, pkger.KindPackage, pkg.Kind)
+
 		assertFn(t, pkg)
 	}
 }
@@ -354,7 +568,7 @@ func testPkgWritesToBuffer(newCmdFn func() *cobra.Command, args pkgFileArgs, ass
 
 		var buf bytes.Buffer
 		cmd := newCmdFn()
-		cmd.SetOut(&buf)
+		cmd.SetOutput(&buf)
 		for _, f := range args.flags {
 			require.NoError(t, cmd.Flags().Set(f.name, f.val))
 		}
@@ -363,6 +577,8 @@ func testPkgWritesToBuffer(newCmdFn func() *cobra.Command, args pkgFileArgs, ass
 
 		pkg, err := pkger.Parse(pkger.EncodingYAML, pkger.FromReader(&buf), pkger.ValidWithoutResources(), pkger.ValidSkipParseError())
 		require.NoError(t, err)
+
+		require.Equal(t, pkger.KindPackage, pkg.Kind)
 
 		assertFn(t, pkg)
 	}

@@ -454,7 +454,6 @@ func TestService_handleGetDashboard(t *testing.T) {
 	  "h": 4,
 	  "name": "the cell name",
 	  "properties": {
-		"shape": "chronograf-v2",
 		"axes": null,
 		"colors": null,
 		"geom": "",
@@ -975,7 +974,6 @@ func TestService_handlePostDashboard(t *testing.T) {
 							"h": 4,
 							"name": "hello a view",
 							"properties": {
-								"shape": "chronograf-v2",
 								"axes": null,
 								"colors": null,
 								"geom": "",

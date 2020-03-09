@@ -13,9 +13,7 @@ import ThresholdsSettings from 'src/shared/components/ThresholdsSettings'
 import {
   setDecimalPlaces,
   setPrefix,
-  setTickPrefix,
   setSuffix,
-  setTickSuffix,
   setColors,
 } from 'src/timeMachine/actions'
 
@@ -34,17 +32,13 @@ import {
 interface StateProps {
   colors: Color[]
   prefix: string
-  tickPrefix: string
   suffix: string
-  tickSuffix: string
   decimalPlaces: DecimalPlaces
 }
 
 interface DispatchProps {
   onSetPrefix: typeof setPrefix
-  onSetTickPrefix: typeof setTickPrefix
   onSetSuffix: typeof setSuffix
-  onSetTickSuffix: typeof setTickSuffix
   onSetDecimalPlaces: typeof setDecimalPlaces
   onSetColors: typeof setColors
 }
@@ -55,14 +49,10 @@ const SingleStatOptions: SFC<Props> = props => {
   const {
     colors,
     prefix,
-    tickPrefix,
     suffix,
-    tickSuffix,
     decimalPlaces,
     onSetPrefix,
-    onSetTickPrefix,
     onSetSuffix,
-    onSetTickSuffix,
     onSetDecimalPlaces,
     onSetColors,
   } = props
@@ -74,13 +64,9 @@ const SingleStatOptions: SFC<Props> = props => {
       </Grid.Column>
       <Affixes
         prefix={prefix}
-        tickPrefix={tickPrefix}
         suffix={suffix}
-        tickSuffix={tickSuffix}
         onUpdatePrefix={onSetPrefix}
-        onUpdateTickPrefix={onSetTickPrefix}
         onUpdateSuffix={onSetSuffix}
-        onUpdateTickSuffix={onSetTickSuffix}
       />
       {decimalPlaces && (
         <DecimalPlacesOption
@@ -106,23 +92,14 @@ const mstp = (state: AppState) => {
   const view = getActiveTimeMachine(state).view as NewView<
     SingleStatViewProperties
   >
-  const {
-    colors,
-    prefix,
-    suffix,
-    decimalPlaces,
-    tickPrefix,
-    tickSuffix,
-  } = view.properties
+  const {colors, prefix, suffix, decimalPlaces} = view.properties
 
-  return {colors, prefix, suffix, decimalPlaces, tickPrefix, tickSuffix}
+  return {colors, prefix, suffix, decimalPlaces}
 }
 
 const mdtp: DispatchProps = {
   onSetPrefix: setPrefix,
-  onSetTickPrefix: setTickPrefix,
   onSetSuffix: setSuffix,
-  onSetTickSuffix: setTickSuffix,
   onSetDecimalPlaces: setDecimalPlaces,
   onSetColors: setColors,
 }

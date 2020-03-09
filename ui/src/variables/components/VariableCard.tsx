@@ -19,6 +19,7 @@ import {
   addVariableLabelAsync,
   removeVariableLabelAsync,
 } from 'src/variables/actions/thunks'
+import {createLabel as createLabelAsync} from 'src/labels/actions'
 
 interface OwnProps {
   variable: Variable
@@ -34,6 +35,7 @@ interface StateProps {
 interface DispatchProps {
   onAddVariableLabel: typeof addVariableLabelAsync
   onRemoveVariableLabel: typeof removeVariableLabelAsync
+  onCreateLabel: typeof createLabelAsync
 }
 
 type Props = OwnProps & DispatchProps & StateProps
@@ -86,6 +88,7 @@ class VariableCard extends PureComponent<Props & WithRouterProps> {
         onFilterChange={onFilterChange}
         onAddLabel={this.handleAddLabel}
         onRemoveLabel={this.handleRemoveLabel}
+        onCreateLabel={this.handleCreateLabel}
       />
     )
   }
@@ -100,6 +103,11 @@ class VariableCard extends PureComponent<Props & WithRouterProps> {
     const {variable, onRemoveVariableLabel} = this.props
 
     onRemoveVariableLabel(variable.id, label)
+  }
+
+  private handleCreateLabel = (label: Label): void => {
+    const {name, properties} = label
+    this.props.onCreateLabel(name, properties)
   }
 
   private handleExport = () => {
@@ -129,6 +137,7 @@ const mstp = ({labels}: AppState): StateProps => {
 }
 
 const mdtp: DispatchProps = {
+  onCreateLabel: createLabelAsync,
   onAddVariableLabel: addVariableLabelAsync,
   onRemoveVariableLabel: removeVariableLabelAsync,
 }

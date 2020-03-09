@@ -20,7 +20,6 @@ lint: node_modules $(UISOURCES)
 	yarn lint
 
 test:
-	yarn install
 	yarn generate
 	yarn test
 

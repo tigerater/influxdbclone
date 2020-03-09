@@ -3,7 +3,6 @@ package testing
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -683,9 +682,10 @@ func KVForwardCursor(
 	t *testing.T,
 ) {
 	type args struct {
-		seek  string
-		until string
-		opts  []kv.CursorOption
+		seek      string
+		direction kv.CursorDirection
+		until     string
+		hints     []kv.CursorHint
 	}
 
 	pairs := func(keys ...string) []kv.Pair {
@@ -720,42 +720,6 @@ func KVForwardCursor(
 			exp: []string{"aaa/00", "aaa/01", "aaa/02", "aaa/03", "bbb/00"},
 		},
 		{
-			name: "prefix - no hints",
-			fields: KVStoreFields{
-				Bucket: []byte("bucket"),
-				Pairs: pairs(
-					"aa/00", "aa/01",
-					"aaa/00", "aaa/01", "aaa/02", "aaa/03",
-					"bbb/00", "bbb/01", "bbb/02"),
-			},
-			args: args{
-				seek:  "aaa/00",
-				until: "bbb/02",
-				opts: []kv.CursorOption{
-					kv.WithCursorPrefix([]byte("aaa")),
-				},
-			},
-			exp: []string{"aaa/00", "aaa/01", "aaa/02", "aaa/03"},
-		},
-		{
-			name: "prefix - does not prefix seek",
-			fields: KVStoreFields{
-				Bucket: []byte("bucket"),
-				Pairs: pairs(
-					"aa/00", "aa/01",
-					"aaa/00", "aaa/01", "aaa/02", "aaa/03",
-					"bbb/00", "bbb/01", "bbb/02"),
-			},
-			args: args{
-				seek:  "aaa/00",
-				until: "bbb/02",
-				opts: []kv.CursorOption{
-					kv.WithCursorPrefix([]byte("aab")),
-				},
-			},
-			expErr: kv.ErrSeekMissingPrefix,
-		},
-		{
 			name: "prefix hint",
 			fields: KVStoreFields{
 				Bucket: []byte("bucket"),
@@ -767,9 +731,7 @@ func KVForwardCursor(
 			args: args{
 				seek:  "aaa",
 				until: "aaa/03",
-				opts: []kv.CursorOption{
-					kv.WithCursorHints(kv.WithCursorHintPrefix("aaa/")),
-				},
+				hints: []kv.CursorHint{kv.WithCursorHintPrefix("aaa/")},
 			},
 			exp: []string{"aaa/00", "aaa/01", "aaa/02", "aaa/03"},
 		},
@@ -785,9 +747,7 @@ func KVForwardCursor(
 			args: args{
 				seek:  "aaa",
 				until: "bbb/00",
-				opts: []kv.CursorOption{
-					kv.WithCursorHints(kv.WithCursorHintKeyStart("aaa/")),
-				},
+				hints: []kv.CursorHint{kv.WithCursorHintKeyStart("aaa/")},
 			},
 			exp: []string{"aaa/00", "aaa/01", "aaa/02", "aaa/03", "bbb/00"},
 		},
@@ -803,11 +763,10 @@ func KVForwardCursor(
 			args: args{
 				seek:  "aaa",
 				until: "aaa/03",
-				opts: []kv.CursorOption{
-					kv.WithCursorHints(kv.WithCursorHintPredicate(func(key, _ []byte) bool {
+				hints: []kv.CursorHint{
+					kv.WithCursorHintPredicate(func(key, _ []byte) bool {
 						return len(key) < 3 || string(key[:3]) == "aaa"
-					})),
-				},
+					})},
 			},
 			exp: []string{"aaa/00", "aaa/01", "aaa/02", "aaa/03"},
 		},
@@ -823,11 +782,10 @@ func KVForwardCursor(
 			args: args{
 				seek:  "",
 				until: "aa/01",
-				opts: []kv.CursorOption{
-					kv.WithCursorHints(kv.WithCursorHintPredicate(func(_, val []byte) bool {
+				hints: []kv.CursorHint{
+					kv.WithCursorHintPredicate(func(_, val []byte) bool {
 						return len(val) < 7 || string(val[:7]) == "val:aa/"
-					})),
-				},
+					})},
 			},
 			exp: []string{"aa/00", "aa/01"},
 		},
@@ -841,30 +799,11 @@ func KVForwardCursor(
 					"bbb/00", "bbb/01", "bbb/02"),
 			},
 			args: args{
-				seek:  "bbb/00",
-				until: "aaa/00",
-				opts:  []kv.CursorOption{kv.WithCursorDirection(kv.CursorDescending)},
+				seek:      "bbb/00",
+				until:     "aaa/00",
+				direction: kv.CursorDescending,
 			},
 			exp: []string{"bbb/00", "aaa/03", "aaa/02", "aaa/01", "aaa/00"},
-		},
-		{
-			name: "prefixed - no hints - descending",
-			fields: KVStoreFields{
-				Bucket: []byte("bucket"),
-				Pairs: pairs(
-					"aa/00", "aa/01",
-					"aaa/00", "aaa/01", "aaa/02", "aaa/03",
-					"bbb/00", "bbb/01", "bbb/02"),
-			},
-			args: args{
-				seek:  "aaa/02",
-				until: "aa/",
-				opts: []kv.CursorOption{
-					kv.WithCursorPrefix([]byte("aaa/")),
-					kv.WithCursorDirection(kv.CursorDescending),
-				},
-			},
-			exp: []string{"aaa/02", "aaa/01", "aaa/00"},
 		},
 		{
 			name: "start hint - descending",
@@ -876,12 +815,10 @@ func KVForwardCursor(
 					"bbb/00", "bbb/01", "bbb/02"),
 			},
 			args: args{
-				seek:  "bbb/00",
-				until: "aaa/00",
-				opts: []kv.CursorOption{
-					kv.WithCursorDirection(kv.CursorDescending),
-					kv.WithCursorHints(kv.WithCursorHintKeyStart("aaa/")),
-				},
+				seek:      "bbb/00",
+				until:     "aaa/00",
+				direction: kv.CursorDescending,
+				hints:     []kv.CursorHint{kv.WithCursorHintKeyStart("aaa/")},
 			},
 			exp: []string{"bbb/00", "aaa/03", "aaa/02", "aaa/01", "aaa/00"},
 		},
@@ -895,14 +832,13 @@ func KVForwardCursor(
 					"bbb/00", "bbb/01", "bbb/02"),
 			},
 			args: args{
-				seek:  "aaa/03",
-				until: "aaa/00",
-				opts: []kv.CursorOption{
-					kv.WithCursorDirection(kv.CursorDescending),
-					kv.WithCursorHints(kv.WithCursorHintPredicate(func(key, _ []byte) bool {
+				seek:      "aaa/03",
+				until:     "aaa/00",
+				direction: kv.CursorDescending,
+				hints: []kv.CursorHint{
+					kv.WithCursorHintPredicate(func(key, _ []byte) bool {
 						return len(key) < 3 || string(key[:3]) == "aaa"
-					})),
-				},
+					})},
 			},
 			exp: []string{"aaa/03", "aaa/02", "aaa/01", "aaa/00"},
 		},
@@ -916,14 +852,13 @@ func KVForwardCursor(
 					"bbb/00", "bbb/01", "bbb/02"),
 			},
 			args: args{
-				seek:  "aa/01",
-				until: "aa/00",
-				opts: []kv.CursorOption{
-					kv.WithCursorDirection(kv.CursorDescending),
-					kv.WithCursorHints(kv.WithCursorHintPredicate(func(_, val []byte) bool {
+				seek:      "aa/01",
+				until:     "aa/00",
+				direction: kv.CursorDescending,
+				hints: []kv.CursorHint{
+					kv.WithCursorHintPredicate(func(_, val []byte) bool {
 						return len(val) >= 7 && string(val[:7]) == "val:aa/"
-					})),
-				},
+					})},
 			},
 			exp: []string{"aa/01", "aa/00"},
 		},
@@ -941,13 +876,10 @@ func KVForwardCursor(
 					return err
 				}
 
-				cur, err := b.ForwardCursor([]byte(tt.args.seek), tt.args.opts...)
+				cur, err := b.ForwardCursor([]byte(tt.args.seek),
+					kv.WithCursorDirection(tt.args.direction),
+					kv.WithCursorHints(tt.args.hints...))
 				if err != nil {
-					if tt.expErr != nil && errors.Is(err, tt.expErr) {
-						// successfully returned expected error
-						return nil
-					}
-
 					t.Errorf("unexpected error: %v", err)
 					return err
 				}

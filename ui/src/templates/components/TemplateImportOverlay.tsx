@@ -9,7 +9,10 @@ import ImportOverlay from 'src/shared/components/ImportOverlay'
 import {invalidJSON} from 'src/shared/copy/notifications'
 
 // Actions
-import {createTemplate as createTemplateAction} from 'src/templates/actions/thunks'
+import {
+  createTemplate as createTemplateAction,
+  getTemplates as getTemplatesAction,
+} from 'src/templates/actions'
 import {notify as notifyAction} from 'src/shared/actions/notifications'
 
 // Types
@@ -26,6 +29,7 @@ interface State {
 
 interface DispatchProps {
   createTemplate: typeof createTemplateAction
+  getTemplates: typeof getTemplatesAction
   notify: typeof notifyAction
 }
 
@@ -66,7 +70,7 @@ class TemplateImportOverlay extends PureComponent<Props> {
     this.setState(() => ({status}))
 
   private handleImportTemplate = (importString: string) => {
-    const {createTemplate, notify} = this.props
+    const {createTemplate, getTemplates, notify} = this.props
 
     let template
     this.updateOverlayStatus(ComponentStatus.Default)
@@ -78,6 +82,9 @@ class TemplateImportOverlay extends PureComponent<Props> {
       return
     }
     createTemplate(template)
+
+    getTemplates()
+
     this.onDismiss()
   }
 }
@@ -95,6 +102,7 @@ const mstp = (state: AppState, props: Props): StateProps => {
 const mdtp: DispatchProps = {
   notify: notifyAction,
   createTemplate: createTemplateAction,
+  getTemplates: getTemplatesAction,
 }
 
 export default connect<StateProps, DispatchProps, Props>(

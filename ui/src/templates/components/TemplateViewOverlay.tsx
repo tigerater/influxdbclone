@@ -11,7 +11,7 @@ import {ErrorHandling} from 'src/shared/decorators/errors'
 import {
   convertToTemplate as convertToTemplateAction,
   clearExportTemplate as clearExportTemplateAction,
-} from 'src/templates/actions/thunks'
+} from 'src/templates/actions'
 
 // Types
 import {DocumentCreate} from '@influxdata/influx'
@@ -74,8 +74,8 @@ class TemplateExportOverlay extends PureComponent<Props> {
 }
 
 const mstp = (state: AppState): StateProps => ({
-  exportTemplate: state.resources.templates.exportTemplate.item,
-  status: state.resources.templates.exportTemplate.status,
+  exportTemplate: state.templates.exportTemplate.item,
+  status: state.templates.exportTemplate.status,
 })
 
 const mdtp: DispatchProps = {

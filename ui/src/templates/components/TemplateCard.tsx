@@ -1,7 +1,7 @@
 // Libraries
 import React, {PureComponent, MouseEvent} from 'react'
 import {connect} from 'react-redux'
-import {get} from 'lodash'
+import _ from 'lodash'
 import {withRouter, WithRouterProps} from 'react-router'
 import {
   Button,
@@ -24,15 +24,17 @@ import {
   createResourceFromTemplate,
   removeTemplateLabelsAsync,
   addTemplateLabelsAsync,
-} from 'src/templates/actions/thunks'
+} from 'src/templates/actions'
+import {createLabel as createLabelAsync} from 'src/labels/actions'
 
 // Selectors
 import {viewableLabels} from 'src/labels/selectors'
 import {getOrg} from 'src/organizations/selectors'
 
 // Types
+import {TemplateSummary} from '@influxdata/influx'
 import {ComponentColor} from '@influxdata/clockface'
-import {AppState, Organization, Label, TemplateSummary} from 'src/types'
+import {AppState, Organization, Label} from 'src/types'
 
 // Constants
 import {DEFAULT_TEMPLATE_NAME} from 'src/templates/constants'
@@ -49,6 +51,7 @@ interface DispatchProps {
   onCreateFromTemplate: typeof createResourceFromTemplate
   onAddTemplateLabels: typeof addTemplateLabelsAsync
   onRemoveTemplateLabels: typeof removeTemplateLabelsAsync
+  onCreateLabel: typeof createLabelAsync
 }
 
 interface StateProps {
@@ -85,6 +88,7 @@ class TemplateCard extends PureComponent<Props & WithRouterProps> {
             onFilterChange={onFilterChange}
             onAddLabel={this.handleAddLabel}
             onRemoveLabel={this.handleRemoveLabel}
+            onCreateLabel={this.handleCreateLabel}
           />
         }
         metaData={[this.templateType]}
@@ -112,8 +116,8 @@ class TemplateCard extends PureComponent<Props & WithRouterProps> {
 
   private get description(): JSX.Element {
     const {template} = this.props
-    const description = get(template, 'meta.description', '')
-    const name = get(template, 'meta.name', '')
+    const description = _.get(template, 'meta.description', '')
+    const name = _.get(template, 'meta.name', '')
 
     return (
       <ResourceCard.EditableDescription
@@ -129,7 +133,7 @@ class TemplateCard extends PureComponent<Props & WithRouterProps> {
 
     return (
       <div className="resource-list--meta-item">
-        {get(template, 'meta.type', '')}
+        {_.get(template, 'meta.type', '')}
       </div>
     )
   }
@@ -211,6 +215,10 @@ class TemplateCard extends PureComponent<Props & WithRouterProps> {
 
     onRemoveTemplateLabels(template.id, [label])
   }
+
+  private handleCreateLabel = (label: Label) => {
+    this.props.onCreateLabel(label.name, label.properties)
+  }
 }
 
 const mstp = (state: AppState): StateProps => {
@@ -228,6 +236,7 @@ const mdtp: DispatchProps = {
   onCreateFromTemplate: createResourceFromTemplate,
   onAddTemplateLabels: addTemplateLabelsAsync,
   onRemoveTemplateLabels: removeTemplateLabelsAsync,
+  onCreateLabel: createLabelAsync,
 }
 
 export default connect<StateProps, DispatchProps, OwnProps>(

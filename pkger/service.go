@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"math/rand"
 	"sort"
 	"strings"
 	"sync"
@@ -15,7 +16,7 @@ import (
 )
 
 // APIVersion marks the current APIVersion for influx packages.
-const APIVersion = "influxdata.com/v2alpha1"
+const APIVersion = "0.1.0"
 
 // SVC is the packages service interface.
 type SVC interface {
@@ -23,9 +24,6 @@ type SVC interface {
 	DryRun(ctx context.Context, orgID, userID influxdb.ID, pkg *Pkg) (Summary, Diff, error)
 	Apply(ctx context.Context, orgID, userID influxdb.ID, pkg *Pkg, opts ...ApplyOptFn) (Summary, error)
 }
-
-// SVCMiddleware is a service middleware func.
-type SVCMiddleware func(SVC) SVC
 
 type serviceOpt struct {
 	logger *zap.Logger
@@ -176,8 +174,17 @@ type CreatePkgSetFn func(opt *CreateOpt) error
 
 // CreateOpt are the options for creating a new package.
 type CreateOpt struct {
+	Metadata  Metadata
 	OrgIDs    map[influxdb.ID]bool
 	Resources []ResourceToClone
+}
+
+// CreateWithMetadata sets the metadata on the pkg in a CreatePkg call.
+func CreateWithMetadata(meta Metadata) CreatePkgSetFn {
+	return func(opt *CreateOpt) error {
+		opt.Metadata = meta
+		return nil
+	}
 }
 
 // CreateWithExistingResources allows the create method to clone existing resources.
@@ -187,6 +194,7 @@ func CreateWithExistingResources(resources ...ResourceToClone) CreatePkgSetFn {
 			if err := r.OK(); err != nil {
 				return err
 			}
+			r.Kind = NewKind(string(r.Kind))
 		}
 		opt.Resources = append(opt.Resources, resources...)
 		return nil
@@ -218,7 +226,22 @@ func (s *Service) CreatePkg(ctx context.Context, setters ...CreatePkgSetFn) (*Pk
 	}
 
 	pkg := &Pkg{
-		Objects: make([]Object, 0, len(opt.Resources)),
+		APIVersion: APIVersion,
+		Kind:       KindPackage,
+		Metadata:   opt.Metadata,
+		Spec: struct {
+			Resources []Resource `yaml:"resources" json:"resources"`
+		}{
+			Resources: make([]Resource, 0, len(opt.Resources)),
+		},
+	}
+	if pkg.Metadata.Name == "" {
+		// sudo randomness, this is not an attempt at making charts unique
+		// that is a problem for the consumer.
+		pkg.Metadata.Name = fmt.Sprintf("new_%7d", rand.Int())
+	}
+	if pkg.Metadata.Version == "" {
+		pkg.Metadata.Version = "v1"
 	}
 
 	cloneAssFn := s.resourceCloneAssociationsGen()
@@ -231,14 +254,14 @@ func (s *Service) CreatePkg(ctx context.Context, setters ...CreatePkgSetFn) (*Pk
 	}
 
 	for _, r := range uniqResourcesToClone(opt.Resources) {
-		newKinds, err := s.resourceCloneToKind(ctx, r, cloneAssFn)
+		newResources, err := s.resourceCloneToResource(ctx, r, cloneAssFn)
 		if err != nil {
 			return nil, internalErr(err)
 		}
-		pkg.Objects = append(pkg.Objects, newKinds...)
+		pkg.Spec.Resources = append(pkg.Spec.Resources, newResources...)
 	}
 
-	pkg.Objects = uniqResources(pkg.Objects)
+	pkg.Spec.Resources = uniqResources(pkg.Spec.Resources)
 
 	if err := pkg.Validate(ValidWithoutResources()); err != nil {
 		return nil, failedValidationErr(err)
@@ -258,9 +281,10 @@ func (s *Service) CreatePkg(ctx context.Context, setters ...CreatePkgSetFn) (*Pk
 		KindDashboard:                     11,
 	}
 
-	sort.Slice(pkg.Objects, func(i, j int) bool {
-		iName, jName := pkg.Objects[i].Name(), pkg.Objects[j].Name()
-		iKind, jKind := pkg.Objects[i].Type, pkg.Objects[j].Type
+	sort.Slice(pkg.Spec.Resources, func(i, j int) bool {
+		iName, jName := pkg.Spec.Resources[i].Name(), pkg.Spec.Resources[j].Name()
+		iKind, _ := pkg.Spec.Resources[i].kind()
+		jKind, _ := pkg.Spec.Resources[j].kind()
 
 		if iKind.is(jKind) {
 			return iName < jName
@@ -511,7 +535,7 @@ func (s *Service) cloneOrgVariables(ctx context.Context, orgID influxdb.ID) ([]R
 	return resources, nil
 }
 
-func (s *Service) resourceCloneToKind(ctx context.Context, r ResourceToClone, cFn cloneAssociationsFn) (newKinds []Object, e error) {
+func (s *Service) resourceCloneToResource(ctx context.Context, r ResourceToClone, cFn cloneAssociationsFn) (newResources []Resource, e error) {
 	defer func() {
 		if e != nil {
 			e = ierrors.Wrap(e, "cloning resource")
@@ -519,8 +543,8 @@ func (s *Service) resourceCloneToKind(ctx context.Context, r ResourceToClone, cF
 	}()
 
 	var (
-		newKind      Object
-		sidecarKinds []Object
+		newResource      Resource
+		sidecarResources []Resource
 	)
 	switch {
 	case r.Kind.is(KindBucket):
@@ -528,7 +552,7 @@ func (s *Service) resourceCloneToKind(ctx context.Context, r ResourceToClone, cF
 		if err != nil {
 			return nil, err
 		}
-		newKind = bucketToObject(*bkt, r.Name)
+		newResource = bucketToResource(*bkt, r.Name)
 	case r.Kind.is(KindCheck),
 		r.Kind.is(KindCheckDeadman),
 		r.Kind.is(KindCheckThreshold):
@@ -536,19 +560,19 @@ func (s *Service) resourceCloneToKind(ctx context.Context, r ResourceToClone, cF
 		if err != nil {
 			return nil, err
 		}
-		newKind = checkToObject(ch, r.Name)
+		newResource = checkToResource(ch, r.Name)
 	case r.Kind.is(KindDashboard):
 		dash, err := s.findDashboardByIDFull(ctx, r.ID)
 		if err != nil {
 			return nil, err
 		}
-		newKind = DashboardToObject(*dash, r.Name)
+		newResource = DashboardToResource(*dash, r.Name)
 	case r.Kind.is(KindLabel):
 		l, err := s.labelSVC.FindLabelByID(ctx, r.ID)
 		if err != nil {
 			return nil, err
 		}
-		newKind = labelToObject(*l, r.Name)
+		newResource = labelToResource(*l, r.Name)
 	case r.Kind.is(KindNotificationEndpoint),
 		r.Kind.is(KindNotificationEndpointHTTP),
 		r.Kind.is(KindNotificationEndpointPagerDuty),
@@ -557,31 +581,31 @@ func (s *Service) resourceCloneToKind(ctx context.Context, r ResourceToClone, cF
 		if err != nil {
 			return nil, err
 		}
-		newKind = endpointKind(e, r.Name)
+		newResource = endpointToResource(e, r.Name)
 	case r.Kind.is(KindNotificationRule):
 		ruleRes, endpointRes, err := s.exportNotificationRule(ctx, r)
 		if err != nil {
 			return nil, err
 		}
-		newKind, sidecarKinds = ruleRes, append(sidecarKinds, endpointRes)
+		newResource, sidecarResources = ruleRes, append(sidecarResources, endpointRes)
 	case r.Kind.is(KindTask):
 		t, err := s.taskSVC.FindTaskByID(ctx, r.ID)
 		if err != nil {
 			return nil, err
 		}
-		newKind = taskToObject(*t, r.Name)
+		newResource = taskToResource(*t, r.Name)
 	case r.Kind.is(KindTelegraf):
 		t, err := s.teleSVC.FindTelegrafConfigByID(ctx, r.ID)
 		if err != nil {
 			return nil, err
 		}
-		newKind = telegrafToObject(*t, r.Name)
+		newResource = telegrafToResource(*t, r.Name)
 	case r.Kind.is(KindVariable):
 		v, err := s.varSVC.FindVariableByID(ctx, r.ID)
 		if err != nil {
 			return nil, err
 		}
-		newKind = VariableToObject(*v, r.Name)
+		newResource = VariableToResource(*v, r.Name)
 	default:
 		return nil, errors.New("unsupported kind provided: " + string(r.Kind))
 	}
@@ -591,30 +615,30 @@ func (s *Service) resourceCloneToKind(ctx context.Context, r ResourceToClone, cF
 		return nil, err
 	}
 	if len(ass.associations) > 0 {
-		newKind.Spec[fieldAssociations] = ass.associations
+		newResource[fieldAssociations] = ass.associations
 	}
 
-	return append(ass.newLableResources, append(sidecarKinds, newKind)...), nil
+	return append(ass.newLableResources, append(sidecarResources, newResource)...), nil
 }
 
-func (s *Service) exportNotificationRule(ctx context.Context, r ResourceToClone) (Object, Object, error) {
+func (s *Service) exportNotificationRule(ctx context.Context, r ResourceToClone) (Resource, Resource, error) {
 	rule, err := s.ruleSVC.FindNotificationRuleByID(ctx, r.ID)
 	if err != nil {
-		return Object{}, Object{}, err
+		return nil, nil, err
 	}
 
 	ruleEndpoint, err := s.endpointSVC.FindNotificationEndpointByID(ctx, rule.GetEndpointID())
 	if err != nil {
-		return Object{}, Object{}, err
+		return nil, nil, err
 	}
 
-	return ruleToObject(rule, ruleEndpoint.GetName(), r.Name), endpointKind(ruleEndpoint, ""), nil
+	return ruleToResource(rule, ruleEndpoint.GetName(), r.Name), endpointToResource(ruleEndpoint, ""), nil
 }
 
 type (
 	associations struct {
 		associations      []Resource
-		newLableResources []Object
+		newLableResources []Resource
 	}
 
 	cloneAssociationsFn func(context.Context, ResourceToClone) (associations, error)
@@ -651,7 +675,7 @@ func (s *Service) resourceCloneAssociationsGen() cloneAssociationsFn {
 				continue
 			}
 			m[k] = true
-			ass.newLableResources = append(ass.newLableResources, labelToObject(*l, ""))
+			ass.newLableResources = append(ass.newLableResources, labelToResource(*l, ""))
 		}
 		return ass, nil
 	}

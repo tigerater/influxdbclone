@@ -2,7 +2,6 @@ package models_test
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -107,35 +106,24 @@ func TestPoint_Tags(t *testing.T) {
 	examples := []struct {
 		Point string
 		Tags  models.Tags
-		Err   error
 	}{
-		{`cpu value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value"}), nil},
-		{"cpu,tag0=v0 value=1", models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": "v0"}), nil},
-		{"cpu,tag0=v0,tag1=v0 value=1", models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": "v0", "tag1": "v0"}), nil},
-		{`cpu,tag0=v\ 0 value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": "v 0"}), nil},
-		{`cpu,tag0=v\ 0\ 1,tag1=v2 value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": "v 0 1", "tag1": "v2"}), nil},
-		{`cpu,tag0=\, value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": ","}), nil},
-		{`cpu,ta\ g0=\, value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "ta g0": ","}), nil},
-		{`cpu,tag0=\,1 value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": ",1"}), nil},
-		{`cpu,tag0=1\"\",t=k value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": `1\"\"`, "t": "k"}), nil},
-		{"cpu,_measurement=v0,tag0=v0 value=1", nil, errors.New(`unable to parse 'cpu,_measurement=v0,tag0=v0 value=1': cannot use reserved tag key "_measurement"`)},
-		// the following are all unsorted tag keys to ensure this works for both cases
-		{"cpu,tag0=v0,_measurement=v0 value=1", nil, errors.New(`unable to parse 'cpu,tag0=v0,_measurement=v0 value=1': cannot use reserved tag key "_measurement"`)},
-		{"cpu,tag0=v0,_field=v0 value=1", nil, errors.New(`unable to parse 'cpu,tag0=v0,_field=v0 value=1': cannot use reserved tag key "_field"`)},
-		{"cpu,tag0=v0,time=v0 value=1", nil, errors.New(`unable to parse 'cpu,tag0=v0,time=v0 value=1': cannot use reserved tag key "time"`)},
+		{`cpu value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value"})},
+		{"cpu,tag0=v0 value=1", models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": "v0"})},
+		{"cpu,tag0=v0,tag1=v0 value=1", models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": "v0", "tag1": "v0"})},
+		{`cpu,tag0=v\ 0 value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": "v 0"})},
+		{`cpu,tag0=v\ 0\ 1,tag1=v2 value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": "v 0 1", "tag1": "v2"})},
+		{`cpu,tag0=\, value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": ","})},
+		{`cpu,ta\ g0=\, value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "ta g0": ","})},
+		{`cpu,tag0=\,1 value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": ",1"})},
+		{`cpu,tag0=1\"\",t=k value=1`, models.NewTags(map[string]string{models.MeasurementTagKey: "cpu", models.FieldKeyTagKey: "value", "tag0": `1\"\"`, "t": "k"})},
 	}
 
 	for _, example := range examples {
 		t.Run(example.Point, func(t *testing.T) {
 			pts, err := models.ParsePointsString(example.Point, "mm")
 			if err != nil {
-				if !reflect.DeepEqual(example.Err, err) {
-					t.Fatalf("expected %#v, found %#v", example.Err, err)
-				}
-				return
-			}
-
-			if len(pts) != 1 {
+				t.Fatal(err)
+			} else if len(pts) != 1 {
 				t.Fatalf("parsed %d points, expected 1", len(pts))
 			}
 
@@ -2400,87 +2388,65 @@ func mustReadTestData(tb testing.TB, name string, repeat int) []byte {
 }
 
 func TestParsePointsWithOptions(t *testing.T) {
-	readGood := func(tb testing.TB) []byte {
-		return mustReadTestData(tb, "line-protocol.txt", 1)
-	}
-
-	readBad := func(tb testing.TB) []byte {
-		buf := mustReadTestData(tb, "line-protocol.txt", 1)
-		buf = append(buf, "cpu,foo=bar data=1.3i 100000\n"...)
-		return append(buf, bytes.Repeat([]byte("foo foo foo"), 100000)...)
-	}
-
 	tests := []struct {
 		name string
-		read func(testing.TB) []byte
+		file string
 		opts []models.ParserOption
 		exp  error
 	}{
 		{
 			name: "lines are limited",
-			read: readGood,
+			file: "line-protocol.txt",
 			opts: []models.ParserOption{models.WithParserMaxLines(10)},
 			exp:  models.ErrLimitMaxLinesExceeded,
 		},
 		{
 			name: "lines are not limited with large value",
-			read: readGood,
+			file: "line-protocol.txt",
 			opts: []models.ParserOption{models.WithParserMaxLines(1000)},
 			exp:  nil,
 		},
 		{
 			name: "lines are not limited",
-			read: readGood,
+			file: "line-protocol.txt",
 			opts: []models.ParserOption{},
 			exp:  nil,
 		},
 
 		{
 			name: "values are limited",
-			read: readGood,
+			file: "line-protocol.txt",
 			opts: []models.ParserOption{models.WithParserMaxValues(10)},
 			exp:  models.ErrLimitMaxValuesExceeded,
 		},
 		{
 			name: "values are not limited with large value",
-			read: readGood,
+			file: "line-protocol.txt",
 			opts: []models.ParserOption{models.WithParserMaxValues(1000)},
 			exp:  nil,
 		},
 		{
 			name: "values are not limited",
-			read: readGood,
+			file: "line-protocol.txt",
 			opts: []models.ParserOption{},
 			exp:  nil,
 		},
 
 		{
-			name: "bytes are limited allocating slice",
-			read: readGood,
+			name: "bytes are limited",
+			file: "line-protocol.txt",
 			opts: []models.ParserOption{models.WithParserMaxBytes(10)},
 			exp:  models.ErrLimitMaxBytesExceeded,
 		},
 		{
-			name: "bytes are limited whilst parsing",
-			read: readGood,
-			opts: []models.ParserOption{models.WithParserMaxBytes(10000)},
-			exp:  models.ErrLimitMaxBytesExceeded,
-		},
-		{
 			name: "bytes are not limited with large value",
-			read: readGood,
+			file: "line-protocol.txt",
 			opts: []models.ParserOption{models.WithParserMaxBytes(500000)},
 			exp:  nil,
 		},
 		{
-			name: "bytes are limited appending large error",
-			read: readBad,
-			opts: []models.ParserOption{models.WithParserMaxBytes(500000)},
-			exp:  models.ErrLimitMaxBytesExceeded,
-		},
-		{
 			name: "bytes are not limited",
-			read: readGood,
+			file: "line-protocol.txt",
 			opts: []models.ParserOption{},
 			exp:  nil,
 		},
@@ -2492,7 +2458,7 @@ func TestParsePointsWithOptions(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			buf := test.read(t)
+			buf := mustReadTestData(t, test.file, 1)
 			encoded := tsdb.EncodeName(influxdb.ID(1000), influxdb.ID(2000))
 			mm := models.EscapeMeasurement(encoded[:])
 

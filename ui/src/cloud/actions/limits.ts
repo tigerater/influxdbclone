@@ -260,22 +260,21 @@ export const getAssetLimits = () => async (dispatch, getState: GetState) => {
 
 export const checkDashboardLimits = () => (dispatch, getState: GetState) => {
   try {
-    const state = getState()
     const {
+      dashboards: {list},
       cloud: {limits},
-      resources,
-    } = state
+    } = getState()
 
     const dashboardsMax = extractDashboardMax(limits)
-    const dashboardsCount = resources.dashboards.allIDs.length
+    const dashboardsCount = list.length
 
     if (dashboardsCount >= dashboardsMax) {
       dispatch(setDashboardLimitStatus(LimitStatus.EXCEEDED))
     } else {
       dispatch(setDashboardLimitStatus(LimitStatus.OK))
     }
-  } catch (error) {
-    console.error(error)
+  } catch (e) {
+    console.error(e)
   }
 }
 
@@ -368,9 +367,9 @@ export const checkEndpointsLimits = () => (dispatch, getState: GetState) => {
     } = getState()
 
     const endpointsMax = extractEndpointsMax(limits)
-    const endpointsCount = endpointsList.length
+    const endpoinstCount = endpointsList.length
 
-    if (endpointsCount >= endpointsMax) {
+    if (endpoinstCount >= endpointsMax) {
       dispatch(setEndpointsLimitStatus(LimitStatus.EXCEEDED))
     } else {
       dispatch(setEndpointsLimitStatus(LimitStatus.OK))

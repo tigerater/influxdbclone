@@ -2,31 +2,7 @@
 import {get} from 'lodash'
 
 // Types
-import {ResourceType, NormalizedState, RemoteDataState} from 'src/types'
-
-export const setResourceAtID = <R extends {status: RemoteDataState}>(
-  draftState: NormalizedState<R>,
-  action,
-  resource: ResourceType
-) => {
-  const {schema} = action
-
-  const status: RemoteDataState = action.status
-  const id: string = action.id
-  const r: R = get(schema, ['entities', resource, id])
-
-  if (!r) {
-    draftState.byID[id] = ({id, status} as unknown) as R
-    return
-  }
-
-  if (!draftState.allIDs.includes(id)) {
-    draftState.allIDs.push(id)
-  }
-
-  draftState.byID[id] = {...r, status}
-  draftState.byID[id].status = status
-}
+import {ResourceType, NormalizedState} from 'src/types'
 
 export const setResource = <R>(
   draftState: NormalizedState<R>,

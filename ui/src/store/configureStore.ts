@@ -14,8 +14,7 @@ import meReducer from 'src/shared/reducers/me'
 import tasksReducer from 'src/tasks/reducers'
 import rangesReducer from 'src/dashboards/reducers/ranges'
 import {dashboardsReducer} from 'src/dashboards/reducers/dashboards'
-import {cellsReducer} from 'src/cells/reducers'
-import viewsReducer from 'src/views/reducers'
+import viewsReducer from 'src/dashboards/reducers/views'
 import {timeMachinesReducer} from 'src/timeMachine/reducers'
 import {orgsReducer} from 'src/organizations/reducers'
 import overlaysReducer from 'src/overlays/reducers/overlays'
@@ -33,9 +32,9 @@ import {userSettingsReducer} from 'src/userSettings/reducers'
 import {membersReducer} from 'src/members/reducers'
 import {autoRefreshReducer} from 'src/shared/reducers/autoRefresh'
 import {limitsReducer, LimitsState} from 'src/cloud/reducers/limits'
-import checksReducer from 'src/checks/reducers'
-import rulesReducer from 'src/notifications/rules/reducers'
-import endpointsReducer from 'src/notifications/endpoints/reducers'
+import checksReducer from 'src/alerting/reducers/checks'
+import rulesReducer from 'src/alerting/reducers/notifications/rules'
+import endpointsReducer from 'src/alerting/reducers/notifications/endpoints'
 import {
   pluginsReducer,
   activePluginsReducer,
@@ -56,6 +55,7 @@ export const rootReducer = combineReducers<ReducerState>({
   alertBuilder: alertBuilderReducer,
   checks: checksReducer,
   cloud: combineReducers<{limits: LimitsState}>({limits: limitsReducer}),
+  dashboards: dashboardsReducer,
   dataLoading: dataLoadingReducer,
   endpoints: endpointsReducer,
   labels: labelsReducer,
@@ -68,26 +68,24 @@ export const rootReducer = combineReducers<ReducerState>({
   ranges: rangesReducer,
   resources: combineReducers({
     buckets: bucketsReducer,
-    cells: cellsReducer,
-    dashboards: dashboardsReducer,
     members: membersReducer,
     orgs: orgsReducer,
     scrapers: scrapersReducer,
     tasks: tasksReducer,
     telegrafs: telegrafsReducer,
-    templates: templatesReducer,
     tokens: authsReducer,
     variables: variablesReducer,
-    views: viewsReducer,
   }),
   routing: routerReducer,
   rules: rulesReducer,
   telegrafEditor: editorReducer,
   telegrafEditorActivePlugins: activePluginsReducer,
   telegrafEditorPlugins: pluginsReducer,
+  templates: templatesReducer,
   timeMachines: timeMachinesReducer,
   userSettings: userSettingsReducer,
   variableEditor: variableEditorReducer,
+  views: viewsReducer,
   VERSION: () => '',
 })
 

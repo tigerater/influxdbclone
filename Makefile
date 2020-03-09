@@ -68,12 +68,12 @@ ifeq ($(GOARCH), arm64)
 else
     all: GO_ARGS=-tags 'assets $(GO_TAGS)'
 endif
-all: $(SUBDIRS) generate $(CMDS)
+all: subdirs generate $(CMDS)
 
 # Target to build subdirs.
 # Each subdirs must support the `all` target.
-$(SUBDIRS):
-	$(MAKE) -C $@ all
+subdirs: $(SUBDIRS)
+	@for d in $^; do $(MAKE) -C $$d all; done
 
 #
 # Define targets for commands
@@ -135,7 +135,7 @@ checkgenerate:
 checkcommit:
 	./etc/circle-detect-committed-binaries.sh
 
-generate: $(SUBDIRS)
+generate: subdirs
 
 test-js: node_modules
 	make -C ui test
@@ -191,7 +191,7 @@ define CHRONOGIRAFFE
 ,"   ##    /
 endef
 export CHRONOGIRAFFE
-chronogiraffe: $(SUBDIRS) generate $(CMDS)
+chronogiraffe: subdirs generate $(CMDS)
 	@echo "$$CHRONOGIRAFFE"
 
 run: chronogiraffe
@@ -207,4 +207,4 @@ protoc:
 	chmod +x /go/bin/protoc
 
 # .PHONY targets represent actions that do not create an actual file.
-.PHONY: all $(SUBDIRS) run fmt checkfmt tidy checktidy checkgenerate test test-go test-js test-go-race bench clean node_modules vet nightly chronogiraffe dist ping protoc e2e run-e2e influxd libflux
+.PHONY: all subdirs $(SUBDIRS) run fmt checkfmt tidy checktidy checkgenerate test test-go test-js test-go-race bench clean node_modules vet nightly chronogiraffe dist ping protoc e2e run-e2e influxd libflux

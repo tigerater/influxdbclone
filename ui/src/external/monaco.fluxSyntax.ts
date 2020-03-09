@@ -2,10 +2,7 @@ import loader from 'src/external/monaco.onigasm'
 import {Registry} from 'monaco-textmate' // peer dependency
 import {wireTmGrammars} from 'monaco-editor-textmate'
 
-// Types
-import {MonacoType} from 'src/types'
-
-export async function addSyntax(monaco: MonacoType) {
+export async function addSyntax(monaco) {
   await loader()
 
   monaco.languages.register({id: 'flux'})

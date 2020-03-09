@@ -3,17 +3,12 @@ import React, {PureComponent, ChangeEvent} from 'react'
 import {connect} from 'react-redux'
 
 // Components
-import {
-  Input,
-  FlexBox,
-  FlexDirection,
-  ComponentSize,
-  TextBlock,
-  InfluxColors,
-} from '@influxdata/clockface'
+import {Input} from '@influxdata/clockface'
 import SelectorList from 'src/timeMachine/components/SelectorList'
 import BuilderCard from 'src/timeMachine/components/builderCard/BuilderCard'
-import DurationInput from 'src/shared/components/DurationInput'
+import DurationSelector, {
+  DurationOption,
+} from 'src/shared/components/DurationSelector'
 
 // Actions
 import {
@@ -64,52 +59,30 @@ class FunctionSelector extends PureComponent<Props, State> {
   public state: State = {searchTerm: ''}
 
   public render() {
-    const {isInCheckOverlay} = this.props
+    const {
+      selectedFunctions,
+      onSelectAggregateWindow,
+      isInCheckOverlay,
+    } = this.props
 
     const {searchTerm} = this.state
+
     return (
       <BuilderCard className="function-selector" testID="function-selector">
         <BuilderCard.Header title="Aggregate Functions" />
         <BuilderCard.Menu>
-          <FlexBox
-            direction={FlexDirection.Column}
-            margin={ComponentSize.Small}
-          >
-            <FlexBox
-              direction={FlexDirection.Row}
-              margin={ComponentSize.Small}
-              stretchToFitWidth
-            >
-              <FlexBox.Child grow={2} testID="component-spacer--flex-child">
-                <Input
-                  className="tag-selector--search"
-                  value={searchTerm}
-                  onChange={this.handleSetSearchTerm}
-                  placeholder="Search functions..."
-                />
-              </FlexBox.Child>
-            </FlexBox>
-            <FlexBox
-              direction={FlexDirection.Row}
-              margin={ComponentSize.Small}
-              stretchToFitWidth
-              testID="component-spacer"
-            >
-              <TextBlock
-                textColor={InfluxColors.Sidewalk}
-                text="Window period:"
-              />
-              <FlexBox.Child grow={2} testID="component-spacer--flex-child">
-                <DurationInput
-                  onSubmit={this.handleSelectAggregateWindow}
-                  value={this.duration}
-                  suggestions={this.durations}
-                  submitInvalid={false}
-                  validFunction={this.windowInputValid}
-                />
-              </FlexBox.Child>
-            </FlexBox>
-          </FlexBox>
+          <DurationSelector
+            onSelectDuration={onSelectAggregateWindow}
+            selectedDuration={this.duration}
+            durations={this.durations}
+            disabled={!selectedFunctions.length}
+          />
+          <Input
+            className="tag-selector--search"
+            value={searchTerm}
+            onChange={this.handleSetSearchTerm}
+            placeholder="Search functions..."
+          />
         </BuilderCard.Menu>
         <SelectorList
           items={this.functions}
@@ -121,27 +94,28 @@ class FunctionSelector extends PureComponent<Props, State> {
     )
   }
 
-  private get autoLabel(): string {
-    const {autoWindowPeriod} = this.props
-    return autoWindowPeriod
-      ? `${AGG_WINDOW_AUTO} (${millisecondsToDuration(autoWindowPeriod)})`
-      : AGG_WINDOW_AUTO
-  }
-
   private get duration(): string {
     const {aggregateWindow} = this.props
 
-    if (!aggregateWindow.period || aggregateWindow.period === AGG_WINDOW_AUTO) {
-      return this.autoLabel
-    }
-
-    return aggregateWindow.period
+    return aggregateWindow.period || AGG_WINDOW_AUTO
   }
 
-  private get durations(): string[] {
+  private get durations(): DurationOption[] {
     return this.props.isInCheckOverlay
       ? DURATIONS
-      : [this.autoLabel, AGG_WINDOW_NONE, ...DURATIONS]
+      : [...this.autoNoneDurations, ...DURATIONS]
+  }
+
+  private get autoNoneDurations(): DurationOption[] {
+    const {autoWindowPeriod} = this.props
+    const autoLabel = autoWindowPeriod
+      ? `Auto (${millisecondsToDuration(autoWindowPeriod)})`
+      : 'Auto'
+
+    return [
+      {duration: AGG_WINDOW_AUTO, displayText: autoLabel},
+      {duration: AGG_WINDOW_NONE, displayText: 'None'},
+    ]
   }
 
   private get functions(): string[] {
@@ -166,17 +140,6 @@ class FunctionSelector extends PureComponent<Props, State> {
 
     onSelectFunction(functionName)
   }
-
-  private handleSelectAggregateWindow = (input: string) => {
-    if (input.startsWith(AGG_WINDOW_AUTO)) {
-      this.props.onSelectAggregateWindow(AGG_WINDOW_AUTO)
-      return
-    }
-    this.props.onSelectAggregateWindow(input)
-  }
-
-  private windowInputValid = (input: string): boolean =>
-    input == 'none' || input == this.autoLabel
 }
 
 const mstp = (state: AppState): StateProps => {

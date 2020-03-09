@@ -53,7 +53,6 @@ class DangerConfirmationForm extends PureComponent<Props> {
               color={ComponentColor.Danger}
               text={this.props.confirmButtonText}
               type={ButtonType.Submit}
-              testID="danger-confirmation-button"
             />
           </Form.Footer>
         </FlexBox>

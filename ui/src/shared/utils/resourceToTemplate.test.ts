@@ -13,7 +13,6 @@ import {
   myVariable,
   myfavelabel,
   myfavetask,
-  myCell,
 } from 'src/shared/utils/mocks/resourceToTemplate'
 
 describe('resourceToTemplate', () => {
@@ -226,7 +225,6 @@ describe('resourceToTemplate', () => {
 
       const actual = dashboardToTemplate(
         dashboardWithDupeLabel,
-        [myCell],
         [myView],
         [myLabeledVar]
       )

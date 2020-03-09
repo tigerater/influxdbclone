@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
 	"io"
 	"net/http"
 	"testing"
@@ -37,6 +36,9 @@ func TestPkgerHTTPServer(t *testing.T) {
 
 			testttp.
 				PostJSON(t, "/api/v2/packages", fluxTTP.ReqCreatePkg{
+					PkgName:        "name1",
+					PkgDescription: "desc1",
+					PkgVersion:     "v1",
 					Resources: []pkger.ResourceToClone{
 						{
 							Kind: pkger.KindLabel,
@@ -49,27 +51,22 @@ func TestPkgerHTTPServer(t *testing.T) {
 				Do(svr).
 				ExpectStatus(http.StatusOK).
 				ExpectBody(func(buf *bytes.Buffer) {
-					pkg, err := pkger.Parse(pkger.EncodingJSON, pkger.FromReader(buf))
-					require.NoError(t, err)
+					var resp fluxTTP.RespCreatePkg
+					decodeBody(t, buf, &resp)
 
-					require.NotNil(t, pkg)
+					pkg := resp.Pkg
 					require.NoError(t, pkg.Validate())
+					assert.Equal(t, pkger.APIVersion, pkg.APIVersion)
+					assert.Equal(t, pkger.KindPackage, pkg.Kind)
 
-					assert.Len(t, pkg.Objects, 1)
+					meta := pkg.Metadata
+					assert.Equal(t, "name1", meta.Name)
+					assert.Equal(t, "desc1", meta.Description)
+					assert.Equal(t, "v1", meta.Version)
+
+					assert.Len(t, pkg.Spec.Resources, 1)
 					assert.Len(t, pkg.Summary().Labels, 1)
 				})
-
-		})
-
-		t.Run("should be invalid if not org ids or resources provided", func(t *testing.T) {
-			pkgHandler := fluxTTP.NewHandlerPkg(zap.NewNop(), fluxTTP.ErrorHandler(0), nil)
-			svr := newMountedHandler(pkgHandler, 1)
-
-			testttp.
-				PostJSON(t, "/api/v2/packages", fluxTTP.ReqCreatePkg{}).
-				Headers("Content-Type", "application/json").
-				Do(svr).
-				ExpectStatus(http.StatusUnprocessableEntity)
 
 		})
 	})
@@ -87,7 +84,7 @@ func TestPkgerHTTPServer(t *testing.T) {
 					reqBody: fluxTTP.ReqApplyPkg{
 						DryRun: true,
 						OrgID:  influxdb.ID(9000).String(),
-						RawPkg: bucketPkgKinds(t, pkger.EncodingJSON),
+						Pkg:    bucketPkg(t, pkger.EncodingJSON),
 					},
 				},
 				{
@@ -95,7 +92,7 @@ func TestPkgerHTTPServer(t *testing.T) {
 					reqBody: fluxTTP.ReqApplyPkg{
 						DryRun: true,
 						OrgID:  influxdb.ID(9000).String(),
-						RawPkg: bucketPkgKinds(t, pkger.EncodingJSON),
+						Pkg:    bucketPkg(t, pkger.EncodingJSON),
 					},
 				},
 				{
@@ -103,9 +100,7 @@ func TestPkgerHTTPServer(t *testing.T) {
 					reqBody: fluxTTP.ReqApplyPkg{
 						DryRun: true,
 						OrgID:  influxdb.ID(9000).String(),
-						Remote: fluxTTP.PkgRemote{
-							URL: "https://gist.githubusercontent.com/jsteenb2/3a3b2b5fcbd6179b2494c2b54aa2feb0/raw/989d361db7a851a3c388eaed0b59dce7fca7fdf3/bucket_pkg.json",
-						},
+						URL:    "https://gist.githubusercontent.com/jsteenb2/3a3b2b5fcbd6179b2494c2b54aa2feb0/raw/1717709ffadbeed5dfc88ff4cac5bf912c6930bf/bucket_pkg_json",
 					},
 				},
 				{
@@ -114,7 +109,7 @@ func TestPkgerHTTPServer(t *testing.T) {
 					reqBody: fluxTTP.ReqApplyPkg{
 						DryRun: true,
 						OrgID:  influxdb.ID(9000).String(),
-						RawPkg: bucketPkgKinds(t, pkger.EncodingJsonnet),
+						Pkg:    bucketPkg(t, pkger.EncodingJsonnet),
 					},
 				},
 			}
@@ -250,7 +245,7 @@ func TestPkgerHTTPServer(t *testing.T) {
 			PostJSON(t, "/api/v2/packages/apply", fluxTTP.ReqApplyPkg{
 				OrgID:   influxdb.ID(9000).String(),
 				Secrets: map[string]string{"secret1": "val1"},
-				RawPkg:  bucketPkgKinds(t, pkger.EncodingJSON),
+				Pkg:     bucketPkg(t, pkger.EncodingJSON),
 			}).
 			Do(svr).
 			ExpectStatus(http.StatusCreated).
@@ -266,7 +261,7 @@ func TestPkgerHTTPServer(t *testing.T) {
 	})
 }
 
-func bucketPkgKinds(t *testing.T, encoding pkger.Encoding) []byte {
+func bucketPkg(t *testing.T, encoding pkger.Encoding) *pkger.Pkg {
 	t.Helper()
 
 	var pkgStr string
@@ -274,52 +269,67 @@ func bucketPkgKinds(t *testing.T, encoding pkger.Encoding) []byte {
 	case pkger.EncodingJsonnet:
 		pkgStr = `
 local Bucket(name, desc) = {
-    apiVersion: '%[1]s',
     kind: 'Bucket',
-    metadata: {
-        name: name
-    },
-    spec: {
-        description: desc
-    }
+    name: name,
+    description: desc,
 };
 
-[
-  Bucket(name="rucket_1", desc="bucket 1 description"),
-]
+{
+   apiVersion: "0.1.0",
+   kind: "Package",
+   meta: {
+     pkgName: "pkg_name",
+     pkgVersion: "1",
+     description: "pack description"
+   },
+   spec: {
+     resources: [
+        Bucket(name="rucket_1", desc="bucket 1 description"),
+     ]
+   }
+}
 `
 	case pkger.EncodingJSON:
-		pkgStr = `[
-  {
-    "apiVersion": "%[1]s",
-    "kind": "Bucket",
-    "metadata": {
-      "name": "rucket_11"
-    },
-    "spec": {
-      "description": "bucket 1 description"
-    }
+		pkgStr = `
+{
+  "apiVersion": "0.1.0",
+  "kind": "Package",
+  "meta": {
+    "pkgName": "pkg_name",
+    "pkgVersion": "1",
+    "description": "pack description"
+  },
+  "spec": {
+    "resources": [
+      {
+        "kind": "Bucket",
+        "name": "rucket_11",
+        "description": "bucket 1 description"
+      }
+    ]
   }
-]
+}
 `
 	case pkger.EncodingYAML:
-		pkgStr = `apiVersion: %[1]s
-kind: Bucket
-metadata:
-  name:  rucket_11
+		pkgStr = `apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+  description:  pack description
 spec:
-  description: bucket 1 description
+  resources:
+    - kind: Bucket
+      name: rucket_11
+      description: bucket 1 description
 `
 	default:
 		require.FailNow(t, "invalid encoding provided: "+encoding.String())
 	}
 
-	pkg, err := pkger.Parse(encoding, pkger.FromString(fmt.Sprintf(pkgStr, pkger.APIVersion)))
+	pkg, err := pkger.Parse(encoding, pkger.FromString(pkgStr))
 	require.NoError(t, err)
-
-	b, err := pkg.Encode(encoding)
-	require.NoError(t, err)
-	return b
+	return pkg
 }
 
 func newReqApplyYMLBody(t *testing.T, orgID influxdb.ID, dryRun bool) *bytes.Buffer {
@@ -329,7 +339,7 @@ func newReqApplyYMLBody(t *testing.T, orgID influxdb.ID, dryRun bool) *bytes.Buf
 	err := yaml.NewEncoder(&buf).Encode(fluxTTP.ReqApplyPkg{
 		DryRun: dryRun,
 		OrgID:  orgID.String(),
-		RawPkg: bucketPkgKinds(t, pkger.EncodingYAML),
+		Pkg:    bucketPkg(t, pkger.EncodingYAML),
 	})
 	require.NoError(t, err)
 	return &buf

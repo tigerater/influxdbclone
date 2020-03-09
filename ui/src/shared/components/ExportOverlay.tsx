@@ -14,7 +14,7 @@ import {Controlled as ReactCodeMirror} from 'react-codemirror2'
 import CopyButton from 'src/shared/components/CopyButton'
 
 // Actions
-import {createTemplateFromResource} from 'src/templates/actions/thunks'
+import {createTemplateFromResource} from 'src/templates/actions/'
 
 // Utils
 import {downloadTextFile} from 'src/shared/utils/download'

@@ -34,7 +34,7 @@ enum ArrowDirection {
 
 interface Props {
   searchTerm: string
-  triggerRef: RefObject<HTMLDivElement>
+  triggerRef: RefObject<HTMLButtonElement>
   selectedItemID: string
   onUpdateSelectedItemID: (highlightedID: string) => void
   allLabelsUsed: boolean

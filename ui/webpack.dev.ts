@@ -11,10 +11,6 @@ module.exports = merge(common, {
   output: {
     filename: '[name].js',
   },
-  watchOptions: {
-    aggregateTimeout: 300,
-    poll: 1000
-  },
   devServer: {
     hot: true,
     historyApiFallback: true,

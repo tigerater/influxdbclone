@@ -16,6 +16,7 @@ interface OwnProps {
   view: View
   timeRange: TimeRange
   manualRefresh: number
+  onEditCell: () => void
 }
 
 type Props = OwnProps & WithRouterProps

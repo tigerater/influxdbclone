@@ -98,21 +98,44 @@ func (s *Service) getSecretKeys(ctx context.Context, tx Tx, orgID influxdb.ID) (
 		return nil, err
 	}
 
+	cur, err := b.Cursor()
+	if err != nil {
+		return nil, err
+	}
+
 	prefix, err := orgID.Encode()
 	if err != nil {
 		return nil, err
 	}
+	k, _ := cur.Seek(prefix)
 
-	cur, err := b.ForwardCursor(prefix, WithCursorPrefix(prefix))
+	if len(k) == 0 {
+		return []string{}, nil
+	}
+
+	id, key, err := decodeSecretKey(k)
 	if err != nil {
 		return nil, err
 	}
 
-	keys := []string{}
+	if id != orgID {
+		return []string{}, &influxdb.Error{
+			Code: influxdb.ENotFound,
+			Msg:  "organization has no secret keys",
+		}
+	}
 
-	for k, _ := cur.Next(); k != nil; k, _ = cur.Next() {
+	keys := []string{key}
 
-		id, key, err := decodeSecretKey(k)
+	for {
+		k, _ = cur.Next()
+
+		if len(k) == 0 {
+			// We've reached the end of the keys so we're done
+			break
+		}
+
+		id, key, err = decodeSecretKey(k)
 		if err != nil {
 			return nil, err
 		}

@@ -24,7 +24,6 @@ export interface SelectableDurationTimeRange {
   label: string
   duration: string
   type: 'selectable-duration'
-  windowPeriod: number
 }
 
 export interface DurationTimeRange {

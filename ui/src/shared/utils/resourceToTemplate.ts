@@ -1,7 +1,7 @@
 import _ from 'lodash'
 import {getDeep} from 'src/utils/wrappers'
 
-import {defaultBuilderConfig} from 'src/views/helpers'
+import {defaultBuilderConfig} from 'src/shared/utils/view'
 import {viewableLabels} from 'src/labels/selectors'
 
 import {
@@ -241,7 +241,6 @@ const variableToRelationship = (v: Variable) => ({
 
 export const dashboardToTemplate = (
   dashboard: Dashboard,
-  cells: Cell[],
   views: View[],
   variables: Variable[],
   baseTemplate = blankDashboardTemplate()
@@ -255,6 +254,7 @@ export const dashboardToTemplate = (
   const dashboardIncludedLabels = dashboardLabels.map(l => labelToIncluded(l))
   const relationshipsLabels = dashboardLabels.map(l => labelToRelationship(l))
 
+  const cells = getDeep<Cell[]>(dashboard, 'cells', [])
   const includedCells = cells.map(c => cellToIncluded(c, views))
   const relationshipsCells = cells.map(c => cellToRelationship(c))
 

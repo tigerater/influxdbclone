@@ -215,23 +215,18 @@ type dashboardCellResponse struct {
 func (d *dashboardCellResponse) MarshalJSON() ([]byte, error) {
 	r := struct {
 		platform.Cell
-		Properties json.RawMessage   `json:"properties,omitempty"`
-		Name       string            `json:"name,omitempty"`
-		Links      map[string]string `json:"links"`
+		Properties platform.ViewProperties `json:"properties,omitempty"`
+		Name       string                  `json:"name,omitempty"`
+		Links      map[string]string       `json:"links"`
 	}{
 		Cell:  d.Cell,
 		Links: d.Links,
 	}
 
 	if d.Cell.View != nil {
-		b, err := platform.MarshalViewPropertiesJSON(d.Cell.View.Properties)
-		if err != nil {
-			return nil, err
-		}
-		r.Properties = b
+		r.Properties = d.Cell.View.Properties
 		r.Name = d.Cell.View.Name
 	}
-
 	return json.Marshal(r)
 }
 

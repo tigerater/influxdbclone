@@ -9,11 +9,11 @@ import TemplatesList from 'src/templates/components/TemplatesList'
 import StaticTemplatesList from 'src/templates/components/StaticTemplatesList'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 import SearchWidget from 'src/shared/components/search_widget/SearchWidget'
-import GetResources from 'src/resources/components/GetResources'
+import GetResources from 'src/shared/components/GetResources'
 import SettingsTabbedPageHeader from 'src/settings/components/SettingsTabbedPageHeader'
 
 // Types
-import {AppState, ResourceType, Template, TemplateSummary} from 'src/types'
+import {TemplateSummary, AppState, ResourceType} from 'src/types'
 import {SortTypes} from 'src/shared/utils/sort'
 import {
   Sort,
@@ -28,19 +28,14 @@ import {
 
 import {staticTemplates as statics} from 'src/templates/constants/defaultTemplates'
 
-// Selectors
-import {getAll} from 'src/resources/selectors/getAll'
-
-type TemplateOrSummary = Template | TemplateSummary
-
 interface StaticTemplate {
   name: string
-  template: TemplateOrSummary
+  template: TemplateSummary
 }
 
 const staticTemplates: StaticTemplate[] = _.map(statics, (template, name) => ({
   name,
-  template: template as TemplateOrSummary,
+  template: template as TemplateSummary,
 }))
 
 interface OwnProps {
@@ -203,8 +198,8 @@ class TemplatesPage extends PureComponent<Props, State> {
     this.setState({searchTerm})
   }
 }
-const mstp = (state: AppState): StateProps => ({
-  templates: getAll(state, ResourceType.Templates),
+const mstp = ({templates}: AppState): StateProps => ({
+  templates: templates.items,
 })
 
 export default connect<StateProps, {}, {}>(

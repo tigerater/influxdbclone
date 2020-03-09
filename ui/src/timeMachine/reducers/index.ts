@@ -3,7 +3,7 @@ import {cloneDeep, isNumber, get, map} from 'lodash'
 import {produce} from 'immer'
 
 // Utils
-import {createView, defaultViewQuery} from 'src/views/helpers'
+import {createView, defaultViewQuery} from 'src/shared/utils/view'
 import {isConfigValid, buildQuery} from 'src/timeMachine/utils/queryBuilder'
 
 // Constants
@@ -22,19 +22,20 @@ import {
   TableViewProperties,
   TimeRange,
   View,
+} from 'src/types'
+import {
   ViewType,
-  QueryView,
-  QueryViewProperties,
-  ExtractWorkingView,
   DashboardDraftQuery,
   BuilderConfig,
   BuilderConfigAggregateWindow,
-  RemoteDataState,
-  TimeMachineID,
-  Color,
-} from 'src/types'
+  QueryView,
+  QueryViewProperties,
+  ExtractWorkingView,
+} from 'src/types/dashboards'
 import {Action} from 'src/timeMachine/actions'
 import {TimeMachineTab} from 'src/types/timeMachine'
+import {RemoteDataState, TimeMachineID} from 'src/types'
+import {Color} from 'src/types/colors'
 import {BuilderAggregateFunctionType} from 'src/client/generatedRoutes'
 
 interface QueryBuilderState {
@@ -483,22 +484,6 @@ export const timeMachineReducer = (
       }
     }
 
-    case 'SET_TICK_PREFIX': {
-      const {tickPrefix} = action.payload
-
-      switch (state.view.properties.type) {
-        case 'gauge':
-        case 'single-stat':
-        case 'line-plus-single-stat':
-          return setViewProperties(state, {tickPrefix})
-        case 'check':
-        case 'xy':
-          return setYAxis(state, {tickPrefix})
-        default:
-          return state
-      }
-    }
-
     case 'SET_SUFFIX': {
       const {suffix} = action.payload
 
@@ -510,22 +495,6 @@ export const timeMachineReducer = (
         case 'check':
         case 'xy':
           return setYAxis(state, {suffix})
-        default:
-          return state
-      }
-    }
-
-    case 'SET_TICK_SUFFIX': {
-      const {tickSuffix} = action.payload
-
-      switch (state.view.properties.type) {
-        case 'gauge':
-        case 'single-stat':
-        case 'line-plus-single-stat':
-          return setViewProperties(state, {tickSuffix})
-        case 'check':
-        case 'xy':
-          return setYAxis(state, {tickSuffix})
         default:
           return state
       }

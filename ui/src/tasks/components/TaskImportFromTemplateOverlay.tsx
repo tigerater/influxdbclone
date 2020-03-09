@@ -13,11 +13,11 @@ import {
 } from '@influxdata/clockface'
 import TemplateBrowser from 'src/templates/components/createFromTemplateOverlay/TemplateBrowser'
 import TemplateBrowserEmpty from 'src/tasks/components/TemplateBrowserEmpty'
-import GetResources from 'src/resources/components/GetResources'
+import GetResources from 'src/shared/components/GetResources'
 
 // Actions
 import {createTaskFromTemplate as createTaskFromTemplateAction} from 'src/tasks/actions/thunks'
-import {getTemplateByID} from 'src/templates/actions/thunks'
+import {getTemplateByID} from 'src/templates/actions'
 
 // Types
 import {
@@ -29,9 +29,6 @@ import {
   TaskTemplate,
   ResourceType,
 } from 'src/types'
-
-// Selectors
-import {getAll} from 'src/resources/selectors/getAll'
 
 interface StateProps {
   templates: TemplateSummary[]
@@ -141,13 +138,7 @@ class TaskImportFromTemplateOverlay extends PureComponent<
   }
 }
 
-const mstp = (state: AppState): StateProps => {
-  const {
-    resources: {
-      templates: {status},
-    },
-  } = state
-  const items = getAll(state, ResourceType.Templates)
+const mstp = ({templates: {items, status}}: AppState): StateProps => {
   const filteredTemplates = items.filter(
     t => !t.meta.type || t.meta.type === TemplateType.Task
   )

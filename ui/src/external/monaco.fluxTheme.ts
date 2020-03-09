@@ -1,7 +1,5 @@
-import {MonacoType} from 'src/types'
-
 export const THEME_NAME = 'baseTheme'
-export default function(monaco: MonacoType) {
+export default function(monaco) {
   monaco.editor.defineTheme(THEME_NAME, {
     base: 'vs-dark',
     inherit: false,

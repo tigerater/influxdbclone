@@ -16,14 +16,17 @@ import {
   TelegrafEditorActivePluginState,
   TelegrafEditorState,
 } from 'src/dataLoaders/reducers/telegrafEditor'
+import {TemplatesState} from 'src/templates/reducers'
 import {RangeState} from 'src/dashboards/reducers/ranges'
+import {ViewsState} from 'src/dashboards/reducers/views'
 import {UserSettingsState} from 'src/userSettings/reducers'
+import {DashboardsState} from 'src/dashboards/reducers/dashboards'
 import {OverlayState} from 'src/overlays/reducers/overlays'
 import {AutoRefreshState} from 'src/shared/reducers/autoRefresh'
 import {LimitsState} from 'src/cloud/reducers/limits'
-import {ChecksState} from 'src/checks/reducers'
-import {NotificationRulesState} from 'src/notifications/rules/reducers'
-import {NotificationEndpointsState} from 'src/notifications/endpoints/reducers'
+import {ChecksState} from 'src/alerting/reducers/checks'
+import {NotificationRulesState} from 'src/alerting/reducers/notifications/rules'
+import {NotificationEndpointsState} from 'src/alerting/reducers/notifications/endpoints'
 import {AlertBuilderState} from 'src/alerting/reducers/alertBuilder'
 
 import {ResourceState} from 'src/types'
@@ -34,6 +37,7 @@ export interface AppState {
   autoRefresh: AutoRefreshState
   checks: ChecksState
   cloud: {limits: LimitsState}
+  dashboards: DashboardsState
   dataLoading: DataLoadingState
   endpoints: NotificationEndpointsState
   labels: LabelsState
@@ -52,11 +56,13 @@ export interface AppState {
   telegrafEditorActivePlugins: TelegrafEditorActivePluginState
   plugins: PluginResourceState
   telegrafEditor: TelegrafEditorState
+  templates: TemplatesState
   timeMachines: TimeMachinesState
   timeRange: TimeRange
   userSettings: UserSettingsState
   variableEditor: VariableEditorState
   VERSION: string
+  views: ViewsState
 }
 
 export type GetState = () => AppState

@@ -23,11 +23,7 @@ export default class VariableContextMenu extends PureComponent<Props> {
       <Context>
         <Context.Menu icon={IconFont.CogThick}>
           <Context.Item label="Export" action={onExport} />
-          <Context.Item
-            label="Rename"
-            action={onRename}
-            testID="context-rename-variable"
-          />
+          <Context.Item label="Rename" action={onRename} />
         </Context.Menu>
         <Context.Menu
           icon={IconFont.Trash}
@@ -38,7 +34,7 @@ export default class VariableContextMenu extends PureComponent<Props> {
             label="Delete"
             action={onDelete}
             value={variable}
-            testID="context-delete-variable"
+            testID="context-delete-task"
           />
         </Context.Menu>
       </Context>

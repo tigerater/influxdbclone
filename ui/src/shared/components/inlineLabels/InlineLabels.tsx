@@ -1,5 +1,6 @@
 // Libraries
 import React, {Component} from 'react'
+import _ from 'lodash'
 
 // Components
 import {Label as LabelComponent} from '@influxdata/clockface'
@@ -22,6 +23,7 @@ interface Props {
   labels: Label[]
   onRemoveLabel?: (label: Label) => void
   onAddLabel?: (label: Label) => void
+  onCreateLabel?: (label: Label) => void
   onFilterChange?: (searchTerm: string) => void
 }
 
@@ -36,7 +38,7 @@ export default class InlineLabels extends Component<Props> {
   }
 
   private get selectedLabels(): JSX.Element {
-    const {selectedLabels, labels, onAddLabel} = this.props
+    const {selectedLabels, labels, onAddLabel, onCreateLabel} = this.props
 
     return (
       <div className="inline-labels--container">
@@ -45,6 +47,7 @@ export default class InlineLabels extends Component<Props> {
             labels={labels}
             selectedLabels={selectedLabels}
             onAddLabel={onAddLabel}
+            onCreateLabel={onCreateLabel}
           />
         )}
         {this.currentLabels}
@@ -57,30 +60,17 @@ export default class InlineLabels extends Component<Props> {
     const onDelete = this.isEditable ? this.handleDeleteLabel : null
 
     if (selectedLabels.length) {
-      return selectedLabels.map(_label => {
-        const label = {..._label}
-
-        // TODO: clean this up during normalization effort at
-        // the service layer and not in the view (alex)
-        if (!label.hasOwnProperty('properties')) {
-          label.properties = {
-            color: '#FF0000',
-            description: '',
-          }
-        }
-
-        return (
-          <LabelComponent
-            id={label.id}
-            key={label.id}
-            name={label.name}
-            color={label.properties.color}
-            description={label.properties.description}
-            onDelete={onDelete}
-            onClick={this.handleLabelClick.bind(this, label.name)}
-          />
-        )
-      })
+      return selectedLabels.map(label => (
+        <LabelComponent
+          id={label.id}
+          key={label.id}
+          name={label.name}
+          color={label.properties.color}
+          description={label.properties.description}
+          onDelete={onDelete}
+          onClick={this.handleLabelClick}
+        />
+      ))
     }
   }
 
@@ -88,8 +78,10 @@ export default class InlineLabels extends Component<Props> {
     return this.props.editMode === LabelsEditMode.Editable
   }
 
-  private handleLabelClick = (labelName: string) => {
-    const {onFilterChange} = this.props
+  private handleLabelClick = (labelID: string) => {
+    const {onFilterChange, labels} = this.props
+
+    const labelName = labels.find(l => l.id === labelID).name
 
     onFilterChange(labelName)
   }

@@ -8,22 +8,17 @@ import CellHeader from 'src/shared/components/cells/CellHeader'
 import CellContext from 'src/shared/components/cells/CellContext'
 import ViewComponent from 'src/shared/components/cells/View'
 import {ErrorHandling} from 'src/shared/decorators/errors'
+import {SpinnerContainer} from '@influxdata/clockface'
 import EmptyGraphMessage from 'src/shared/components/EmptyGraphMessage'
 
 // Utils
-import {getByID} from 'src/resources/selectors'
+import {getView, getViewStatus} from 'src/dashboards/selectors'
 
 // Types
-import {
-  RemoteDataState,
-  AppState,
-  View,
-  Cell,
-  TimeRange,
-  ResourceType,
-} from 'src/types'
+import {AppState, View, Cell, TimeRange, RemoteDataState} from 'src/types'
 
 interface StateProps {
+  viewsStatus: RemoteDataState
   view: View
 }
 
@@ -31,6 +26,10 @@ interface OwnProps {
   cell: Cell
   timeRange: TimeRange
   manualRefresh: number
+  onDeleteCell: (cell: Cell) => void
+  onCloneCell: (cell: Cell) => void
+  onEditCell: () => void
+  onEditNote: (id: string) => void
 }
 
 interface State {
@@ -42,16 +41,29 @@ type Props = StateProps & OwnProps
 @ErrorHandling
 class CellComponent extends Component<Props, State> {
   public render() {
-    const {cell, view} = this.props
+    const {
+      onEditCell,
+      onEditNote,
+      onDeleteCell,
+      onCloneCell,
+      cell,
+      view,
+    } = this.props
 
     return (
       <>
         <CellHeader name={this.viewName} note={this.viewNote}>
-          <CellContext
-            cell={cell}
-            view={view}
-            onCSVDownload={this.handleCSVDownload}
-          />
+          {view && (
+            <CellContext
+              cell={cell}
+              view={view}
+              onDeleteCell={onDeleteCell}
+              onCloneCell={onCloneCell}
+              onEditCell={onEditCell}
+              onEditNote={onEditNote}
+              onCSVDownload={this.handleCSVDownload}
+            />
+          )}
         </CellHeader>
         <div className="cell--view" data-testid="cell--view-empty">
           {this.view}
@@ -63,7 +75,7 @@ class CellComponent extends Component<Props, State> {
   private get viewName(): string {
     const {view} = this.props
 
-    if (view && view.properties && view.properties.type !== 'markdown') {
+    if (view && view.properties.type !== 'markdown') {
       return view.name
     }
 
@@ -73,7 +85,7 @@ class CellComponent extends Component<Props, State> {
   private get viewNote(): string {
     const {view} = this.props
 
-    if (!view || !view.properties || !view.properties.type) {
+    if (!view) {
       return ''
     }
 
@@ -88,18 +100,20 @@ class CellComponent extends Component<Props, State> {
   }
 
   private get view(): JSX.Element {
-    const {timeRange, manualRefresh, view} = this.props
-
-    if (!view || view.status !== RemoteDataState.Done) {
-      return <EmptyGraphMessage message="Loading..." />
-    }
+    const {timeRange, manualRefresh, view, onEditCell, viewsStatus} = this.props
 
     return (
-      <ViewComponent
-        view={view}
-        timeRange={timeRange}
-        manualRefresh={manualRefresh}
-      />
+      <SpinnerContainer
+        loading={viewsStatus}
+        spinnerComponent={<EmptyGraphMessage message="Loading..." />}
+      >
+        <ViewComponent
+          view={view}
+          timeRange={timeRange}
+          manualRefresh={manualRefresh}
+          onEditCell={onEditCell}
+        />
+      </SpinnerContainer>
     )
   }
 
@@ -109,9 +123,11 @@ class CellComponent extends Component<Props, State> {
 }
 
 const mstp = (state: AppState, ownProps: OwnProps): StateProps => {
-  const view = getByID<View>(state, ResourceType.Views, ownProps.cell.id)
+  const view = getView(state, ownProps.cell.id)
 
-  return {view}
+  const status = getViewStatus(state, ownProps.cell.id)
+
+  return {view, viewsStatus: status}
 }
 
 export default connect<StateProps, {}, OwnProps>(

@@ -1,28 +1,10 @@
 import {
-  Document,
-  DocumentCreate,
-  DocumentListEntry,
-  DocumentMeta,
   ILabel,
+  DocumentListEntry,
+  Document,
+  DocumentMeta,
 } from '@influxdata/influx'
-import {
-  Cell,
-  Dashboard,
-  Label,
-  NormalizedState,
-  RemoteDataState,
-  Variable,
-  View,
-} from 'src/types'
-
-export interface TemplateSummary extends DocumentListEntry {
-  labels: ILabel[]
-  status: RemoteDataState
-}
-
-export interface TemplatesState extends NormalizedState<TemplateSummary> {
-  exportTemplate: {status: RemoteDataState; item: DocumentCreate}
-}
+import {Dashboard, View, Cell, Label, Variable} from 'src/types'
 
 export enum TemplateType {
   Label = 'label',
@@ -186,3 +168,7 @@ export interface VariableTemplate extends TemplateBase {
 }
 
 export type Template = TaskTemplate | DashboardTemplate | VariableTemplate
+
+export interface TemplateSummary extends DocumentListEntry {
+  labels: ILabel[]
+}

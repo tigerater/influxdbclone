@@ -88,7 +88,7 @@ func setupF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to write token to path %q: %v", dPath, err)
 	}
 
-	fmt.Println(string(promptWithColor("Your token has been stored in "+dPath+".", colorCyan)))
+	fmt.Println(promptWithColor("Your token has been stored in "+dPath+".", colorCyan))
 
 	w := internal.NewTabWriter(os.Stdout)
 	w.WriteHeaders(
@@ -144,7 +144,7 @@ func interactive() (req *platform.OnboardingRequest, err error) {
 		Reader: os.Stdin,
 	}
 	req = new(platform.OnboardingRequest)
-	fmt.Println(string(promptWithColor(`Welcome to InfluxDB 2.0!`, colorYellow)))
+	fmt.Println(promptWithColor(`Welcome to InfluxDB 2.0!`, colorYellow))
 	if setupFlags.username != "" {
 		req.User = setupFlags.username
 	} else {
@@ -153,7 +153,7 @@ func interactive() (req *platform.OnboardingRequest, err error) {
 	if setupFlags.password != "" {
 		req.Password = setupFlags.password
 	} else {
-		req.Password = getPassword(ui, false)
+		req.Password = getPassword(ui)
 	}
 	if setupFlags.token != "" {
 		req.Token = setupFlags.token
@@ -200,9 +200,8 @@ var (
 	keyReset    = []byte{keyEscape, '[', '0', 'm'}
 )
 
-func promptWithColor(s string, color []byte) []byte {
-	bb := append(color, []byte(s)...)
-	return append(bb, keyReset...)
+func promptWithColor(s string, color []byte) string {
+	return string(color) + s + string(keyReset)
 }
 
 func getConfirm(ui *input.UI, or *platform.OnboardingRequest) bool {
@@ -212,14 +211,14 @@ func getConfirm(ui *input.UI, or *platform.OnboardingRequest) bool {
 		if or.RetentionPeriod > 0 {
 			rp = fmt.Sprintf("%d hrs", or.RetentionPeriod)
 		}
-		ui.Writer.Write(promptWithColor(fmt.Sprintf(`
+		fmt.Print(promptWithColor(fmt.Sprintf(`
 You have entered:
   Username:          %s
   Organization:      %s
   Bucket:            %s
   Retention Period:  %s
 `, or.User, or.Org, or.Bucket, rp), colorCyan))
-		result, err := ui.Ask(string(prompt), &input.Options{
+		result, err := ui.Ask(prompt, &input.Options{
 			HideOrder: true,
 		})
 		if err != nil {
@@ -241,20 +240,15 @@ var (
 	errPasswordIsTooShort = fmt.Errorf("passwords is too short")
 )
 
-func getPassword(ui *input.UI, showNew bool) (password string) {
-	newStr := ""
-	if showNew {
-		newStr = " new"
-	}
+func getPassword(ui *input.UI) (password string) {
 	var err error
 enterPasswd:
-	query := string(promptWithColor("Please type your"+newStr+" password", colorCyan))
+	query := promptWithColor("Please type your password", colorCyan)
 	for {
 		password, err = ui.Ask(query, &input.Options{
 			Required:  true,
 			HideOrder: true,
 			Hide:      true,
-			Mask:      false,
 			ValidateFunc: func(s string) error {
 				if len(s) < 8 {
 					return errPasswordIsTooShort
@@ -266,7 +260,7 @@ enterPasswd:
 		case input.ErrInterrupted:
 			os.Exit(1)
 		case errPasswordIsTooShort:
-			ui.Writer.Write(promptWithColor("Password too short - minimum length is 8 characters!", colorRed))
+			fmt.Println(promptWithColor("Password too short - minimum length is 8 characters!", colorRed))
 			goto enterPasswd
 		default:
 			if password = strings.TrimSpace(password); password == "" {
@@ -275,7 +269,7 @@ enterPasswd:
 		}
 		break
 	}
-	query = string(promptWithColor("Please type your"+newStr+" password again", colorCyan))
+	query = promptWithColor("Please type your password again", colorCyan)
 	for {
 		_, err = ui.Ask(query, &input.Options{
 			Required:  true,
@@ -294,7 +288,7 @@ enterPasswd:
 		case nil:
 			// Nothing.
 		default:
-			ui.Writer.Write(promptWithColor("Passwords do not match!\n", colorRed))
+			fmt.Println(promptWithColor("Passwords do not match!", colorRed))
 			goto enterPasswd
 		}
 		break
@@ -311,7 +305,7 @@ func getInput(ui *input.UI, prompt, defaultValue string) string {
 		option.Default = defaultValue
 		option.HideDefault = true
 	}
-	prompt = string(promptWithColor(prompt, colorCyan))
+	prompt = promptWithColor(prompt, colorCyan)
 	for {
 		line, err := ui.Ask(prompt, option)
 		switch err {

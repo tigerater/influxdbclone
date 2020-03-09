@@ -15,13 +15,17 @@ import {checkDashboardLimits as checkDashboardLimitsAction} from 'src/cloud/acti
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 // Types
-import {Dashboard, AppState, RemoteDataState, ResourceType} from 'src/types'
-import {getAll} from 'src/resources/selectors'
+import {Dashboard, AppState, RemoteDataState} from 'src/types'
 
 interface OwnProps {
+  onCreateDashboard: () => void
+  onCloneDashboard: (dashboard: Dashboard) => void
+  onDeleteDashboard: (dashboard: Dashboard) => void
+  onUpdateDashboard: (dashboard: Dashboard) => void
   onFilterChange: (searchTerm: string) => void
   searchTerm: string
   filterComponent?: JSX.Element
+  onImportDashboard: () => void
 }
 
 interface DispatchProps {
@@ -47,7 +51,17 @@ class DashboardsIndexContents extends Component<Props> {
   }
 
   public render() {
-    const {searchTerm, dashboards, filterComponent, onFilterChange} = this.props
+    const {
+      onDeleteDashboard,
+      onCloneDashboard,
+      onCreateDashboard,
+      onUpdateDashboard,
+      searchTerm,
+      dashboards,
+      filterComponent,
+      onFilterChange,
+      onImportDashboard,
+    } = this.props
 
     return (
       <FilterList<Dashboard>
@@ -61,7 +75,12 @@ class DashboardsIndexContents extends Component<Props> {
             searchTerm={searchTerm}
             filterComponent={filterComponent}
             dashboards={filteredDashboards}
+            onDeleteDashboard={onDeleteDashboard}
+            onCreateDashboard={onCreateDashboard}
+            onCloneDashboard={onCloneDashboard}
+            onUpdateDashboard={onUpdateDashboard}
             onFilterChange={onFilterChange}
+            onImportDashboard={onImportDashboard}
           />
         )}
       </FilterList>
@@ -71,13 +90,14 @@ class DashboardsIndexContents extends Component<Props> {
 
 const mstp = (state: AppState): StateProps => {
   const {
+    dashboards: {list: dashboards},
     cloud: {
       limits: {status},
     },
   } = state
 
   return {
-    dashboards: getAll<Dashboard>(state, ResourceType.Dashboards),
+    dashboards,
     limitStatus: status,
   }
 }

@@ -106,8 +106,6 @@ const ViewSwitcher: FunctionComponent<Props> = ({
 
       const singleStatProperties = {
         ...properties,
-        tickPrefix: '',
-        tickSuffix: '',
         colors: properties.colors.filter(c => c.type !== 'scale'),
         type: 'single-stat',
       } as SingleStatViewProperties

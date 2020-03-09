@@ -26,11 +26,11 @@ import {isFlagEnabled} from 'src/shared/utils/featureFlag'
 
 // Types
 import {
-  QueryView,
   BuilderAggregateFunctionType,
   BuilderTagsType,
   DashboardQuery,
   FluxTable,
+  QueryView,
   AppState,
   DashboardDraftQuery,
   TimeRange,
@@ -89,8 +89,8 @@ export const getActiveWindowPeriod = (state: AppState) => {
   return getWindowPeriod(text, variables)
 }
 
-const getTablesMemoized = memoizeOne(
-  (files: string[]): FluxTable[] => (files ? flatMap(files, parseResponse) : [])
+const getTablesMemoized = memoizeOne((files: string[]): FluxTable[] =>
+  files ? flatMap(files, parseResponse) : []
 )
 
 export const getTables = (state: AppState): FluxTable[] =>
@@ -193,6 +193,77 @@ export const getSymbolColumnsSelection = (state: AppState): string[] => {
   )
 }
 
+export const getSaveableView = (state: AppState): QueryView & {id?: string} => {
+  const {view, draftQueries} = getActiveTimeMachine(state)
+
+  let saveableView: QueryView & {id?: string} = {
+    ...view,
+    properties: {
+      ...view.properties,
+      queries: draftQueries,
+    },
+  }
+
+  if (saveableView.properties.type === 'histogram') {
+    saveableView = {
+      ...saveableView,
+      properties: {
+        ...saveableView.properties,
+        xColumn: getXColumnSelection(state),
+        fillColumns: getFillColumnsSelection(state),
+      },
+    }
+  }
+
+  if (saveableView.properties.type === 'heatmap') {
+    saveableView = {
+      ...saveableView,
+      properties: {
+        ...saveableView.properties,
+        xColumn: getXColumnSelection(state),
+        yColumn: getYColumnSelection(state),
+      },
+    }
+  }
+
+  if (saveableView.properties.type === 'scatter') {
+    saveableView = {
+      ...saveableView,
+      properties: {
+        ...saveableView.properties,
+        xColumn: getXColumnSelection(state),
+        yColumn: getYColumnSelection(state),
+        fillColumns: getFillColumnsSelection(state),
+        symbolColumns: getSymbolColumnsSelection(state),
+      },
+    }
+  }
+
+  if (saveableView.properties.type === 'xy') {
+    saveableView = {
+      ...saveableView,
+      properties: {
+        ...saveableView.properties,
+        xColumn: getXColumnSelection(state),
+        yColumn: getYColumnSelection(state),
+      },
+    }
+  }
+
+  if (saveableView.properties.type === 'line-plus-single-stat') {
+    saveableView = {
+      ...saveableView,
+      properties: {
+        ...saveableView.properties,
+        xColumn: getXColumnSelection(state),
+        yColumn: getYColumnSelection(state),
+      },
+    }
+  }
+
+  return saveableView
+}
+
 export const getStartTime = (timeRange: TimeRange) => {
   if (!timeRange) {
     return Infinity
@@ -266,75 +337,4 @@ export const getActiveTagValues = (
   }
 
   return activeQueryBuilderTags[index].values
-}
-
-export const getSaveableView = (state: AppState): QueryView & {id?: string} => {
-  const {view, draftQueries} = getActiveTimeMachine(state)
-
-  let saveableView: QueryView & {id?: string} = {
-    ...view,
-    properties: {
-      ...view.properties,
-      queries: draftQueries,
-    },
-  }
-
-  if (saveableView.properties.type === 'histogram') {
-    saveableView = {
-      ...saveableView,
-      properties: {
-        ...saveableView.properties,
-        xColumn: getXColumnSelection(state),
-        fillColumns: getFillColumnsSelection(state),
-      },
-    }
-  }
-
-  if (saveableView.properties.type === 'heatmap') {
-    saveableView = {
-      ...saveableView,
-      properties: {
-        ...saveableView.properties,
-        xColumn: getXColumnSelection(state),
-        yColumn: getYColumnSelection(state),
-      },
-    }
-  }
-
-  if (saveableView.properties.type === 'scatter') {
-    saveableView = {
-      ...saveableView,
-      properties: {
-        ...saveableView.properties,
-        xColumn: getXColumnSelection(state),
-        yColumn: getYColumnSelection(state),
-        fillColumns: getFillColumnsSelection(state),
-        symbolColumns: getSymbolColumnsSelection(state),
-      },
-    }
-  }
-
-  if (saveableView.properties.type === 'xy') {
-    saveableView = {
-      ...saveableView,
-      properties: {
-        ...saveableView.properties,
-        xColumn: getXColumnSelection(state),
-        yColumn: getYColumnSelection(state),
-      },
-    }
-  }
-
-  if (saveableView.properties.type === 'line-plus-single-stat') {
-    saveableView = {
-      ...saveableView,
-      properties: {
-        ...saveableView.properties,
-        xColumn: getXColumnSelection(state),
-        yColumn: getYColumnSelection(state),
-      },
-    }
-  }
-
-  return saveableView
 }

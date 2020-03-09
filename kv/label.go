@@ -1,6 +1,7 @@
 package kv
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -157,17 +158,17 @@ func (s *Service) findResourceLabels(ctx context.Context, tx Tx, filter influxdb
 		return err
 	}
 
+	cur, err := idx.Cursor()
+	if err != nil {
+		return err
+	}
+
 	prefix, err := filter.ResourceID.Encode()
 	if err != nil {
 		return err
 	}
 
-	cur, err := idx.ForwardCursor(prefix, WithCursorPrefix(prefix))
-	if err != nil {
-		return err
-	}
-
-	for k, _ := cur.Next(); k != nil; k, _ = cur.Next() {
+	for k, _ := cur.Seek(prefix); bytes.HasPrefix(k, prefix); k, _ = cur.Next() {
 		_, id, err := decodeLabelMappingKey(k)
 		if err != nil {
 			return err
@@ -360,12 +361,12 @@ func (s *Service) forEachLabel(ctx context.Context, tx Tx, fn func(*influxdb.Lab
 		return err
 	}
 
-	cur, err := b.ForwardCursor(nil)
+	cur, err := b.Cursor()
 	if err != nil {
 		return err
 	}
 
-	for k, v := cur.Next(); k != nil; k, v = cur.Next() {
+	for k, v := cur.First(); k != nil; k, v = cur.Next() {
 		l := &influxdb.Label{}
 		if err := json.Unmarshal(v, l); err != nil {
 			return err

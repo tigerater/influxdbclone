@@ -7,8 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/influxdata/influxdb/resource"
-
 	"go.uber.org/zap"
 
 	"github.com/influxdata/influxdb"
@@ -295,26 +293,12 @@ func (s *Service) createOrganization(ctx context.Context, tx Tx, o *influxdb.Org
 		}
 	}
 
-	v, err := json.Marshal(o)
-	if err != nil {
-		return influxdb.ErrInternalOrgServiceError(influxdb.OpCreateOrganization, err)
-	}
-	if err := s.putOrganization(ctx, tx, o, v); err != nil {
+	if err := s.putOrganization(ctx, tx, o); err != nil {
 		return &influxdb.Error{
 			Err: err,
 		}
 	}
-
-	uid, _ := icontext.GetUserID(ctx)
-	return s.audit.Log(resource.Change{
-		Type:           resource.Create,
-		ResourceID:     o.ID,
-		ResourceType:   influxdb.OrgsResourceType,
-		OrganizationID: o.ID,
-		UserID:         uid,
-		ResourceBody:   v,
-		Time:           time.Now(),
-	})
+	return nil
 }
 
 func (s *Service) generateOrgID(ctx context.Context, tx Tx) (influxdb.ID, error) {
@@ -323,30 +307,22 @@ func (s *Service) generateOrgID(ctx context.Context, tx Tx) (influxdb.ID, error)
 
 // PutOrganization will put a organization without setting an ID.
 func (s *Service) PutOrganization(ctx context.Context, o *influxdb.Organization) error {
+	var err error
 	return s.kv.Update(ctx, func(tx Tx) error {
-		v, err := json.Marshal(o)
-		if err != nil {
-			return influxdb.ErrInternalOrgServiceError(influxdb.OpPutOrganization, err)
+		if pe := s.putOrganization(ctx, tx, o); pe != nil {
+			err = pe
 		}
-
-		if err := s.putOrganization(ctx, tx, o, v); err != nil {
-			return err
-		}
-
-		uid, _ := icontext.GetUserID(ctx)
-		return s.audit.Log(resource.Change{
-			Type:           resource.Put,
-			ResourceID:     o.ID,
-			ResourceType:   influxdb.OrgsResourceType,
-			OrganizationID: o.ID,
-			UserID:         uid,
-			ResourceBody:   v,
-			Time:           time.Now(),
-		})
+		return err
 	})
 }
 
-func (s *Service) putOrganization(ctx context.Context, tx Tx, o *influxdb.Organization, v []byte) error {
+func (s *Service) putOrganization(ctx context.Context, tx Tx, o *influxdb.Organization) error {
+	v, err := json.Marshal(o)
+	if err != nil {
+		return &influxdb.Error{
+			Err: err,
+		}
+	}
 	encodedID, err := o.ID.Encode()
 	if err != nil {
 		return &influxdb.Error{
@@ -390,12 +366,12 @@ func forEachOrganization(ctx context.Context, tx Tx, fn func(*influxdb.Organizat
 		return err
 	}
 
-	cur, err := b.ForwardCursor(nil)
+	cur, err := b.Cursor()
 	if err != nil {
 		return err
 	}
 
-	for k, v := cur.Next(); k != nil; k, v = cur.Next() {
+	for k, v := cur.First(); k != nil; k, v = cur.Next() {
 		o := &influxdb.Organization{}
 		if err := json.Unmarshal(v, o); err != nil {
 			return err
@@ -476,27 +452,8 @@ func (s *Service) updateOrganization(ctx context.Context, tx Tx, id influxdb.ID,
 		}
 	}
 
-	v, err := json.Marshal(o)
-	if err != nil {
-		return nil, influxdb.ErrInternalOrgServiceError(influxdb.OpUpdateOrganization, err)
-	}
-	if pe := s.putOrganization(ctx, tx, o, v); pe != nil {
+	if pe := s.putOrganization(ctx, tx, o); pe != nil {
 		return nil, pe
-	}
-
-	uid, _ := icontext.GetUserID(ctx)
-	if err := s.audit.Log(resource.Change{
-		Type:           resource.Update,
-		ResourceID:     o.ID,
-		ResourceType:   influxdb.OrgsResourceType,
-		OrganizationID: o.ID,
-		UserID:         uid,
-		ResourceBody:   v,
-		Time:           time.Now(),
-	}); err != nil {
-		return nil, &influxdb.Error{
-			Err: err,
-		}
 	}
 
 	return o, nil
@@ -527,16 +484,7 @@ func (s *Service) DeleteOrganization(ctx context.Context, id influxdb.ID) error 
 		if pe := s.deleteOrganization(ctx, tx, id); pe != nil {
 			return pe
 		}
-
-		uid, _ := icontext.GetUserID(ctx)
-		return s.audit.Log(resource.Change{
-			Type:           resource.Delete,
-			ResourceID:     id,
-			ResourceType:   influxdb.OrgsResourceType,
-			OrganizationID: id,
-			UserID:         uid,
-			Time:           time.Now(),
-		})
+		return nil
 	})
 	if err != nil {
 		return &influxdb.Error{

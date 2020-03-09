@@ -1,10 +1,5 @@
-// Libraries
-import uuid from 'uuid'
+import {NewCell, Cell, Dashboard} from 'src/types/'
 
-// Types
-import {NewCell, Cell, Dashboard, AppState, RemoteDataState} from 'src/types'
-
-// Constants
 import {UNTITLED_GRAPH} from 'src/dashboards/constants'
 
 const getMostCommonValue = (values: number[]): number => {
@@ -59,12 +54,10 @@ const getNextAvailablePosition = (dashboard, newCell) => {
 }
 
 export const getNewDashboardCell = (
-  state: AppState,
   dashboard: Dashboard,
   clonedCell?: Cell
 ): NewCell => {
   const defaultCell = {
-    id: uuid.v4(),
     x: 0,
     y: 0,
     h: 4,
@@ -74,19 +67,14 @@ export const getNewDashboardCell = (
       view: '',
       copy: '',
     },
-    status: RemoteDataState.Done,
   }
 
-  const cells = dashboard.cells.map(
-    cellID => state.resources.cells.byID[cellID]
-  )
-
-  if (!cells.length) {
+  if (dashboard.cells.length === 0) {
     return defaultCell
   }
 
-  const existingCellWidths = cells.map(cell => cell.w)
-  const existingCellHeights = cells.map(cell => cell.h)
+  const existingCellWidths = dashboard.cells.map(cell => cell.w)
+  const existingCellHeights = dashboard.cells.map(cell => cell.h)
 
   const mostCommonCellWidth = getMostCommonValue(existingCellWidths)
   const mostCommonCellHeight = getMostCommonValue(existingCellHeights)

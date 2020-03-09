@@ -1,17 +1,13 @@
 // Types
 import {
-  Authorization,
-  Bucket,
-  Cell,
-  Dashboard,
-  Member,
-  Organization,
-  Scraper,
   Task,
-  Telegraf,
-  TemplateSummary,
   Variable,
-  View,
+  Telegraf,
+  Member,
+  Bucket,
+  Scraper,
+  Organization,
+  Authorization,
 } from 'src/types'
 
 // AuthEntities defines the result of normalizr's normalization
@@ -27,25 +23,6 @@ export interface AuthEntities {
 export interface BucketEntities {
   buckets: {
     [uuid: string]: Bucket
-  }
-}
-
-// CellEntities defines the result of normalizr's normalization
-// of the "cells" resource
-export interface CellEntities {
-  cells: {
-    [uuid: string]: Cell
-  }
-}
-
-// DashboardEntities defines the result of normalizr's normalization
-// of the "dashboards" resource
-export interface DashboardEntities {
-  dashboards: {
-    [uuid: string]: Dashboard
-  }
-  cells: {
-    [uuid: string]: Cell
   }
 }
 
@@ -89,24 +66,10 @@ export interface TaskEntities {
   }
 }
 
-// TemplateSummaryEntities defines the result of normalizr's normalization
-// of the "templates resource"
-export interface TemplateSummaryEntities {
-  templates: {
-    [uuid: string]: TemplateSummary
-  }
-}
-
 // VariableEntities defines the result of normalizr's normalization
 // of the "variables" resource
 export interface VariableEntities {
   variables: {
     [uuid: string]: Variable
-  }
-}
-
-export interface ViewEntities {
-  views: {
-    [uuid: string]: View
   }
 }

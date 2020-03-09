@@ -1,133 +1,104 @@
 // Libraries
 import {produce} from 'immer'
+import _ from 'lodash'
 
 // Types
-import {
-  RemoteDataState,
-  ResourceState,
-  Dashboard,
-  ResourceType,
-} from 'src/types'
+import {Action, ActionTypes} from 'src/dashboards/actions'
+import {Dashboard, RemoteDataState} from 'src/types'
 
-// Actions
-import {
-  Action,
-  SET_DASHBOARD,
-  REMOVE_DASHBOARD,
-  SET_DASHBOARDS,
-  REMOVE_DASHBOARD_LABEL,
-  ADD_DASHBOARD_LABEL,
-  EDIT_DASHBOARD,
-} from 'src/dashboards/actions/creators'
-import {
-  SET_CELLS,
-  REMOVE_CELL,
-  SET_CELL,
-  Action as CellAction,
-} from 'src/cells/actions/creators'
-
-// Utils
-import {
-  setResource,
-  setResourceAtID,
-  removeResource,
-  editResource,
-} from 'src/resources/reducers/helpers'
-
-type DashboardsState = ResourceState['dashboards']
+export interface DashboardsState {
+  list: Dashboard[]
+  status: RemoteDataState
+}
 
 const initialState = () => ({
-  byID: {},
-  allIDs: [],
+  list: [],
   status: RemoteDataState.NotStarted,
 })
 
 export const dashboardsReducer = (
   state: DashboardsState = initialState(),
-  action: Action | CellAction
+  action: Action
 ): DashboardsState => {
   return produce(state, draftState => {
     switch (action.type) {
-      case SET_DASHBOARDS: {
-        setResource<Dashboard>(draftState, action, ResourceType.Dashboards)
+      case ActionTypes.SetDashboards: {
+        const {list, status} = action.payload
 
-        return
-      }
-
-      case REMOVE_DASHBOARD: {
-        removeResource<Dashboard>(draftState, action)
-
-        return
-      }
-
-      case SET_DASHBOARD: {
-        setResourceAtID<Dashboard>(draftState, action, ResourceType.Dashboards)
-
-        return
-      }
-
-      case EDIT_DASHBOARD: {
-        editResource<Dashboard>(draftState, action, ResourceType.Dashboards)
-
-        return
-      }
-
-      case REMOVE_CELL: {
-        const {dashboardID, id} = action
-
-        const {cells} = draftState.byID[dashboardID]
-
-        draftState.byID[dashboardID].cells = cells.filter(cID => cID !== id)
-
-        return
-      }
-
-      case SET_CELL: {
-        const {schema} = action
-
-        const cellID = schema.result
-        const cell = schema.entities.cells[cellID]
-        const {cells} = draftState.byID[cell.dashboardID]
-
-        if (cells.includes(cellID)) {
-          return
+        draftState.status = status
+        if (list) {
+          draftState.list = list
         }
 
-        draftState.byID[cell.dashboardID].cells.push(cellID)
+        return
+      }
+
+      case ActionTypes.RemoveDashboard: {
+        const {id} = action.payload
+        draftState.list = draftState.list.filter(l => l.id !== id)
 
         return
       }
 
-      case SET_CELLS: {
-        const {dashboardID, schema} = action
-
-        const cellIDs = schema && schema.result
-
-        if (!cellIDs) {
-          return
-        }
-
-        draftState.byID[dashboardID].cells = cellIDs
+      case ActionTypes.SetDashboard: {
+        const {dashboard} = action.payload
+        draftState.list = _.unionBy([dashboard], state.list, 'id')
 
         return
       }
 
-      case ADD_DASHBOARD_LABEL: {
-        const {dashboardID, label} = action
+      case ActionTypes.EditDashboard: {
+        const {dashboard} = action.payload
 
-        draftState.byID[dashboardID].labels.push(label)
+        draftState.list = draftState.list.map(d => {
+          if (d.id === dashboard.id) {
+            return dashboard
+          }
+          return d
+        })
 
         return
       }
 
-      case REMOVE_DASHBOARD_LABEL: {
-        const {dashboardID, labelID} = action
+      case ActionTypes.RemoveCell: {
+        const {dashboard, cell} = action.payload
+        draftState.list = draftState.list.map(d => {
+          if (d.id === dashboard.id) {
+            const cells = d.cells.filter(c => c.id !== cell.id)
+            d.cells = cells
+          }
 
-        const {labels} = draftState.byID[dashboardID]
+          return d
+        })
 
-        draftState.byID[dashboardID].labels = labels.filter(
-          label => label.id !== labelID
-        )
+        return
+      }
+
+      case ActionTypes.AddDashboardLabel: {
+        const {dashboardID, label} = action.payload
+
+        draftState.list = draftState.list.map(d => {
+          if (d.id === dashboardID) {
+            d.labels = [...d.labels, label]
+          }
+
+          return d
+        })
+
+        return
+      }
+
+      case ActionTypes.RemoveDashboardLabel: {
+        const {dashboardID, label} = action.payload
+        draftState.list = draftState.list.map(d => {
+          if (d.id === dashboardID) {
+            const updatedLabels = d.labels.filter(el => !(label.id === el.id))
+
+            d.labels = updatedLabels
+          }
+
+          return d
+        })
 
         return
       }

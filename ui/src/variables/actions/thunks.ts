@@ -3,7 +3,7 @@ import {normalize} from 'normalizr'
 
 // Actions
 import {notify} from 'src/shared/actions/notifications'
-import {setExportTemplate} from 'src/templates/actions/creators'
+import {setExportTemplate} from 'src/templates/actions'
 import {
   setValues,
   setVariables,

@@ -118,7 +118,6 @@ func influxCmd(opts ...genericCLIOptFn) *cobra.Command {
 
 	cmd.AddCommand(
 		cmdAuth(),
-		cmdBackup(),
 		cmdBucket(runEWrapper),
 		cmdDelete(),
 		cmdOrganization(runEWrapper),
@@ -129,7 +128,7 @@ func influxCmd(opts ...genericCLIOptFn) *cobra.Command {
 		cmdREPL(),
 		cmdSetup(),
 		cmdTask(),
-		cmdUser(runEWrapper),
+		cmdUser(),
 		cmdWrite(),
 	)
 
@@ -200,7 +199,7 @@ func defaultTokenPath() (string, string, error) {
 	if err != nil {
 		return "", "", err
 	}
-	return filepath.Join(dir, http.DefaultTokenFile), dir, nil
+	return filepath.Join(dir, "credentials"), dir, nil
 }
 
 func getTokenFromDefaultPath() string {
@@ -212,7 +211,7 @@ func getTokenFromDefaultPath() string {
 	if err != nil {
 		return ""
 	}
-	return strings.TrimSpace(string(b))
+	return string(b)
 }
 
 func writeTokenToPath(tok, path, dir string) error {
@@ -297,14 +296,14 @@ func (o *organization) register(cmd *cobra.Command, persistent bool) {
 		{
 			DestP:      &o.id,
 			Flag:       "org-id",
-			Desc:       "The ID of the organization",
+			Desc:       "The ID of the organization that owns the bucket",
 			Persistent: persistent,
 		},
 		{
 			DestP:      &o.name,
 			Flag:       "org",
 			Short:      'o',
-			Desc:       "The name of the organization",
+			Desc:       "The name of the organization that owns the bucket",
 			Persistent: persistent,
 		},
 	}

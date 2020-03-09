@@ -28,9 +28,7 @@ interface Props {
   gaugePosition: number
   colors?: Color[]
   prefix: string
-  tickPrefix: string
   suffix: string
-  tickSuffix: string
   decimalPlaces: DecimalPlaces
 }
 
@@ -281,22 +279,13 @@ class Gauge extends Component<Props> {
     minValue,
     maxValue
   ) => {
-    const {tickPrefix, tickSuffix, decimalPlaces} = this.props
-    let {prefix, suffix} = this.props
+    const {prefix, suffix, decimalPlaces} = this.props
     const {degree, lineCount, labelColor, labelFontSize} = GAUGE_SPECS
 
     const tickValues = [
       ..._.range(minValue, maxValue, Math.abs(maxValue - minValue) / lineCount),
       maxValue,
     ]
-
-    if (tickPrefix === 'true') {
-      prefix = ''
-    }
-
-    if (tickSuffix === 'true') {
-      suffix = ''
-    }
 
     const labels = tickValues.map(tick =>
       formatStatValue(tick, {decimalPlaces, prefix, suffix})

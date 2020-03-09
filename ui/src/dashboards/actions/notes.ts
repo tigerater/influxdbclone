@@ -1,23 +1,16 @@
 // Libraries
-import {get} from 'lodash'
+import {get, isUndefined} from 'lodash'
 
 // Actions
-import {createCellWithView} from 'src/cells/actions/thunks'
-import {updateView} from 'src/views/actions/thunks'
+import {createCellWithView} from 'src/dashboards/actions'
+import {updateView} from 'src/dashboards/actions/views'
 
 // Utils
-import {createView} from 'src/views/helpers'
-import {getByID} from 'src/resources/selectors'
+import {createView} from 'src/shared/utils/view'
+import {getView} from 'src/dashboards/selectors'
 
 // Types
-import {
-  GetState,
-  MarkdownViewProperties,
-  NoteEditorMode,
-  ResourceType,
-  Dashboard,
-  View,
-} from 'src/types'
+import {GetState, MarkdownViewProperties, NoteEditorMode} from 'src/types'
 import {NoteEditorState} from 'src/dashboards/reducers/notes'
 import {Dispatch} from 'react'
 
@@ -71,11 +64,7 @@ export const createNoteCell = (dashboardID: string) => (
   dispatch: Dispatch<Action | ReturnType<typeof createCellWithView>>,
   getState: GetState
 ) => {
-  const dashboard = getByID<Dashboard>(
-    getState(),
-    ResourceType.Dashboards,
-    dashboardID
-  )
+  const dashboard = getState().dashboards.list.find(d => d.id === dashboardID)
 
   if (!dashboard) {
     throw new Error(`could not find dashboard with id "${dashboardID}"`)
@@ -113,14 +102,16 @@ export const loadNote = (id: string) => (
   dispatch: Dispatch<Action>,
   getState: GetState
 ) => {
-  const state = getState()
-  const currentViewState = getByID<View>(state, ResourceType.Views, id)
+  const {
+    views: {views},
+  } = getState()
+  const currentViewState = views[id]
 
   if (!currentViewState) {
     return
   }
 
-  const view = currentViewState
+  const view = currentViewState.view
 
   const note: string = get(view, 'properties.note', '')
   const showNoteWhenEmpty: boolean = get(
@@ -145,9 +136,13 @@ export const updateViewNote = (id: string) => (
 ) => {
   const state = getState()
   const {note, showNoteWhenEmpty} = state.noteEditor
-  const view = getByID<View>(state, ResourceType.Views, id)
+  const view: any = getView(state, id)
 
-  if (view.properties.type === 'check') {
+  if (!view) {
+    throw new Error(`could not find view with id "${id}"`)
+  }
+
+  if (isUndefined(view.properties.note)) {
     throw new Error(
       `view type "${view.properties.type}" does not support notes`
     )

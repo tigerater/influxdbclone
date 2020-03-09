@@ -1,14 +1,11 @@
 package http
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
-	"path"
-	"strings"
 
 	"github.com/go-chi/chi"
 	"github.com/go-chi/chi/middleware"
@@ -65,33 +62,34 @@ func (s *HandlerPkg) Prefix() string {
 type (
 	// ReqCreatePkg is a request body for the create pkg endpoint.
 	ReqCreatePkg struct {
-		OrgIDs    []string                `json:"orgIDs"`
-		Resources []pkger.ResourceToClone `json:"resources"`
+		PkgName        string                  `json:"pkgName"`
+		PkgDescription string                  `json:"pkgDescription"`
+		PkgVersion     string                  `json:"pkgVersion"`
+		OrgIDs         []string                `json:"orgIDs"`
+		Resources      []pkger.ResourceToClone `json:"resources"`
 	}
 
 	// RespCreatePkg is a response body for the create pkg endpoint.
-	RespCreatePkg []pkger.Object
+	RespCreatePkg struct {
+		*pkger.Pkg
+	}
 )
 
 func (s *HandlerPkg) createPkg(w http.ResponseWriter, r *http.Request) {
-	encoding := pkgEncoding(r.Header)
-
 	var reqBody ReqCreatePkg
-	if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
-		s.HandleHTTPError(r.Context(), newDecodeErr("json", err), w)
+	encoding, err := decodeWithEncoding(r, &reqBody)
+	if err != nil {
+		s.HandleHTTPError(r.Context(), newDecodeErr(encoding.String(), err), w)
 		return
 	}
 	defer r.Body.Close()
 
-	if len(reqBody.Resources) == 0 && len(reqBody.OrgIDs) == 0 {
-		s.HandleHTTPError(r.Context(), &influxdb.Error{
-			Code: influxdb.EUnprocessableEntity,
-			Msg:  "at least 1 resource or 1 org id must be provided",
-		}, w)
-		return
-	}
-
 	opts := []pkger.CreatePkgSetFn{
+		pkger.CreateWithMetadata(pkger.Metadata{
+			Description: reqBody.PkgDescription,
+			Name:        reqBody.PkgName,
+			Version:     reqBody.PkgVersion,
+		}),
 		pkger.CreateWithExistingResources(reqBody.Resources...),
 	}
 	for _, orgIDStr := range reqBody.OrgIDs {
@@ -109,11 +107,6 @@ func (s *HandlerPkg) createPkg(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := RespCreatePkg(newPkg.Objects)
-	if resp == nil {
-		resp = []pkger.Object{}
-	}
-
 	var enc encoder
 	switch encoding {
 	case pkger.EncodingYAML:
@@ -123,64 +116,43 @@ func (s *HandlerPkg) createPkg(w http.ResponseWriter, r *http.Request) {
 		enc = newJSONEnc(w)
 		w.Header().Set("Content-Type", "application/json; charset=utf-8")
 	}
-	s.encResp(r.Context(), w, enc, http.StatusOK, resp)
+	s.encResp(r.Context(), w, enc, http.StatusOK, RespCreatePkg{
+		Pkg: newPkg,
+	})
 }
 
-// PkgRemote provides a package via a remote (i.e. a gist). If content type is not
-// provided then the service will do its best to discern the content type of the
-// contents.
-type PkgRemote struct {
-	URL         string `json:"url"`
-	ContentType string `json:"contentType"`
-}
-
-// Encoding returns the encoding type that corresponds to the given content type.
-func (p PkgRemote) Encoding() pkger.Encoding {
-	ct := strings.ToLower(p.ContentType)
-	urlBase := path.Ext(p.URL)
-	switch {
-	case ct == "jsonnet" || urlBase == ".jsonnet":
-		return pkger.EncodingJsonnet
-	case ct == "json" || urlBase == ".json":
-		return pkger.EncodingJSON
-	case ct == "yml" || ct == "yaml" || urlBase == ".yml" || urlBase == ".yaml":
-		return pkger.EncodingYAML
-	default:
-		return pkger.EncodingSource
-	}
-}
-
-// ReqApplyPkg is the request body for a json or yaml body for the apply pkg endpoint.
-type ReqApplyPkg struct {
-	DryRun  bool              `json:"dryRun" yaml:"dryRun"`
-	OrgID   string            `json:"orgID" yaml:"orgID"`
-	Remote  PkgRemote         `json:"remote" yaml:"remote"`
-	RawPkg  json.RawMessage   `json:"package" yaml:"package"`
-	Secrets map[string]string `json:"secrets"`
-}
-
-// Pkg returns a pkg parsed and validated from the RawPkg field.
-func (r ReqApplyPkg) Pkg(encoding pkger.Encoding) (*pkger.Pkg, error) {
-	if r.Remote.URL != "" {
-		return pkger.Parse(r.Remote.Encoding(), pkger.FromHTTPRequest(r.Remote.URL))
+type (
+	// ReqApplyPkg is the request body for a json or yaml body for the apply pkg endpoint.
+	ReqApplyPkg struct {
+		DryRun  bool              `json:"dryRun" yaml:"dryRun"`
+		OrgID   string            `json:"orgID" yaml:"orgID"`
+		URL     string            `json:"url" yaml:"url"`
+		Pkg     *pkger.Pkg        `json:"package" yaml:"package"`
+		Secrets map[string]string `json:"secrets"`
 	}
 
-	return pkger.Parse(encoding, pkger.FromReader(bytes.NewReader(r.RawPkg)))
-}
+	// RespApplyPkg is the response body for the apply pkg endpoint.
+	RespApplyPkg struct {
+		Diff    pkger.Diff    `json:"diff" yaml:"diff"`
+		Summary pkger.Summary `json:"summary" yaml:"summary"`
 
-// RespApplyPkg is the response body for the apply pkg endpoint.
-type RespApplyPkg struct {
-	Diff    pkger.Diff    `json:"diff" yaml:"diff"`
-	Summary pkger.Summary `json:"summary" yaml:"summary"`
-
-	Errors []pkger.ValidationErr `json:"errors,omitempty" yaml:"errors,omitempty"`
-}
+		Errors []pkger.ValidationErr `json:"errors,omitempty" yaml:"errors,omitempty"`
+	}
+)
 
 func (s *HandlerPkg) applyPkg(w http.ResponseWriter, r *http.Request) {
 	var reqBody ReqApplyPkg
 	encoding, err := decodeWithEncoding(r, &reqBody)
 	if err != nil {
 		s.HandleHTTPError(r.Context(), newDecodeErr(encoding.String(), err), w)
+		return
+	}
+
+	if reqBody.URL != "" && reqBody.Pkg != nil {
+		s.HandleHTTPError(r.Context(), &influxdb.Error{
+			Code: influxdb.EInvalid,
+			Msg:  "must provide either url or pkg",
+		}, w)
 		return
 	}
 
@@ -200,14 +172,17 @@ func (s *HandlerPkg) applyPkg(w http.ResponseWriter, r *http.Request) {
 	}
 	userID := auth.GetUserID()
 
-	parsedPkg, err := reqBody.Pkg(encoding)
-	if err != nil {
-		s.HandleHTTPError(r.Context(), &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Msg:  "failed to parse package from provided URL",
-			Err:  err,
-		}, w)
-		return
+	parsedPkg := reqBody.Pkg
+	if reqBody.URL != "" {
+		parsedPkg, err = pkger.Parse(pkger.EncodingSource, pkger.FromHTTPRequest(reqBody.URL))
+		if err != nil {
+			s.HandleHTTPError(r.Context(), &influxdb.Error{
+				Code: influxdb.EInvalid,
+				Msg:  "failed to parse package from provided URL",
+				Err:  err,
+			}, w)
+			return
+		}
 	}
 
 	sum, diff, err := s.svc.DryRun(r.Context(), *orgID, userID, parsedPkg)
@@ -253,30 +228,23 @@ type encoder interface {
 }
 
 func decodeWithEncoding(r *http.Request, v interface{}) (pkger.Encoding, error) {
-	encoding := pkgEncoding(r.Header)
-
-	var dec interface{ Decode(interface{}) error }
-	switch encoding {
-	case pkger.EncodingJsonnet:
+	var (
+		encoding pkger.Encoding
+		dec      interface{ Decode(interface{}) error }
+	)
+	switch contentType := r.Header.Get("Content-Type"); contentType {
+	case "application/x-jsonnet":
+		encoding = pkger.EncodingJsonnet
 		dec = jsonnet.NewDecoder(r.Body)
-	case pkger.EncodingYAML:
+	case "text/yml", "application/x-yaml":
+		encoding = pkger.EncodingYAML
 		dec = yaml.NewDecoder(r.Body)
 	default:
+		encoding = pkger.EncodingJSON
 		dec = json.NewDecoder(r.Body)
 	}
 
 	return encoding, dec.Decode(v)
-}
-
-func pkgEncoding(headers http.Header) pkger.Encoding {
-	switch contentType := headers.Get("Content-Type"); contentType {
-	case "application/x-jsonnet":
-		return pkger.EncodingJsonnet
-	case "text/yml", "application/x-yaml":
-		return pkger.EncodingYAML
-	default:
-		return pkger.EncodingJSON
-	}
 }
 
 func newJSONEnc(w io.Writer) encoder {
@@ -321,18 +289,17 @@ func (s *PkgerService) CreatePkg(ctx context.Context, setters ...pkger.CreatePkg
 	}
 
 	reqBody := ReqCreatePkg{
-		OrgIDs:    orgIDs,
-		Resources: opt.Resources,
+		PkgDescription: opt.Metadata.Description,
+		PkgName:        opt.Metadata.Name,
+		PkgVersion:     opt.Metadata.Version,
+		OrgIDs:         orgIDs,
+		Resources:      opt.Resources,
 	}
 
-	var newPkg *pkger.Pkg
+	var newPkg RespCreatePkg
 	err := s.Client.
 		PostJSON(reqBody, prefixPackages).
-		Decode(func(resp *http.Response) error {
-			pkg, err := pkger.Parse(pkger.EncodingJSON, pkger.FromReader(resp.Body))
-			newPkg = pkg
-			return err
-		}).
+		DecodeJSON(&newPkg).
 		Do(ctx)
 	if err != nil {
 		return nil, err
@@ -341,22 +308,17 @@ func (s *PkgerService) CreatePkg(ctx context.Context, setters ...pkger.CreatePkg
 	if err := newPkg.Validate(pkger.ValidWithoutResources()); err != nil {
 		return nil, err
 	}
-	return newPkg, nil
+	return newPkg.Pkg, nil
 }
 
 // DryRun provides a dry run of the pkg application. The pkg will be marked verified
 // for later calls to Apply. This func will be run on an Apply if it has not been run
 // already.
 func (s *PkgerService) DryRun(ctx context.Context, orgID, userID influxdb.ID, pkg *pkger.Pkg) (pkger.Summary, pkger.Diff, error) {
-	b, err := pkg.Encode(pkger.EncodingJSON)
-	if err != nil {
-		return pkger.Summary{}, pkger.Diff{}, err
-	}
-
 	reqBody := ReqApplyPkg{
 		OrgID:  orgID.String(),
 		DryRun: true,
-		RawPkg: b,
+		Pkg:    pkg,
 	}
 	return s.apply(ctx, reqBody)
 }
@@ -372,15 +334,10 @@ func (s *PkgerService) Apply(ctx context.Context, orgID, userID influxdb.ID, pkg
 		}
 	}
 
-	b, err := pkg.Encode(pkger.EncodingJSON)
-	if err != nil {
-		return pkger.Summary{}, err
-	}
-
 	reqBody := ReqApplyPkg{
 		OrgID:   orgID.String(),
+		Pkg:     pkg,
 		Secrets: opt.MissingSecrets,
-		RawPkg:  b,
 	}
 
 	sum, _, err := s.apply(ctx, reqBody)

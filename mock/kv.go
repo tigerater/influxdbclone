@@ -2,7 +2,6 @@ package mock
 
 import (
 	"context"
-	"io"
 
 	"github.com/influxdata/influxdb/kv"
 )
@@ -13,7 +12,6 @@ var _ (kv.Store) = (*Store)(nil)
 type Store struct {
 	ViewFn   func(func(kv.Tx) error) error
 	UpdateFn func(func(kv.Tx) error) error
-	BackupFn func(ctx context.Context, w io.Writer) error
 }
 
 // View opens up a transaction that will not write to any data. Implementing interfaces
@@ -25,10 +23,6 @@ func (s *Store) View(ctx context.Context, fn func(kv.Tx) error) error {
 // Update opens up a transaction that will mutate data.
 func (s *Store) Update(ctx context.Context, fn func(kv.Tx) error) error {
 	return s.UpdateFn(fn)
-}
-
-func (s *Store) Backup(ctx context.Context, w io.Writer) error {
-	return s.BackupFn(ctx, w)
 }
 
 var _ (kv.Tx) = (*Tx)(nil)

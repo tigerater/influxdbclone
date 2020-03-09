@@ -23,6 +23,21 @@ func TestLauncher_Pkger(t *testing.T) {
 
 	svc := l.PkgerService(t)
 
+	t.Run("create a new package", func(t *testing.T) {
+		newPkg, err := svc.CreatePkg(timedCtx(time.Second),
+			pkger.CreateWithMetadata(pkger.Metadata{
+				Description: "new desc",
+				Name:        "new name",
+				Version:     "v1.0.0",
+			}),
+		)
+		require.NoError(t, err)
+
+		assert.Equal(t, "new name", newPkg.Metadata.Name)
+		assert.Equal(t, "new desc", newPkg.Metadata.Description)
+		assert.Equal(t, "v1.0.0", newPkg.Metadata.Version)
+	})
+
 	t.Run("errors incurred during application of package rolls back to state before package", func(t *testing.T) {
 		svc := pkger.NewService(
 			pkger.WithBucketSVC(l.BucketService(t)),
@@ -325,16 +340,19 @@ func TestLauncher_Pkger(t *testing.T) {
 				return sum
 			}
 
-			pkgWithSecretRaw := fmt.Sprintf(`
-apiVersion: %[1]s
-kind: NotificationEndpointPagerDuty
-metadata:
-  name:      pager_duty_notification_endpoint
+			const pkgWithSecretRaw = `apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+  description:  pack description
 spec:
-  url:  http://localhost:8080/orgs/7167eb6719fa34e5/alert-history
-  routingKey: secret-sauce
-`, pkger.APIVersion)
-
+  resources:
+    - kind: Notification_Endpoint_Pager_Duty
+      name: pager_duty_notification_endpoint
+      url:  http://localhost:8080/orgs/7167eb6719fa34e5/alert-history
+      routingKey: secret-sauce
+`
 			secretSum := applyPkgStr(t, pkgWithSecretRaw)
 			require.Len(t, secretSum.NotificationEndpoints, 1)
 
@@ -346,18 +364,22 @@ spec:
 			require.Len(t, secrets, 1)
 			assert.Equal(t, expected, secrets[0])
 
-			const pkgWithSecretRef = `
-apiVersion: %[1]s
-kind: NotificationEndpointPagerDuty
-metadata:
-  name:      pager_duty_notification_endpoint
+			const pkgWithSecretRef = `apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+  description:  pack description
 spec:
-  url:  http://localhost:8080/orgs/7167eb6719fa34e5/alert-history
-  routingKey:
-    secretRef:
-      key: %s-routing-key
+  resources:
+    - kind: Notification_Endpoint_Pager_Duty
+      name: pager_duty_notification_endpoint
+      url:  http://localhost:8080/orgs/7167eb6719fa34e5/alert-history
+      routingKey:
+        secretRef:
+          key: %s-routing-key
 `
-			secretSum = applyPkgStr(t, fmt.Sprintf(pkgWithSecretRef, pkger.APIVersion, id.String()))
+			secretSum = applyPkgStr(t, fmt.Sprintf(pkgWithSecretRef, id.String()))
 			require.Len(t, secretSum.NotificationEndpoints, 1)
 
 			expected = influxdb.SecretField{
@@ -418,9 +440,18 @@ spec:
 			}
 
 			newPkg, err := svc.CreatePkg(timedCtx(2*time.Second),
+				pkger.CreateWithMetadata(pkger.Metadata{
+					Description: "newest desc",
+					Name:        "newest name",
+					Version:     "v1.0.1",
+				}),
 				pkger.CreateWithExistingResources(append(resToClone, resWithNewName...)...),
 			)
 			require.NoError(t, err)
+
+			assert.Equal(t, "newest desc", newPkg.Metadata.Description)
+			assert.Equal(t, "newest name", newPkg.Metadata.Name)
+			assert.Equal(t, "v1.0.1", newPkg.Metadata.Version)
 
 			newSum := newPkg.Summary()
 
@@ -574,243 +605,199 @@ const telConf = `[agent]
   percpu = true
 `
 
-var pkgYMLStr = fmt.Sprintf(`
-apiVersion: %[1]s
-kind: Label
-metadata:
-  name: label_1
----
-apiVersion: %[1]s
-kind: Bucket
-metadata:
-  name: rucket_1
+var pkgYMLStr = fmt.Sprintf(`apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+  description:  pack description
 spec:
-  associations:
+  resources:
     - kind: Label
       name: label_1
----
-apiVersion: %[1]s
-kind: Dashboard
-metadata:
-  name: dash_1
-spec:
-  description: desc1
-  charts:
-    - kind:   Single_Stat
-      name:   single stat
-      suffix: days
-      width:  6
-      height: 3
-      shade: true
-      queries:
-        - query: >
-            from(bucket: v.bucket) |> range(start: v.timeRangeStart) |> filter(fn: (r) => r._measurement == "system") |> filter(fn: (r) => r._field == "uptime") |> last() |> map(fn: (r) => ({r with _value: r._value / 86400})) |> yield(name: "last")
-      colors:
-        - name: laser
-          type: text
-          hex: "#8F8AF4"
-  associations:
-    - kind: Label
-      name: label_1
----
-apiVersion: %[1]s
-kind: Variable
-metadata:
-  name:  var_query_1
-spec:
-  description: var_query_1 desc
-  type: query
-  language: flux
-  query: |
-    buckets()  |> filter(fn: (r) => r.name !~ /^_/)  |> rename(columns: {name: "_value"})  |> keep(columns: ["_value"])
-  associations:
-    - kind: Label
-      name: label_1
----
-apiVersion: %[1]s
-kind: Telegraf
-metadata:
-  name:  first_tele_config
-spec:
-  description: desc
-  associations:
-    - kind: Label
-      name: label_1
-  config: %+q
----
-apiVersion: %[1]s
-kind: NotificationEndpointHTTP
-metadata:
-  name:  http_none_auth_notification_endpoint
-spec:
-  type: none
-  description: http none auth desc
-  method: GET
-  url:  https://www.example.com/endpoint/noneauth
-  status: inactive
-  associations:
-    - kind: Label
-      name: label_1
----
-apiVersion: %[1]s
-kind: CheckThreshold
-metadata:
-  name:  check_0
-spec:
-  every: 1m
-  query:  >
-    from(bucket: "rucket_1")
-      |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-      |> filter(fn: (r) => r._measurement == "cpu")
-      |> filter(fn: (r) => r._field == "usage_idle")
-      |> aggregateWindow(every: 1m, fn: mean)
-      |> yield(name: "mean")
-  statusMessageTemplate: "Check: ${ r._check_name } is: ${ r._level }"
-  tags:
-    - key: tag_1
-      value: val_1
-  thresholds:
-    - type: inside_range
-      level: INfO
-      min: 30.0
-      max: 45.0
-    - type: outside_range
-      level: WARN
-      min: 60.0
-      max: 70.0
-    - type: greater
-      level: CRIT
-      val: 80
-    - type: lesser
-      level: OK
-      val: 30
-  associations:
-    - kind: Label
-      name: label_1
----
-apiVersion: %[1]s
-kind: CheckDeadman
-metadata:
-  name:  check_1
-spec:
-  description: desc_1
-  every: 5m
-  level: cRiT
-  offset: 10s
-  query:  >
-    from(bucket: "rucket_1")
-      |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
-      |> filter(fn: (r) => r._measurement == "cpu")
-      |> filter(fn: (r) => r._field == "usage_idle")
-      |> aggregateWindow(every: 1m, fn: mean)
-      |> yield(name: "mean")
-  reportZero: true
-  staleTime: 10m
-  statusMessageTemplate: "Check: ${ r._check_name } is: ${ r._level }"
-  timeSince: 90s
-  associations:
-    - kind: Label
-      name: label_1
----
-apiVersion: %[1]s
-kind: NotificationRule
-metadata:
-  name:  rule_0
-spec:
-  description: desc_0
-  endpointName: http_none_auth_notification_endpoint
-  every: 10m
-  offset: 30s
-  messageTemplate: "Notification Rule: ${ r._notification_rule_name } triggered by check: ${ r._check_name }: ${ r._message }"
-  status: active
-  statusRules:
-    - currentLevel: WARN
-    - currentLevel: CRIT
-      previousLevel: OK
-  tagRules:
-    - key: k1
-      value: v2
-      operator: eQuAl
-    - key: k1
-      value: v1
-      operator: eQuAl
-  associations:
-    - kind: Label
-      name: label_1
----
-apiVersion: %[1]s
-kind: Task
-metadata:
-  name:  task_1
-spec:
-  description: desc_1
-  cron: 15 * * * *
-  query:  >
-    from(bucket: "rucket_1")
-      |> yield()
-  associations:
-    - kind: Label
-      name: label_1
-`, pkger.APIVersion, telConf)
+    - kind: Bucket
+      name: rucket_1
+      associations:
+        - kind: Label
+          name: label_1
+    - kind: Dashboard
+      name: dash_1
+      description: desc1
+      associations:
+        - kind: Label
+          name: label_1
+      charts:
+        - kind:   Single_Stat
+          name:   single stat
+          suffix: days
+          width:  6
+          height: 3
+          shade: true
+          queries:
+            - query: >
+                from(bucket: v.bucket) |> range(start: v.timeRangeStart) |> filter(fn: (r) => r._measurement == "system") |> filter(fn: (r) => r._field == "uptime") |> last() |> map(fn: (r) => ({r with _value: r._value / 86400})) |> yield(name: "last")
+          colors:
+            - name: laser
+              type: text
+              hex: "#8F8AF4"
+    - kind: Variable
+      name: var_query_1
+      description: var_query_1 desc
+      type: query
+      language: flux
+      query: |
+        buckets()  |> filter(fn: (r) => r.name !~ /^_/)  |> rename(columns: {name: "_value"})  |> keep(columns: ["_value"])
+      associations:
+        - kind: Label
+          name: label_1
+    - kind: Telegraf
+      name: first_tele_config
+      description: desc
+      associations:
+        - kind: Label
+          name: label_1
+      config: %+q
+    - kind: Notification_Endpoint_HTTP
+      name: http_none_auth_notification_endpoint
+      type: none
+      description: http none auth desc
+      method: GET
+      url:  https://www.example.com/endpoint/noneauth
+      status: inactive
+      associations:
+      - kind: Label
+        name: label_1
+    - kind: Check_Threshold
+      name: check_0
+      every: 1m
+      query:  >
+        from(bucket: "rucket_1")
+          |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+          |> filter(fn: (r) => r._measurement == "cpu")
+          |> filter(fn: (r) => r._field == "usage_idle")
+          |> aggregateWindow(every: 1m, fn: mean)
+          |> yield(name: "mean")
+      statusMessageTemplate: "Check: ${ r._check_name } is: ${ r._level }"
+      tags:
+        - key: tag_1
+          value: val_1
+      thresholds:
+        - type: inside_range
+          level: INfO
+          min: 30.0
+          max: 45.0
+        - type: outside_range
+          level: WARN
+          min: 60.0
+          max: 70.0
+        - type: greater
+          level: CRIT
+          val: 80
+        - type: lesser
+          level: OK
+          val: 30
+      associations:
+        - kind: Label
+          name: label_1
+    - kind: Check_Deadman
+      name: check_1
+      description: desc_1
+      every: 5m
+      level: cRiT
+      offset: 10s
+      query:  >
+        from(bucket: "rucket_1")
+          |> range(start: v.timeRangeStart, stop: v.timeRangeStop)
+          |> filter(fn: (r) => r._measurement == "cpu")
+          |> filter(fn: (r) => r._field == "usage_idle")
+          |> aggregateWindow(every: 1m, fn: mean)
+          |> yield(name: "mean")
+      reportZero: true
+      staleTime: 10m
+      statusMessageTemplate: "Check: ${ r._check_name } is: ${ r._level }"
+      timeSince: 90s
+      associations:
+        - kind: Label
+          name: label_1
+    - kind: Notification_Rule
+      name: rule_0
+      description: desc_0
+      endpointName: http_none_auth_notification_endpoint
+      every: 10m
+      offset: 30s
+      messageTemplate: "Notification Rule: ${ r._notification_rule_name } triggered by check: ${ r._check_name }: ${ r._message }"
+      status: active
+      statusRules:
+        - currentLevel: WARN
+        - currentLevel: CRIT
+          previousLevel: OK
+      tagRules:
+        - key: k1
+          value: v2
+          operator: eQuAl
+        - key: k1
+          value: v1
+          operator: eQuAl
+      associations:
+        - kind: Label
+          name: label_1
+    - kind: Task
+      name: task_1
+      description: desc_1
+      cron: 15 * * * *
+      query:  >
+        from(bucket: "rucket_1")
+          |> yield()
+      associations:
+        - kind: Label
+          name: label_1
+`, telConf)
 
-var updatePkgYMLStr = fmt.Sprintf(`
-apiVersion: %[1]s
-kind: Label
-metadata:
-  name:  label_1
+const updatePkgYMLStr = `apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+  description:  pack description
 spec:
-  descriptin: new desc
----
-apiVersion: %[1]s
-kind: Bucket
-metadata:
-  name:  rucket_1
-spec:
-  descriptin: new desc
-  associations:
+  resources:
     - kind: Label
       name: label_1
----
-apiVersion: %[1]s
-kind: Variable
-metadata:
-  name:  var_query_1
-spec:
-  descriptin: new desc
-  type: query
-  language: flux
-  query: |
-    buckets()  |> filter(fn: (r) => r.name !~ /^_/)  |> rename(columns: {name: "_value"})  |> keep(columns: ["_value"])
-  associations:
-    - kind: Label
-      name: label_1
----
-apiVersion: %[1]s
-kind: NotificationEndpointHTTP
-metadata:
-  name:  http_none_auth_notification_endpoint
-spec:
-  type: none
-  description: new desc
-  method: GET
-  url:  https://www.example.com/endpoint/noneauth
-  status: active
----
-apiVersion: %[1]s
-kind: CheckThreshold
-metadata:
-  name:  check_0
-spec:
-  every: 1m
-  query:  >
-    from("rucket1") |> yield()
-  statusMessageTemplate: "Check: ${ r._check_name } is: ${ r._level }"
-  thresholds:
-    - type: inside_range
-      level: INfO
-      min: 30.0
-      max: 45.0
-`, pkger.APIVersion)
+      description: new desc
+    - kind: Bucket
+      name: rucket_1
+      description: new desc
+      associations:
+        - kind: Label
+          name: label_1
+    - kind: Variable
+      name: var_query_1
+      description: new desc
+      type: query
+      language: flux
+      query: |
+        buckets()  |> filter(fn: (r) => r.name !~ /^_/)  |> rename(columns: {name: "_value"})  |> keep(columns: ["_value"])
+      associations:
+        - kind: Label
+          name: label_1
+    - kind: Notification_Endpoint_HTTP
+      name: http_none_auth_notification_endpoint
+      type: none
+      description: new desc
+      method: GET
+      url:  https://www.example.com/endpoint/noneauth
+      status: active
+    - kind: Check_Threshold
+      name: check_0
+      every: 1m
+      query:  from("rucket1") |> yield()
+      statusMessageTemplate: "Check: ${ r._check_name } is: ${ r._level }"
+      thresholds:
+        - type: inside_range
+          level: INfO
+          min: 30.0
+          max: 45.0
+`
 
 type fakeBucketSVC struct {
 	influxdb.BucketService
