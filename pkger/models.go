@@ -167,14 +167,13 @@ type ChartKind string
 
 // available chart kinds
 const (
-	ChartKindUnknown            ChartKind = ""
-	ChartKindSingleStat         ChartKind = "single_stat"
-	ChartKindSingleStatPlusLine ChartKind = "single_stat_plus_line"
+	ChartKindUnknown    ChartKind = ""
+	ChartKindSingleStat ChartKind = "single_stat"
 )
 
 func (c ChartKind) ok() bool {
 	switch c {
-	case ChartKindSingleStat, ChartKindSingleStatPlusLine:
+	case ChartKindSingleStat:
 		return true
 	default:
 		return false
@@ -245,13 +244,6 @@ func (b *bucket) summarize() SummaryBucket {
 	}
 }
 
-func (b *bucket) shouldApply() bool {
-	return b.existing == nil ||
-		b.Description != b.existing.Description ||
-		b.Name != b.existing.Name ||
-		b.RetentionPeriod != b.existing.RetentionPeriod
-}
-
 type labelMapKey struct {
 	resType influxdb.ResourceType
 	name    string
@@ -291,13 +283,6 @@ type label struct {
 	// exists in the platform. If a resource already exists(exists=true)
 	// then the ID should be populated.
 	existing *influxdb.Label
-}
-
-func (l *label) shouldApply() bool {
-	return l.existing == nil ||
-		l.Description != l.existing.Properties["description"] ||
-		l.Name != l.existing.Name ||
-		l.Color != l.existing.Properties["color"]
 }
 
 func (l *label) ID() influxdb.ID {
@@ -458,10 +443,8 @@ type chart struct {
 	DecimalPlaces   int
 	EnforceDecimals bool
 	Shade           bool
-	Legend          legend
-	Colors          colors
-	Queries         queries
-	Axes            axes
+	Colors          []*color
+	Queries         []query
 
 	XCol, YCol    string
 	XPos, YPos    int
@@ -481,27 +464,8 @@ func (c chart) properties() influxdb.ViewProperties {
 			},
 			Note:              c.Note,
 			ShowNoteWhenEmpty: c.NoteOnEmpty,
-			Queries:           c.Queries.influxDashQueries(),
-			ViewColors:        c.Colors.influxViewColors(),
-		}
-	case ChartKindSingleStatPlusLine:
-		return influxdb.LinePlusSingleStatProperties{
-			Type:   "line-plus-single-stat",
-			Prefix: c.Prefix,
-			Suffix: c.Suffix,
-			DecimalPlaces: influxdb.DecimalPlaces{
-				IsEnforced: c.EnforceDecimals,
-				Digits:     int32(c.DecimalPlaces),
-			},
-			Note:              c.Note,
-			ShowNoteWhenEmpty: c.NoteOnEmpty,
-			XColumn:           c.XCol,
-			YColumn:           c.YCol,
-			ShadeBelow:        c.Shade,
-			Legend:            c.Legend.influxLegend(),
-			Queries:           c.Queries.influxDashQueries(),
-			ViewColors:        c.Colors.influxViewColors(),
-			Axes:              c.Axes.influxAxes(),
+			Queries:           queries(c.Queries).influxDashQueries(),
+			ViewColors:        colors(c.Colors).influxViewColors(),
 		}
 	default:
 		return nil
@@ -513,8 +477,8 @@ func (c chart) validProperties() []failure {
 
 	validatorFns := []func() []failure{
 		c.validBaseProps,
-		c.Queries.valid,
-		c.Colors.valid,
+		queries(c.Queries).valid,
+		colors(c.Colors).valid,
 	}
 	for _, validatorFn := range validatorFns {
 		fails = append(fails, validatorFn()...)
@@ -523,10 +487,14 @@ func (c chart) validProperties() []failure {
 	// chart kind specific validations
 	switch c.Kind {
 	case ChartKindSingleStat:
-		fails = append(fails, c.Colors.hasTypes(colorTypeText)...)
-	case ChartKindSingleStatPlusLine:
-		fails = append(fails, c.Colors.hasTypes(colorTypeText, colorTypeScale)...)
-		fails = append(fails, c.Axes.hasAxes("x", "y")...)
+		for i, clr := range c.Colors {
+			if clr.Type != colorTypeText {
+				fails = append(fails, failure{
+					Field: fmt.Sprintf("colors[%d].type", i),
+					Msg:   "single stat charts must have color type of \"text\"",
+				})
+			}
+		}
 	}
 
 	return fails
@@ -551,8 +519,7 @@ func (c chart) validBaseProps() []failure {
 }
 
 const (
-	colorTypeText  = "text"
-	colorTypeScale = "scale"
+	colorTypeText = "text"
 )
 
 type color struct {
@@ -582,25 +549,6 @@ func (c colors) influxViewColors() []influxdb.ViewColor {
 		})
 	}
 	return iColors
-}
-
-func (c colors) hasTypes(types ...string) []failure {
-	tMap := make(map[string]bool)
-	for _, cc := range c {
-		tMap[cc.Type] = true
-	}
-
-	var failures []failure
-	for _, t := range types {
-		if !tMap[t] {
-			failures = append(failures, failure{
-				Field: "colors",
-				Msg:   fmt.Sprintf("type not found: %q", t),
-			})
-		}
-	}
-
-	return failures
 }
 
 func (c colors) valid() []failure {
@@ -663,61 +611,4 @@ func (q queries) valid() []failure {
 	}
 
 	return fails
-}
-
-type axis struct {
-	Base   string
-	Label  string
-	Name   string
-	Prefix string
-	Scale  string
-	Suffix string
-}
-
-type axes []axis
-
-func (a axes) influxAxes() map[string]influxdb.Axis {
-	m := make(map[string]influxdb.Axis)
-	for _, ax := range a {
-		m[ax.Name] = influxdb.Axis{
-			Bounds: []string{},
-			Label:  ax.Label,
-			Prefix: ax.Prefix,
-			Suffix: ax.Suffix,
-			Base:   ax.Base,
-			Scale:  ax.Scale,
-		}
-	}
-	return m
-}
-
-func (a axes) hasAxes(expectedAxes ...string) []failure {
-	mAxes := make(map[string]bool)
-	for _, ax := range a {
-		mAxes[ax.Name] = true
-	}
-
-	var failures []failure
-	for _, expected := range expectedAxes {
-		if !mAxes[expected] {
-			failures = append(failures, failure{
-				Field: "axes",
-				Msg:   fmt.Sprintf("axis not found: %q", expected),
-			})
-		}
-	}
-
-	return failures
-}
-
-type legend struct {
-	Orientation string
-	Type        string
-}
-
-func (l legend) influxLegend() influxdb.Legend {
-	return influxdb.Legend{
-		Type:        l.Type,
-		Orientation: l.Orientation,
-	}
 }

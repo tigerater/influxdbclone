@@ -4,15 +4,7 @@ import {cloneDeep} from 'lodash'
 
 // Components
 import ThresholdSetting from 'src/shared/components/ThresholdSetting'
-import {
-  Button,
-  ButtonShape,
-  IconFont,
-  FlexBox,
-  ComponentSize,
-  FlexDirection,
-  AlignItems,
-} from '@influxdata/clockface'
+import {Button, ButtonShape, IconFont} from '@influxdata/clockface'
 
 // Utils
 import {useOneWayReducer} from 'src/shared/utils/useOneWayReducer'
@@ -139,13 +131,9 @@ const ThresholdsSettings: FunctionComponent<Props> = ({
   }, [state])
 
   return (
-    <FlexBox
-      direction={FlexDirection.Column}
-      alignItems={AlignItems.Stretch}
-      margin={ComponentSize.Medium}
-      testID="threshold-settings"
-    >
+    <div className="thresholds-settings">
       <Button
+        className="thresholds-settings--add"
         shape={ButtonShape.StretchToFit}
         icon={IconFont.Plus}
         text="Add a Threshold"
@@ -194,7 +182,7 @@ const ThresholdsSettings: FunctionComponent<Props> = ({
           />
         )
       })}
-    </FlexBox>
+    </div>
   )
 }
 
