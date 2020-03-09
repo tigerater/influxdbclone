@@ -228,7 +228,26 @@ func (e *asyncQueryServiceExecutor) Execute(ctx context.Context, run backend.Que
 		return nil, err
 	}
 
-	return newAsyncRunPromise(icontext.SetAuthorizer(ctx, t.Authorization), t.Authorization, run, e, t), nil
+	pkg, err := flux.Parse(t.Flux)
+	if err != nil {
+		return nil, err
+	}
+
+	req := &query.Request{
+		Authorization:  t.Authorization,
+		OrganizationID: t.OrganizationID,
+		Compiler: lang.ASTCompiler{
+			AST: pkg,
+			Now: time.Unix(run.Now, 0),
+		},
+	}
+	// Only set the authorizer on the context where we need it here.
+	q, err := e.qs.Query(icontext.SetAuthorizer(ctx, t.Authorization), req)
+	if err != nil {
+		return nil, err
+	}
+
+	return newAsyncRunPromise(ctx, run, q, e), nil
 }
 
 func (e *asyncQueryServiceExecutor) Wait() {
@@ -237,11 +256,8 @@ func (e *asyncQueryServiceExecutor) Wait() {
 
 // asyncRunPromise implements backend.RunPromise for an AsyncQueryService.
 type asyncRunPromise struct {
-	qr   backend.QueuedRun
-	auth *influxdb.Authorization
-	qs   query.AsyncQueryService
-	t    *influxdb.Task
-	ctx  context.Context
+	qr backend.QueuedRun
+	q  flux.Query
 
 	logger *zap.Logger
 	logEnd func() // Called to log the end of the run operation.
@@ -254,7 +270,7 @@ type asyncRunPromise struct {
 
 var _ backend.RunPromise = (*asyncRunPromise)(nil)
 
-func newAsyncRunPromise(ctx context.Context, auth *influxdb.Authorization, qr backend.QueuedRun, e *asyncQueryServiceExecutor, t *influxdb.Task) *asyncRunPromise {
+func newAsyncRunPromise(ctx context.Context, qr backend.QueuedRun, q flux.Query, e *asyncQueryServiceExecutor) *asyncRunPromise {
 	span, ctx := tracing.StartSpanFromContext(ctx)
 	defer span.Finish()
 
@@ -262,18 +278,16 @@ func newAsyncRunPromise(ctx context.Context, auth *influxdb.Authorization, qr ba
 	log, logEnd := logger.NewOperation(ctx, opLogger, "Executing task", "execute")
 
 	p := &asyncRunPromise{
-		qr:     qr,
-		auth:   auth,
-		qs:     e.qs,
-		t:      t,
+		qr:    qr,
+		q:     q,
+		ready: make(chan struct{}),
+
 		logger: log,
 		logEnd: logEnd,
-		ctx:    ctx,
-		ready:  make(chan struct{}),
 	}
 
 	e.wg.Add(1)
-	go p.doQuery(&e.wg)
+	go p.followQuery(&e.wg)
 	return p
 }
 
@@ -298,31 +312,10 @@ func (p *asyncRunPromise) Cancel() {
 // followQuery waits for the query to become ready and sets p's results.
 // If the promise is finished somewhere else first, such as if it is canceled,
 // followQuery will return.
-func (p *asyncRunPromise) doQuery(wg *sync.WaitGroup) {
+func (p *asyncRunPromise) followQuery(wg *sync.WaitGroup) {
 	defer wg.Done()
-
-	pkg, err := flux.Parse(p.t.Flux)
-	if err != nil {
-		p.finish(nil, err)
-		return
-	}
-
-	req := &query.Request{
-		Authorization:  p.t.Authorization,
-		OrganizationID: p.t.OrganizationID,
-		Compiler: lang.ASTCompiler{
-			AST: pkg,
-			Now: time.Unix(p.qr.Now, 0),
-		},
-	}
-	q, err := p.qs.Query(p.ctx, req)
-	if err != nil {
-		// Assume the error should not be part of the runResult.
-		p.finish(nil, err)
-		return
-	}
 	// Always need to call Done after query is finished.
-	defer q.Done()
+	defer p.q.Done()
 
 	var rwg sync.WaitGroup
 SelectLoop:
@@ -331,9 +324,9 @@ SelectLoop:
 		case <-p.ready:
 			// The promise was finished somewhere else, so we don't need to call p.finish.
 			// But we do need to cancel the flux. This could be a no-op.
-			q.Cancel()
+			p.q.Cancel()
 			return
-		case r, ok := <-q.Results():
+		case r, ok := <-p.q.Results():
 			if !ok {
 				break SelectLoop
 			}
@@ -350,17 +343,17 @@ SelectLoop:
 
 	rwg.Wait()
 
-	if q.Err() != nil {
+	if p.q.Err() != nil {
 		// Something went wrong with the flux. Set the error in the run result.
-		rr := &runResult{err: q.Err()}
+		rr := &runResult{err: p.q.Err()}
 		p.finish(rr, nil)
 		return
 	}
 
 	// Otherwise, query was successful.
 	// Must call query.Done before collecting statistics. It's safe to call multiple times.
-	q.Done()
-	p.finish(&runResult{statistics: q.Statistics()}, nil)
+	p.q.Done()
+	p.finish(&runResult{statistics: p.q.Statistics()}, nil)
 }
 
 func (p *asyncRunPromise) finish(res *runResult, err error) {
