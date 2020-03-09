@@ -153,7 +153,7 @@ func interactive() (req *platform.OnboardingRequest, err error) {
 	if setupFlags.password != "" {
 		req.Password = setupFlags.password
 	} else {
-		req.Password = getPassword(ui, false)
+		req.Password = getPassword(ui)
 	}
 	if setupFlags.token != "" {
 		req.Token = setupFlags.token
@@ -240,14 +240,10 @@ var (
 	errPasswordIsTooShort = fmt.Errorf("passwords is too short")
 )
 
-func getPassword(ui *input.UI, showNew bool) (password string) {
-	newStr := ""
-	if showNew {
-		newStr = " new"
-	}
+func getPassword(ui *input.UI) (password string) {
 	var err error
 enterPasswd:
-	query := promptWithColor("Please type your"+newStr+" password", colorCyan)
+	query := promptWithColor("Please type your password", colorCyan)
 	for {
 		password, err = ui.Ask(query, &input.Options{
 			Required:  true,
@@ -273,7 +269,7 @@ enterPasswd:
 		}
 		break
 	}
-	query = promptWithColor("Please type your"+newStr+" password again", colorCyan)
+	query = promptWithColor("Please type your password again", colorCyan)
 	for {
 		_, err = ui.Ask(query, &input.Options{
 			Required:  true,
