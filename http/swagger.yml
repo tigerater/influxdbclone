@@ -6258,6 +6258,7 @@ components:
         - $ref: "#/components/schemas/MemberExpression"
         - $ref: "#/components/schemas/IndexExpression"
         - $ref: "#/components/schemas/ObjectExpression"
+        - $ref: "#/components/schemas/ParenExpression"
         - $ref: "#/components/schemas/PipeExpression"
         - $ref: "#/components/schemas/UnaryExpression"
         - $ref: "#/components/schemas/BooleanLiteral"
@@ -6374,6 +6375,14 @@ components:
           type: array
           items:
             $ref: "#/components/schemas/Property"
+    ParenExpression:
+      description: represents an expression wrapped in parenthesis
+      type: object
+      properties:
+        type:
+          $ref: "#/components/schemas/NodeType"
+        expression:
+          $ref: "#/components/schemas/Expression"
     PipeExpression:
       description: Call expression with pipe argument
       type: object
@@ -9345,6 +9354,9 @@ components:
         offset:
           description: Duration to delay after the schedule, before executing check.
           type: string
+        cron:
+          description: The check repetition interval in the form `* * * * * *`.
+          type: string
         tags:
           description: List of tags to write to each status.
           type: array
@@ -9525,6 +9537,9 @@ components:
           type: string
         offset:
           description: Duration to delay after the schedule, before executing check.
+          type: string
+        cron:
+          description: The notification repetition interval in the form `* * * * * *`.
           type: string
         runbookLink:
           type: string
