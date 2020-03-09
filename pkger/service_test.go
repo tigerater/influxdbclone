@@ -29,8 +29,7 @@ func TestService(t *testing.T) {
 						}, nil
 					}
 					fakeLabelSVC := mock.NewLabelService()
-					fakeDashSVC := mock.NewDashboardService()
-					svc := NewService(zap.NewNop(), fakeBktSVC, fakeLabelSVC, fakeDashSVC)
+					svc := NewService(zap.NewNop(), fakeBktSVC, fakeLabelSVC)
 
 					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), pkg)
 					require.NoError(t, err)
@@ -56,8 +55,7 @@ func TestService(t *testing.T) {
 						return nil, errors.New("not found")
 					}
 					fakeLabelSVC := mock.NewLabelService()
-					fakeDashSVC := mock.NewDashboardService()
-					svc := NewService(zap.NewNop(), fakeBktSVC, fakeLabelSVC, fakeDashSVC)
+					svc := NewService(zap.NewNop(), fakeBktSVC, fakeLabelSVC)
 
 					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), pkg)
 					require.NoError(t, err)
@@ -91,8 +89,7 @@ func TestService(t *testing.T) {
 							},
 						}, nil
 					}
-					fakeDashSVC := mock.NewDashboardService()
-					svc := NewService(zap.NewNop(), fakeBktSVC, fakeLabelSVC, fakeDashSVC)
+					svc := NewService(zap.NewNop(), fakeBktSVC, fakeLabelSVC)
 
 					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), pkg)
 					require.NoError(t, err)
@@ -123,8 +120,7 @@ func TestService(t *testing.T) {
 					fakeLabelSVC.FindLabelsFn = func(_ context.Context, filter influxdb.LabelFilter) ([]*influxdb.Label, error) {
 						return nil, errors.New("no labels found")
 					}
-					fakeDashSVC := mock.NewDashboardService()
-					svc := NewService(zap.NewNop(), fakeBktSVC, fakeLabelSVC, fakeDashSVC)
+					svc := NewService(zap.NewNop(), fakeBktSVC, fakeLabelSVC)
 
 					_, diff, err := svc.DryRun(context.TODO(), influxdb.ID(100), pkg)
 					require.NoError(t, err)
@@ -164,7 +160,7 @@ func TestService(t *testing.T) {
 						return &influxdb.Bucket{ID: id}, nil
 					}
 
-					svc := NewService(zap.NewNop(), fakeBucketSVC, nil, nil)
+					svc := NewService(zap.NewNop(), fakeBucketSVC, nil)
 
 					orgID := influxdb.ID(9000)
 
@@ -205,7 +201,7 @@ func TestService(t *testing.T) {
 					pkg.mBuckets["copybuck1"] = pkg.mBuckets["rucket_11"]
 					pkg.mBuckets["copybuck2"] = pkg.mBuckets["rucket_11"]
 
-					svc := NewService(zap.NewNop(), fakeBucketSVC, nil, nil)
+					svc := NewService(zap.NewNop(), fakeBucketSVC, nil)
 
 					orgID := influxdb.ID(9000)
 
@@ -228,7 +224,7 @@ func TestService(t *testing.T) {
 						return nil
 					}
 
-					svc := NewService(zap.NewNop(), nil, fakeLabelSVC, nil)
+					svc := NewService(zap.NewNop(), nil, fakeLabelSVC)
 
 					orgID := influxdb.ID(9000)
 
@@ -269,12 +265,11 @@ func TestService(t *testing.T) {
 						count++
 						return nil
 					}
-					fakeDashSVC := mock.NewDashboardService()
 
 					pkg.mLabels["copy1"] = pkg.mLabels["label_1"]
 					pkg.mLabels["copy2"] = pkg.mLabels["label_2"]
 
-					svc := NewService(zap.NewNop(), nil, fakeLabelSVC, fakeDashSVC)
+					svc := NewService(zap.NewNop(), nil, fakeLabelSVC)
 
 					orgID := influxdb.ID(9000)
 
@@ -282,71 +277,6 @@ func TestService(t *testing.T) {
 					require.Error(t, err)
 
 					assert.Equal(t, 3, count)
-				})
-			})
-		})
-
-		t.Run("dashboards", func(t *testing.T) {
-			t.Run("successfully creates a dashboard", func(t *testing.T) {
-				testfileRunner(t, "testdata/dashboard", func(t *testing.T, pkg *Pkg) {
-					fakeDashSVC := mock.NewDashboardService()
-					id := 1
-					fakeDashSVC.CreateDashboardF = func(_ context.Context, d *influxdb.Dashboard) error {
-						d.ID = influxdb.ID(id)
-						id++
-						return nil
-					}
-					viewCalls := 0
-					fakeDashSVC.UpdateDashboardCellViewF = func(ctx context.Context, dID influxdb.ID, cID influxdb.ID, upd influxdb.ViewUpdate) (*influxdb.View, error) {
-						viewCalls++
-						return &influxdb.View{}, nil
-					}
-
-					svc := NewService(zap.NewNop(), nil, nil, fakeDashSVC)
-
-					orgID := influxdb.ID(9000)
-
-					sum, err := svc.Apply(context.TODO(), orgID, pkg)
-					require.NoError(t, err)
-
-					require.Len(t, sum.Dashboards, 1)
-					dash1 := sum.Dashboards[0]
-					assert.Equal(t, influxdb.ID(1), dash1.ID)
-					assert.Equal(t, orgID, dash1.OrgID)
-					assert.Equal(t, "dash_1", dash1.Name)
-					require.Len(t, dash1.Charts, 1)
-				})
-			})
-
-			t.Run("rolls back created dashboard on an error", func(t *testing.T) {
-				testfileRunner(t, "testdata/dashboard", func(t *testing.T, pkg *Pkg) {
-					fakeDashSVC := mock.NewDashboardService()
-					var c int
-					fakeDashSVC.CreateDashboardF = func(_ context.Context, d *influxdb.Dashboard) error {
-						// error out on second dashboard attempted
-						if c == 1 {
-							return errors.New("blowed up ")
-						}
-						c++
-						d.ID = influxdb.ID(c)
-						return nil
-					}
-					deletedDashs := make(map[influxdb.ID]bool)
-					fakeDashSVC.DeleteDashboardF = func(_ context.Context, id influxdb.ID) error {
-						deletedDashs[id] = true
-						return nil
-					}
-
-					pkg.mDashboards["copy1"] = pkg.mDashboards["dash_1"]
-
-					svc := NewService(zap.NewNop(), nil, nil, fakeDashSVC)
-
-					orgID := influxdb.ID(9000)
-
-					_, err := svc.Apply(context.TODO(), orgID, pkg)
-					require.Error(t, err)
-
-					assert.True(t, deletedDashs[influxdb.ID(c)])
 				})
 			})
 		})
@@ -378,8 +308,8 @@ func TestService(t *testing.T) {
 						numLabelMappings++
 						return nil
 					}
-					fakeDashSVC := mock.NewDashboardService()
-					svc := NewService(zap.NewNop(), fakeBktSVC, fakeLabelSVC, fakeDashSVC)
+
+					svc := NewService(zap.NewNop(), fakeBktSVC, fakeLabelSVC)
 
 					orgID := influxdb.ID(9000)
 
