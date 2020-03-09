@@ -135,13 +135,10 @@ export const removeTaskLabelFailed = (): Notification => ({
 
 //  Dashboard Notifications
 
-export const dashboardGetFailed = (
-  dashboardID: string,
-  error: string
-): Notification => ({
+export const dashboardGetFailed = (dashboardID: string): Notification => ({
   ...defaultErrorNotification,
   icon: 'dash-h',
-  message: `Failed to load dashboard with id "${dashboardID}": ${error}`,
+  message: `Failed to load dashboard with id "${dashboardID}"`,
 })
 
 export const dashboardUpdateFailed = (): Notification => ({
@@ -420,6 +417,14 @@ export const deleteLabelFailed = (): Notification => ({
 export const getBucketsFailed = (): Notification => ({
   ...defaultErrorNotification,
   message: 'Failed to fetch buckets',
+})
+
+export const getBucketFailed = (
+  bucketID: string,
+  error: string
+): Notification => ({
+  ...defaultErrorNotification,
+  message: `Failed to fetch bucket with id ${bucketID}: ${error}`,
 })
 
 // Limits

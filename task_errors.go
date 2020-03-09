@@ -36,11 +36,6 @@ var (
 		Msg:  "invalid id",
 	}
 
-	// ErrInvalidTaskType error object for bad id's
-	ErrInvalidTaskType = &Error{
-		Code: EInvalid,
-		Msg:  "invalid task type",
-	}
 	// ErrTaskNotFound indicates no task could be found for given parameters.
 	ErrTaskNotFound = &Error{
 		Code: ENotFound,
@@ -164,15 +159,6 @@ func ErrRunNotDueYet(dueAt int64) *Error {
 	return &Error{
 		Code: EInvalid,
 		Msg:  fmt.Sprintf("run not due until: %v", time.Unix(dueAt, 0).UTC().Format(time.RFC3339)),
-	}
-}
-
-func ErrCouldNotLogError(err error) *Error {
-	return &Error{
-		Code: EInternal,
-		Msg:  fmt.Sprintf("unable to log error; Err: %v", err),
-		Op:   "taskScheduler",
-		Err:  err,
 	}
 }
 
