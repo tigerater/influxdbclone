@@ -47,9 +47,7 @@ const EndpointsColumn: FC<Props> = ({router, params, endpoints}) => {
       createButton={createButton}
       questionMarkTooltipContents={tooltipContents}
     >
-      {searchTerm => (
-        <EndpointCards endpoints={endpoints} searchTerm={searchTerm} />
-      )}
+      <EndpointCards endpoints={endpoints} />
     </AlertsColumn>
   )
 }

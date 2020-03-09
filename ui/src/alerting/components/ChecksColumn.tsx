@@ -62,14 +62,11 @@ const ChecksColumn: FunctionComponent<Props> = ({
       createButton={createButton}
       questionMarkTooltipContents={tooltipContents}
     >
-      {searchTerm => (
-        <CheckCards
-          checks={checks}
-          searchTerm={searchTerm}
-          onCreateCheck={handleClick}
-          showFirstTimeWidget={noAlertingResourcesExist}
-        />
-      )}
+      <CheckCards
+        checks={checks}
+        showFirstTimeWidget={noAlertingResourcesExist}
+        onCreateCheck={handleClick}
+      />
     </AlertsColumnHeader>
   )
 }

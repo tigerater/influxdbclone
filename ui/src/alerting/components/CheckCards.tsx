@@ -3,7 +3,6 @@ import React, {FunctionComponent} from 'react'
 
 //Components
 import CheckCard from 'src/alerting/components/CheckCard'
-import FilterList from 'src/shared/components/Filter'
 import {
   EmptyState,
   ResourceList,
@@ -20,28 +19,15 @@ import {ComponentSize} from '@influxdata/clockface'
 
 interface Props {
   checks: Check[]
-  searchTerm: string
   showFirstTimeWidget: boolean
   onCreateCheck: () => void
 }
 
 const CheckCards: FunctionComponent<Props> = ({
   checks,
-  searchTerm,
   showFirstTimeWidget,
   onCreateCheck,
 }) => {
-  const cards = cs => cs.map(c => <CheckCard key={c.id} check={c} />)
-  const filteredCards = (
-    <FilterList<Check>
-      list={checks}
-      searchKeys={['name']}
-      searchTerm={searchTerm}
-    >
-      {filtered => cards(filtered)}
-    </FilterList>
-  )
-
   return (
     <>
       <ResourceList>
@@ -53,7 +39,9 @@ const CheckCards: FunctionComponent<Props> = ({
             />
           }
         >
-          {filteredCards}
+          {checks.map(check => (
+            <CheckCard key={check.id} check={check} />
+          ))}
         </ResourceList.Body>
       </ResourceList>
     </>
