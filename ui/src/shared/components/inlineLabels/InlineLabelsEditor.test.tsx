@@ -1,6 +1,5 @@
 // Libraries
 import React from 'react'
-import {act} from 'react-dom/test-utils'
 import {fireEvent} from 'react-testing-library'
 
 // Components
@@ -10,18 +9,6 @@ import InlineLabelsEditor from 'src/shared/components/inlineLabels/InlineLabelsE
 import {labels} from 'mocks/dummyData'
 const selectedLabels = [labels[0]]
 
-const filteredLabels = [
-  ...labels,
-  {
-    id: '0003',
-    name: 'Pineapple',
-    properties: {
-      color: '#FFB94A',
-      description: 'Tangy and yellow',
-    },
-  },
-]
-
 import {renderWithRedux} from 'src/mockState'
 
 const setup = (override = {}) => {
@@ -30,14 +17,6 @@ const setup = (override = {}) => {
     labels,
     onAddLabel: jest.fn(),
     onCreateLabel: jest.fn(),
-    searchTerm: '',
-    triggerRef: {current: null},
-    selectedItemID: labels[0].id,
-    onUpdateSelectedItemID: jest.fn(),
-    allLabelsUsed: false,
-    onStartCreatingLabel: jest.fn(),
-    onInputChange: jest.fn(),
-    filteredLabels,
     ...override,
   }
 
@@ -64,13 +43,13 @@ describe('Shared.Components.InlineLabelsEditor', () => {
   })
 
   describe('mouse interactions', () => {
-    it('Clicking the plus button opens the popover', () => {
+    it('clicking the plus button opens the popover', () => {
       const {getByTestId, getAllByTestId} = setup()
 
       const plusButton = getByTestId('inline-labels--add')
       plusButton.click()
 
-      const popover = getAllByTestId('inline-labels--popover-field')
+      const popover = getAllByTestId('inline-labels--popover')
 
       expect(popover).toHaveLength(1)
     })
@@ -96,19 +75,6 @@ describe('Shared.Components.InlineLabelsEditor', () => {
       const labelOverlayNameField = getByTestId('create-label-form--name')
 
       expect(labelOverlayNameField.getAttribute('value')).toEqual(inputValue)
-    })
-
-    it('clicking a list item adds a label and selects the next item on the list', () => {
-      const secondLabel = labels[1]
-      const onAddLabel = jest.fn()
-      const {getByTestId} = setup({onAddLabel})
-      const button = getByTestId('inline-labels--add')
-      button.click()
-
-      const secondListItem = getByTestId(`label-list--item ${secondLabel.name}`)
-      fireEvent.click(secondListItem)
-
-      expect(onAddLabel).toHaveBeenCalledWith(secondLabel)
     })
   })
 })
