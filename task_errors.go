@@ -189,7 +189,15 @@ func ErrRunExecutionError(err error) *Error {
 	return &Error{
 		Code: EInternal,
 		Msg:  fmt.Sprintf("could not execute task run; Err: %v", err),
-		Op:   "kv/taskScheduler",
+		Op:   "kv/taskExecutor",
 		Err:  err,
+	}
+}
+
+func ErrTaskConcurrencyLimitReached(runsInFront int) *Error {
+	return &Error{
+		Code: ETooManyRequests,
+		Msg:  fmt.Sprintf("could not execute task, concurrency limit reached, runs in front: %d", runsInFront),
+		Op:   "taskExecutor",
 	}
 }
