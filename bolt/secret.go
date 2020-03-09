@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 
 	bolt "github.com/coreos/bbolt"
 	influxdb "github.com/influxdata/influxdb"
@@ -102,10 +103,7 @@ func (c *Client) getSecretKeys(ctx context.Context, tx *bolt.Tx, orgID influxdb.
 	}
 
 	if id != orgID {
-		return []string{}, &influxdb.Error{
-			Code: influxdb.ENotFound,
-			Msg:  "organization has no secret keys",
-		}
+		return nil, fmt.Errorf("organization has no secret keys")
 	}
 
 	keys := []string{key}

@@ -462,7 +462,7 @@ func (h *OrgHandler) handleGetSecrets(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ks, err := h.SecretService.GetSecretKeys(ctx, req.orgID)
-	if err != nil && influxdb.ErrorCode(err) != influxdb.ENotFound {
+	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
