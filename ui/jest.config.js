@@ -22,9 +22,6 @@ module.exports = {
   globals: {
     'ts-jest': {
       tsConfig: 'tsconfig.test.json',
-      diagnostics: {
-        ignoreCodes: [6133] // ignore `'foo' is declared but its value is never read.`
-      },
     },
   },
   collectCoverage: true,
