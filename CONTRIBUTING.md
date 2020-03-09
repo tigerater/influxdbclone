@@ -138,26 +138,17 @@ $ go install ./...
 
 ### Testing
 
-This project is built from various languages. To run test for all langauges and components use:
-
 ```bash
-$ make test
+$ go test -v ./...
+
+# run tests that match some pattern
+$ go test -run=TestDatabase . -v
+
+# run tests and show coverage
+$ go test -coverprofile /tmp/cover . && go tool cover -html /tmp/cover
 ```
-
-To run tests for just the Javascript component use:
-
-```bash
-$ make test-js
-
-To run tests for just the Go/Rust components use:
-
-```bash
-$ make test-go
-```
-
 
 ## Generated Google Protobuf code
-
 Most changes to the source do not require that the generated protocol buffer code be changed.
 But if you need to modify the protocol buffer code, you'll first need to install the protocol buffers toolchain.
 
