@@ -19,8 +19,6 @@ import (
 	"go.uber.org/zap"
 )
 
-const defaultConcurrency = 11
-
 // Executor handles execution of a run.
 type Executor interface {
 	// Execute attempts to begin execution of a run.
@@ -466,7 +464,7 @@ func newTaskScheduler(
 	if err != nil {
 		return nil, err
 	}
-	maxC := defaultConcurrency
+	maxC := 1
 	if opt.Concurrency != nil {
 		maxC = int(*opt.Concurrency)
 	}

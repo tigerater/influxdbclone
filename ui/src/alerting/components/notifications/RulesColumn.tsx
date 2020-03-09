@@ -72,9 +72,7 @@ const NotificationRulesColumn: FunctionComponent<Props> = ({
       createButton={createButton}
       questionMarkTooltipContents={tooltipContents}
     >
-      {searchTerm => (
-        <NotificationRuleCards rules={rules} searchTerm={searchTerm} />
-      )}
+      <NotificationRuleCards rules={rules} />
     </AlertsColumn>
   )
 }

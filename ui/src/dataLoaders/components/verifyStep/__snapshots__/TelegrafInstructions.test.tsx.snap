@@ -3,7 +3,6 @@
 exports[`TelegrafInstructions matches snapshot 1`] = `
 <div
   className="wizard-step--body"
-  data-testid="setup-instructions"
 >
   <h6>
     1. Install the Latest Telegraf
