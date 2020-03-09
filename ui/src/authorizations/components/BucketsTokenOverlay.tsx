@@ -29,10 +29,10 @@ import {
 } from 'src/authorizations/utils/permissions'
 import {isSystemBucket} from 'src/buckets/constants/index'
 import {getOrg} from 'src/organizations/selectors'
-import {getAll} from 'src/resources/selectors'
+import {getAll} from 'src/shared/selectors'
 
 // Actions
-import {createAuthorization} from 'src/authorizations/actions/thunks'
+import {createAuthorization} from 'src/authorizations/actions'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'

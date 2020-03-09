@@ -1,8 +1,7 @@
 // Libraries
-import {get} from 'lodash'
-import {normalize} from 'normalizr'
+import _ from 'lodash'
 
-// APIs
+// Apis
 import {client} from 'src/utils/api'
 import {
   ScraperTargetRequest,
@@ -11,9 +10,6 @@ import {
 } from '@influxdata/influx'
 import {createAuthorization} from 'src/authorizations/apis'
 import {postWrite as apiPostWrite, postLabel as apiPostLabel} from 'src/client'
-
-// Schemas
-import * as schemas from 'src/schemas'
 
 // Utils
 import {createNewPlugin} from 'src/dataLoaders/utils/pluginConfigs'
@@ -37,7 +33,7 @@ import {
   BundleName,
   ConfigurationState,
 } from 'src/types/dataLoaders'
-import {GetState, RemoteDataState, Authorization, AuthEntities} from 'src/types'
+import {GetState, RemoteDataState} from 'src/types'
 import {
   WritePrecision,
   TelegrafRequest,
@@ -46,7 +42,7 @@ import {
 } from '@influxdata/influx'
 import {Dispatch} from 'redux'
 import {addTelegraf, editTelegraf} from 'src/telegrafs/actions'
-import {addAuthorization} from 'src/authorizations/actions/creators'
+import {addAuthorization} from 'src/authorizations/actions'
 import {notify} from 'src/shared/actions/notifications'
 import {
   TelegrafConfigCreationError,
@@ -439,13 +435,8 @@ const createTelegraf = async (dispatch, getState: GetState, plugins) => {
     // add token to data loader state
     dispatch(setToken(createdToken.token))
 
-    const normAuth = normalize<Authorization, AuthEntities, string>(
-      createdToken,
-      schemas.auth
-    )
-
     // add token to authorizations state
-    dispatch(addAuthorization(normAuth))
+    dispatch(addAuthorization(createdToken))
 
     // create token label
     const properties = {
@@ -576,7 +567,7 @@ export const writeLineProtocolAction = (
       dispatch(notify(readWriteCardinalityLimitReached(resp.data.message)))
       dispatch(setLPStatus(RemoteDataState.Error))
     } else {
-      throw new Error(get(resp, 'data.message', 'Failed to write data'))
+      throw new Error(_.get(resp, 'data.message', 'Failed to write data'))
     }
   } catch (error) {
     console.error(error)

@@ -6,7 +6,7 @@ import {connect} from 'react-redux'
 import {
   deleteAuthorization,
   updateAuthorization,
-} from 'src/authorizations/actions/thunks'
+} from 'src/authorizations/actions'
 
 // Components
 import {

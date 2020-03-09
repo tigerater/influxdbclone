@@ -6,11 +6,8 @@ import {render} from 'react-testing-library'
 import {initialState as initialVariablesState} from 'src/variables/reducers'
 import {initialState as initialUserSettingsState} from 'src/userSettings/reducers'
 import configureStore from 'src/store/configureStore'
-import {RemoteDataState, TimeZone, LocalStorage, ResourceType} from 'src/types'
+import {RemoteDataState, TimeZone, LocalStorage} from 'src/types'
 import {pastFifteenMinTimeRange} from './shared/constants/timeRanges'
-
-const {Members, Orgs, Buckets, Authorizations} = ResourceType
-const {NotStarted, Done} = RemoteDataState
 
 export const localState: LocalStorage = {
   app: {
@@ -31,7 +28,7 @@ export const localState: LocalStorage = {
   variables: initialVariablesState(),
   userSettings: initialUserSettingsState(),
   resources: {
-    [Orgs]: {
+    orgs: {
       byID: {
         orgid: {
           name: 'org',
@@ -40,23 +37,18 @@ export const localState: LocalStorage = {
       },
       allIDs: ['orgid'],
       org: {name: 'org', id: 'orgid'},
-      status: Done,
+      status: RemoteDataState.Done,
     },
-    [Members]: {
+    members: {
       byID: {},
       allIDs: [],
-      status: NotStarted,
+      status: RemoteDataState.NotStarted,
     },
-    [Buckets]: {
+    buckets: {
       byID: {},
       allIDs: [],
-      status: NotStarted,
+      status: RemoteDataState.NotStarted,
     },
-    [Authorizations]: {
-      byID: {},
-      allIDs: [],
-      status: NotStarted,
-    }
   },
 }
 

@@ -1,9 +1,6 @@
 import AJAX from 'src/utils/ajax'
-import {Authorization} from 'src/types'
 
-export const createAuthorization = async (
-  authorization
-): Promise<Authorization> => {
+export const createAuthorization = async authorization => {
   try {
     const {data} = await AJAX({
       method: 'POST',

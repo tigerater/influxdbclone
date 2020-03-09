@@ -24,7 +24,7 @@ import {renameBucket} from 'src/buckets/actions/thunks'
 import {AppState, Bucket, ResourceType} from 'src/types'
 
 // Selectors
-import {getAll, getByID} from 'src/resources/selectors'
+import {getAll, getByID} from 'src/shared/selectors'
 
 interface State {
   bucket: Bucket

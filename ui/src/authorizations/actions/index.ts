@@ -1,21 +1,11 @@
 // Libraries
-import {normalize} from 'normalizr'
 import {Dispatch} from 'react'
 
 // API
 import * as authAPI from 'src/authorizations/apis'
 import * as api from 'src/client'
 
-// Schemas
-import * as schemas from 'src/schemas'
-
 // Actions
-import {
-  Action,
-  addAuthorization,
-  setAuthorizations,
-  removeAuthorization,
-} from 'src/authorizations/actions/creators'
 import {notify} from 'src/shared/actions/notifications'
 
 // Constants
@@ -35,11 +25,70 @@ import {
   GetState,
   NotificationAction,
   Authorization,
-  AuthEntities,
 } from 'src/types'
 
 // Selectors
 import {getOrg} from 'src/organizations/selectors'
+
+export type Action =
+  | SetAuthorizations
+  | AddAuthorization
+  | EditAuthorization
+  | RemoveAuthorization
+
+interface SetAuthorizations {
+  type: 'SET_AUTHS'
+  payload: {
+    status: RemoteDataState
+    list: Authorization[]
+  }
+}
+
+export const setAuthorizations = (
+  status: RemoteDataState,
+  list?: Authorization[]
+): SetAuthorizations => ({
+  type: 'SET_AUTHS',
+  payload: {status, list},
+})
+
+interface AddAuthorization {
+  type: 'ADD_AUTH'
+  payload: {
+    authorization: Authorization
+  }
+}
+
+export const addAuthorization = (
+  authorization: Authorization
+): AddAuthorization => ({
+  type: 'ADD_AUTH',
+  payload: {authorization},
+})
+
+interface EditAuthorization {
+  type: 'EDIT_AUTH'
+  payload: {
+    authorization: Authorization
+  }
+}
+
+export const editAuthorization = (
+  authorization: Authorization
+): EditAuthorization => ({
+  type: 'EDIT_AUTH',
+  payload: {authorization},
+})
+
+interface RemoveAuthorization {
+  type: 'REMOVE_AUTH'
+  payload: {id: string}
+}
+
+export const removeAuthorization = (id: string): RemoveAuthorization => ({
+  type: 'REMOVE_AUTH',
+  payload: {id},
+})
 
 type GetAuthorizations = (
   dispatch: Dispatch<Action | NotificationAction>,
@@ -58,14 +107,11 @@ export const getAuthorizations = () => async (
       throw new Error(resp.data.message)
     }
 
-    const auths = normalize<Authorization, AuthEntities, string[]>(
-      resp.data.authorizations,
-      schemas.arrayOfAuths
-    )
+    const {authorizations} = resp.data
 
-    dispatch(setAuthorizations(RemoteDataState.Done, auths))
-  } catch (error) {
-    console.error(error)
+    dispatch(setAuthorizations(RemoteDataState.Done, authorizations))
+  } catch (e) {
+    console.error(e)
     dispatch(setAuthorizations(RemoteDataState.Error))
     dispatch(notify(authorizationsGetFailed()))
   }
@@ -80,8 +126,8 @@ export const getAuthorization = async (authID: string) => {
     }
 
     return resp.data
-  } catch (error) {
-    console.error(error)
+  } catch (e) {
+    console.error(e)
   }
 }
 
@@ -89,19 +135,13 @@ export const createAuthorization = (auth: Authorization) => async (
   dispatch: Dispatch<Action | NotificationAction>
 ) => {
   try {
-    const resp = await authAPI.createAuthorization(auth)
-
-    const newAuth = normalize<Authorization, AuthEntities, string>(
-      resp,
-      schemas.auth
-    )
-
-    dispatch(addAuthorization(newAuth))
+    const createdAuthorization = await authAPI.createAuthorization(auth)
+    dispatch(addAuthorization(createdAuthorization))
     dispatch(notify(authorizationCreateSuccess()))
-  } catch (error) {
-    console.error(error.message)
+  } catch (e) {
+    console.error(e)
     dispatch(notify(authorizationCreateFailed()))
-    throw error
+    throw e
   }
 }
 

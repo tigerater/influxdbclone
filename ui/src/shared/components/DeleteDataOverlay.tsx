@@ -15,7 +15,7 @@ import {
 
 // Types
 import {Bucket, AppState, RemoteDataState, ResourceType} from 'src/types'
-import {getAll} from 'src/resources/selectors'
+import {getAll} from 'src/shared/selectors'
 
 interface StateProps {
   buckets: Bucket[]

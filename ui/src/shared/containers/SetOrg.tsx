@@ -17,7 +17,7 @@ import {
 } from '@influxdata/clockface'
 
 // Selectors
-import {getAll} from 'src/resources/selectors'
+import {getAll} from 'src/shared/selectors'
 
 interface PassedInProps {
   children: React.ReactElement<any>

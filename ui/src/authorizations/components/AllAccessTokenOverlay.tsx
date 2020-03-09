@@ -18,7 +18,7 @@ import {
 } from '@influxdata/clockface'
 
 // Actions
-import {createAuthorization} from 'src/authorizations/actions/thunks'
+import {createAuthorization} from 'src/authorizations/actions'
 
 // Utils
 import {allAccessPermissions} from 'src/authorizations/utils/permissions'

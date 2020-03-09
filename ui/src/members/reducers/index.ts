@@ -1,8 +1,9 @@
 // Libraries
+import {get} from 'lodash'
 import {produce} from 'immer'
 
 // Types
-import {Member, RemoteDataState, ResourceState, ResourceType} from 'src/types'
+import {RemoteDataState, ResourceState} from 'src/types'
 import {
   Action,
   SET_MEMBERS,
@@ -10,18 +11,10 @@ import {
   REMOVE_MEMBER,
 } from 'src/members/actions/creators'
 
-// Utils
-import {
-  setResource,
-  addResource,
-  removeResource,
-} from 'src/resources/reducers/helpers'
-
-const {Members} = ResourceType
 export type MembersState = ResourceState['members']
 
 const initialState = (): MembersState => ({
-  byID: {},
+  byID: null,
   allIDs: [],
   status: RemoteDataState.NotStarted,
 })
@@ -33,19 +26,31 @@ export const membersReducer = (
   produce(state, draftState => {
     switch (action.type) {
       case SET_MEMBERS: {
-        setResource<Member>(draftState, action, Members)
+        const {status, schema} = action
+        draftState.status = status
+        if (get(schema, 'entities')) {
+          draftState.byID = schema.entities.members
+          draftState.allIDs = schema.result
+        }
 
         return
       }
 
       case ADD_MEMBER: {
-        addResource<Member>(draftState, action, Members)
+        const {result, entities} = action.schema
+        const bucket = entities.members[result]
+
+        draftState.byID[result] = bucket
+        draftState.allIDs.push(result)
 
         return
       }
 
       case REMOVE_MEMBER: {
-        removeResource<Member>(draftState, action)
+        const {id} = action
+
+        delete draftState.byID[id]
+        draftState.allIDs = draftState.allIDs.filter(uuid => uuid !== id)
 
         return
       }

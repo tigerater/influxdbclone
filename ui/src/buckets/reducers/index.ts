@@ -1,8 +1,9 @@
 // Libraries
 import {produce} from 'immer'
+import {get} from 'lodash'
 
 // Types
-import {Bucket, RemoteDataState, ResourceState, ResourceType} from 'src/types'
+import {RemoteDataState, ResourceState} from 'src/types'
 import {
   ADD_BUCKET,
   SET_BUCKETS,
@@ -11,20 +12,11 @@ import {
   REMOVE_BUCKET,
 } from 'src/buckets/actions/creators'
 
-// Utils
-import {
-  setResource,
-  addResource,
-  removeResource,
-  editResource,
-} from 'src/resources/reducers/helpers'
-
-const {Buckets} = ResourceType
 type BucketsState = ResourceState['buckets']
 
 const initialState = (): BucketsState => ({
   status: RemoteDataState.NotStarted,
-  byID: {},
+  byID: null,
   allIDs: [],
 })
 
@@ -35,25 +27,41 @@ export const bucketsReducer = (
   produce(state, draftState => {
     switch (action.type) {
       case SET_BUCKETS: {
-        setResource<Bucket>(draftState, action, Buckets)
+        const {status, schema} = action
+
+        draftState.status = status
+
+        if (get(schema, 'entities')) {
+          draftState.byID = schema.entities.buckets
+          draftState.allIDs = schema.result
+        }
 
         return
       }
 
       case ADD_BUCKET: {
-        addResource<Bucket>(draftState, action, Buckets)
+        const {result, entities} = action.schema
+        const bucket = entities.buckets[result]
+
+        draftState.byID[result] = bucket
+        draftState.allIDs.push(result)
 
         return
       }
 
       case EDIT_BUCKET: {
-        editResource<Bucket>(draftState, action, Buckets)
+        const {entities, result} = action.schema
+        const bucket = entities.buckets[result]
+        draftState.byID[result] = bucket
 
         return
       }
 
       case REMOVE_BUCKET: {
-        removeResource<Bucket>(draftState, action)
+        const {id} = action
+
+        delete draftState.byID[id]
+        draftState.allIDs = draftState.allIDs.filter(uuid => uuid !== id)
 
         return
       }
