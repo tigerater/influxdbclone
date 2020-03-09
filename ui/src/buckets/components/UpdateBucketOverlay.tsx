@@ -1,159 +1,153 @@
 // Libraries
-import React, {
-  FunctionComponent,
-  useEffect,
-  useState,
-  ChangeEvent,
-  FormEvent,
-} from 'react'
+import React, {PureComponent, ChangeEvent} from 'react'
 import {withRouter, WithRouterProps} from 'react-router'
 import {connect} from 'react-redux'
-import {get} from 'lodash'
 
 // Components
-import {
-  Overlay,
-  RemoteDataState,
-  SpinnerContainer,
-  TechnoSpinner,
-} from '@influxdata/clockface'
+import {Overlay} from '@influxdata/clockface'
 import BucketOverlayForm from 'src/buckets/components/BucketOverlayForm'
 
 // Actions
 import {updateBucket} from 'src/buckets/actions'
-import {notify} from 'src/shared/actions/notifications'
-
-// APIs
-import * as api from 'src/client'
 
 // Constants
 import {DEFAULT_SECONDS} from 'src/buckets/components/Retention'
-import {getBucketFailed} from 'src/shared/copy/notifications'
 
-//Types
-import {Bucket} from 'src/types'
+// Types
+import {AppState, Bucket} from 'src/types'
+
+interface State {
+  bucket: Bucket
+  ruleType: 'expire'
+}
+
+interface StateProps {
+  bucket: Bucket
+}
 
 interface DispatchProps {
   onUpdateBucket: typeof updateBucket
-  onNotify: typeof notify
 }
 
-type Props = DispatchProps & WithRouterProps
+type Props = StateProps & DispatchProps & WithRouterProps
 
-const UpdateBucketOverlay: FunctionComponent<Props> = ({
-  onUpdateBucket,
-  onNotify,
-  params: {bucketID, orgID},
-  router,
-}) => {
-  const [bucketDraft, setBucketDraft] = useState<Bucket>(null)
+class UpdateBucketOverlay extends PureComponent<Props, State> {
+  constructor(props) {
+    super(props)
 
-  const [loadingStatus, setLoadingStatus] = useState(RemoteDataState.Loading)
+    const {bucket} = this.props
 
-  const [retentionSelection, setRetentionSelection] = useState(DEFAULT_SECONDS)
-
-  useEffect(() => {
-    const fetchBucket = async () => {
-      const resp = await api.getBucket({bucketID})
-
-      if (resp.status !== 200) {
-        onNotify(getBucketFailed(bucketID, resp.data.message))
-        handleClose()
-        return
-      }
-      setBucketDraft(resp.data)
-
-      const rules = get(resp.data, 'retentionRules', [])
-      const rule = rules.find(r => r.type === 'expire')
-      if (rule) {
-        setRetentionSelection(rule.everySeconds)
-      }
-
-      setLoadingStatus(RemoteDataState.Done)
-    }
-    fetchBucket()
-  }, [bucketID])
-
-  const handleChangeRetentionRule = (everySeconds: number): void => {
-    setBucketDraft({
-      ...bucketDraft,
-      retentionRules: [{type: 'expire' as 'expire', everySeconds}],
-    })
-    setRetentionSelection(everySeconds)
-  }
-
-  const handleChangeRuleType = (ruleType: 'expire' | null) => {
-    if (ruleType) {
-      setBucketDraft({
-        ...bucketDraft,
-        retentionRules: [
-          {type: 'expire' as 'expire', everySeconds: retentionSelection},
-        ],
-      })
-    } else {
-      setBucketDraft({
-        ...bucketDraft,
-        retentionRules: [],
-      })
+    this.state = {
+      ruleType: this.ruleType(bucket),
+      bucket,
     }
   }
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>): void => {
-    e.preventDefault()
-    onUpdateBucket(bucketDraft)
-    handleClose()
-  }
+  public render() {
+    const {bucket, ruleType} = this.state
 
-  const handleChangeInput = (e: ChangeEvent<HTMLInputElement>) => {
-    const key = e.target.name
-    const value = e.target.value
-    setBucketDraft({...bucketDraft, [key]: value})
-  }
-
-  const handleClose = () => {
-    router.push(`/orgs/${orgID}/load-data/buckets`)
-  }
-
-  const rules = get(bucketDraft, 'retentionRules', [])
-  const rule = rules.find(r => r.type === 'expire')
-
-  const retentionSeconds = rule ? rule.everySeconds : retentionSelection
-  const ruleType = rule ? ('expire' as 'expire') : null
-
-  return (
-    <Overlay visible={true}>
-      <Overlay.Container maxWidth={500}>
-        <Overlay.Header title="Edit Bucket" onDismiss={handleClose} />
-        <SpinnerContainer
-          spinnerComponent={<TechnoSpinner />}
-          loading={loadingStatus}
-        >
+    return (
+      <Overlay visible={true}>
+        <Overlay.Container maxWidth={500}>
+          <Overlay.Header title="Edit Bucket" onDismiss={this.handleClose} />
           <Overlay.Body>
             <BucketOverlayForm
-              name={bucketDraft ? bucketDraft.name : ''}
+              name={bucket.name}
               buttonText="Save Changes"
               ruleType={ruleType}
-              onCloseModal={handleClose}
-              onSubmit={handleSubmit}
+              onCloseModal={this.handleClose}
+              onSubmit={this.handleSubmit}
               disableRenaming={true}
-              onChangeInput={handleChangeInput}
-              retentionSeconds={retentionSeconds}
-              onChangeRuleType={handleChangeRuleType}
-              onChangeRetentionRule={handleChangeRetentionRule}
+              onChangeInput={this.handleChangeInput}
+              retentionSeconds={this.retentionSeconds}
+              onChangeRuleType={this.handleChangeRuleType}
+              onChangeRetentionRule={this.handleChangeRetentionRule}
             />
           </Overlay.Body>
-        </SpinnerContainer>
-      </Overlay.Container>
-    </Overlay>
-  )
+        </Overlay.Container>
+      </Overlay>
+    )
+  }
+
+  private get retentionSeconds(): number {
+    const rule = this.state.bucket.retentionRules.find(r => r.type === 'expire')
+
+    if (!rule) {
+      return DEFAULT_SECONDS
+    }
+
+    return rule.everySeconds
+  }
+
+  private ruleType = (bucket: Bucket): 'expire' => {
+    const rule = bucket.retentionRules.find(r => r.type === 'expire')
+
+    if (!rule) {
+      return null
+    }
+
+    return 'expire'
+  }
+
+  private handleChangeRetentionRule = (everySeconds: number): void => {
+    const bucket = {
+      ...this.state.bucket,
+      retentionRules: [{type: 'expire' as 'expire', everySeconds}],
+    }
+
+    this.setState({bucket})
+  }
+
+  private handleChangeRuleType = (ruleType: 'expire') => {
+    this.setState({ruleType})
+  }
+
+  private handleSubmit = (e): void => {
+    e.preventDefault()
+    const {onUpdateBucket} = this.props
+    const {ruleType, bucket} = this.state
+
+    if (ruleType === null) {
+      onUpdateBucket({...bucket, retentionRules: []})
+      this.handleClose()
+      return
+    }
+
+    onUpdateBucket(bucket)
+    this.handleClose()
+  }
+
+  private handleChangeInput = (e: ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value
+    const key = e.target.name
+    const bucket = {...this.state.bucket, [key]: value}
+
+    this.setState({bucket})
+  }
+
+  private handleClose = () => {
+    const {orgID} = this.props.params
+    this.props.router.push(`/orgs/${orgID}/load-data/buckets`)
+  }
+}
+
+const mstp = ({buckets}: AppState, props: Props): StateProps => {
+  const {
+    params: {bucketID},
+  } = props
+
+  const bucket = buckets.list.find(b => b.id === bucketID)
+
+  return {
+    bucket,
+  }
 }
 
 const mdtp: DispatchProps = {
   onUpdateBucket: updateBucket,
-  onNotify: notify,
 }
 
-export default connect<{}, DispatchProps, {}>(
-  null,
+export default connect<StateProps, DispatchProps, {}>(
+  mstp,
   mdtp
 )(withRouter(UpdateBucketOverlay))

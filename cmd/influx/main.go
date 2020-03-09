@@ -27,8 +27,6 @@ var influxCmd = &cobra.Command{
 	Run:   influxF,
 }
 
-var maxTCPConnections = 128
-
 func init() {
 	influxCmd.AddCommand(authorizationCmd)
 	influxCmd.AddCommand(bucketCmd)

@@ -286,9 +286,15 @@ func (s *Service) findTasksByUser(ctx context.Context, tx Tx, filter influxdb.Ta
 			continue
 		}
 
-		if taskFilterMatch(filter.Type, task.Type) {
-			ts = append(ts, task)
+		if filter.Type == nil {
+			ft := ""
+			filter.Type = &ft
 		}
+		if *filter.Type != influxdb.TaskTypeWildcard && *filter.Type != task.Type {
+			continue
+		}
+
+		ts = append(ts, task)
 
 		if len(ts) >= filter.Limit {
 			break
@@ -363,7 +369,13 @@ func (s *Service) findTasksByOrg(ctx context.Context, tx Tx, filter influxdb.Tas
 			}
 
 			if t != nil {
-				if taskFilterMatch(filter.Type, t.Type) {
+				typ := ""
+				if filter.Type != nil {
+					typ = *filter.Type
+				}
+
+				// if the filter type matches task type or filter type is a wildcard
+				if typ == t.Type || typ == influxdb.TaskTypeWildcard {
 					ts = append(ts, t)
 				}
 			}
@@ -400,7 +412,11 @@ func (s *Service) findTasksByOrg(ctx context.Context, tx Tx, filter influxdb.Tas
 			break
 		}
 
-		if !taskFilterMatch(filter.Type, t.Type) {
+		if filter.Type == nil {
+			ft := ""
+			filter.Type = &ft
+		}
+		if *filter.Type != influxdb.TaskTypeWildcard && *filter.Type != t.Type {
 			continue
 		}
 
@@ -464,13 +480,8 @@ func (s *Service) findAllTasks(ctx context.Context, tx Tx, filter influxdb.TaskF
 		} else {
 			t.LatestCompleted = t.CreatedAt
 		}
-
-		if t != nil {
-
-			if taskFilterMatch(filter.Type, t.Type) {
-				ts = append(ts, t)
-			}
-		}
+		// insert the new task into the list
+		ts = append(ts, t)
 	}
 
 	// if someone has a limit of 1
@@ -496,11 +507,6 @@ func (s *Service) findAllTasks(ctx context.Context, tx Tx, filter influxdb.TaskF
 		} else {
 			t.LatestCompleted = t.CreatedAt
 		}
-
-		if !taskFilterMatch(filter.Type, t.Type) {
-			continue
-		}
-
 		// insert the new task into the list
 		ts = append(ts, t)
 
@@ -588,7 +594,6 @@ func (s *Service) createTask(ctx context.Context, tx Tx, tc influxdb.TaskCreate)
 		OrganizationID:  org.ID,
 		Organization:    org.Name,
 		OwnerID:         tc.OwnerID,
-		Metadata:        tc.Metadata,
 		Name:            opt.Name,
 		Description:     tc.Description,
 		Status:          tc.Status,
@@ -728,11 +733,6 @@ func (s *Service) updateTask(ctx context.Context, tx Tx, id influxdb.ID, upd inf
 		task.Status = *upd.Status
 		task.UpdatedAt = updatedAt
 
-	}
-
-	if upd.Metadata != nil {
-		task.Metadata = upd.Metadata
-		task.UpdatedAt = updatedAt
 	}
 
 	if upd.LatestCompleted != nil {
@@ -1900,20 +1900,4 @@ func taskRunKey(taskID, runID influxdb.ID) ([]byte, error) {
 	}
 
 	return []byte(string(encodedID) + "/" + string(encodedRunID)), nil
-}
-
-func taskFilterMatch(filter *string, ttype string) bool {
-	// if they want a system task the record may be system or an empty string
-	if filter != nil {
-		// if the task is either "system" or "" it qaulifies as a system task
-		if *filter == influxdb.TaskSystemType && (ttype == influxdb.TaskSystemType || ttype == "") {
-			return true
-		}
-
-		// otherwise check task type against the filter
-		if *filter != ttype {
-			return false
-		}
-	}
-	return true
 }

@@ -28,7 +28,8 @@ type Coordinator interface {
 // each task it calls the provided coordinators task created method
 func NotifyCoordinatorOfExisting(ctx context.Context, ts TaskService, coord Coordinator, logger *zap.Logger) error {
 	// If we missed a Create Action
-	tasks, _, err := ts.FindTasks(ctx, influxdb.TaskFilter{})
+	wildcard := influxdb.TaskTypeWildcard
+	tasks, _, err := ts.FindTasks(ctx, influxdb.TaskFilter{Type: &wildcard})
 	if err != nil {
 		return err
 	}
@@ -52,6 +53,7 @@ func NotifyCoordinatorOfExisting(ctx context.Context, ts TaskService, coord Coor
 		}
 
 		tasks, _, err = ts.FindTasks(ctx, influxdb.TaskFilter{
+			Type:  &wildcard,
 			After: &tasks[len(tasks)-1].ID,
 		})
 		if err != nil {
