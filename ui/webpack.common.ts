@@ -33,8 +33,7 @@ module.exports = {
     rules: [
       {
         test: /\.wasm$/,
-        loader: "file-loader",
-        type: "javascript/auto",
+        type: 'webassembly/experimental',
       },
       {
         test: /\.tsx?$/,

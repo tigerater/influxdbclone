@@ -63,7 +63,7 @@ func bucketToResource(bkt influxdb.Bucket, name string) Resource {
 		r[fieldDescription] = bkt.Description
 	}
 	if bkt.RetentionPeriod != 0 {
-		r[fieldBucketRetentionRules] = retentionRules{newRetentionRule(bkt.RetentionPeriod)}
+		r[fieldBucketRetentionPeriod] = bkt.RetentionPeriod.String()
 	}
 	return r
 }
@@ -351,7 +351,7 @@ func variableToResource(v influxdb.Variable, name string) Resource {
 	case fieldArgTypeQuery:
 		vals, ok := args.Values.(influxdb.VariableQueryValues)
 		if ok {
-			r[fieldLanguage] = vals.Language
+			r[fieldVarLanguage] = vals.Language
 			r[fieldQuery] = vals.Query
 		}
 	}
