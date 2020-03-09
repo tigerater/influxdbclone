@@ -1,28 +1,46 @@
 // Types
 import {AppState, RemoteDataState} from 'src/types'
-import {ResourceType} from 'src/shared/components/GetResources'
+import {Props} from 'src/shared/components/GetResources'
 
 export const getResourcesStatus = (
   state: AppState,
-  resources: Array<ResourceType>
+  {resources}: Props
 ): RemoteDataState => {
-  const statuses = resources.map(resource => {
-    if (!state[resource] || !state[resource].status) {
-      throw new Error(
-        `Loading status for resource ${resource} is undefined in getResourcesStatus`
-      )
+  const done = resources.every(resource => {
+    if (state[resource] && state[resource].status) {
+      return state[resource].status === 'Done'
     }
-    return state[resource].status
+    return false
+  })
+
+  const loading = resources.some(resource => {
+    if (state[resource] && state[resource].status) {
+      return state[resource].status === 'Loading'
+    }
+  })
+
+  const error = resources.some(resource => {
+    if (state[resource] && state[resource].status) {
+      return state[resource].status === 'Error'
+    }
+    if (state[resource] && state[resource].status === false) {
+      // if the resource doesn't exist in the state return an error
+      return true
+    }
   })
 
   let status = RemoteDataState.NotStarted
 
-  if (statuses.every(s => s === RemoteDataState.Done)) {
+  if (done) {
     status = RemoteDataState.Done
-  } else if (statuses.includes(RemoteDataState.Error)) {
-    status = RemoteDataState.Error
-  } else if (statuses.includes(RemoteDataState.Loading)) {
+  }
+
+  if (loading) {
     status = RemoteDataState.Loading
+  }
+
+  if (error) {
+    status = RemoteDataState.Error
   }
 
   return status

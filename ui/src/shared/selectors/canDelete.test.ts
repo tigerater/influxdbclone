@@ -1,5 +1,5 @@
 import {RemoteDataState} from 'src/types'
-import {setCanDelete} from 'src/shared/selectors/canDelete'
+import {setCanDelete} from './canDelete'
 
 export interface TestState {
   isSerious: boolean

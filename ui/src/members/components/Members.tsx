@@ -6,7 +6,7 @@ import {withRouter, WithRouterProps} from 'react-router'
 
 // Components
 import SettingsTabbedPageHeader from 'src/settings/components/SettingsTabbedPageHeader'
-import {EmptyState, Sort} from '@influxdata/clockface'
+import {Button, EmptyState, Sort} from '@influxdata/clockface'
 import SearchWidget from 'src/shared/components/search_widget/SearchWidget'
 import MemberList from 'src/members/components/MemberList'
 import FilterList from 'src/shared/components/Filter'
@@ -15,7 +15,7 @@ import FilterList from 'src/shared/components/Filter'
 import {deleteMember} from 'src/members/actions'
 
 // Types
-import {ComponentSize} from '@influxdata/clockface'
+import {IconFont, ComponentSize, ComponentColor} from '@influxdata/clockface'
 import {AppState, Member} from 'src/types'
 import {SortTypes} from 'src/shared/utils/sort'
 
@@ -59,6 +59,12 @@ class Members extends PureComponent<Props & WithRouterProps, State> {
             searchTerm={searchTerm}
             onSearch={this.handleFilterChange}
           />
+          <Button
+            text="Add Member"
+            icon={IconFont.Plus}
+            color={ComponentColor.Primary}
+            onClick={this.handleOpenOverlay}
+          />
         </SettingsTabbedPageHeader>
         <FilterList<Member>
           list={this.props.members}
@@ -91,6 +97,15 @@ class Members extends PureComponent<Props & WithRouterProps, State> {
     onRemoveMember(member)
   }
 
+  private handleOpenOverlay = () => {
+    const {
+      router,
+      params: {orgID},
+    } = this.props
+
+    router.push(`/orgs/${orgID}/settings/members/new`)
+  }
+
   private handleFilterChange = (searchTerm: string): void => {
     this.setState({searchTerm})
   }
@@ -102,7 +117,7 @@ class Members extends PureComponent<Props & WithRouterProps, State> {
       return (
         <EmptyState size={ComponentSize.Medium}>
           <EmptyState.Text>
-            Looks like there aren't any <b>Members</b>.
+            Looks like there aren't any <b>Members</b>, why not invite some?
           </EmptyState.Text>
         </EmptyState>
       )

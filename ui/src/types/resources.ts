@@ -9,6 +9,7 @@ export enum ResourceType {
   Tasks = 'tasks',
   Templates = 'templates',
   Members = 'members',
+  Users = 'users',
   Checks = 'checks',
   NotificationRules = 'rules',
   NotificationEndpoints = 'endpoints',
