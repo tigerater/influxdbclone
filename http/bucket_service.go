@@ -327,11 +327,7 @@ type postBucketRequest struct {
 
 func (b postBucketRequest) Validate() error {
 	if !b.Bucket.OrgID.Valid() {
-		return &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Msg:  "bucket requires an organization",
-		}
-
+		return fmt.Errorf("bucket requires an organization")
 	}
 	return nil
 }
@@ -339,10 +335,7 @@ func (b postBucketRequest) Validate() error {
 func decodePostBucketRequest(ctx context.Context, r *http.Request) (*postBucketRequest, error) {
 	b := &bucket{}
 	if err := json.NewDecoder(r.Body).Decode(b); err != nil {
-		return nil, &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Err:  err,
-		}
+		return nil, err
 	}
 
 	pb, err := b.toInfluxDB()
