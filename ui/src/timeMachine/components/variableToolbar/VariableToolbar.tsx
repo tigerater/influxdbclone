@@ -31,7 +31,7 @@ const VariableToolbar: FunctionComponent<OwnProps & StateProps> = ({
   return (
     <div className="variable-toolbar">
       <SearchBar onSearch={setSearchTerm} resourceName="Variables" />
-      <FancyScrollbar style={{marginBottom: '40px'}}>
+      <FancyScrollbar>
         <div className="variables-toolbar--list">
           {variables
             .filter(v => v.name.includes(searchTerm))
