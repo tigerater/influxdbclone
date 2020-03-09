@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/influxdata/influxdb"
+	platform "github.com/influxdata/influxdb"
 )
 
 type contextKey string
@@ -14,23 +14,17 @@ const (
 )
 
 // SetAuthorizer sets an authorizer on context.
-func SetAuthorizer(ctx context.Context, a influxdb.Authorizer) context.Context {
+func SetAuthorizer(ctx context.Context, a platform.Authorizer) context.Context {
 	return context.WithValue(ctx, authorizerCtxKey, a)
 }
 
 // GetAuthorizer retrieves an authorizer from context.
-func GetAuthorizer(ctx context.Context) (influxdb.Authorizer, error) {
-	a, ok := ctx.Value(authorizerCtxKey).(influxdb.Authorizer)
+func GetAuthorizer(ctx context.Context) (platform.Authorizer, error) {
+	a, ok := ctx.Value(authorizerCtxKey).(platform.Authorizer)
 	if !ok {
-		return nil, &influxdb.Error{
+		return nil, &platform.Error{
 			Msg:  "authorizer not found on context",
-			Code: influxdb.EInternal,
-		}
-	}
-	if a == nil {
-		return nil, &influxdb.Error{
-			Code: influxdb.EInternal,
-			Msg:  "unexpected invalid authorizer",
+			Code: platform.EInternal,
 		}
 	}
 
@@ -39,19 +33,19 @@ func GetAuthorizer(ctx context.Context) (influxdb.Authorizer, error) {
 
 // GetToken retrieves a token from the context; errors if no token.
 func GetToken(ctx context.Context) (string, error) {
-	a, ok := ctx.Value(authorizerCtxKey).(influxdb.Authorizer)
+	a, ok := ctx.Value(authorizerCtxKey).(platform.Authorizer)
 	if !ok {
-		return "", &influxdb.Error{
+		return "", &platform.Error{
 			Msg:  "authorizer not found on context",
-			Code: influxdb.EInternal,
+			Code: platform.EInternal,
 		}
 	}
 
-	auth, ok := a.(*influxdb.Authorization)
+	auth, ok := a.(*platform.Authorization)
 	if !ok {
-		return "", &influxdb.Error{
+		return "", &platform.Error{
 			Msg:  fmt.Sprintf("authorizer not an authorization but a %T", a),
-			Code: influxdb.EInternal,
+			Code: platform.EInternal,
 		}
 	}
 
