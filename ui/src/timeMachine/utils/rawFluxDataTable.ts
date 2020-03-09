@@ -19,13 +19,7 @@ export const parseFiles = (responses: string[]): ParseFilesResult => {
       data.push([])
     }
 
-    for (let j = 0; j < parsedChunks[i].length; j++) {
-      // Danger zone! Since the contents of each chunk are potentially quite
-      // large, the contents need to be concated using a loop rather than with
-      // `concat`, a splat or similar. Otherwise we see a "Maximum call size
-      // exceeded" error for large CSVs
-      data.push(parsedChunks[i][j])
-    }
+    data.push(...parsedChunks[i])
 
     // Add an empty line at the end
     data.push([])
