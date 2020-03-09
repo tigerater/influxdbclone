@@ -5,7 +5,8 @@ import {get} from 'lodash'
 
 // Components
 import MatchingRuleCard from 'src/alerting/components/builder/MatchingRuleCard'
-import {SpinnerContainer, TechnoSpinner} from '@influxdata/clockface'
+import {SpinnerContainer} from '@influxdata/clockface'
+import {TechnoSpinner} from '@influxdata/clockface'
 
 // Actions
 import {getActiveTimeMachine} from 'src/timeMachine/selectors'
