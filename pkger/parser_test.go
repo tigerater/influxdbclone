@@ -2,6 +2,7 @@ package pkger
 
 import (
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -692,7 +693,7 @@ spec:
 
 				actual := sum.Dashboards[0]
 				assert.Equal(t, "dashboard w/ single heatmap chart", actual.Name)
-				assert.Equal(t, "a dashboard w/ heatmap scatter chart", actual.Description)
+				assert.Equal(t, "a dashboard w/ heatmap chart", actual.Description)
 
 				require.Len(t, actual.Charts, 1)
 				actualChart := actual.Charts[0]
@@ -707,6 +708,9 @@ spec:
 				assert.Equal(t, "heatmap note", props.Note)
 				assert.Equal(t, int32(10), props.BinSize)
 				assert.True(t, props.ShowNoteWhenEmpty)
+
+				assert.Equal(t, []float64{0, 10}, props.XDomain)
+				assert.Equal(t, []float64{0, 100}, props.YDomain)
 
 				require.Len(t, props.Queries, 1)
 				q := props.Queries[0]
@@ -740,7 +744,7 @@ spec:
 		{
 			"kind": "Dashboard",
 			"name": "dashboard w/ single heatmap chart",
-			"description": "a dashboard w/ heatmap scatter chart",
+			"description": "a dashboard w/ heatmap chart",
 			"charts": [
 			{
 				"kind": "heatmap",
@@ -812,7 +816,7 @@ spec:
 		{
 			"kind": "Dashboard",
 			"name": "dashboard w/ single heatmap chart",
-			"description": "a dashboard w/ heatmap scatter chart",
+			"description": "a dashboard w/ heatmap chart",
 			"charts": [
 			{
 				"kind": "heatmap",
@@ -869,7 +873,7 @@ spec:
 		{
 			"kind": "Dashboard",
 			"name": "dashboard w/ single heatmap chart",
-			"description": "a dashboard w/ heatmap scatter chart",
+			"description": "a dashboard w/ heatmap chart",
 			"charts": [
 			{
 				"kind": "heatmap",
@@ -1008,6 +1012,8 @@ spec:
 				assert.Equal(t, expectedQuery, q.Text)
 				assert.Equal(t, "advanced", q.EditMode)
 
+				assert.Equal(t, []float64{0, 10}, props.XDomain)
+				assert.Equal(t, []float64{0, 100}, props.YDomain)
 				assert.Equal(t, "x_label", props.XAxisLabel)
 				assert.Equal(t, "y_label", props.YAxisLabel)
 				assert.Equal(t, "x_prefix", props.XPrefix)
@@ -2719,31 +2725,85 @@ func testPkgErrors(t *testing.T, k Kind, tt testPkgResourceError) {
 		_, err := Parse(encoding, FromString(tt.pkgStr))
 		require.Error(t, err)
 
-		pErr, ok := IsParseErr(err)
-		require.True(t, ok, err)
+		require.True(t, IsParseErr(err), err)
 
+		pErr := err.(*ParseErr)
 		require.Len(t, pErr.Resources, resErrs)
 
 		resErr := pErr.Resources[0]
 		assert.Equal(t, k.String(), resErr.Kind)
 
-		require.Len(t, resErr.ValidationFails, len(tt.valFields))
-		for i, vFail := range resErr.ValidationFails {
-			assert.Equal(t, tt.valFields[i], vFail.Field)
+		for i, vFail := range resErr.ValidationErrs {
+			if len(tt.valFields) == i {
+				break
+			}
+			expectedField := tt.valFields[i]
+			findErr(t, expectedField, vFail)
 		}
 
-		assFails := pErr.Resources[0].AssociationFails
-		require.Len(t, assFails, len(tt.assIdxs))
 		if tt.assErrs == 0 {
 			return
 		}
 
-		for i, f := range assFails {
-			assert.Equal(t, "associations", assFails[i].Field)
-			assert.Equal(t, tt.assIdxs[i], f.Index)
+		assFails := pErr.Resources[0].AssociationErrs
+		for i, assFail := range assFails {
+			if len(tt.valFields) == i {
+				break
+			}
+			expectedField := tt.valFields[i]
+			findErr(t, expectedField, assFail)
 		}
 	}
 	t.Run(tt.name, fn)
+}
+
+func findErr(t *testing.T, expectedField string, vErr ValidationErr) ValidationErr {
+	t.Helper()
+
+	fields := strings.Split(expectedField, ".")
+	if len(fields) == 1 {
+		require.Equal(t, expectedField, vErr.Field)
+		return vErr
+	}
+
+	currentFieldName, idx := nextField(t, fields[0])
+	if idx > -1 {
+		require.NotNil(t, vErr.Index)
+		require.Equal(t, idx, *vErr.Index)
+	}
+	require.Equal(t, currentFieldName, vErr.Field)
+
+	next := strings.Join(fields[1:], ".")
+	nestedField, _ := nextField(t, next)
+	for _, n := range vErr.Nested {
+		if n.Field == nestedField {
+			return findErr(t, next, n)
+		}
+	}
+	assert.Fail(t, "did not find field: "+expectedField)
+
+	return vErr
+}
+
+func nextField(t *testing.T, field string) (string, int) {
+	t.Helper()
+
+	fields := strings.Split(field, ".")
+	if len(fields) == 1 && !strings.HasSuffix(fields[0], "]") {
+		return field, -1
+	}
+	parts := strings.Split(fields[0], "[")
+	if len(parts) == 1 {
+		return "", 0
+	}
+	fieldName := parts[0]
+
+	if strIdx := strings.Index(parts[1], "]"); strIdx > -1 {
+		idx, err := strconv.Atoi(parts[1][:strIdx])
+		require.NoError(t, err)
+		return fieldName, idx
+	}
+	return "", -1
 }
 
 type baseAsserts struct {
