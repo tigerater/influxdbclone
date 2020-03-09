@@ -3,6 +3,7 @@ package launcher_test
 import (
 	"context"
 	"errors"
+	"fmt"
 	"testing"
 	"time"
 
@@ -266,6 +267,67 @@ func TestLauncher_Pkger(t *testing.T) {
 			require.NotEqual(t, sum1.Dashboards, sum2.Dashboards)
 		})
 
+		t.Run("referenced secret values provided do not create new secrets", func(t *testing.T) {
+			applyPkgStr := func(t *testing.T, pkgStr string) pkger.Summary {
+				t.Helper()
+				pkg, err := pkger.Parse(pkger.EncodingYAML, pkger.FromString(pkgStr))
+				require.NoError(t, err)
+
+				sum, err := svc.Apply(ctx, l.Org.ID, l.User.ID, pkg)
+				require.NoError(t, err)
+				return sum
+			}
+
+			const pkgWithSecretRaw = `apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+  description:  pack description
+spec:
+  resources:
+    - kind: Notification_Endpoint_Pager_Duty
+      name: pager_duty_notification_endpoint
+      url:  http://localhost:8080/orgs/7167eb6719fa34e5/alert-history
+      routingKey: secret-sauce
+`
+			secretSum := applyPkgStr(t, pkgWithSecretRaw)
+			require.Len(t, secretSum.NotificationEndpoints, 1)
+
+			id := secretSum.NotificationEndpoints[0].NotificationEndpoint.GetID()
+			expected := influxdb.SecretField{
+				Key: id.String() + "-routing-key",
+			}
+			secrets := secretSum.NotificationEndpoints[0].NotificationEndpoint.SecretFields()
+			require.Len(t, secrets, 1)
+			assert.Equal(t, expected, secrets[0])
+
+			const pkgWithSecretRef = `apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+  description:  pack description
+spec:
+  resources:
+    - kind: Notification_Endpoint_Pager_Duty
+      name: pager_duty_notification_endpoint
+      url:  http://localhost:8080/orgs/7167eb6719fa34e5/alert-history
+      routingKey:
+        secretRef:
+          key: %s-routing-key
+`
+			secretSum = applyPkgStr(t, fmt.Sprintf(pkgWithSecretRef, id.String()))
+			require.Len(t, secretSum.NotificationEndpoints, 1)
+
+			expected = influxdb.SecretField{
+				Key: id.String() + "-routing-key",
+			}
+			secrets = secretSum.NotificationEndpoints[0].NotificationEndpoint.SecretFields()
+			require.Len(t, secrets, 1)
+			assert.Equal(t, expected, secrets[0])
+		})
+
 		t.Run("exporting resources with existing ids should return a valid pkg", func(t *testing.T) {
 			resToClone := []pkger.ResourceToClone{
 				{
@@ -279,6 +341,10 @@ func TestLauncher_Pkger(t *testing.T) {
 				{
 					Kind: pkger.KindLabel,
 					ID:   influxdb.ID(labels[0].ID),
+				},
+				{
+					Kind: pkger.KindNotificationEndpoint,
+					ID:   endpoints[0].NotificationEndpoint.GetID(),
 				},
 				{
 					Kind: pkger.KindTelegraf,
@@ -330,9 +396,16 @@ func TestLauncher_Pkger(t *testing.T) {
 			require.Len(t, dashs[0].Charts, 1)
 			assert.Equal(t, influxdb.ViewPropertyTypeSingleStat, dashs[0].Charts[0].Properties.GetType())
 
+			newEndpoints := newSum.NotificationEndpoints
+			require.Len(t, newEndpoints, 1)
+			assert.Equal(t, endpoints[0].NotificationEndpoint.GetName(), newEndpoints[0].NotificationEndpoint.GetName())
+			assert.Equal(t, endpoints[0].NotificationEndpoint.GetDescription(), newEndpoints[0].NotificationEndpoint.GetDescription())
+			hasLabelAssociations(t, newEndpoints[0].LabelAssociations, 1, "label_1")
+
 			require.Len(t, newSum.TelegrafConfigs, 1)
 			assert.Equal(t, teles[0].TelegrafConfig.Name, newSum.TelegrafConfigs[0].TelegrafConfig.Name)
 			assert.Equal(t, teles[0].TelegrafConfig.Description, newSum.TelegrafConfigs[0].TelegrafConfig.Description)
+			hasLabelAssociations(t, newSum.TelegrafConfigs[0].LabelAssociations, 1, "label_1")
 
 			vars := newSum.Variables
 			require.Len(t, vars, 1)
@@ -466,7 +539,7 @@ spec:
           bucket = "rucket_3"
         [[inputs.cpu]]
           percpu = true
-    - kind: NotificationEndpointHTTP
+    - kind: Notification_Endpoint_HTTP
       name: http_none_auth_notification_endpoint
       type: none
       description: http none auth desc
@@ -505,7 +578,7 @@ spec:
       associations:
         - kind: Label
           name: label_1
-    - kind: NotificationEndpointHTTP
+    - kind: Notification_Endpoint_HTTP
       name: http_none_auth_notification_endpoint
       type: none
       description: new desc
