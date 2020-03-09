@@ -7,14 +7,12 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"net/http"
 	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/influxdata/influxdb"
-	"github.com/influxdata/influxdb/pkg/jsonnet"
 	"gopkg.in/yaml.v3"
 )
 
@@ -29,10 +27,8 @@ type Encoding int
 // encoding types
 const (
 	EncodingUnknown Encoding = iota
-	EncodingJSON
-	EncodingJsonnet
-	EncodingSource // EncodingSource draws the encoding type by inferring it from the source.
 	EncodingYAML
+	EncodingJSON
 )
 
 // String provides the string representation of the encoding.
@@ -40,10 +36,6 @@ func (e Encoding) String() string {
 	switch e {
 	case EncodingJSON:
 		return "json"
-	case EncodingJsonnet:
-		return "jsonnet"
-	case EncodingSource:
-		return "source"
 	case EncodingYAML:
 		return "yaml"
 	default:
@@ -63,14 +55,10 @@ func Parse(encoding Encoding, readerFn ReaderFn, opts ...ValidateOptFn) (*Pkg, e
 	}
 
 	switch encoding {
-	case EncodingJSON:
-		return parseJSON(r, opts...)
-	case EncodingJsonnet:
-		return parseJsonnet(r, opts...)
-	case EncodingSource:
-		return parseSource(r, opts...)
 	case EncodingYAML:
 		return parseYAML(r, opts...)
+	case EncodingJSON:
+		return parseJSON(r, opts...)
 	default:
 		return nil, ErrInvalidEncoding
 	}
@@ -105,62 +93,12 @@ func FromString(s string) ReaderFn {
 	}
 }
 
-// FromHTTPRequest parses a pkg from the request body of a HTTP request. This is
-// very useful when using packages that are hosted..
-func FromHTTPRequest(addr string) ReaderFn {
-	return func() (io.Reader, error) {
-		client := http.Client{Timeout: 5 * time.Minute}
-		resp, err := client.Get(addr)
-		if err != nil {
-			return nil, err
-		}
-		defer resp.Body.Close()
-
-		var buf bytes.Buffer
-		if _, err := io.Copy(&buf, resp.Body); err != nil {
-			return nil, err
-		}
-		return &buf, nil
-	}
+func parseYAML(r io.Reader, opts ...ValidateOptFn) (*Pkg, error) {
+	return parse(yaml.NewDecoder(r), opts...)
 }
 
 func parseJSON(r io.Reader, opts ...ValidateOptFn) (*Pkg, error) {
 	return parse(json.NewDecoder(r), opts...)
-}
-
-func parseJsonnet(r io.Reader, opts ...ValidateOptFn) (*Pkg, error) {
-	return parse(jsonnet.NewDecoder(r), opts...)
-}
-
-func parseSource(r io.Reader, opts ...ValidateOptFn) (*Pkg, error) {
-	var b []byte
-	if byter, ok := r.(interface{ Bytes() []byte }); ok {
-		b = byter.Bytes()
-	} else {
-		bb, err := ioutil.ReadAll(r)
-		if err != nil {
-			return nil, fmt.Errorf("failed to decode pkg source: %s", err)
-		}
-		b = bb
-	}
-
-	contentType := http.DetectContentType(b)
-	switch {
-	case strings.Contains(contentType, "jsonnet"):
-		// highly unlikely to fall in here with supported content type detection as is
-		return parseJsonnet(bytes.NewReader(b), opts...)
-	case strings.Contains(contentType, "json"):
-		return parseJSON(bytes.NewReader(b), opts...)
-	case strings.Contains(contentType, "yaml"),
-		strings.Contains(contentType, "yml"):
-		return parseYAML(bytes.NewReader(b), opts...)
-	default:
-		return parseJsonnet(r, opts...)
-	}
-}
-
-func parseYAML(r io.Reader, opts ...ValidateOptFn) (*Pkg, error) {
-	return parse(yaml.NewDecoder(r), opts...)
 }
 
 type decoder interface {
@@ -214,20 +152,7 @@ type Pkg struct {
 // associations the pkg contains. It is very useful for informing users of
 // the changes that will take place when this pkg would be applied.
 func (p *Pkg) Summary() Summary {
-	// ensure zero values for arrays aren't returned, but instead
-	// we always returning an initialized slice.
-	sum := Summary{
-		Buckets:               []SummaryBucket{},
-		Checks:                []SummaryCheck{},
-		Dashboards:            []SummaryDashboard{},
-		NotificationEndpoints: []SummaryNotificationEndpoint{},
-		NotificationRules:     []SummaryNotificationRule{},
-		Labels:                []SummaryLabel{},
-		MissingSecrets:        []string{},
-		Tasks:                 []SummaryTask{},
-		TelegrafConfigs:       []SummaryTelegraf{},
-		Variables:             []SummaryVariable{},
-	}
+	var sum Summary
 
 	// only add this after dry run has been completed
 	if p.isVerified {
@@ -443,9 +368,8 @@ func (p *Pkg) variables() []*variable {
 // If a resource does not exist yet, a label mapping will not
 // be returned for it.
 func (p *Pkg) labelMappings() []SummaryLabelMapping {
-	labels := p.mLabels
-	mappings := make([]SummaryLabelMapping, 0, len(labels))
-	for _, l := range labels {
+	var mappings []SummaryLabelMapping
+	for _, l := range p.mLabels {
 		mappings = append(mappings, l.mappingSummary()...)
 	}
 

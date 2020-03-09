@@ -8,7 +8,7 @@ import {Button, ComponentColor, ComponentSize} from '@influxdata/clockface'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 // Types
-import {Dashboard} from 'src/types'
+import {Dashboard} from '@influxdata/influx'
 
 interface OwnProps {
   dashboards: Dashboard[]

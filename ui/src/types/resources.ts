@@ -7,7 +7,6 @@ import {
   Telegraf,
   Scraper,
   TasksState,
-  VariablesState,
 } from 'src/types'
 
 export enum ResourceType {
@@ -53,5 +52,4 @@ export interface ResourceState {
   [ResourceType.Telegrafs]: TelegrafsState
   [ResourceType.Scrapers]: NormalizedState<Scraper>
   [ResourceType.Tasks]: TasksState
-  [ResourceType.Variables]: VariablesState
 }

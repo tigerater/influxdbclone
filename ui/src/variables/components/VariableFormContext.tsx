@@ -20,8 +20,8 @@ import {
   updateMap,
   updateConstant,
   clearEditor,
-} from 'src/variables/actions/creators'
-import {createVariable} from 'src/variables/actions/thunks'
+  createVariable,
+} from 'src/variables/actions'
 
 // Component
 import VariableForm from 'src/variables/components/VariableForm'

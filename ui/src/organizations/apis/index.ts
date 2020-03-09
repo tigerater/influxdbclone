@@ -1,11 +1,7 @@
-// API
-import {getDashboards as apiGetDashboards} from 'src/client'
+import {client} from 'src/utils/api'
 
 // Types
 import {Dashboard, Organization} from 'src/types'
-
-// Utils
-import {addDashboardDefaults} from 'src/dashboards/actions'
 
 // CRUD APIs for Organizations and Organization resources
 // i.e. Organization Members, Buckets, Dashboards etc
@@ -16,18 +12,12 @@ export const getDashboards = async (
   try {
     let result
     if (org) {
-      result = await apiGetDashboards({query: {orgID: org.id}})
+      result = await client.dashboards.getAll(org.id)
     } else {
-      result = await apiGetDashboards({})
+      result = await client.dashboards.getAll()
     }
 
-    if (result.status !== 200) {
-      throw new Error(result.data.message)
-    }
-
-    const dashboards = result.data.map(d => addDashboardDefaults(d))
-
-    return dashboards
+    return result
   } catch (error) {
     console.error('Could not get buckets for org', error)
     throw error

@@ -28,6 +28,7 @@ export const localState: LocalStorage = {
     '0349ecda531ea000': pastFifteenMinTimeRange,
   },
   autoRefresh: {},
+  variables: initialVariablesState(),
   userSettings: initialUserSettingsState(),
   resources: {
     [Orgs]: {
@@ -41,7 +42,6 @@ export const localState: LocalStorage = {
       org: {name: 'org', id: 'orgid'},
       status: Done,
     },
-    variables: initialVariablesState(),
   },
 }
 

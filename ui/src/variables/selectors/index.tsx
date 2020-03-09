@@ -15,28 +15,29 @@ import {
 import {VariableAssignment} from 'src/types/ast'
 import {
   AppState,
-  ResourceState,
   VariableArguments,
   VariableArgumentType,
   Variable,
+} from 'src/types'
+import {
   VariableValues,
   VariableValuesByID,
   ValueSelections,
-} from 'src/types'
+} from 'src/variables/types'
 
-type VariablesState = ResourceState['variables']['byID']
-type ValuesState = ResourceState['variables']['values']['contextID']
+type VariablesState = AppState['variables']['variables']
+type ValuesState = AppState['variables']['values']['contextID']
 
 const extractVariablesListMemoized = memoizeOne(
   (variablesState: VariablesState): Variable[] => {
-    return Object.values(variablesState).filter(
-      v => v.status === RemoteDataState.Done
-    )
+    return Object.values(variablesState)
+      .filter(d => d.status === RemoteDataState.Done)
+      .map(d => d.variable)
   }
 )
 
 export const extractVariablesList = (state: AppState): Variable[] => {
-  return extractVariablesListMemoized(state.resources.variables.byID)
+  return extractVariablesListMemoized(state.variables.variables)
 }
 
 export const extractVariableEditorName = (state: AppState): string => {
@@ -86,7 +87,7 @@ const getVariablesForDashboardMemoized = memoizeOne(
     const variablesForDash = []
 
     variableIDs.forEach(variableID => {
-      const variable = get(variables, `${variableID}`)
+      const variable = get(variables, `${variableID}.variable`)
 
       if (variable) {
         variablesForDash.push(variable)
@@ -101,14 +102,10 @@ export const getVariablesForDashboard = (
   state: AppState,
   dashboardID: string
 ): Variable[] => {
-  const variableIDs = get(
-    state,
-    `resources.variables.values.${dashboardID}.order`,
-    []
-  )
+  const variableIDs = get(state, `variables.values.${dashboardID}.order`, [])
 
   return getVariablesForDashboardMemoized(
-    state.resources.variables.byID,
+    state.variables.variables,
     variableIDs
   )
 }
@@ -118,17 +115,18 @@ export const getValuesForVariable = (
   variableID: string,
   contextID: string
 ): VariableValues => {
-  return get(
-    state,
-    `resources.variables.values.${contextID}.values.${variableID}`
-  )
+  return get(state, `variables.values.${contextID}.values.${variableID}`)
 }
 
 export const getTypeForVariable = (
   state: AppState,
   variableID: string
 ): VariableArguments['type'] => {
-  return get(state, `resources.variables.byID.${variableID}.arguments.type`, '')
+  return get(
+    state,
+    `variables.variables.${variableID}.variable.arguments.type`,
+    ''
+  )
 }
 
 type ArgumentValues = {[key: string]: string} | string[]
@@ -139,7 +137,7 @@ export const getArgumentValuesForVariable = (
 ): ArgumentValues => {
   return get(
     state,
-    `resources.variables.byID.${variableID}.arguments.values`,
+    `variables.variables.${variableID}.variable.arguments.values`,
     {}
   )
 }
@@ -149,7 +147,7 @@ export const getValueSelections = (
   contextID: string
 ): ValueSelections => {
   const contextValues: VariableValuesByID =
-    get(state, `resources.variables.values.${contextID}.values`) || {}
+    get(state, `variables.values.${contextID}.values`) || {}
 
   const selections: ValueSelections = Object.keys(contextValues).reduce(
     (acc, k) => {
@@ -179,7 +177,7 @@ const getVariableAssignmentsMemoized = memoizeOne(
     const result: VariableAssignment[] = Object.entries(
       valuesState.values
     ).reduce((acc, [variableID, values]) => {
-      const variableName = get(variablesState, [variableID, 'name'])
+      const variableName = get(variablesState, [variableID, 'variable', 'name'])
 
       if (!variableName || !values || !values.selectedValue) {
         return acc
@@ -197,8 +195,8 @@ export const getVariableAssignments = (
   contextID: string
 ): VariableAssignment[] =>
   getVariableAssignmentsMemoized(
-    state.resources.variables.values[contextID],
-    state.resources.variables.byID
+    state.variables.values[contextID],
+    state.variables.variables
   )
 
 export const getTimeMachineValues = (
@@ -208,7 +206,7 @@ export const getTimeMachineValues = (
   const activeTimeMachineID = state.timeMachines.activeTimeMachineID
   const values = get(
     state,
-    `resources.variables.values.${activeTimeMachineID}.values.${variableID}`
+    `variables.values.${activeTimeMachineID}.values.${variableID}`
   )
 
   return values
@@ -220,7 +218,7 @@ export const getTimeMachineValuesStatus = (
   const activeTimeMachineID = state.timeMachines.activeTimeMachineID
   const valuesStatus = get(
     state,
-    `resources.variables.values.${activeTimeMachineID}.status`
+    `variables.values.${activeTimeMachineID}.status`
   )
 
   return valuesStatus
@@ -229,18 +227,18 @@ export const getTimeMachineValuesStatus = (
 export const getDashboardVariablesStatus = (
   state: AppState
 ): RemoteDataState => {
-  return get(state, 'resources.variables.status')
+  return get(state, 'variables.status')
 }
 
 export const getDashboardValuesStatus = (
   state: AppState,
   dashboardID: string
 ): RemoteDataState => {
-  return get(state, `resources.variables.values.${dashboardID}.status`)
+  return get(state, `variables.values.${dashboardID}.status`)
 }
 
 export const getVariable = (state: AppState, variableID: string): Variable => {
-  return get(state, `resources.variables.byID.${variableID}`)
+  return get(state, `variables.variables.${variableID}.variable`)
 }
 
 export const getHydratedVariables = (
@@ -248,12 +246,12 @@ export const getHydratedVariables = (
   contextID: string
 ): Variable[] => {
   const hydratedVariableIDs: string[] = Object.keys(
-    get(state, `resources.variables.values.${contextID}.values`, {})
+    get(state, `variables.values.${contextID}.values`, {})
   )
 
-  const hydratedVariables = Object.values(
-    state.resources.variables.byID
-  ).filter(v => hydratedVariableIDs.includes(v.id))
+  const hydratedVariables = Object.values(state.variables.variables)
+    .map(d => d.variable)
+    .filter(v => hydratedVariableIDs.includes(v.id))
 
   return hydratedVariables
 }

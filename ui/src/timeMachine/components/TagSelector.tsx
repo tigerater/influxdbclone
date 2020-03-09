@@ -123,7 +123,6 @@ class TagSelector extends PureComponent<Props> {
 
   private get body() {
     const {
-      aggregateFunctionType,
       index,
       keys,
       keysStatus,
@@ -152,28 +151,26 @@ class TagSelector extends PureComponent<Props> {
     return (
       <>
         <BuilderCard.Menu testID={`tag-selector--container ${index}`}>
-          {aggregateFunctionType !== 'group' && (
-            <FlexBox
-              direction={FlexDirection.Row}
-              alignItems={AlignItems.Center}
-              margin={ComponentSize.Small}
-            >
-              <SearchableDropdown
-                searchTerm={keysSearchTerm}
-                emptyText="No Tags Found"
-                searchPlaceholder="Search keys..."
-                selectedOption={selectedKey}
-                onSelect={this.handleSelectTag}
-                buttonStatus={toComponentStatus(keysStatus)}
-                onChangeSearchTerm={this.handleKeysSearch}
-                testID="tag-selector--dropdown"
-                buttonTestID="tag-selector--dropdown-button"
-                menuTestID="tag-selector--dropdown-menu"
-                options={keys}
-              />
-              {this.selectedCounter}
-            </FlexBox>
-          )}
+          <FlexBox
+            direction={FlexDirection.Row}
+            alignItems={AlignItems.Center}
+            margin={ComponentSize.Small}
+          >
+            <SearchableDropdown
+              searchTerm={keysSearchTerm}
+              emptyText="No Tags Found"
+              searchPlaceholder="Search keys..."
+              selectedOption={selectedKey}
+              onSelect={this.handleSelectTag}
+              buttonStatus={toComponentStatus(keysStatus)}
+              onChangeSearchTerm={this.handleKeysSearch}
+              testID="tag-selector--dropdown"
+              buttonTestID="tag-selector--dropdown-button"
+              menuTestID="tag-selector--dropdown-menu"
+              options={keys}
+            />
+            {this.selectedCounter}
+          </FlexBox>
           <Input
             value={valuesSearchTerm}
             placeholder={`Search ${selectedKey} tag values`}

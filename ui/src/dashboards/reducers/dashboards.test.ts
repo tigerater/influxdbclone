@@ -8,8 +8,8 @@ import {
   removeDashboard,
   editDashboard,
   removeCell,
-  addDashboardLabel,
-  removeDashboardLabel,
+  addDashboardLabels,
+  removeDashboardLabels,
 } from 'src/dashboards/actions/'
 
 // Resources
@@ -69,10 +69,10 @@ describe('dashboards reducer', () => {
 
   it('can add labels to a dashboard', () => {
     const dashboardWithoutLabels = {...dashboard, labels: []}
-    const expected = {status, list: [{...dashboard, labels: [labels[0]]}]}
+    const expected = {status, list: [{...dashboard, labels}]}
     const actual = reducer(
       {status, list: [dashboardWithoutLabels]},
-      addDashboardLabel(dashboardWithoutLabels.id, labels[0])
+      addDashboardLabels(dashboardWithoutLabels.id, labels)
     )
 
     expect(actual).toEqual(expected)
@@ -82,12 +82,12 @@ describe('dashboards reducer', () => {
     const leftOverLabel = {...labels[0], name: 'wowowowo', id: '3'}
     const dashboardWithLabels = {
       ...dashboard,
-      labels: [labels[0], leftOverLabel],
+      labels: [...labels, leftOverLabel],
     }
     const expected = {status, list: [{...dashboard, labels: [leftOverLabel]}]}
     const actual = reducer(
       {status, list: [dashboardWithLabels]},
-      removeDashboardLabel(dashboardWithLabels.id, labels[0])
+      removeDashboardLabels(dashboardWithLabels.id, labels)
     )
 
     expect(actual).toEqual(expected)

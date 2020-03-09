@@ -17,7 +17,7 @@ import {
 import VariableArgumentsEditor from 'src/variables/components/VariableArgumentsEditor'
 
 // Actions
-import {updateVariable} from 'src/variables/actions/thunks'
+import {updateVariable} from 'src/variables/actions'
 
 // Utils
 import {extractVariablesList} from 'src/variables/selectors'

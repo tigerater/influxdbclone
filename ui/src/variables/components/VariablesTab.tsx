@@ -5,7 +5,7 @@ import {connect} from 'react-redux'
 import {withRouter, WithRouterProps} from 'react-router'
 
 // Utils
-import {deleteVariable} from 'src/variables/actions/thunks'
+import {deleteVariable} from 'src/variables/actions'
 import {extractVariablesList} from 'src/variables/selectors'
 
 // Components

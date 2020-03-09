@@ -8,29 +8,13 @@ import (
 	"github.com/influxdata/influxdb/cmd/influx/internal"
 	"github.com/influxdata/influxdb/http"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
 
-func cmdAuth() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:     "auth",
-		Aliases: []string{"authorization"},
-		Short:   "Authorization management commands",
-		Run:     seeHelp,
-	}
-	cmd.AddCommand(
-		authActiveCmd(),
-		authCreateCmd(),
-		authDeleteCmd(),
-		authFindCmd(),
-		authInactiveCmd(),
-	)
-
-	return cmd
-}
-
-var authCreateFlags struct {
+// AuthorizationCreateFlags are command line args used when creating a authorization
+type AuthorizationCreateFlags struct {
 	user string
-	org  organization
+	org  string
 
 	writeUserPermission bool
 	readUserPermission  bool
@@ -63,13 +47,39 @@ var authCreateFlags struct {
 	readNotificationEndpointPermission  bool
 }
 
+var authCreateFlags AuthorizationCreateFlags
+
+func authCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:     "auth",
+		Aliases: []string{"authorization"},
+		Short:   "Authorization management commands",
+		Run:     seeHelp,
+	}
+	cmd.AddCommand(
+		authActiveCmd(),
+		authCreateCmd(),
+		authDeleteCmd(),
+		authFindCmd(),
+		authInactiveCmd(),
+	)
+
+	return cmd
+}
+
 func authCreateCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "create",
 		Short: "Create authorization",
 		RunE:  wrapCheckSetup(authorizationCreateF),
 	}
-	authCreateFlags.org.register(cmd, false)
+
+	cmd.Flags().StringVarP(&authCreateFlags.org, "org", "o", "", "The organization name (required)")
+	cmd.MarkFlagRequired("org")
+	viper.BindEnv("ORG")
+	if h := viper.GetString("ORG"); h != "" {
+		authCreateFlags.org = h
+	}
 
 	cmd.Flags().StringVarP(&authCreateFlags.user, "user", "u", "", "The user name")
 
@@ -107,16 +117,15 @@ func authCreateCmd() *cobra.Command {
 }
 
 func authorizationCreateF(cmd *cobra.Command, args []string) error {
-	if err := authCreateFlags.org.validOrgFlags(); err != nil {
-		return err
-	}
-
+	var permissions []platform.Permission
 	orgSvc, err := newOrganizationService()
 	if err != nil {
 		return err
 	}
 
-	orgID, err := authCreateFlags.org.getID(orgSvc)
+	ctx := context.Background()
+	orgFilter := platform.OrganizationFilter{Name: &authCreateFlags.org}
+	o, err := orgSvc.FindOrganization(ctx, orgFilter)
 	if err != nil {
 		return err
 	}
@@ -129,7 +138,6 @@ func authorizationCreateF(cmd *cobra.Command, args []string) error {
 		{action: platform.WriteAction, perms: authCreateFlags.writeBucketPermissions},
 	}
 
-	var permissions []platform.Permission
 	for _, bp := range bucketPerms {
 		for _, p := range bp.perms {
 			var id platform.ID
@@ -137,7 +145,7 @@ func authorizationCreateF(cmd *cobra.Command, args []string) error {
 				return err
 			}
 
-			p, err := platform.NewPermissionAtID(id, bp.action, platform.BucketsResourceType, orgID)
+			p, err := platform.NewPermissionAtID(id, bp.action, platform.BucketsResourceType, o.ID)
 			if err != nil {
 				return err
 			}
@@ -208,7 +216,7 @@ func authorizationCreateF(cmd *cobra.Command, args []string) error {
 		}
 
 		for _, action := range actions {
-			p, err := platform.NewPermission(action, provided.ResourceType, orgID)
+			p, err := platform.NewPermission(action, provided.ResourceType, o.ID)
 			if err != nil {
 				return err
 			}
@@ -218,7 +226,7 @@ func authorizationCreateF(cmd *cobra.Command, args []string) error {
 
 	authorization := &platform.Authorization{
 		Permissions: permissions,
-		OrgID:       orgID,
+		OrgID:       o.ID,
 	}
 
 	if userName := authCreateFlags.user; userName != "" {
@@ -226,7 +234,7 @@ func authorizationCreateF(cmd *cobra.Command, args []string) error {
 		if err != nil {
 			return err
 		}
-		user, err := userSvc.FindUser(context.Background(), platform.UserFilter{
+		user, err := userSvc.FindUser(ctx, platform.UserFilter{
 			Name: &userName,
 		})
 		if err != nil {
@@ -235,7 +243,7 @@ func authorizationCreateF(cmd *cobra.Command, args []string) error {
 		authorization.UserID = user.ID
 	}
 
-	s, err := newAuthorizationService()
+	s, err := newAuthorizationService(flags)
 	if err != nil {
 		return err
 	}
@@ -271,12 +279,16 @@ func authorizationCreateF(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var authorizationFindFlags struct {
-	org    organization
+// AuthorizationFindFlags are command line args used when finding a authorization
+type AuthorizationFindFlags struct {
 	user   string
 	userID string
+	org    string
+	orgID  string
 	id     string
 }
+
+var authorizationFindFlags AuthorizationFindFlags
 
 func authFindCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -287,13 +299,23 @@ func authFindCmd() *cobra.Command {
 
 	cmd.Flags().StringVarP(&authorizationFindFlags.user, "user", "u", "", "The user")
 	cmd.Flags().StringVarP(&authorizationFindFlags.userID, "user-id", "", "", "The user ID")
+	cmd.Flags().StringVarP(&authorizationFindFlags.org, "org", "o", "", "The org")
+	viper.BindEnv("ORG")
+	if h := viper.GetString("ORG"); h != "" {
+		authorizationFindFlags.org = h
+	}
 
+	cmd.Flags().StringVarP(&authorizationFindFlags.orgID, "org-id", "", "", "The org ID")
+	viper.BindEnv("ORG_ID")
+	if h := viper.GetString("ORG_ID"); h != "" {
+		authorizationFindFlags.orgID = h
+	}
 	cmd.Flags().StringVarP(&authorizationFindFlags.id, "id", "i", "", "The authorization ID")
 
 	return cmd
 }
 
-func newAuthorizationService() (platform.AuthorizationService, error) {
+func newAuthorizationService(f Flags) (platform.AuthorizationService, error) {
 	if flags.local {
 		return newLocalKVService()
 	}
@@ -309,7 +331,7 @@ func newAuthorizationService() (platform.AuthorizationService, error) {
 }
 
 func authorizationFindF(cmd *cobra.Command, args []string) error {
-	s, err := newAuthorizationService()
+	s, err := newAuthorizationService(flags)
 	if err != nil {
 		return err
 	}
@@ -332,11 +354,11 @@ func authorizationFindF(cmd *cobra.Command, args []string) error {
 		}
 		filter.UserID = uID
 	}
-	if authorizationFindFlags.org.name != "" {
-		filter.Org = &authorizationFindFlags.org.name
+	if authorizationFindFlags.org != "" {
+		filter.Org = &authorizationFindFlags.org
 	}
-	if authorizationFindFlags.org.id != "" {
-		oID, err := platform.IDFromString(authorizationFindFlags.org.id)
+	if authorizationFindFlags.orgID != "" {
+		oID, err := platform.IDFromString(authorizationFindFlags.orgID)
 		if err != nil {
 			return err
 		}
@@ -378,9 +400,12 @@ func authorizationFindF(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var authorizationDeleteFlags struct {
+// AuthorizationDeleteFlags are command line args used when deleting a authorization
+type AuthorizationDeleteFlags struct {
 	id string
 }
+
+var authorizationDeleteFlags AuthorizationDeleteFlags
 
 func authDeleteCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -396,7 +421,7 @@ func authDeleteCmd() *cobra.Command {
 }
 
 func authorizationDeleteF(cmd *cobra.Command, args []string) error {
-	s, err := newAuthorizationService()
+	s, err := newAuthorizationService(flags)
 	if err != nil {
 		return err
 	}
@@ -444,9 +469,12 @@ func authorizationDeleteF(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var authorizationActiveFlags struct {
+// AuthorizationActiveFlags are command line args used when enabling an authorization
+type AuthorizationActiveFlags struct {
 	id string
 }
+
+var authorizationActiveFlags AuthorizationActiveFlags
 
 func authActiveCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -462,7 +490,7 @@ func authActiveCmd() *cobra.Command {
 }
 
 func authorizationActiveF(cmd *cobra.Command, args []string) error {
-	s, err := newAuthorizationService()
+	s, err := newAuthorizationService(flags)
 	if err != nil {
 		return err
 	}
@@ -512,9 +540,12 @@ func authorizationActiveF(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-var authorizationInactiveFlags struct {
+// AuthorizationInactiveFlags are command line args used when disabling an authorization
+type AuthorizationInactiveFlags struct {
 	id string
 }
+
+var authorizationInactiveFlags AuthorizationInactiveFlags
 
 func authInactiveCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -530,7 +561,7 @@ func authInactiveCmd() *cobra.Command {
 }
 
 func authorizationInactiveF(cmd *cobra.Command, args []string) error {
-	s, err := newAuthorizationService()
+	s, err := newAuthorizationService(flags)
 	if err != nil {
 		return err
 	}

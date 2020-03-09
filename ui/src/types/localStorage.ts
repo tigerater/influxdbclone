@@ -1,3 +1,4 @@
+import {VariablesState} from 'src/variables/reducers'
 import {UserSettingsState} from 'src/userSettings/reducers'
 import {AutoRefreshState} from 'src/shared/reducers/autoRefresh'
 import {RangeState} from 'src/dashboards/reducers/ranges'
@@ -8,9 +9,9 @@ export interface LocalStorage {
   app: AppState['app']
   ranges: RangeState
   autoRefresh: AutoRefreshState
+  variables: VariablesState
   userSettings: UserSettingsState
   resources: {
     orgs: ResourceState['orgs']
-    variables: ResourceState['variables']
   }
 }

@@ -1,19 +1,15 @@
 // Libraries
-import React, {FC} from 'react'
+import React, {FC, ChangeEvent} from 'react'
 
 // Components
-import {Form, Grid, Columns} from '@influxdata/clockface'
-import DurationInput from 'src/shared/components/DurationInput'
+import {Form, Input, InputType, Grid, Columns} from '@influxdata/clockface'
 
 // Types
 import {RuleState} from './RuleOverlay.reducer'
-import {DURATION_STRINGS} from 'src/timeMachine/constants/queryBuilder'
-import {NotificationRuleDraft} from 'src/types'
-import {CHECK_OFFSET_OPTIONS} from 'src/alerting/constants'
 
 interface Props {
   rule: RuleState
-  onChange: (key: keyof NotificationRuleDraft) => (value: string) => void
+  onChange: (e: ChangeEvent) => void
 }
 
 const RuleSchedule: FC<Props> = ({rule, onChange}) => {
@@ -23,11 +19,12 @@ const RuleSchedule: FC<Props> = ({rule, onChange}) => {
     <Grid.Row>
       <Grid.Column widthXS={Columns.Four}>
         <Form.Element label="Schedule Every">
-          <DurationInput
-            value={every || ''}
-            onSubmit={onChange('every')}
-            suggestions={DURATION_STRINGS}
+          <Input
+            value={every}
+            name="every"
+            type={InputType.Text}
             placeholder="1d3h30s"
+            onChange={onChange}
             testID="rule-schedule-every--input"
           />
         </Form.Element>
@@ -35,11 +32,12 @@ const RuleSchedule: FC<Props> = ({rule, onChange}) => {
 
       <Grid.Column widthXS={Columns.Four}>
         <Form.Element label="Offset">
-          <DurationInput
-            value={offset || ''}
-            onSubmit={onChange('offset')}
-            suggestions={CHECK_OFFSET_OPTIONS}
-            placeholder="10m"
+          <Input
+            name="offset"
+            type={InputType.Text}
+            value={offset}
+            placeholder="20m"
+            onChange={onChange}
             testID="rule-schedule-offset--input"
           />
         </Form.Element>

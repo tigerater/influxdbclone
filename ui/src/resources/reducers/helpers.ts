@@ -12,8 +12,11 @@ export const setResource = <R>(
   const {status, schema} = action
 
   draftState.status = status
+  if (!draftState.byID) {
+    draftState.byID = {}
+  }
 
-  if (get(schema, ['entities', resource])) {
+  if (get(schema, 'entities')) {
     draftState.byID = schema.entities[resource]
     draftState.allIDs = schema.result
   }
@@ -27,8 +30,13 @@ export const addResource = <R>(
   resource: ResourceType
 ) => {
   const {result, entities} = action.schema
+  const r = entities[resource][result]
 
-  draftState.byID[result] = entities[resource][result]
+  if (!draftState.byID) {
+    draftState.byID = {}
+  }
+
+  draftState.byID[result] = r
   draftState.allIDs.push(result)
 }
 
@@ -38,8 +46,12 @@ export const editResource = <R>(
   resource: ResourceType
 ) => {
   const {entities, result} = action.schema
+  if (!draftState.byID) {
+    draftState.byID = {}
+  }
 
-  draftState.byID[result] = entities[resource][result]
+  const bucket = entities[resource][result]
+  draftState.byID[result] = bucket
 }
 
 interface RemoveAction {

@@ -3,7 +3,6 @@ import {
   durationToMilliseconds,
   areDurationsEqual,
   millisecondsToDuration,
-  isDurationWithNowParseable,
   isDurationParseable,
 } from 'src/shared/utils/duration'
 import {SELECTABLE_TIME_RANGES} from 'src/shared/constants/timeRanges'
@@ -70,33 +69,18 @@ describe('millisecondsToDuration', () => {
   })
 })
 
-describe('isDurationWithNowParseable', () => {
+describe('isDurationParseable', () => {
   test('returns false when passed invalid durations', () => {
-    expect(isDurationWithNowParseable('1h')).toBe(false)
-    expect(isDurationWithNowParseable('moo')).toBe(false)
-    expect(isDurationWithNowParseable('123')).toBe(false)
-    expect(isDurationWithNowParseable('now()')).toBe(false)
+    expect(isDurationParseable('1h')).toBe(false)
+    expect(isDurationParseable('moo')).toBe(false)
+    expect(isDurationParseable('123')).toBe(false)
+    expect(isDurationParseable('now()')).toBe(false)
   })
 
   test.each(SELECTABLE_TIME_RANGES)(
     'returns true when passed valid duration',
     ({lower}) => {
-      expect(isDurationWithNowParseable(lower)).toEqual(true)
-    }
-  )
-})
-
-describe('isDurationParseable', () => {
-  test('returns false when passed invalid durations', () => {
-    expect(isDurationParseable('moo')).toBe(false)
-    expect(isDurationParseable('123')).toBe(false)
-    expect(isDurationParseable('now()-1h')).toBe(false)
-  })
-
-  test.each(TEST_CASES)(
-    'returns true when passed valid duration',
-    (input, _) => {
-      expect(isDurationParseable(input)).toEqual(true)
+      expect(isDurationParseable(lower)).toEqual(true)
     }
   )
 })

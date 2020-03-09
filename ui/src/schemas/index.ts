@@ -2,14 +2,7 @@
 import {schema} from 'normalizr'
 
 // Types
-import {
-  ResourceType,
-  Telegraf,
-  Task,
-  Label,
-  RemoteDataState,
-  Variable,
-} from 'src/types'
+import {ResourceType, Telegraf, Task, Label} from 'src/types'
 
 // Utils
 import {addLabelDefaults} from 'src/labels/utils'
@@ -44,10 +37,7 @@ export const task = new schema.Entity(
   ResourceType.Tasks,
   {},
   {
-    processStrategy: (task: Task): Task => ({
-      ...task,
-      labels: addLabels(task),
-    }),
+    processStrategy: (task: Task) => addLabels<Task>(task),
   }
 )
 
@@ -61,7 +51,7 @@ export const telegraf = new schema.Entity(
   {},
   {
     // add buckets to metadata if not present
-    processStrategy: (t: Telegraf): Telegraf => {
+    processStrategy: (t: Telegraf) => {
       if (!t.metadata) {
         return {
           ...t,
@@ -95,30 +85,9 @@ export const arrayOfTelegrafs = [telegraf]
 export const scraper = new schema.Entity(ResourceType.Scrapers)
 export const arrayOfScrapers = [scraper]
 
-/* Variables */
-
-// Defines the schema for the "variables" resource
-export const variable = new schema.Entity(
-  ResourceType.Variables,
-  {},
-  {
-    processStrategy: (v: Variable): Variable => {
-      return {
-        ...v,
-        labels: addLabels(v),
-        status: addStatus(v),
-      }
-    },
+export const addLabels = <R extends {labels?: Label[]}>(resource: R): R => {
+  return {
+    ...resource,
+    labels: (resource.labels || []).map(addLabelDefaults),
   }
-)
-export const arrayOfVariables = [variable]
-
-const addStatus = <R extends {status: RemoteDataState}>(resource: R) => {
-  return resource.status ? resource.status : RemoteDataState.Done
-}
-
-export const addLabels = <R extends {labels?: Label[]}>(
-  resource: R
-): Label[] => {
-  return (resource.labels || []).map(addLabelDefaults)
 }

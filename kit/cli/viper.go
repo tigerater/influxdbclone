@@ -6,20 +6,13 @@ import (
 	"time"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/pflag"
 	"github.com/spf13/viper"
 )
 
 // Opt is a single command-line option
 type Opt struct {
-	DestP interface{} // pointer to the destination
-
-	EnvVar     string
-	Flag       string
-	Persistent bool
-	Required   bool
-	Short      rune // using rune b/c it guarantees correctness. a short must always be a string of length 1
-
+	DestP   interface{} // pointer to the destination
+	Flag    string
 	Default interface{}
 	Desc    string
 }
@@ -73,83 +66,47 @@ func NewCommand(p *Program) *cobra.Command {
 // registers those options with viper.
 func BindOptions(cmd *cobra.Command, opts []Opt) {
 	for _, o := range opts {
-		flagset := cmd.Flags()
-		if o.Persistent {
-			flagset = cmd.PersistentFlags()
-		}
-
-		if o.Required {
-			cmd.MarkFlagRequired(o.Flag)
-		}
-
-		envVar := o.Flag
-		if o.EnvVar != "" {
-			envVar = o.EnvVar
-		}
-
-		hasShort := o.Short != 0
-
 		switch destP := o.DestP.(type) {
 		case *string:
 			var d string
 			if o.Default != nil {
 				d = o.Default.(string)
 			}
-			if hasShort {
-				flagset.StringVarP(destP, o.Flag, string(o.Short), d, o.Desc)
-			} else {
-				flagset.StringVar(destP, o.Flag, d, o.Desc)
-			}
-			mustBindPFlag(o.Flag, flagset)
-			*destP = viper.GetString(envVar)
+			cmd.Flags().StringVar(destP, o.Flag, d, o.Desc)
+			mustBindPFlag(o.Flag, cmd)
+			*destP = viper.GetString(o.Flag)
 		case *int:
 			var d int
 			if o.Default != nil {
 				d = o.Default.(int)
 			}
-			if hasShort {
-				flagset.IntVarP(destP, o.Flag, string(o.Short), d, o.Desc)
-			} else {
-				flagset.IntVar(destP, o.Flag, d, o.Desc)
-			}
-			mustBindPFlag(o.Flag, flagset)
-			*destP = viper.GetInt(envVar)
+			cmd.Flags().IntVar(destP, o.Flag, d, o.Desc)
+			mustBindPFlag(o.Flag, cmd)
+			*destP = viper.GetInt(o.Flag)
 		case *bool:
 			var d bool
 			if o.Default != nil {
 				d = o.Default.(bool)
 			}
-			if hasShort {
-				flagset.BoolVarP(destP, o.Flag, string(o.Short), d, o.Desc)
-			} else {
-				flagset.BoolVar(destP, o.Flag, d, o.Desc)
-			}
-			mustBindPFlag(o.Flag, flagset)
-			*destP = viper.GetBool(envVar)
+			cmd.Flags().BoolVar(destP, o.Flag, d, o.Desc)
+			mustBindPFlag(o.Flag, cmd)
+			*destP = viper.GetBool(o.Flag)
 		case *time.Duration:
 			var d time.Duration
 			if o.Default != nil {
 				d = o.Default.(time.Duration)
 			}
-			if hasShort {
-				flagset.DurationVarP(destP, o.Flag, string(o.Short), d, o.Desc)
-			} else {
-				flagset.DurationVar(destP, o.Flag, d, o.Desc)
-			}
-			mustBindPFlag(o.Flag, flagset)
-			*destP = viper.GetDuration(envVar)
+			cmd.Flags().DurationVar(destP, o.Flag, d, o.Desc)
+			mustBindPFlag(o.Flag, cmd)
+			*destP = viper.GetDuration(o.Flag)
 		case *[]string:
 			var d []string
 			if o.Default != nil {
 				d = o.Default.([]string)
 			}
-			if hasShort {
-				flagset.StringSliceVarP(destP, o.Flag, string(o.Short), d, o.Desc)
-			} else {
-				flagset.StringSliceVar(destP, o.Flag, d, o.Desc)
-			}
-			mustBindPFlag(o.Flag, flagset)
-			*destP = viper.GetStringSlice(envVar)
+			cmd.Flags().StringSliceVar(destP, o.Flag, d, o.Desc)
+			mustBindPFlag(o.Flag, cmd)
+			*destP = viper.GetStringSlice(o.Flag)
 		default:
 			// if you get a panic here, sorry about that!
 			// anyway, go ahead and make a PR and add another type.
@@ -158,8 +115,8 @@ func BindOptions(cmd *cobra.Command, opts []Opt) {
 	}
 }
 
-func mustBindPFlag(key string, flagset *pflag.FlagSet) {
-	if err := viper.BindPFlag(key, flagset.Lookup(key)); err != nil {
+func mustBindPFlag(key string, cmd *cobra.Command) {
+	if err := viper.BindPFlag(key, cmd.Flags().Lookup(key)); err != nil {
 		panic(err)
 	}
 }

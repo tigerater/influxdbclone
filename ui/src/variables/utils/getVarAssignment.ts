@@ -2,7 +2,8 @@
 import {parseDuration} from 'src/shared/utils/duration'
 
 // Types
-import {VariableValues, VariableAssignment} from 'src/types'
+import {VariableValues} from 'src/variables/types'
+import {VariableAssignment} from 'src/types/ast'
 
 export const getVarAssignment = (
   name: string,

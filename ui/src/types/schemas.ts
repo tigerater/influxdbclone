@@ -1,7 +1,6 @@
 // Types
 import {
   Task,
-  Variable,
   Telegraf,
   Member,
   Bucket,
@@ -9,6 +8,8 @@ import {
   Organization,
   Authorization,
 } from 'src/types'
+
+// TODO: make these Entities generic
 
 // AuthEntities defines the result of normalizr's normalization
 // of the "authorizations" resource
@@ -63,13 +64,5 @@ export interface ScraperEntities {
 export interface TaskEntities {
   tasks: {
     [uuid: string]: Task
-  }
-}
-
-// VariableEntities defines the result of normalizr's normalization
-// of the "variables" resource
-export interface VariableEntities {
-  variables: {
-    [uuid: string]: Variable
   }
 }

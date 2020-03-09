@@ -1,28 +1,18 @@
 // Libraries
-import React, {
-  PureComponent,
-  ChangeEvent,
-  KeyboardEvent,
-  RefObject,
-} from 'react'
+import React, {Component, ChangeEvent, KeyboardEvent} from 'react'
 import _ from 'lodash'
 
 // Components
 import {Input} from '@influxdata/clockface'
 import InlineLabelsList from 'src/shared/components/inlineLabels/InlineLabelsList'
+import {ClickOutside} from 'src/shared/components/ClickOutside'
 
 // Constants
 import {ADD_NEW_LABEL_ITEM_ID} from 'src/shared/components/inlineLabels/InlineLabelsEditor'
 
 // Types
 import {Label} from 'src/types'
-import {
-  Appearance,
-  IconFont,
-  Popover,
-  PopoverPosition,
-  PopoverInteraction,
-} from '@influxdata/clockface'
+import {IconFont} from '@influxdata/clockface'
 
 // Decorators
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -34,10 +24,10 @@ enum ArrowDirection {
 
 interface Props {
   searchTerm: string
-  triggerRef: RefObject<HTMLButtonElement>
   selectedItemID: string
   onUpdateSelectedItemID: (highlightedID: string) => void
   allLabelsUsed: boolean
+  onDismiss: () => void
   onStartCreatingLabel: () => void
   onInputChange: (e: ChangeEvent<HTMLInputElement>) => void
   filteredLabels: Label[]
@@ -45,61 +35,62 @@ interface Props {
 }
 
 @ErrorHandling
-export default class InlineLabelPopover extends PureComponent<Props> {
+export default class InlineLabelPopover extends Component<Props> {
   public render() {
     const {
       searchTerm,
       allLabelsUsed,
       selectedItemID,
       onAddLabel,
-      triggerRef,
+      onDismiss,
       onStartCreatingLabel,
       onUpdateSelectedItemID,
       onInputChange,
       filteredLabels,
     } = this.props
-
     return (
-      <Popover
-        appearance={Appearance.Outline}
-        position={PopoverPosition.Below}
-        triggerRef={triggerRef}
-        distanceFromTrigger={8}
-        showEvent={PopoverInteraction.Click}
-        hideEvent={PopoverInteraction.Click}
-        testID="inline-labels--popover"
-        contents={() => (
-          <span>
-            <h5 className="inline-labels--popover-heading">Add Labels</h5>
-            <Input
-              icon={IconFont.Search}
-              placeholder="Filter labels..."
-              value={searchTerm}
-              onKeyDown={this.handleKeyDown}
-              onChange={onInputChange}
-              autoFocus={true}
-              onBlur={this.handleRefocusInput}
-              testID="inline-labels--popover-field"
-            />
-            <InlineLabelsList
-              searchTerm={searchTerm}
-              allLabelsUsed={allLabelsUsed}
-              filteredLabels={filteredLabels}
-              selectedItemID={selectedItemID}
-              onItemClick={onAddLabel}
-              onUpdateSelectedItemID={onUpdateSelectedItemID}
-              onStartCreatingLabel={onStartCreatingLabel}
-            />
-          </span>
-        )}
-      />
+      <ClickOutside onClickOutside={onDismiss}>
+        <div
+          className="inline-labels--popover"
+          data-testid="inline-labels--popover"
+        >
+          <h5 className="inline-labels--popover-heading">Add Labels</h5>
+          <Input
+            icon={IconFont.Search}
+            placeholder="Filter labels..."
+            value={searchTerm}
+            onKeyDown={this.handleKeyDown}
+            onChange={onInputChange}
+            autoFocus={true}
+            onBlur={this.handleRefocusInput}
+            testID="inline-labels--popover-field"
+          />
+          <InlineLabelsList
+            searchTerm={searchTerm}
+            allLabelsUsed={allLabelsUsed}
+            filteredLabels={filteredLabels}
+            selectedItemID={selectedItemID}
+            onItemClick={onAddLabel}
+            onUpdateSelectedItemID={onUpdateSelectedItemID}
+            onStartCreatingLabel={onStartCreatingLabel}
+          />
+        </div>
+      </ClickOutside>
     )
   }
 
   private handleKeyDown = (e: KeyboardEvent<HTMLInputElement>): void => {
-    const {selectedItemID, onAddLabel, onStartCreatingLabel} = this.props
+    const {
+      selectedItemID,
+      onDismiss,
+      onAddLabel,
+      onStartCreatingLabel,
+    } = this.props
 
     switch (e.key) {
+      case 'Escape':
+        onDismiss()
+        break
       case 'Enter':
         e.preventDefault()
         e.stopPropagation()

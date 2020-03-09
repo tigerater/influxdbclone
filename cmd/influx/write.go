@@ -13,7 +13,17 @@ import (
 	"github.com/influxdata/influxdb/models"
 	"github.com/influxdata/influxdb/write"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 )
+
+var writeCmd = &cobra.Command{
+	Use:   "write line protocol or @/path/to/points.txt",
+	Short: "Write points to InfluxDB",
+	Long: `Write a single line of line protocol to InfluxDB,
+or add an entire file specified with an @ prefix.`,
+	Args: cobra.ExactArgs(1),
+	RunE: wrapCheckSetup(fluxWriteF),
+}
 
 var writeFlags struct {
 	OrgID     string
@@ -23,56 +33,36 @@ var writeFlags struct {
 	Precision string
 }
 
-func cmdWrite() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "write line protocol or @/path/to/points.txt",
-		Short: "Write points to InfluxDB",
-		Long: `Write a single line of line protocol to InfluxDB,
-or add an entire file specified with an @ prefix.`,
-		Args: cobra.ExactArgs(1),
-		RunE: wrapCheckSetup(fluxWriteF),
+func init() {
+	writeCmd.PersistentFlags().StringVar(&writeFlags.OrgID, "org-id", "", "The ID of the organization that owns the bucket")
+	viper.BindEnv("ORG_ID")
+	if h := viper.GetString("ORG_ID"); h != "" {
+		writeFlags.OrgID = h
 	}
 
-	opts := flagOpts{
-		{
-			DestP:      &writeFlags.OrgID,
-			Flag:       "org-id",
-			Desc:       "The ID of the organization that owns the bucket",
-			Persistent: true,
-		},
-		{
-			DestP:      &writeFlags.Org,
-			Flag:       "org",
-			Short:      'o',
-			Desc:       "The name of the organization that owns the bucket",
-			Persistent: true,
-		},
-		{
-			DestP:      &writeFlags.BucketID,
-			Flag:       "bucket-id",
-			Desc:       "The ID of destination bucket",
-			Persistent: true,
-		},
-		{
-			DestP:      &writeFlags.Bucket,
-			Flag:       "bucket",
-			Short:      'b',
-			EnvVar:     "BUCKET_NAME",
-			Desc:       "The name of destination bucket",
-			Persistent: true,
-		},
-		{
-			DestP:      &writeFlags.Precision,
-			Flag:       "precision",
-			Short:      'p',
-			Default:    "ns",
-			Desc:       "Precision of the timestamps of the lines",
-			Persistent: true,
-		},
+	writeCmd.PersistentFlags().StringVarP(&writeFlags.Org, "org", "o", "", "The name of the organization that owns the bucket")
+	viper.BindEnv("ORG")
+	if h := viper.GetString("ORG"); h != "" {
+		writeFlags.Org = h
 	}
-	opts.mustRegister(cmd)
 
-	return cmd
+	writeCmd.PersistentFlags().StringVar(&writeFlags.BucketID, "bucket-id", "", "The ID of destination bucket")
+	viper.BindEnv("BUCKET_ID")
+	if h := viper.GetString("BUCKET_ID"); h != "" {
+		writeFlags.BucketID = h
+	}
+
+	writeCmd.PersistentFlags().StringVarP(&writeFlags.Bucket, "bucket", "b", "", "The name of destination bucket")
+	viper.BindEnv("BUCKET_NAME")
+	if h := viper.GetString("BUCKET_NAME"); h != "" {
+		writeFlags.Bucket = h
+	}
+
+	writeCmd.PersistentFlags().StringVarP(&writeFlags.Precision, "precision", "p", "ns", "Precision of the timestamps of the lines")
+	viper.BindEnv("PRECISION")
+	if p := viper.GetString("PRECISION"); p != "" {
+		writeFlags.Precision = p
+	}
 }
 
 func fluxWriteF(cmd *cobra.Command, args []string) error {
@@ -90,9 +80,13 @@ func fluxWriteF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("invalid precision")
 	}
 
-	bs, err := newBucketService()
+	httpClient, err := newHTTPClient()
 	if err != nil {
 		return err
+	}
+
+	bs := &http.BucketService{
+		Client: httpClient,
 	}
 
 	var filter platform.BucketFilter

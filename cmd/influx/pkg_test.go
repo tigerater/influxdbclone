@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestCmdPkg(t *testing.T) {
+func Test_Pkg(t *testing.T) {
 	fakeSVCFn := func(svc pkger.SVC) pkgSVCsFn {
 		return func() (pkger.SVC, influxdb.OrganizationService, error) {
 			return svc, &mock.OrganizationService{
@@ -39,8 +39,6 @@ func TestCmdPkg(t *testing.T) {
 		}
 		assert.Equal(t, expected, actual)
 	}
-
-	setViperOptions()
 
 	t.Run("new", func(t *testing.T) {
 		tests := []struct {
@@ -161,7 +159,7 @@ func TestCmdPkg(t *testing.T) {
 						{name: "description", val: "new desc"},
 						{name: "version", val: "new version"},
 					},
-					envVars: map[string]string{"INFLUX_ORG": "influxdata"},
+					envVars: []struct{ key, val string }{{key: "ORG", val: "influxdata"}},
 				},
 				expectedMeta: pkger.Metadata{
 					Name:        "new name",
@@ -179,7 +177,7 @@ func TestCmdPkg(t *testing.T) {
 						{name: "description", val: "new desc"},
 						{name: "version", val: "new version"},
 					},
-					envVars: map[string]string{"INFLUX_ORG_ID": expectedOrgID.String()},
+					envVars: []struct{ key, val string }{{key: "ORG_ID", val: expectedOrgID.String()}},
 				},
 				expectedMeta: pkger.Metadata{
 					Name:        "new name",
@@ -518,20 +516,39 @@ type pkgFileArgs struct {
 	filename string
 	encoding pkger.Encoding
 	flags    []flagArg
-	envVars  map[string]string
+	envVars  []struct {
+		key, val string
+	}
 }
 
 func testPkgWrites(t *testing.T, newCmdFn func() *cobra.Command, args pkgFileArgs, assertFn func(t *testing.T, pkg *pkger.Pkg)) {
-	t.Helper()
-
-	defer addEnvVars(t, args.envVars)()
-
 	wrappedCmdFn := func() *cobra.Command {
 		cmd := newCmdFn()
 		cmd.SetArgs([]string{}) // clears mess from test runner coming into cobra cli via stdin
 		return cmd
 	}
 
+	var initialEnvVars []struct{ key, val string }
+	for _, envVar := range args.envVars {
+		if k := os.Getenv(envVar.key); k != "" {
+			initialEnvVars = append(initialEnvVars, struct{ key, val string }{
+				key: envVar.key,
+				val: k,
+			})
+		}
+
+		require.NoError(t, os.Setenv(envVar.key, envVar.val))
+	}
+
+	defer func() {
+		for _, envVar := range args.envVars {
+			require.NoError(t, os.Unsetenv(envVar.key))
+		}
+
+		for _, envVar := range initialEnvVars {
+			require.NoError(t, os.Setenv(envVar.key, envVar.val))
+		}
+	}()
 	t.Run(path.Join(args.name, "file"), testPkgWritesFile(wrappedCmdFn, args, assertFn))
 	t.Run(path.Join(args.name, "buffer"), testPkgWritesToBuffer(wrappedCmdFn, args, assertFn))
 }

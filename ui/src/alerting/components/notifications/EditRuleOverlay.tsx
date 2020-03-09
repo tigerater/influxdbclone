@@ -26,7 +26,7 @@ interface StateProps {
 
 interface DispatchProps {
   onNotify: typeof notify
-  onUpdateRule: typeof updateRule
+  onUpdateRule: (rule: NotificationRuleDraft) => Promise<void>
 }
 
 type Props = WithRouterProps & StateProps & DispatchProps
@@ -84,7 +84,7 @@ const mstp = ({rules}: AppState, {params}: Props): StateProps => {
 
 const mdtp = {
   onNotify: notify,
-  onUpdateRule: updateRule,
+  onUpdateRule: updateRule as any,
 }
 
 export default connect<StateProps, DispatchProps>(

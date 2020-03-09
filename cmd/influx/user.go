@@ -11,7 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func cmdUser() *cobra.Command {
+func userCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "user",
 		Short: "User management commands",
@@ -60,6 +60,21 @@ func newUserService() (platform.UserService, error) {
 	}, nil
 }
 
+func newUserResourceMappingService() (platform.UserResourceMappingService, error) {
+	if flags.local {
+		return newLocalKVService()
+	}
+
+	c, err := newHTTPClient()
+	if err != nil {
+		return nil, err
+	}
+
+	return &http.UserResourceMappingService{
+		Client: c,
+	}, nil
+}
+
 func userUpdateF(cmd *cobra.Command, args []string) error {
 	s, err := newUserService()
 	if err != nil {
@@ -98,7 +113,7 @@ func userUpdateF(cmd *cobra.Command, args []string) error {
 var userCreateFlags struct {
 	name     string
 	password string
-	org      organization
+	organization
 }
 
 func userCreateCmd() *cobra.Command {
@@ -108,16 +123,16 @@ func userCreateCmd() *cobra.Command {
 		RunE:  wrapCheckSetup(userCreateF),
 	}
 
-	userCreateFlags.org.register(cmd, false)
 	cmd.Flags().StringVarP(&userCreateFlags.name, "name", "n", "", "The user name (required)")
 	cmd.MarkFlagRequired("name")
 	cmd.Flags().StringVarP(&userCreateFlags.password, "password", "p", "", "The user password")
+	userCreateFlags.organization.register(cmd)
 
 	return cmd
 }
 
 func userCreateF(cmd *cobra.Command, args []string) error {
-	if err := userCreateFlags.org.validOrgFlags(); err != nil {
+	if err := userCreateFlags.organization.validOrgFlags(); err != nil {
 		return err
 	}
 
@@ -156,7 +171,7 @@ func userCreateF(cmd *cobra.Command, args []string) error {
 		return err
 	}
 
-	orgID, err := userCreateFlags.org.getID(orgSVC)
+	orgID, err := userCreateFlags.organization.getID(orgSVC)
 	if err != nil {
 		return err
 	}
@@ -168,6 +183,10 @@ func userCreateF(cmd *cobra.Command, args []string) error {
 
 	if pass != "" && orgID == 0 {
 		return errors.New("an org id is required when providing a user password")
+	}
+
+	if err != nil {
+		return errors.New("an invalid org ID provided: " + orgID.GoString())
 	}
 
 	c, err := newHTTPClient()

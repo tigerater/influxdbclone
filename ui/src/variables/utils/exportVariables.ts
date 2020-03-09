@@ -16,7 +16,7 @@ const getDescendantsFromGraph = (
   return collectDescendants(node).map(n => n.variable)
 }
 
-export const findDependentVariables = (
+export const findDepedentVariables = (
   variable: Variable,
   allVariables: Variable[]
 ) => {

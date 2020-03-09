@@ -20,7 +20,7 @@ import {
 } from 'src/variables/selectors'
 
 // Actions
-import {moveVariable} from 'src/variables/actions/creators'
+import {moveVariable} from 'src/variables/actions'
 
 // Types
 import {AppState, Variable} from 'src/types'

@@ -4,30 +4,91 @@ import {get} from 'lodash'
 
 // Types
 import {
-  Variable,
   RemoteDataState,
-  VariablesState,
-  ResourceType,
+  VariableArgumentType,
+  QueryArguments,
+  MapArguments,
+  CSVArguments,
+  Variable,
 } from 'src/types'
-import {
-  Action,
-  SET_VARIABLES,
-  SET_VARIABLE,
-  REMOVE_VARIABLE,
-  MOVE_VARIABLE,
-  SET_VARIABLE_VALUES,
-  SELECT_VARIABLE_VALUE,
-} from 'src/variables/actions/creators'
+import {VariableValuesByID} from 'src/variables/types'
+import {Action, EditorAction} from 'src/variables/actions'
 
-// Utils
-import {setResource, removeResource} from 'src/resources/reducers/helpers'
+export const initialEditorState = (): VariableEditorState => ({
+  name: '',
+  selected: 'query',
+  argsQuery: null,
+  argsMap: null,
+  argsConstant: null,
+})
+
+export interface VariableEditorState {
+  name: string
+  selected: VariableArgumentType
+  argsQuery: QueryArguments
+  argsMap: MapArguments
+  argsConstant: CSVArguments
+}
+
+export const variableEditorReducer = (
+  state: VariableEditorState = initialEditorState(),
+  action: EditorAction
+): VariableEditorState =>
+  produce(state, draftState => {
+    switch (action.type) {
+      case 'CLEAR_VARIABLE_EDITOR': {
+        return initialEditorState()
+      }
+      case 'CHANGE_VARIABLE_EDITOR_TYPE': {
+        draftState.selected = action.payload
+        return
+      }
+      case 'UPDATE_VARIABLE_EDITOR_NAME': {
+        draftState.name = action.payload
+        return
+      }
+      case 'UPDATE_VARIABLE_EDITOR_QUERY': {
+        draftState.argsQuery = action.payload
+        return
+      }
+      case 'UPDATE_VARIABLE_EDITOR_MAP': {
+        draftState.argsMap = action.payload
+        return
+      }
+      case 'UPDATE_VARIABLE_EDITOR_CONSTANT': {
+        draftState.argsConstant = action.payload
+        return
+      }
+      default:
+        return
+    }
+  })
 
 export const initialState = (): VariablesState => ({
   status: RemoteDataState.NotStarted,
-  byID: {},
-  allIDs: [],
+  variables: {},
   values: {},
 })
+
+export interface VariablesState {
+  status: RemoteDataState // Loading status of the entire variables collection
+  variables: {
+    [variableID: string]: {
+      status: RemoteDataState // Loading status of an individual variable
+      variable: Variable
+    }
+  }
+  values: {
+    // Different variable values can be selected in different
+    // "contexts"---different parts of the app like a particular dashboard, or
+    // the Data Explorer
+    [contextID: string]: {
+      status: RemoteDataState
+      order: string[] // IDs of variables
+      values: VariableValuesByID
+    }
+  }
+}
 
 export const variablesReducer = (
   state: VariablesState = initialState(),
@@ -35,37 +96,48 @@ export const variablesReducer = (
 ): VariablesState =>
   produce(state, draftState => {
     switch (action.type) {
-      case SET_VARIABLES: {
-        setResource<Variable>(draftState, action, ResourceType.Variables)
+      case 'SET_VARIABLES': {
+        const {status, variables} = action.payload
 
-        return
-      }
+        draftState.status = status
 
-      case SET_VARIABLE: {
-        const {id, status, schema} = action
-        const {entities} = schema
+        if (variables) {
+          draftState.variables = {}
 
-        const variable = get(entities, ['variables', id])
-        const variableExists = !!draftState.byID[id]
-
-        if (variable || !variableExists) {
-          draftState.byID[id] = {...variable, status}
-          draftState.allIDs.push(id)
-        } else {
-          draftState.byID[id].status = status
+          for (const variable of variables) {
+            draftState.variables[variable.id] = {
+              variable,
+              status: RemoteDataState.Done,
+            }
+          }
         }
 
         return
       }
 
-      case REMOVE_VARIABLE: {
-        removeResource<Variable>(draftState, action)
+      case 'SET_VARIABLE': {
+        const {id, status, variable} = action.payload
+        const variableExists = !!draftState.variables[id]
+
+        if (variable || !variableExists) {
+          draftState.variables[id] = {variable, status}
+        } else {
+          draftState.variables[id].status = status
+        }
 
         return
       }
 
-      case SET_VARIABLE_VALUES: {
-        const {contextID, status, values} = action
+      case 'REMOVE_VARIABLE': {
+        const {id} = action.payload
+
+        delete draftState.variables[id]
+
+        return
+      }
+
+      case 'SET_VARIABLE_VALUES': {
+        const {contextID, status, values} = action.payload
         const prevOrder = get(draftState, `values.${contextID}.order`, [])
 
         if (values) {
@@ -87,8 +159,8 @@ export const variablesReducer = (
         return
       }
 
-      case SELECT_VARIABLE_VALUE: {
-        const {contextID, variableID, selectedValue} = action
+      case 'SELECT_VARIABLE_VALUE': {
+        const {contextID, variableID, selectedValue} = action.payload
 
         const valuesExist = !!get(
           draftState,
@@ -106,8 +178,8 @@ export const variablesReducer = (
         return
       }
 
-      case MOVE_VARIABLE: {
-        const {originalIndex, newIndex, contextID} = action
+      case 'MOVE_VARIABLE': {
+        const {originalIndex, newIndex, contextID} = action.payload
 
         const variableIDToMove = get(
           draftState,
@@ -126,5 +198,3 @@ export const variablesReducer = (
       }
     }
   })
-
-export {variableEditorReducer} from 'src/variables/reducers/editor'

@@ -1,10 +1,11 @@
 import {
-  ILabel,
+  IDashboard,
   DocumentListEntry,
   Document,
   DocumentMeta,
 } from '@influxdata/influx'
-import {Dashboard, View, Cell, Label, Variable} from 'src/types'
+import {View, Cell, Label, Variable} from 'src/types'
+import {ILabel} from '@influxdata/influx'
 
 export enum TemplateType {
   Label = 'label',
@@ -128,7 +129,7 @@ interface TaskTemplateData extends TemplateData {
 
 interface DashboardTemplateData extends TemplateData {
   type: TemplateType.Dashboard
-  attributes: Dashboard
+  attributes: IDashboard
   relationships: {
     [TemplateType.Label]: {data: LabelRelationship[]}
     [TemplateType.Cell]: {data: CellRelationship[]}

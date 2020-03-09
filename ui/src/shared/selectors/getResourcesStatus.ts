@@ -13,7 +13,6 @@ export const getResourcesStatus = (
       case ResourceType.Telegrafs:
       case ResourceType.Tasks:
       case ResourceType.Scrapers:
-      case ResourceType.Variables:
       case ResourceType.Authorizations: {
         return state.resources[resource].status
       }

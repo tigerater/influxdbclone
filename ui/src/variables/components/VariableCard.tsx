@@ -18,7 +18,7 @@ import {viewableLabels} from 'src/labels/selectors'
 import {
   addVariableLabelAsync,
   removeVariableLabelAsync,
-} from 'src/variables/actions/thunks'
+} from 'src/variables/actions'
 import {createLabel as createLabelAsync} from 'src/labels/actions'
 
 interface OwnProps {

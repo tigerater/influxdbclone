@@ -6,7 +6,7 @@ import {hydrateVars} from 'src/variables/utils/hydrateVars'
 import {createMapVariable, createVariable} from 'src/variables/mocks'
 
 // Types
-import {Variable, CancellationError, RemoteDataState} from 'src/types'
+import {Variable, CancellationError} from 'src/types'
 
 class FakeFetcher implements ValueFetcher {
   responses = {}
@@ -190,7 +190,6 @@ describe('hydrate vars', () => {
           k: 'v',
         },
       },
-      status: RemoteDataState.NotStarted,
     }
 
     const vars = [a, b]
@@ -214,7 +213,7 @@ describe('hydrate vars', () => {
     }).promise
 
     // Basic test for now, we would need an icky mock to assert that the
-    // appropriate substitution is actually taking place
+    // approriate substitution is actually taking place
     expect(actual.a.error).toBeFalsy()
     expect(actual.b.error).toBeFalsy()
   })
@@ -231,7 +230,6 @@ describe('hydrate vars', () => {
         type: 'constant',
         values: ['v1', 'v2'],
       },
-      status: RemoteDataState.NotStarted,
     }
 
     const vars = [a, b]

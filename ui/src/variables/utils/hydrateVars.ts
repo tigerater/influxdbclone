@@ -8,14 +8,13 @@ import {resolveSelectedValue} from 'src/variables/utils/resolveSelectedValue'
 import {OPTION_NAME, BOUNDARY_GROUP} from 'src/variables/constants/index'
 
 // Types
+import {RemoteDataState, Variable} from 'src/types'
+import {CancelBox, CancellationError} from 'src/types/promises'
 import {
-  RemoteDataState,
-  Variable,
   VariableValues,
   VariableValuesByID,
   ValueSelections,
-} from 'src/types'
-import {CancelBox, CancellationError} from 'src/types/promises'
+} from 'src/variables/types'
 
 export interface VariableNode {
   variable: Variable

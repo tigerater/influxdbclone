@@ -14,7 +14,15 @@ import (
 	input "github.com/tcnksm/go-input"
 )
 
-var setupFlags struct {
+// setup Command
+var setupCmd = &cobra.Command{
+	Use:   "setup",
+	Short: "Setup instance with initial user, org, bucket",
+	RunE:  wrapErrorFmt(setupF),
+}
+
+// SetupFlags are used when setup is not in interactive mode.
+type SetupFlags struct {
 	username  string
 	password  string
 	token     string
@@ -24,22 +32,16 @@ var setupFlags struct {
 	force     bool
 }
 
-func cmdSetup() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "setup",
-		Short: "Setup instance with initial user, org, bucket",
-		RunE:  wrapErrorFmt(setupF),
-	}
+var setupFlags SetupFlags
 
-	cmd.Flags().StringVarP(&setupFlags.username, "username", "u", "", "primary username")
-	cmd.Flags().StringVarP(&setupFlags.password, "password", "p", "", "password for username")
-	cmd.Flags().StringVarP(&setupFlags.token, "token", "t", "", "token for username, else auto-generated")
-	cmd.Flags().StringVarP(&setupFlags.org, "org", "o", "", "primary organization name")
-	cmd.Flags().StringVarP(&setupFlags.bucket, "bucket", "b", "", "primary bucket name")
-	cmd.Flags().IntVarP(&setupFlags.retention, "retention", "r", -1, "retention period in hours, else infinite")
-	cmd.Flags().BoolVarP(&setupFlags.force, "force", "f", false, "skip confirmation prompt")
-
-	return cmd
+func init() {
+	setupCmd.Flags().StringVarP(&setupFlags.username, "username", "u", "", "primary username")
+	setupCmd.Flags().StringVarP(&setupFlags.password, "password", "p", "", "password for username")
+	setupCmd.Flags().StringVarP(&setupFlags.token, "token", "t", "", "token for username, else auto-generated")
+	setupCmd.Flags().StringVarP(&setupFlags.org, "org", "o", "", "primary organization name")
+	setupCmd.Flags().StringVarP(&setupFlags.bucket, "bucket", "b", "", "primary bucket name")
+	setupCmd.Flags().IntVarP(&setupFlags.retention, "retention", "r", -1, "retention period in hours, else infinite")
+	setupCmd.Flags().BoolVarP(&setupFlags.force, "force", "f", false, "skip confirmation prompt")
 }
 
 func setupF(cmd *cobra.Command, args []string) error {

@@ -15,16 +15,7 @@ import {
   getView as getViewAJAX,
   updateView as updateViewAJAX,
 } from 'src/dashboards/apis'
-import {
-  getVariables as apiGetVariables,
-  getDashboard as apiGetDashboard,
-  postDashboard as apiPostDashboard,
-  postDashboardsCell as apiPostDashboardsCell,
-  postDashboardsLabel as apiPostDashboardsLabel,
-  deleteDashboardsLabel as apiDeleteDashboardsLabel,
-  patchDashboardsCellsView as apiPatchDashboardsCellsView,
-  getDashboardsCellsView as apiGetDashboardsCellsView,
-} from 'src/client'
+import {getVariables as apiGetVariables} from 'src/client'
 import {createDashboardFromTemplate as createDashboardFromTemplateAJAX} from 'src/templates/api'
 
 // Actions
@@ -38,13 +29,16 @@ import {
   DeleteTimeRangeAction,
 } from 'src/dashboards/actions/ranges'
 import {setView, SetViewAction, setViews} from 'src/dashboards/actions/views'
-import {selectValue} from 'src/variables/actions/creators'
-import {getVariables, refreshVariableValues} from 'src/variables/actions/thunks'
+import {
+  getVariables,
+  refreshVariableValues,
+  selectValue,
+} from 'src/variables/actions'
 import {setExportTemplate} from 'src/templates/actions'
 import {checkDashboardLimits} from 'src/cloud/actions/limits'
 
 // Utils
-import {addVariableDefaults} from 'src/variables/actions/thunks'
+import {addVariableDefaults} from 'src/variables/actions'
 import {filterUnusedVars} from 'src/shared/utils/filterUnusedVars'
 import {
   extractVariablesList,
@@ -56,18 +50,20 @@ import {
   getClonedDashboardCell,
 } from 'src/dashboards/utils/cellGetters'
 import {dashboardToTemplate} from 'src/shared/utils/resourceToTemplate'
+import {client} from 'src/utils/api'
 import {exportVariables} from 'src/variables/utils/exportVariables'
 import {getSaveableView} from 'src/timeMachine/selectors'
 import {incrementCloneName} from 'src/utils/naming'
 import {isLimitError} from 'src/cloud/utils/limits'
 import {getOrg} from 'src/organizations/selectors'
-import {addLabelDefaults} from 'src/labels/utils'
 
 // Constants
 import * as copy from 'src/shared/copy/notifications'
 import {DEFAULT_DASHBOARD_NAME} from 'src/dashboards/constants/index'
 
 // Types
+import {RemoteDataState} from 'src/types'
+import {CreateCell} from '@influxdata/influx'
 import {
   Dashboard,
   NewView,
@@ -76,36 +72,7 @@ import {
   View,
   DashboardTemplate,
   Label,
-  RemoteDataState,
-  NewCell,
 } from 'src/types'
-import {
-  Dashboard as IDashboard,
-  Cell as ICell,
-  DashboardWithViewProperties,
-} from 'src/client'
-
-export const addDashboardIDToCells = (
-  cells: ICell[],
-  dashboardID: string
-): Cell[] => {
-  return cells.map(c => {
-    return {...c, dashboardID}
-  })
-}
-
-export const addDashboardDefaults = (
-  dashboard: IDashboard | DashboardWithViewProperties
-): Dashboard => {
-  return {
-    ...dashboard,
-    cells: addDashboardIDToCells(dashboard.cells, dashboard.id) || [],
-    id: dashboard.id || '',
-    labels: (dashboard.labels || []).map(addLabelDefaults),
-    name: dashboard.name || '',
-    orgID: dashboard.orgID || '',
-  }
-}
 
 export enum ActionTypes {
   SetDashboards = 'SET_DASHBOARDS',
@@ -114,8 +81,8 @@ export enum ActionTypes {
   DeleteDashboardFailed = 'DELETE_DASHBOARD_FAILED',
   EditDashboard = 'EDIT_DASHBOARD',
   RemoveCell = 'REMOVE_CELL',
-  AddDashboardLabel = 'ADD_DASHBOARD_LABEL',
-  RemoveDashboardLabel = 'REMOVE_DASHBOARD_LABEL',
+  AddDashboardLabels = 'ADD_DASHBOARD_LABELS',
+  RemoveDashboardLabels = 'REMOVE_DASHBOARD_LABELS',
 }
 
 export type Action =
@@ -127,8 +94,8 @@ export type Action =
   | SetViewAction
   | DeleteTimeRangeAction
   | DeleteDashboardFailedAction
-  | AddDashboardLabelAction
-  | RemoveDashboardLabelAction
+  | AddDashboardLabelsAction
+  | RemoveDashboardLabelsAction
 
 interface RemoveCellAction {
   type: ActionTypes.RemoveCell
@@ -174,19 +141,19 @@ interface SetDashboardAction {
   }
 }
 
-interface AddDashboardLabelAction {
-  type: ActionTypes.AddDashboardLabel
+interface AddDashboardLabelsAction {
+  type: ActionTypes.AddDashboardLabels
   payload: {
     dashboardID: string
-    label: Label
+    labels: Label[]
   }
 }
 
-interface RemoveDashboardLabelAction {
-  type: ActionTypes.RemoveDashboardLabel
+interface RemoveDashboardLabelsAction {
+  type: ActionTypes.RemoveDashboardLabels
   payload: {
     dashboardID: string
-    label: Label
+    labels: Label[]
   }
 }
 
@@ -250,20 +217,20 @@ export const removeCell = (
   payload: {dashboard, cell},
 })
 
-export const addDashboardLabel = (
+export const addDashboardLabels = (
   dashboardID: string,
-  label: Label
-): AddDashboardLabelAction => ({
-  type: ActionTypes.AddDashboardLabel,
-  payload: {dashboardID, label},
+  labels: Label[]
+): AddDashboardLabelsAction => ({
+  type: ActionTypes.AddDashboardLabels,
+  payload: {dashboardID, labels},
 })
 
-export const removeDashboardLabel = (
+export const removeDashboardLabels = (
   dashboardID: string,
-  label: Label
-): RemoveDashboardLabelAction => ({
-  type: ActionTypes.RemoveDashboardLabel,
-  payload: {dashboardID, label},
+  labels: Label[]
+): RemoveDashboardLabelsAction => ({
+  type: ActionTypes.RemoveDashboardLabels,
+  payload: {dashboardID, labels},
 })
 
 // Thunks
@@ -295,46 +262,6 @@ export const createDashboard = () => async (
   }
 }
 
-export const cloneUtilFunc = async (dash: Dashboard, id: string) => {
-  const cells = dash.cells
-  const pendingViews = cells.map(cell =>
-    apiGetDashboardsCellsView({
-      dashboardID: dash.id,
-      cellID: cell.id,
-    }).then(res => {
-      return {
-        ...res,
-        cellID: cell.id,
-      }
-    })
-  )
-  const views = await Promise.all(pendingViews)
-
-  if (views.length > 0 && views.some(v => v.status !== 200)) {
-    throw new Error('An error occurred cloning the dashboard')
-  }
-
-  return views.map(async v => {
-    const view = v.data as View
-    const cell = cells.find(c => c.id === view.id)
-
-    if (cell && id) {
-      const newCell = await apiPostDashboardsCell({
-        dashboardID: id,
-        data: cell,
-      })
-      if (newCell.status !== 201) {
-        throw new Error('An error occurred cloning the dashboard')
-      }
-      return apiPatchDashboardsCellsView({
-        dashboardID: id,
-        cellID: newCell.data.id,
-        data: view,
-      })
-    }
-  })
-}
-
 export const cloneDashboard = (dashboard: Dashboard) => async (
   dispatch,
   getState: GetState
@@ -347,49 +274,10 @@ export const cloneDashboard = (dashboard: Dashboard) => async (
 
     const clonedName = incrementCloneName(allDashboardNames, dashboard.name)
 
-    const getResp = await apiGetDashboard({dashboardID: dashboard.id})
-
-    if (getResp.status !== 200) {
-      throw new Error(getResp.data.message)
-    }
-
-    const dash = addDashboardDefaults(getResp.data)
-
-    const postResp = await apiPostDashboard({
-      data: {
-        orgID: org.id,
-        name: clonedName,
-        description: dash.description || '',
-      },
-    })
-
-    if (postResp.status !== 201) {
-      throw new Error(postResp.data.message)
-    }
-
-    const pendingLabels = dash.labels.map(l =>
-      apiPostDashboardsLabel({
-        dashboardID: postResp.data.id,
-        data: {labelID: l.id},
-      })
-    )
-
-    const mappedLabels = await Promise.all(pendingLabels)
-
-    if (mappedLabels.length > 0 && mappedLabels.some(l => l.status !== 201)) {
-      throw new Error('An error occurred cloning the labels for this dashboard')
-    }
-
-    const clonedViews = await cloneUtilFunc(dash, postResp.data.id)
-
-    const newViews = await Promise.all(clonedViews)
-
-    if (newViews.length > 0 && newViews.some(v => v.status !== 200)) {
-      throw new Error('An error occurred cloning the dashboard')
-    }
+    const data = await client.dashboards.clone(dashboard.id, clonedName, org.id)
 
     dispatch(checkDashboardLimits())
-    dispatch(push(`/orgs/${org.id}/dashboards/${postResp.data.id}`))
+    dispatch(push(`/orgs/${org.id}/dashboards/${data.id}`))
   } catch (error) {
     console.error(error)
     if (isLimitError(error)) {
@@ -526,7 +414,7 @@ export const createCellWithView = (
       dashboard = await getDashboardAJAX(dashboardID)
     }
 
-    const cell: NewCell = getNewDashboardCell(dashboard, clonedCell)
+    const cell: CreateCell = getNewDashboardCell(dashboard, clonedCell)
 
     // Create the cell
     const createdCell = await addCellAJAX(dashboardID, cell)
@@ -631,44 +519,31 @@ export const copyDashboardCellAsync = (dashboard: Dashboard, cell: Cell) => (
   }
 }
 
-export const addDashboardLabelAsync = (
+export const addDashboardLabelsAsync = (
   dashboardID: string,
-  label: Label
+  labels: Label[]
 ) => async (dispatch: Dispatch<Action | PublishNotificationAction>) => {
   try {
-    const resp = await apiPostDashboardsLabel({
+    const newLabels = await client.dashboards.addLabels(
       dashboardID,
-      data: {labelID: label.id},
-    })
+      labels.map(l => l.id)
+    )
 
-    if (resp.status !== 201) {
-      throw new Error(resp.data.message)
-    }
-
-    const lab = addLabelDefaults(resp.data.label)
-
-    dispatch(addDashboardLabel(dashboardID, lab))
+    dispatch(addDashboardLabels(dashboardID, newLabels))
   } catch (error) {
     console.error(error)
     dispatch(notify(copy.addDashboardLabelFailed()))
   }
 }
 
-export const removeDashboardLabelAsync = (
+export const removeDashboardLabelsAsync = (
   dashboardID: string,
-  label: Label
+  labels: Label[]
 ) => async (dispatch: Dispatch<Action | PublishNotificationAction>) => {
   try {
-    const resp = await apiDeleteDashboardsLabel({
-      dashboardID,
-      labelID: label.id,
-    })
+    await client.dashboards.removeLabels(dashboardID, labels.map(l => l.id))
 
-    if (resp.status !== 204) {
-      throw new Error(resp.data.message)
-    }
-
-    dispatch(removeDashboardLabel(dashboardID, label))
+    dispatch(removeDashboardLabels(dashboardID, labels))
   } catch (error) {
     console.error(error)
     dispatch(notify(copy.removedDashboardLabelFailed()))
