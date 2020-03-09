@@ -1,11 +1,11 @@
 // Libraries
-import {LSPServer} from 'src/external/monaco.flux.server'
+import loader from 'src/external/monaco.flux.server'
 import FLUXLANGID from 'src/external/monaco.flux.syntax'
+import {completion} from 'src/external/monaco.flux.messages'
 import {
   MonacoToProtocolConverter,
   ProtocolToMonacoConverter,
 } from 'monaco-languageclient/lib/monaco-converter'
-import {CompletionTriggerKind} from 'monaco-languageclient/lib/services'
 // Types
 import {MonacoType} from 'src/types'
 import {IDisposable} from 'monaco-editor'
@@ -13,28 +13,37 @@ import {IDisposable} from 'monaco-editor'
 const m2p = new MonacoToProtocolConverter(),
   p2m = new ProtocolToMonacoConverter()
 
-export function registerCompletion(
-  monaco: MonacoType,
-  server: LSPServer
-): IDisposable {
+function registerCompletion(monaco: MonacoType, server): IDisposable {
   const completionProvider = monaco.languages.registerCompletionItemProvider(
     FLUXLANGID,
     {
-      provideCompletionItems: async (model, position, context) => {
-        const wordUntil = model.getWordUntilPosition(position)
-        const defaultRange = new monaco.Range(
-          position.lineNumber,
-          wordUntil.startColumn,
-          position.lineNumber,
-          wordUntil.endColumn
-        )
-        const pos = m2p.asPosition(position.lineNumber, position.column)
-        const items = await server.completionItems(model.uri.toString(), pos, {
-          ...context,
-          triggerKind: CompletionTriggerKind.TriggerCharacter,
-        })
+      provideCompletionItems: (model, position, context) => {
+        const wordUntil = model.getWordUntilPosition(position),
+          defaultRange = new monaco.Range(
+            position.lineNumber,
+            wordUntil.startColumn,
+            position.lineNumber,
+            wordUntil.endColumn
+          )
 
-        return p2m.asCompletionResult(items, defaultRange)
+        return server
+          .send(
+            completion(
+              (model.uri as any)._formatted,
+              m2p.asPosition(position.lineNumber, position.column),
+              context
+            )
+          )
+          .then(response => {
+            if (!response || !response.result || !response.result.items) {
+              return
+            }
+
+            return p2m.asCompletionResult(
+              response.result.items || [],
+              defaultRange
+            )
+          })
       },
       triggerCharacters: [
         '.',
@@ -71,3 +80,9 @@ export function registerCompletion(
 
   return completionProvider
 }
+
+loader().then(server => {
+  registerCompletion(window.monaco, server)
+})
+
+export default loader
