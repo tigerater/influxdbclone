@@ -267,7 +267,6 @@ func testLimitFunc(t *testing.T) {
 		t.Fatal(err)
 	}
 	forcedErr := errors.New("forced")
-	forcedQueryErr := influxdb.ErrQueryError(forcedErr)
 	tes.svc.FailNextQuery(forcedErr)
 
 	count := 0
@@ -286,7 +285,7 @@ func testLimitFunc(t *testing.T) {
 
 	<-promise.Done()
 
-	if got := promise.Error(); got.Error() != forcedQueryErr.Error() {
+	if got := promise.Error(); got != forcedErr {
 		t.Fatal("failed to get failure from forced error")
 	}
 
