@@ -4,21 +4,13 @@ import {produce} from 'immer'
 // Types
 import {ActionTypes, Actions} from 'src/overlays/actions/overlays'
 
-export type OverlayID =
-  | 'add-note'
-  | 'edit-note'
-  | 'add-master-token'
-  | 'add-token'
-  | 'telegraf-config'
-
 export interface OverlayParams {
   [key: string]: string
 }
 
 export interface OverlayState {
-  id: OverlayID | null
+  id: string | null
   params: OverlayParams
-  onClose: () => void
 }
 
 const nullParams = {}
@@ -26,7 +18,6 @@ const nullParams = {}
 const defaultState: OverlayState = {
   id: null,
   params: nullParams,
-  onClose: () => {},
 }
 
 export const overlaysReducer = (
@@ -36,16 +27,14 @@ export const overlaysReducer = (
   produce(state, draftState => {
     switch (action.type) {
       case ActionTypes.ShowOverlay: {
-        const {overlayID, overlayParams, onClose} = action.payload
+        const {overlayID, overlayParams} = action.payload
         draftState.id = overlayID
         draftState.params = overlayParams
-        draftState.onClose = onClose
         return
       }
       case ActionTypes.DismissOverlay: {
         draftState.id = null
         draftState.params = nullParams
-        draftState.onClose = () => {}
         return
       }
     }

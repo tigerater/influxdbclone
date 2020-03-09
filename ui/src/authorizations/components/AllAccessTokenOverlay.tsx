@@ -16,6 +16,7 @@ import {
   Overlay,
   Form,
 } from '@influxdata/clockface'
+import {withRouter, WithRouterProps} from 'react-router'
 
 // Actions
 import {createAuthorization} from 'src/authorizations/actions'
@@ -27,15 +28,7 @@ import {allAccessPermissions} from 'src/authorizations/utils/permissions'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 // Types
-import {AppState, Authorization} from 'src/types'
-
-interface OwnProps {
-  onClose: () => void
-}
-
-interface StateProps {
-  orgID: string
-}
+import {Authorization} from 'src/types'
 
 interface DispatchProps {
   onCreateAuthorization: typeof createAuthorization
@@ -45,7 +38,7 @@ interface State {
   description: string
 }
 
-type Props = OwnProps & StateProps & DispatchProps
+type Props = WithRouterProps & DispatchProps
 
 @ErrorHandling
 class AllAccessTokenOverlay extends PureComponent<Props, State> {
@@ -55,56 +48,61 @@ class AllAccessTokenOverlay extends PureComponent<Props, State> {
     const {description} = this.state
 
     return (
-      <Overlay.Container maxWidth={500}>
-        <Overlay.Header
-          title="Generate All Access Token"
-          onDismiss={this.handleDismiss}
-        />
-        <Overlay.Body>
-          <Form onSubmit={this.handleSave}>
-            <FlexBox
-              alignItems={AlignItems.Center}
-              direction={FlexDirection.Column}
-              margin={ComponentSize.Large}
-            >
-              <Alert
-                icon={IconFont.AlertTriangle}
-                color={ComponentColor.Warning}
+      <Overlay visible={true}>
+        <Overlay.Container maxWidth={500}>
+          <Overlay.Header
+            title="Generate All Access Token"
+            onDismiss={this.handleDismiss}
+          />
+          <Overlay.Body>
+            <Form onSubmit={this.handleSave}>
+              <FlexBox
+                alignItems={AlignItems.Center}
+                direction={FlexDirection.Column}
+                margin={ComponentSize.Large}
               >
-                This token will be able to create, update, delete, read, and
-                write to anything in this organization
-              </Alert>
-              <Form.Element label="Description">
-                <Input
-                  placeholder="Describe this new token"
-                  value={description}
-                  onChange={this.handleInputChange}
-                />
-              </Form.Element>
+                <Alert
+                  icon={IconFont.AlertTriangle}
+                  color={ComponentColor.Warning}
+                >
+                  This token will be able to create, update, delete, read, and
+                  write to anything in this organization
+                </Alert>
+                <Form.Element label="Description">
+                  <Input
+                    placeholder="Describe this new token"
+                    value={description}
+                    onChange={this.handleInputChange}
+                  />
+                </Form.Element>
 
-              <Form.Footer>
-                <Button
-                  text="Cancel"
-                  icon={IconFont.Remove}
-                  onClick={this.handleDismiss}
-                />
+                <Form.Footer>
+                  <Button
+                    text="Cancel"
+                    icon={IconFont.Remove}
+                    onClick={this.handleDismiss}
+                  />
 
-                <Button
-                  text="Save"
-                  icon={IconFont.Checkmark}
-                  color={ComponentColor.Success}
-                  type={ButtonType.Submit}
-                />
-              </Form.Footer>
-            </FlexBox>
-          </Form>
-        </Overlay.Body>
-      </Overlay.Container>
+                  <Button
+                    text="Save"
+                    icon={IconFont.Checkmark}
+                    color={ComponentColor.Success}
+                    type={ButtonType.Submit}
+                  />
+                </Form.Footer>
+              </FlexBox>
+            </Form>
+          </Overlay.Body>
+        </Overlay.Container>
+      </Overlay>
     )
   }
 
   private handleSave = () => {
-    const {orgID, onCreateAuthorization} = this.props
+    const {
+      params: {orgID},
+      onCreateAuthorization,
+    } = this.props
 
     const token: Authorization = {
       orgID,
@@ -124,13 +122,12 @@ class AllAccessTokenOverlay extends PureComponent<Props, State> {
   }
 
   private handleDismiss = () => {
-    this.props.onClose()
-  }
-}
+    const {
+      router,
+      params: {orgID},
+    } = this.props
 
-const mstp = (state: AppState): StateProps => {
-  return {
-    orgID: state.orgs.org.id,
+    router.push(`/orgs/${orgID}/load-data/tokens`)
   }
 }
 
@@ -138,7 +135,7 @@ const mdtp: DispatchProps = {
   onCreateAuthorization: createAuthorization,
 }
 
-export default connect<StateProps, DispatchProps, {}>(
-  mstp,
+export default connect<{}, DispatchProps, {}>(
+  null,
   mdtp
-)(AllAccessTokenOverlay)
+)(withRouter(AllAccessTokenOverlay))

@@ -6,7 +6,6 @@ import {connect} from 'react-redux'
 // Components
 import {ErrorHandling} from 'src/shared/decorators/errors'
 import {
-  Grid,
   IconFont,
   ComponentSize,
   ComponentColor,
@@ -14,7 +13,6 @@ import {
   Button,
   EmptyState,
   ComponentStatus,
-  Columns,
   Overlay,
 } from '@influxdata/clockface'
 import SearchWidget from 'src/shared/components/search_widget/SearchWidget'
@@ -24,7 +22,6 @@ import BucketList from 'src/buckets/components/BucketList'
 import {PrettyBucket} from 'src/buckets/components/BucketCard'
 import CreateBucketOverlay from 'src/buckets/components/CreateBucketOverlay'
 import AssetLimitAlert from 'src/cloud/components/AssetLimitAlert'
-import BucketExplainer from 'src/buckets/components/BucketExplainer'
 
 // Actions
 import {createBucket, updateBucket, deleteBucket} from 'src/buckets/actions'
@@ -117,42 +114,25 @@ class BucketsTab extends PureComponent<Props, State> {
             titleText={this.createButtonTitleText}
           />
         </SettingsTabbedPageHeader>
-        <Grid>
-          <Grid.Row>
-            <Grid.Column
-              widthXS={Columns.Twelve}
-              widthSM={Columns.Eight}
-              widthMD={Columns.Ten}
-            >
-              <FilterList<PrettyBucket>
-                searchTerm={searchTerm}
-                searchKeys={['name', 'ruleString', 'labels[].name']}
-                list={prettyBuckets(buckets)}
-              >
-                {bs => (
-                  <BucketList
-                    buckets={bs}
-                    emptyState={this.emptyState}
-                    onUpdateBucket={this.handleUpdateBucket}
-                    onDeleteBucket={this.handleDeleteBucket}
-                    onFilterChange={this.handleFilterUpdate}
-                    sortKey={sortKey}
-                    sortDirection={sortDirection}
-                    sortType={sortType}
-                    onClickColumn={this.handleClickColumn}
-                  />
-                )}
-              </FilterList>
-            </Grid.Column>
-            <Grid.Column
-              widthXS={Columns.Twelve}
-              widthSM={Columns.Four}
-              widthMD={Columns.Two}
-            >
-              <BucketExplainer />
-            </Grid.Column>
-          </Grid.Row>
-        </Grid>
+        <FilterList<PrettyBucket>
+          searchTerm={searchTerm}
+          searchKeys={['name', 'ruleString', 'labels[].name']}
+          list={prettyBuckets(buckets)}
+        >
+          {bs => (
+            <BucketList
+              buckets={bs}
+              emptyState={this.emptyState}
+              onUpdateBucket={this.handleUpdateBucket}
+              onDeleteBucket={this.handleDeleteBucket}
+              onFilterChange={this.handleFilterUpdate}
+              sortKey={sortKey}
+              sortDirection={sortDirection}
+              sortType={sortType}
+              onClickColumn={this.handleClickColumn}
+            />
+          )}
+        </FilterList>
         <Overlay visible={overlayState === OverlayState.Open}>
           <CreateBucketOverlay
             org={org}

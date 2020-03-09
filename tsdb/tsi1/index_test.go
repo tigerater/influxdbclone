@@ -396,7 +396,6 @@ func TestIndex_MeasurementCardinalityStats(t *testing.T) {
 	})
 
 	t.Run("Large", func(t *testing.T) {
-		t.Skip("https://github.com/influxdata/influxdb/issues/15220")
 		if testing.Short() {
 			t.Skip("short mode, skipping")
 		}

@@ -1,6 +1,7 @@
 // Libraries
 import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
+import {withRouter, WithRouterProps} from 'react-router'
 import {get} from 'lodash'
 
 // Components
@@ -22,6 +23,7 @@ import {
   resetNoteState,
 } from 'src/dashboards/actions/notes'
 import {notify} from 'src/shared/actions/notifications'
+import {dismissOverlay} from 'src/overlays/actions/overlays'
 
 // Utils
 import {savingNoteFailed} from 'src/shared/copy/notifications'
@@ -30,9 +32,7 @@ import {savingNoteFailed} from 'src/shared/copy/notifications'
 import {RemoteDataState} from 'src/types'
 import {AppState, NoteEditorMode} from 'src/types'
 
-interface OwnProps {
-  onClose: () => void
-}
+interface OwnProps {}
 
 interface StateProps {
   mode: NoteEditorMode
@@ -47,9 +47,10 @@ interface DispatchProps {
   resetNote: typeof resetNoteState
   onNotify: typeof notify
   loadNote: typeof loadNote
+  onDismiss: typeof dismissOverlay
 }
 
-type Props = OwnProps & StateProps & DispatchProps
+type Props = OwnProps & StateProps & DispatchProps & WithRouterProps
 
 interface State {
   savingStatus: RemoteDataState
@@ -130,9 +131,10 @@ class NoteEditorOverlay extends PureComponent<Props, State> {
   }
 
   private handleDismiss = (): void => {
-    const {onClose} = this.props
+    const {onDismiss, router} = this.props
 
-    onClose()
+    onDismiss()
+    router.goBack()
   }
 
   private get overlayTitle(): string {
@@ -197,6 +199,7 @@ const mstp = ({noteEditor, views, overlays}: AppState): StateProps => {
 }
 
 const mdtp = {
+  onDismiss: dismissOverlay,
   onNotify: notify,
   onCreateNoteCell: createNoteCell,
   onUpdateViewNote: updateViewNote,
@@ -207,4 +210,4 @@ const mdtp = {
 export default connect<StateProps, DispatchProps, OwnProps>(
   mstp,
   mdtp
-)(NoteEditorOverlay)
+)(withRouter<OwnProps>(NoteEditorOverlay))

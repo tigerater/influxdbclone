@@ -1,10 +1,10 @@
 // Libraries
-import React, {FunctionComponent} from 'react'
+import React, {SFC} from 'react'
 
 // Components
 import {Panel, InfluxColors} from '@influxdata/clockface'
 
-const TelegrafExplainer: FunctionComponent = () => (
+const TelegrafExplainer: SFC = () => (
   <Panel backgroundColor={InfluxColors.Onyx} style={{marginTop: '32px'}}>
     <Panel.Header>
       <Panel.Title>What is Telegraf?</Panel.Title>
