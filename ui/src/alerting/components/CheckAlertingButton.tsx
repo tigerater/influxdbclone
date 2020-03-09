@@ -1,5 +1,6 @@
 // Libraries
 import React, {FunctionComponent} from 'react'
+import {connect} from 'react-redux'
 
 // Components
 import {
@@ -15,19 +16,25 @@ import {
 } from '@influxdata/clockface'
 
 // Utils
+import {getActiveTimeMachine} from 'src/timeMachine/selectors'
 import {isDraftQueryAlertable} from 'src/timeMachine/utils/queryBuilder'
 
 // Actions
 import {setActiveTab} from 'src/timeMachine/actions'
 
 // Types
-import {TimeMachineTab, DashboardDraftQuery} from 'src/types'
+import {AppState, TimeMachineTab, DashboardDraftQuery} from 'src/types'
 
-interface Props {
+interface DispatchProps {
   setActiveTab: typeof setActiveTab
+}
+
+interface StateProps {
   activeTab: TimeMachineTab
   draftQueries: DashboardDraftQuery[]
 }
+
+type Props = DispatchProps & StateProps
 
 const CheckAlertingButton: FunctionComponent<Props> = ({
   setActiveTab,
@@ -94,7 +101,6 @@ const CheckAlertingButton: FunctionComponent<Props> = ({
         <Radio.Button
           key="alerting"
           id="alerting"
-          testID="checkeo--header alerting-tab"
           titleText="alerting"
           value="alerting"
           active={activeTab === 'alerting'}
@@ -108,7 +114,20 @@ const CheckAlertingButton: FunctionComponent<Props> = ({
   )
 }
 
-export default CheckAlertingButton
+const mstp = (state: AppState): StateProps => {
+  const {activeTab, draftQueries} = getActiveTimeMachine(state)
+
+  return {activeTab, draftQueries}
+}
+
+const mdtp: DispatchProps = {
+  setActiveTab: setActiveTab,
+}
+
+export default connect<StateProps, DispatchProps, {}>(
+  mstp,
+  mdtp
+)(CheckAlertingButton)
 
 interface ChecklistItemProps {
   selected: boolean
