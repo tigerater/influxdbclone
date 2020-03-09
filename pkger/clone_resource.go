@@ -248,8 +248,6 @@ func convertCellView(cell influxdb.Cell) chart {
 	case influxdb.SingleStatViewProperties:
 		setCommon(chartKindSingleStat, p.ViewColors, p.DecimalPlaces, p.Queries)
 		setNoteFixes(p.Note, p.ShowNoteWhenEmpty, p.Prefix, p.Suffix)
-		ch.TickPrefix = p.TickPrefix
-		ch.TickSuffix = p.TickSuffix
 	case influxdb.ScatterViewProperties:
 		ch.Kind = chartKindScatter
 		ch.Queries = convertQueries(p.Queries)
