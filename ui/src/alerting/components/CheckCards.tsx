@@ -12,7 +12,6 @@ import {
   Button,
   IconFont,
   ComponentColor,
-  ButtonShape,
 } from '@influxdata/clockface'
 
 // Types
@@ -23,16 +22,14 @@ interface Props {
   checks: Check[]
   searchTerm: string
   showFirstTimeWidget: boolean
-  onCreateThreshold: () => void
-  onCreateDeadman: () => void
+  onCreateCheck: () => void
 }
 
 const CheckCards: FunctionComponent<Props> = ({
   checks,
   searchTerm,
   showFirstTimeWidget,
-  onCreateThreshold,
-  onCreateDeadman,
+  onCreateCheck,
 }) => {
   const cards = cs => cs.map(c => <CheckCard key={c.id} check={c} />)
   const body = filtered => (
@@ -40,8 +37,7 @@ const CheckCards: FunctionComponent<Props> = ({
       emptyState={
         <EmptyChecksList
           showFirstTimeWidget={showFirstTimeWidget}
-          onCreateThreshold={onCreateThreshold}
-          onCreateDeadman={onCreateDeadman}
+          onCreateCheck={onCreateCheck}
           searchTerm={searchTerm}
         />
       }
@@ -68,15 +64,13 @@ const CheckCards: FunctionComponent<Props> = ({
 
 interface EmptyProps {
   showFirstTimeWidget: boolean
-  onCreateThreshold: () => void
-  onCreateDeadman: () => void
+  onCreateCheck: () => void
   searchTerm: string
 }
 
 const EmptyChecksList: FunctionComponent<EmptyProps> = ({
   showFirstTimeWidget,
-  onCreateThreshold,
-  onCreateDeadman,
+  onCreateCheck,
   searchTerm,
 }) => {
   if (searchTerm) {
@@ -98,24 +92,22 @@ const EmptyChecksList: FunctionComponent<EmptyProps> = ({
         className="alerting-first-time"
       >
         <Panel.Body>
-          <h1>Get started monitoring by creating a check</h1>
-          <h5>When a value crosses a specific threshold:</h5>
+          <h1>
+            Looks like it's your
+            <br />
+            first time here
+          </h1>
+          <h5>
+            Welcome to our new Monitoring & Alerting feature!
+            <br />
+            To get started try creating a Check:
+          </h5>
           <Button
             size={ComponentSize.Medium}
             color={ComponentColor.Primary}
-            onClick={onCreateThreshold}
-            text="Threshold Check"
+            onClick={onCreateCheck}
+            text="Create a Check"
             icon={IconFont.Plus}
-            shape={ButtonShape.StretchToFit}
-          />
-          <h5>If a service stops sending metrics:</h5>
-          <Button
-            size={ComponentSize.Medium}
-            color={ComponentColor.Primary}
-            onClick={onCreateDeadman}
-            text="Deadman Check"
-            icon={IconFont.Plus}
-            shape={ButtonShape.StretchToFit}
           />
         </Panel.Body>
       </Panel>

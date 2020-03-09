@@ -47,8 +47,7 @@ export const isDraftQueryAlertable = (
 }
 
 export const isCheckSaveable = (
-  draftQueries: DashboardDraftQuery[],
-  checkType: string
+  draftQueries: DashboardDraftQuery[]
 ): boolean => {
   const {
     oneQuery,
@@ -56,11 +55,6 @@ export const isCheckSaveable = (
     singleAggregateFunc,
     singleField,
   } = isDraftQueryAlertable(draftQueries)
-
-  if (checkType === 'deadman') {
-    return oneQuery && builderMode && singleField
-  }
-
   return oneQuery && builderMode && singleAggregateFunc && singleField
 }
 

@@ -8,12 +8,15 @@ import {
   FlexDirection,
   AlignItems,
   ComponentSize,
+  Radio,
+  JustifyContent,
 } from '@influxdata/clockface'
 import ThresholdConditions from 'src/alerting/components/builder/ThresholdConditions'
 import DeadmanConditions from 'src/alerting/components/builder/DeadmanConditions'
 import BuilderCard from 'src/timeMachine/components/builderCard/BuilderCard'
 
 // Actions & Selectors
+import {changeCheckType} from 'src/timeMachine/actions'
 import {getActiveTimeMachine} from 'src/timeMachine/selectors'
 
 // Types
@@ -23,35 +26,60 @@ interface StateProps {
   check: Partial<Check>
 }
 
-type Props = StateProps
+interface DispatchProps {
+  changeCheckType: typeof changeCheckType
+}
 
-const CheckConditionsCard: FC<Props> = ({check}) => {
-  let cardTitle: string
-  let conditionsComponent: JSX.Element
+type Props = DispatchProps & StateProps
 
-  if (check.type === 'deadman') {
-    cardTitle = 'Deadman'
-    conditionsComponent = <DeadmanConditions check={check} />
-  }
-
-  if (check.type === 'threshold') {
-    cardTitle = 'Thresholds'
-    conditionsComponent = <ThresholdConditions check={check} />
-  }
-
+const CheckConditionsCard: FC<Props> = ({check, changeCheckType}) => {
   return (
     <BuilderCard
       testID="builder-conditions"
       className="alert-builder--card alert-builder--conditions-card"
     >
-      <BuilderCard.Header title={cardTitle} />
+      <BuilderCard.Header title="Conditions" />
       <BuilderCard.Body addPadding={true} autoHideScrollbars={true}>
+        <FlexBox
+          direction={FlexDirection.Row}
+          alignItems={AlignItems.Center}
+          stretchToFitWidth={true}
+          justifyContent={JustifyContent.Center}
+          className="alert-builder--check-type-selector"
+        >
+          <Radio>
+            <Radio.Button
+              key="threshold"
+              id="threshold"
+              titleText="threshold"
+              value="threshold"
+              active={check.type === 'threshold'}
+              onClick={changeCheckType}
+            >
+              Threshold
+            </Radio.Button>
+            <Radio.Button
+              key="deadman"
+              id="deadman"
+              titleText="deadman"
+              value="deadman"
+              active={check.type === 'deadman'}
+              onClick={changeCheckType}
+            >
+              Deadman
+            </Radio.Button>
+          </Radio>
+        </FlexBox>
         <FlexBox
           direction={FlexDirection.Column}
           alignItems={AlignItems.Stretch}
           margin={ComponentSize.Medium}
         >
-          {conditionsComponent}
+          {check.type === 'deadman' ? (
+            <DeadmanConditions check={check} />
+          ) : (
+            <ThresholdConditions check={check} />
+          )}
         </FlexBox>
       </BuilderCard.Body>
     </BuilderCard>
@@ -66,7 +94,11 @@ const mstp = (state: AppState): StateProps => {
   return {check}
 }
 
-export default connect<StateProps, {}, {}>(
+const mdtp: DispatchProps = {
+  changeCheckType: changeCheckType,
+}
+
+export default connect<StateProps, DispatchProps, {}>(
   mstp,
-  null
+  mdtp
 )(CheckConditionsCard)

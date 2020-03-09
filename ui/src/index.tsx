@@ -80,8 +80,7 @@ import AlertingIndex from 'src/alerting/components/AlertingIndex'
 import AlertHistoryIndex from 'src/alerting/components/AlertHistoryIndex'
 import BucketsDeleteDataOverlay from 'src/shared/components/DeleteDataOverlay'
 import DEDeleteDataOverlay from 'src/dataExplorer/components/DeleteDataOverlay'
-import NewThresholdCheckEO from 'src/alerting/components/NewThresholdCheckEO'
-import NewDeadmanCheckEO from 'src/alerting/components/NewDeadmanCheckEO'
+import NewCheckEO from 'src/alerting/components/NewCheckEO'
 import EditCheckEO from 'src/alerting/components/EditCheckEO'
 import NewRuleOverlay from 'src/alerting/components/notifications/NewRuleOverlay'
 import EditRuleOverlay from 'src/alerting/components/notifications/EditRuleOverlay'
@@ -337,14 +336,7 @@ class Root extends PureComponent {
                           </Route>
                           <FeatureFlag name="alerting">
                             <Route path="alerting" component={AlertingIndex}>
-                              <Route
-                                path="checks/new-threshold"
-                                component={NewThresholdCheckEO}
-                              />
-                              <Route
-                                path="checks/new-deadman"
-                                component={NewDeadmanCheckEO}
-                              />
+                              <Route path="checks/new" component={NewCheckEO} />
                               <Route
                                 path="checks/:checkID/edit"
                                 component={EditCheckEO}
