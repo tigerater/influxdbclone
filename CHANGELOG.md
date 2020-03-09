@@ -1,9 +1,5 @@
 ## v2.0.0-alpha.20 [unreleased]
 
-### Feaures
-
-1. [15805](https://github.com/influxdata/influxdb/pull/15924) Add tls insecure skip verify to influx CLI.
-
 ### Bug Fixes
 
 1. [15777](https://github.com/influxdata/influxdb/pull/15777): Fix long startup when running 'influx help'

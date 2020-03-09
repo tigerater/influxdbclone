@@ -71,7 +71,6 @@ export type Action =
   | EditActiveQueryWithBuilderAction
   | UpdateActiveQueryNameAction
   | SetFieldOptionsAction
-  | UpdateFieldOptionAction
   | SetTableOptionsAction
   | SetTimeFormatAction
   | SetXColumnAction
@@ -464,20 +463,6 @@ export const setFieldOptions = (
 ): SetFieldOptionsAction => ({
   type: 'SET_FIELD_OPTIONS',
   payload: {fieldOptions},
-})
-
-interface UpdateFieldOptionAction {
-  type: 'UPDATE_FIELD_OPTION'
-  payload: {
-    option: FieldOption
-  }
-}
-
-export const updateFieldOption = (
-  option: FieldOption
-): UpdateFieldOptionAction => ({
-  type: 'UPDATE_FIELD_OPTION',
-  payload: {option},
 })
 
 interface SetTableOptionsAction {

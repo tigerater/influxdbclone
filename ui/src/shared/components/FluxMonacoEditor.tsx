@@ -4,10 +4,9 @@ import React, {FC} from 'react'
 // Components
 import MonacoEditor from 'react-monaco-editor'
 import {tokenizeFlux} from 'src/external/monaco.fluxLang'
-import addFluxTheme, {THEME_NAME} from 'src/external/monaco.fluxTheme'
+import {addFluxTheme} from 'src/external/monaco.fluxTheme'
 import {addSnippets} from 'src/external/monaco.fluxCompletions'
 import {OnChangeScript} from 'src/types/flux'
-import './FluxMonacoEditor.scss'
 
 interface Position {
   line: number
@@ -23,8 +22,8 @@ interface Props {
 
 const FluxEditorMonaco: FC<Props> = props => {
   const editorWillMount = monaco => {
-    addFluxTheme(monaco)
     tokenizeFlux(monaco)
+    addFluxTheme(monaco)
     addSnippets(monaco)
   }
   const editorDidMount = editor => {
@@ -56,22 +55,12 @@ const FluxEditorMonaco: FC<Props> = props => {
   return (
     <div className="time-machine-editor" data-testid="flux-editor">
       <MonacoEditor
+        width="800"
+        height="600"
         language="flux"
-        theme={THEME_NAME}
+        theme="vs-light"
         value={script}
         onChange={onChangeScript}
-        options={{
-          fontSize: 13,
-          fontFamily: '"RobotoMono", monospace',
-          cursorWidth: 2,
-          lineNumbersMinChars: 4,
-          lineDecorationsWidth: 0,
-          minimap: {
-            renderCharacters: false,
-          },
-          overviewRulerBorder: false,
-          automaticLayout: true,
-        }}
         editorWillMount={editorWillMount}
         editorDidMount={editorDidMount}
       />

@@ -18,7 +18,6 @@ import {
   setDecimalPlaces,
   setColors,
   setFieldOptions,
-  updateFieldOption,
   setTableOptions,
   setTimeFormat,
 } from 'src/timeMachine/actions'
@@ -53,7 +52,6 @@ interface DispatchProps {
   onSetColors: typeof setColors
   onSetTimeFormat: typeof setTimeFormat
   onSetFieldOptions: typeof setFieldOptions
-  onUpdateFieldOption: typeof updateFieldOption
   onSetTableOptions: typeof setTableOptions
   onSetDecimalPlaces: typeof setDecimalPlaces
 }
@@ -160,7 +158,12 @@ export class TableOptions extends Component<Props, {}> {
   }
 
   private handleUpdateColumn = (fieldOption: FieldOption) => {
-    this.props.onUpdateFieldOption(fieldOption)
+    const {internalName} = fieldOption
+    const fieldOptions = this.props.fieldOptions.map(fopt =>
+      fopt.internalName === internalName ? fieldOption : fopt
+    )
+
+    this.props.onSetFieldOptions(fieldOptions)
   }
 
   private handleToggleFixFirstColumn = () => {
@@ -187,7 +190,6 @@ const mdtp: DispatchProps = {
   onSetDecimalPlaces: setDecimalPlaces,
   onSetColors: setColors,
   onSetFieldOptions: setFieldOptions,
-  onUpdateFieldOption: updateFieldOption,
   onSetTableOptions: setTableOptions,
   onSetTimeFormat: setTimeFormat,
 }

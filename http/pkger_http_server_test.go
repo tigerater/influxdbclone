@@ -222,7 +222,6 @@ func TestPkgerHTTPServer(t *testing.T) {
 
 				assert.Len(t, resp.Summary.Buckets, 1)
 				assert.Len(t, resp.Diff.Buckets, 1)
-				assert.Nil(t, resp.Errors)
 			})
 	})
 }

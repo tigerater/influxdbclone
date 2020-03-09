@@ -17,7 +17,7 @@ import (
 
 var replCmd = &cobra.Command{
 	Use:   "repl",
-	Short: "Interactive REPL (read-eval-print-loop)",
+	Short: "Interactive Flux REPL (read-eval-print-loop)",
 	Args:  cobra.NoArgs,
 	RunE:  wrapCheckSetup(replF),
 }
@@ -73,7 +73,7 @@ func replF(cmd *cobra.Command, args []string) error {
 
 	flux.FinalizeBuiltIns()
 
-	r, err := getFluxREPL(flags.host, flags.token, flags.skipVerify, orgID)
+	r, err := getFluxREPL(flags.host, flags.token, orgID)
 	if err != nil {
 		return err
 	}
@@ -84,9 +84,8 @@ func replF(cmd *cobra.Command, args []string) error {
 
 func findOrgID(ctx context.Context, org string) (platform.ID, error) {
 	svc := &http.OrganizationService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
 	o, err := svc.FindOrganization(ctx, platform.OrganizationFilter{
@@ -99,11 +98,10 @@ func findOrgID(ctx context.Context, org string) (platform.ID, error) {
 	return o.ID, nil
 }
 
-func getFluxREPL(addr, token string, skipVerify bool, orgID platform.ID) (*repl.REPL, error) {
+func getFluxREPL(addr, token string, orgID platform.ID) (*repl.REPL, error) {
 	qs := &http.FluxQueryService{
-		Addr:               addr,
-		Token:              token,
-		InsecureSkipVerify: skipVerify,
+		Addr:  addr,
+		Token: token,
 	}
 	q := &query.REPLQuerier{
 		OrganizationID: orgID,

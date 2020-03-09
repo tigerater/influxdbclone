@@ -41,12 +41,6 @@
   justify-content: center;
 }
 
-.alert-builder--message-template {
-  textarea {
-    height: 120px;
-  }
-}
-
 .alert-builder--message-template.cf-text-area--container.cf-input-md {
   height: auto;
 
@@ -72,6 +66,7 @@
     user-select: text;
   }
 }
+
 
 .alert-builder--check-type-selector {
   margin-bottom: $ix-marg-c;

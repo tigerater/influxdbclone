@@ -84,9 +84,8 @@ func fluxWriteF(cmd *cobra.Command, args []string) error {
 	}
 
 	bs := &http.BucketService{
-		Addr:               flags.host,
-		Token:              flags.token,
-		InsecureSkipVerify: flags.skipVerify,
+		Addr:  flags.host,
+		Token: flags.token,
 	}
 
 	var err error
@@ -145,10 +144,9 @@ func fluxWriteF(cmd *cobra.Command, args []string) error {
 
 	s := write.Batcher{
 		Service: &http.WriteService{
-			Addr:               flags.host,
-			Token:              flags.token,
-			Precision:          writeFlags.Precision,
-			InsecureSkipVerify: flags.skipVerify,
+			Addr:      flags.host,
+			Token:     flags.token,
+			Precision: writeFlags.Precision,
 		},
 	}
 
