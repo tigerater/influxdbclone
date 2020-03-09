@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/influxdata/flux/execute"
 	platform "github.com/influxdata/influxdb"
 	"github.com/prometheus/client_golang/prometheus"
 )
@@ -80,4 +81,8 @@ func (m *metrics) recordMetrics(labelValues []string, start time.Time) {
 		return
 	}
 	m.requestDur.WithLabelValues(labelValues...).Observe(time.Since(start).Seconds())
+}
+
+func getMetricsFromDependencies(depsMap execute.Dependencies) *metrics {
+	return depsMap[FromKind].(Dependencies).Metrics
 }
