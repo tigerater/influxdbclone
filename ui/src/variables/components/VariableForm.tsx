@@ -161,24 +161,9 @@ export default class VariableForm extends PureComponent<Props, State> {
   }
 
   private get isFormValid(): boolean {
-    const {isNameValid} = this.state
+    const {hasValidArgs, isNameValid} = this.state
 
-    return this.validArgs && isNameValid
-  }
-
-  private get validArgs(): boolean {
-    const {args} = this.state
-    switch (args.type) {
-      case 'query':
-        const {query} = args.values
-        return !!query
-      case 'constant':
-        return args.values.length !== 0
-      case 'map':
-        return Object.keys(args.values).length !== 0
-      default:
-        return false
-    }
+    return hasValidArgs && isNameValid
   }
 
   private handleSubmit = (): void => {
