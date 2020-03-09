@@ -65,6 +65,7 @@ export type Action =
   | {type: 'SCROLLED'; scrollTop: number}
   | {type: 'CONSUMED_NEXT_SCROLL_INDEX'}
   | {type: 'CLICKED_BACK_TO_TOP'}
+  | {type: 'LIMIT_CHANGED'; limit: number}
   | {type: 'REFRESHED'; cancel: () => void; now: number}
 
 export type Dispatch = ReactDispatch<Action>
@@ -179,6 +180,10 @@ export const reducer = (state: State, action: Action): State => {
 
     case 'CONSUMED_NEXT_SCROLL_INDEX': {
       return {...state, nextScrollTop: null}
+    }
+
+    case 'LIMIT_CHANGED': {
+      return {...state, limit: action.limit}
     }
 
     case 'REFRESHED': {

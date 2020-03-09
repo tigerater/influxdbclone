@@ -4,15 +4,13 @@ import {connect} from 'react-redux'
 
 // Components
 import {
+  ComponentSize,
   Radio,
   Popover,
   PopoverInteraction,
   PopoverPosition,
   ComponentColor,
   PopoverType,
-  ButtonShape,
-  Icon,
-  IconFont,
 } from '@influxdata/clockface'
 
 // Utils
@@ -47,46 +45,33 @@ const CheckAlertingButton: FunctionComponent<Props> = ({
     }
   }
 
-  const {
-    oneQuery,
-    builderMode,
-    singleAggregateFunc,
-    singleField,
-  } = isDraftQueryAlertable(draftQueries)
-
-  const isQueryAlertable =
-    oneQuery && builderMode && singleAggregateFunc && singleField
+  const isQueryAlertable = isDraftQueryAlertable(draftQueries)
 
   return (
     <Popover
-      style={{width: '100%'}}
       visible={!isQueryAlertable}
       position={PopoverPosition.ToTheRight}
       showEvent={PopoverInteraction.None}
       hideEvent={PopoverInteraction.None}
-      color={ComponentColor.Secondary}
+      color={ComponentColor.Primary}
       type={PopoverType.Outline}
       contents={onHide => (
-        <div className="query-checklist--popover">
-          <p>In order to define a Check your query must:</p>
-          <ul className="query-checklist--list">
-            <QueryChecklistItem
-              text="Have 1 field selected"
-              selected={singleField}
-            />
-            <QueryChecklistItem
-              text="Have 1 aggregate function selected"
-              selected={singleAggregateFunc}
-            />
-          </ul>
-          <Popover.DismissButton
-            onClick={onHide}
-            color={ComponentColor.Secondary}
-          />
+        <div
+          style={{
+            padding: '8px',
+            display: 'flex',
+            alignItems: 'left',
+            justifyContent: 'center',
+            fontSize: '13px',
+          }}
+        >
+          A query that can be used for a check must have
+          <br />a field and an aggregate function selection
+          <Popover.DismissButton onClick={onHide} />
         </div>
       )}
     >
-      <Radio shape={ButtonShape.StretchToFit}>
+      <Radio size={ComponentSize.Medium}>
         <Radio.Button
           key="queries"
           id="queries"
@@ -95,7 +80,7 @@ const CheckAlertingButton: FunctionComponent<Props> = ({
           active={activeTab === 'queries'}
           onClick={handleClick('queries')}
         >
-          1. Query
+          Query
         </Radio.Button>
 
         <Radio.Button
@@ -107,7 +92,7 @@ const CheckAlertingButton: FunctionComponent<Props> = ({
           onClick={handleClick('alerting')}
           disabled={!isQueryAlertable}
         >
-          2. Check
+          Check
         </Radio.Button>
       </Radio>
     </Popover>
@@ -128,25 +113,3 @@ export default connect<StateProps, DispatchProps, {}>(
   mstp,
   mdtp
 )(CheckAlertingButton)
-
-interface ChecklistItemProps {
-  selected: boolean
-  text: string
-}
-
-const QueryChecklistItem: FunctionComponent<ChecklistItemProps> = ({
-  selected,
-  text,
-}) => {
-  const className = selected
-    ? 'query-checklist--item valid'
-    : 'query-checklist--item error'
-  const icon = selected ? IconFont.Checkmark : IconFont.Remove
-
-  return (
-    <li className={className}>
-      <Icon glyph={icon} />
-      {text}
-    </li>
-  )
-}
