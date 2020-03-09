@@ -16,7 +16,7 @@ import LimitChecker from 'src/cloud/components/LimitChecker'
 import RateLimitAlert from 'src/cloud/components/RateLimitAlert'
 
 // Actions
-import * as dashboardActions from 'src/dashboards/actions/thunks'
+import * as dashboardActions from 'src/dashboards/actions'
 import * as rangesActions from 'src/dashboards/actions/ranges'
 import * as appActions from 'src/shared/actions/app'
 import {
@@ -39,7 +39,6 @@ import {AUTOREFRESH_DEFAULT} from 'src/shared/constants'
 // Selectors
 import {getTimeRangeByDashboardID} from 'src/dashboards/selectors'
 import {getOrg} from 'src/organizations/selectors'
-import {getByID} from 'src/resources/selectors'
 
 // Types
 import {
@@ -53,7 +52,6 @@ import {
   AutoRefreshStatus,
   Organization,
   RemoteDataState,
-  ResourceType,
 } from 'src/types'
 import {WithRouterProps} from 'react-router'
 import {ManualRefreshProps} from 'src/shared/components/ManualRefresh'
@@ -75,11 +73,11 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  deleteCell: typeof dashboardActions.deleteCell
-  copyCell: typeof dashboardActions.copyDashboardCell
-  getDashboard: typeof dashboardActions.getDashboard
-  updateDashboard: typeof dashboardActions.updateDashboard
-  updateCells: typeof dashboardActions.updateCells
+  deleteCell: typeof dashboardActions.deleteCellAsync
+  copyCell: typeof dashboardActions.copyDashboardCellAsync
+  getDashboard: typeof dashboardActions.getDashboardAsync
+  updateDashboard: typeof dashboardActions.updateDashboardAsync
+  updateCells: typeof dashboardActions.updateCellsAsync
   updateQueryParams: typeof rangesActions.updateQueryParams
   setDashboardTimeRange: typeof rangesActions.setDashboardTimeRange
   handleChooseAutoRefresh: typeof setAutoRefreshInterval
@@ -301,6 +299,7 @@ class DashboardPage extends Component<Props> {
 const mstp = (state: AppState, {params: {dashboardID}}): StateProps => {
   const {
     links,
+    dashboards,
     views: {views},
     userSettings: {showVariablesControls},
     cloud: {limits},
@@ -312,11 +311,7 @@ const mstp = (state: AppState, {params: {dashboardID}}): StateProps => {
 
   const autoRefresh = state.autoRefresh[dashboardID] || AUTOREFRESH_DEFAULT
 
-  const dashboard = getByID<Dashboard>(
-    state,
-    ResourceType.Dashboards,
-    dashboardID
-  )
+  const dashboard = dashboards.list.find(d => d.id === dashboardID)
 
   const limitedResources = extractRateLimitResources(limits)
   const limitStatus = extractRateLimitStatus(limits)
@@ -335,11 +330,11 @@ const mstp = (state: AppState, {params: {dashboardID}}): StateProps => {
 }
 
 const mdtp: DispatchProps = {
-  getDashboard: dashboardActions.getDashboard,
-  updateDashboard: dashboardActions.updateDashboard,
-  copyCell: dashboardActions.copyDashboardCell,
-  deleteCell: dashboardActions.deleteCell,
-  updateCells: dashboardActions.updateCells,
+  getDashboard: dashboardActions.getDashboardAsync,
+  updateDashboard: dashboardActions.updateDashboardAsync,
+  copyCell: dashboardActions.copyDashboardCellAsync,
+  deleteCell: dashboardActions.deleteCellAsync,
+  updateCells: dashboardActions.updateCellsAsync,
   handleChooseAutoRefresh: setAutoRefreshInterval,
   onSetAutoRefreshStatus: setAutoRefreshStatus,
   handleClickPresentationButton: appActions.delayEnablePresentationMode,

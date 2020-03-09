@@ -2,7 +2,7 @@
 import {get, isUndefined} from 'lodash'
 
 // Actions
-import {createCellWithView} from 'src/dashboards/actions/thunks'
+import {createCellWithView} from 'src/dashboards/actions'
 import {updateView} from 'src/dashboards/actions/views'
 
 // Utils
@@ -10,16 +10,9 @@ import {createView} from 'src/shared/utils/view'
 import {getView} from 'src/dashboards/selectors'
 
 // Types
-import {
-  GetState,
-  MarkdownViewProperties,
-  NoteEditorMode,
-  ResourceType,
-  Dashboard,
-} from 'src/types'
+import {GetState, MarkdownViewProperties, NoteEditorMode} from 'src/types'
 import {NoteEditorState} from 'src/dashboards/reducers/notes'
 import {Dispatch} from 'react'
-import {getByID} from 'src/resources/selectors'
 
 export type Action =
   | CloseNoteEditorAction
@@ -71,11 +64,7 @@ export const createNoteCell = (dashboardID: string) => (
   dispatch: Dispatch<Action | ReturnType<typeof createCellWithView>>,
   getState: GetState
 ) => {
-  const dashboard = getByID<Dashboard>(
-    getState(),
-    ResourceType.Dashboards,
-    dashboardID
-  )
+  const dashboard = getState().dashboards.list.find(d => d.id === dashboardID)
 
   if (!dashboard) {
     throw new Error(`could not find dashboard with id "${dashboardID}"`)

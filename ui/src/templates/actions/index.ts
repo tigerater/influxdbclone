@@ -28,7 +28,7 @@ import * as copy from 'src/shared/copy/notifications'
 
 // API
 import {client} from 'src/utils/api'
-import {createDashboardFromTemplate} from 'src/dashboards/actions/thunks'
+import {createDashboardFromTemplate} from 'src/dashboards/actions'
 import {createVariableFromTemplate} from 'src/variables/actions/thunks'
 import {createTaskFromTemplate} from 'src/tasks/actions/thunks'
 

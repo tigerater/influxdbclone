@@ -6,7 +6,6 @@ import {get, isEmpty} from 'lodash'
 // Selectors
 import {getSaveableView} from 'src/timeMachine/selectors'
 import {getOrg} from 'src/organizations/selectors'
-import {getAll} from 'src/resources/selectors'
 
 // Components
 import {Form, Input, Button, Grid} from '@influxdata/clockface'
@@ -22,12 +21,12 @@ import {
 } from 'src/dashboards/constants'
 
 // Actions
-import {getDashboards, createCellWithView} from 'src/dashboards/actions/thunks'
-import {postDashboard} from 'src/client'
+import {getDashboardsAsync, createCellWithView} from 'src/dashboards/actions'
+import {createDashboard} from 'src/dashboards/apis'
 import {notify} from 'src/shared/actions/notifications'
 
 // Types
-import {AppState, Dashboard, View, ResourceType} from 'src/types'
+import {AppState, Dashboard, View} from 'src/types'
 import {
   Columns,
   InputType,
@@ -50,7 +49,7 @@ interface StateProps {
 }
 
 interface DispatchProps {
-  onGetDashboards: typeof getDashboards
+  handleGetDashboards: typeof getDashboardsAsync
   onCreateCellWithView: typeof createCellWithView
   notify: typeof notify
 }
@@ -71,8 +70,8 @@ class SaveAsCellForm extends PureComponent<Props, State> {
   }
 
   public componentDidMount() {
-    const {onGetDashboards} = this.props
-    onGetDashboards()
+    const {handleGetDashboards} = this.props
+    handleGetDashboards()
   }
 
   public render() {
@@ -200,14 +199,8 @@ class SaveAsCellForm extends PureComponent<Props, State> {
         name: dashboardName || DEFAULT_DASHBOARD_NAME,
         cells: [],
       }
-
-      const resp = await postDashboard({data: newDashboard})
-
-      if (resp.status !== 201) {
-        throw new Error(resp.data.message)
-      }
-
-      onCreateCellWithView(resp.data.id, view)
+      const dashboard = await createDashboard(newDashboard)
+      onCreateCellWithView(dashboard.id, view)
     } catch (error) {
       console.error(error)
     }
@@ -244,15 +237,18 @@ class SaveAsCellForm extends PureComponent<Props, State> {
 }
 
 const mstp = (state: AppState): StateProps => {
+  const {
+    dashboards: {list: dashboards},
+  } = state
+
   const view = getSaveableView(state)
   const org = getOrg(state)
-  const dashboards = getAll<Dashboard>(state, ResourceType.Dashboards)
 
   return {dashboards, view, orgID: get(org, 'id', '')}
 }
 
 const mdtp: DispatchProps = {
-  onGetDashboards: getDashboards,
+  handleGetDashboards: getDashboardsAsync,
   onCreateCellWithView: createCellWithView,
   notify,
 }

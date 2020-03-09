@@ -20,7 +20,7 @@ import {pageTitleSuffixer} from 'src/shared/utils/pageTitles'
 import {extractDashboardLimits} from 'src/cloud/utils/limits'
 
 // Actions
-import {createDashboard as createDashboardAction} from 'src/dashboards/actions/thunks'
+import {createDashboard as createDashboardAction} from 'src/dashboards/actions'
 
 // Types
 import {AppState} from 'src/types'

@@ -6,7 +6,7 @@ import {withRouter, WithRouterProps} from 'react-router'
 import ExportOverlay from 'src/shared/components/ExportOverlay'
 
 // Actions
-import {convertToTemplate as convertToTemplateAction} from 'src/dashboards/actions/thunks'
+import {convertToTemplate as convertToTemplateAction} from 'src/dashboards/actions/index'
 import {clearExportTemplate as clearExportTemplateAction} from 'src/templates/actions'
 
 // Types

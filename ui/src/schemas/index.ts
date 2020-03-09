@@ -9,7 +9,6 @@ import {
   Label,
   RemoteDataState,
   Variable,
-  Dashboard,
 } from 'src/types'
 
 // Utils
@@ -27,56 +26,6 @@ export const arrayOfAuths = [auth]
 export const bucket = new schema.Entity(ResourceType.Buckets)
 export const arrayOfBuckets = [bucket]
 
-/* Cells */
-
-// Defines the schema for the "cells" resource
-// export const cell = new schema.Entity(
-//   ResourceType.Cells,
-//   {},
-//   {
-//     processStrategy: (cell: Cell, parent: Dashboard) => ({
-//       ...cell,
-//       dashboardID: parent.id,
-//     }),
-//   }
-// )
-// export const arrayOfCells = [cell]
-
-/* Dashboards */
-
-// Defines the schema for the "dashboards" resource
-export const dashboard = new schema.Entity(
-  ResourceType.Dashboards,
-  {},
-  {
-    processStrategy: (dashboard: Dashboard) => addDashboardDefaults(dashboard),
-  }
-)
-export const arrayOfDashboards = [dashboard]
-
-export const addDashboardDefaults = (dashboard: Dashboard): Dashboard => {
-  return {
-    ...dashboard,
-    id: dashboard.id || '',
-    labels: (dashboard.labels || []).map(addLabelDefaults),
-    name: dashboard.name || '',
-    orgID: dashboard.orgID || '',
-    meta: addDashboardMetaDefaults(dashboard.meta),
-  }
-}
-
-const addDashboardMetaDefaults = (meta: Dashboard['meta']) => {
-  if (!meta) {
-    return {}
-  }
-
-  if (!meta.updatedAt) {
-    return {...meta, updatedAt: new Date().toDateString()}
-  }
-
-  return meta
-}
-
 /* Members */
 
 // Defines the schema for the "members" resource
@@ -90,7 +39,6 @@ export const org = new schema.Entity(ResourceType.Orgs)
 export const arrayOfOrgs = [org]
 
 /* Tasks */
-
 // Defines the schema for the tasks resource
 export const task = new schema.Entity(
   ResourceType.Tasks,

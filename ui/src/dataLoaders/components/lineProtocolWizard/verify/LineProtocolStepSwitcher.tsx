@@ -1,5 +1,6 @@
 // Libraries
 import React, {PureComponent} from 'react'
+import _ from 'lodash'
 
 // Components
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -7,8 +8,9 @@ import LineProtocol from 'src/dataLoaders/components/lineProtocolWizard/configur
 import LineProtocolVerifyStep from 'src/dataLoaders/components/lineProtocolWizard/verify/LineProtocolVerifyStep'
 
 // Types
+import {LineProtocolStep} from 'src/types'
 import {LineProtocolStepProps} from 'src/dataLoaders/components/lineProtocolWizard/LineProtocolWizard'
-import {Bucket, LineProtocolStep} from 'src/types'
+import {Bucket} from 'src/types'
 
 interface Props {
   stepProps: LineProtocolStepProps

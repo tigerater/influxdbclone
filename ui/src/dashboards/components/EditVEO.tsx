@@ -11,7 +11,7 @@ import VEOHeader from 'src/dashboards/components/VEOHeader'
 
 // Actions
 import {setName} from 'src/timeMachine/actions'
-import {saveVEOView} from 'src/dashboards/actions/thunks'
+import {saveVEOView} from 'src/dashboards/actions'
 import {getViewForTimeMachine} from 'src/dashboards/actions/views'
 
 // Utils

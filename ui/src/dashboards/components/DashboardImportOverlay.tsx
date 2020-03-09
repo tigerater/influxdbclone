@@ -1,7 +1,7 @@
 // Libraries
 import React, {PureComponent} from 'react'
 import {withRouter, WithRouterProps} from 'react-router'
-import {isEmpty} from 'lodash'
+import _ from 'lodash'
 import {connect} from 'react-redux'
 
 // Components
@@ -12,9 +12,9 @@ import {invalidJSON} from 'src/shared/copy/notifications'
 
 // Actions
 import {
-  getDashboards,
+  getDashboardsAsync,
   createDashboardFromTemplate as createDashboardFromTemplateAction,
-} from 'src/dashboards/actions/thunks'
+} from 'src/dashboards/actions'
 import {notify as notifyAction} from 'src/shared/actions/notifications'
 
 // Types
@@ -30,7 +30,7 @@ interface State {
 interface DispatchProps {
   createDashboardFromTemplate: typeof createDashboardFromTemplateAction
   notify: typeof notifyAction
-  populateDashboards: typeof getDashboards
+  populateDashboards: typeof getDashboardsAsync
 }
 
 interface OwnProps extends WithRouterProps {
@@ -73,7 +73,7 @@ class DashboardImportOverlay extends PureComponent<Props> {
       return
     }
 
-    if (isEmpty(template)) {
+    if (_.isEmpty(template)) {
       this.onDismiss()
     }
 
@@ -89,9 +89,9 @@ class DashboardImportOverlay extends PureComponent<Props> {
 }
 
 const mdtp: DispatchProps = {
-  notify: notifyAction,
-  populateDashboards: getDashboards,
   createDashboardFromTemplate: createDashboardFromTemplateAction,
+  notify: notifyAction,
+  populateDashboards: getDashboardsAsync,
 }
 
 export default connect<{}, DispatchProps, OwnProps>(

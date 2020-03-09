@@ -7,13 +7,11 @@ import {connect} from 'react-redux'
 import {EmptyState} from '@influxdata/clockface'
 
 // Types
-import {Dashboard, Organization, AppState, ResourceType} from 'src/types'
+import {Dashboard, Organization, AppState} from 'src/types'
 import {ComponentSize} from '@influxdata/clockface'
 
 // Selectors
 import {getOrg} from 'src/organizations/selectors'
-import {getAll} from 'src/resources/selectors'
-
 interface StateProps {
   dashboards: Dashboard[]
   org: Organization
@@ -52,7 +50,7 @@ class DashboardList extends PureComponent<Props> {
 }
 
 const mstp = (state: AppState): StateProps => ({
-  dashboards: getAll<Dashboard>(state, ResourceType.Dashboards),
+  dashboards: state.dashboards.list,
   org: getOrg(state),
 })
 
