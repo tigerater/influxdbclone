@@ -174,37 +174,13 @@ func (p *Pkg) Summary() Summary {
 	return sum
 }
 
-type (
-	validateOpt struct {
-		minResources bool
-	}
-
-	// ValidateOptFn provides a means to disable desired validation checks.
-	ValidateOptFn func(*validateOpt)
-)
-
-// ValidWithoutResources ignores the validation check for minimum number
-// of resources. This is useful for the service Create to ignore this and
-// allow the creation of a pkg without resources.
-func ValidWithoutResources() ValidateOptFn {
-	return func(opt *validateOpt) {
-		opt.minResources = false
-	}
-}
-
 // Validate will graph all resources and validate every thing is in a useful form.
-func (p *Pkg) Validate(opts ...ValidateOptFn) error {
-	opt := &validateOpt{minResources: true}
-	for _, o := range opts {
-		o(opt)
-	}
+func (p *Pkg) Validate() error {
 	setupFns := []func() error{
 		p.validMetadata,
+		p.validResources,
+		p.graphResources,
 	}
-	if opt.minResources {
-		setupFns = append(setupFns, p.validResources)
-	}
-	setupFns = append(setupFns, p.graphResources)
 
 	for _, fn := range setupFns {
 		if err := fn(); err != nil {
@@ -301,15 +277,15 @@ func (p *Pkg) labelMappings() []SummaryLabelMapping {
 
 func (p *Pkg) validMetadata() error {
 	var failures []*failure
-	if p.APIVersion != APIVersion {
+	if p.APIVersion != "0.1.0" {
 		failures = append(failures, &failure{
 			Field: "apiVersion",
-			Msg:   "must be version " + APIVersion,
+			Msg:   "must be version 0.1.0",
 		})
 	}
 
-	mKind := Kind(strings.TrimSpace(strings.ToLower(p.Kind)))
-	if mKind != KindPackage {
+	mKind := kind(strings.TrimSpace(strings.ToLower(p.Kind)))
+	if mKind != kindPackage {
 		failures = append(failures, &failure{
 			Field: "kind",
 			Msg:   `must be of kind "Package"`,
@@ -318,14 +294,14 @@ func (p *Pkg) validMetadata() error {
 
 	if p.Metadata.Version == "" {
 		failures = append(failures, &failure{
-			Field: "meta.pkgVersion",
+			Field: "pkgVersion",
 			Msg:   "version is required",
 		})
 	}
 
 	if p.Metadata.Name == "" {
 		failures = append(failures, &failure{
-			Field: "meta.pkgName",
+			Field: "pkgName",
 			Msg:   "must be at least 1 char",
 		})
 	}
@@ -335,7 +311,7 @@ func (p *Pkg) validMetadata() error {
 	}
 
 	res := errResource{
-		Kind: KindPackage.String(),
+		Kind: kindPackage.String(),
 		Idx:  -1,
 	}
 	for _, f := range failures {
@@ -390,7 +366,7 @@ func (p *Pkg) graphResources() error {
 
 func (p *Pkg) graphBuckets() error {
 	p.mBuckets = make(map[string]*bucket)
-	return p.eachResource(KindBucket, func(r Resource) []failure {
+	return p.eachResource(kindBucket, func(r Resource) []failure {
 		if r.Name() == "" {
 			return []failure{{
 				Field: "name",
@@ -407,8 +383,8 @@ func (p *Pkg) graphBuckets() error {
 
 		bkt := &bucket{
 			Name:            r.Name(),
-			Description:     r.stringShort(fieldDescription),
-			RetentionPeriod: r.duration(fieldBucketRetentionPeriod),
+			Description:     r.stringShort("description"),
+			RetentionPeriod: r.duration("retention_period"),
 		}
 
 		failures := p.parseNestedLabels(r, func(l *label) error {
@@ -431,7 +407,7 @@ func (p *Pkg) graphBuckets() error {
 
 func (p *Pkg) graphLabels() error {
 	p.mLabels = make(map[string]*label)
-	return p.eachResource(KindLabel, func(r Resource) []failure {
+	return p.eachResource(kindLabel, func(r Resource) []failure {
 		if r.Name() == "" {
 			return []failure{{
 				Field: "name",
@@ -447,8 +423,8 @@ func (p *Pkg) graphLabels() error {
 		}
 		p.mLabels[r.Name()] = &label{
 			Name:        r.Name(),
-			Color:       r.stringShort(fieldLabelColor),
-			Description: r.stringShort(fieldDescription),
+			Color:       r.stringShort("color"),
+			Description: r.stringShort("description"),
 		}
 
 		return nil
@@ -457,7 +433,7 @@ func (p *Pkg) graphLabels() error {
 
 func (p *Pkg) graphDashboards() error {
 	p.mDashboards = make(map[string]*dashboard)
-	return p.eachResource(KindDashboard, func(r Resource) []failure {
+	return p.eachResource(kindDashboard, func(r Resource) []failure {
 		if r.Name() == "" {
 			return []failure{{
 				Field: "name",
@@ -474,7 +450,7 @@ func (p *Pkg) graphDashboards() error {
 
 		dash := &dashboard{
 			Name:        r.Name(),
-			Description: r.stringShort(fieldDescription),
+			Description: r.stringShort("description"),
 		}
 
 		failures := p.parseNestedLabels(r, func(l *label) error {
@@ -486,7 +462,7 @@ func (p *Pkg) graphDashboards() error {
 			return dash.labels[i].Name < dash.labels[j].Name
 		})
 
-		for i, cr := range r.slcResource(fieldDashCharts) {
+		for i, cr := range r.slcResource("charts") {
 			ch, fails := parseChart(cr)
 			if fails != nil {
 				for _, f := range fails {
@@ -512,7 +488,7 @@ func (p *Pkg) graphDashboards() error {
 
 func (p *Pkg) graphVariables() error {
 	p.mVariables = make(map[string]*variable)
-	return p.eachResource(KindVariable, func(r Resource) []failure {
+	return p.eachResource(kindVariable, func(r Resource) []failure {
 		if r.Name() == "" {
 			return []failure{{
 				Field: "name",
@@ -529,12 +505,12 @@ func (p *Pkg) graphVariables() error {
 
 		newVar := &variable{
 			Name:        r.Name(),
-			Description: r.stringShort(fieldDescription),
-			Type:        strings.ToLower(r.stringShort(fieldType)),
-			Query:       strings.TrimSpace(r.stringShort(fieldQuery)),
-			Language:    strings.ToLower(strings.TrimSpace(r.stringShort(fieldLegendLanguage))),
-			ConstValues: r.slcStr(fieldValues),
-			MapValues:   r.mapStrStr(fieldValues),
+			Description: r.stringShort("description"),
+			Type:        strings.ToLower(r.stringShort("type")),
+			Query:       strings.TrimSpace(r.stringShort("query")),
+			Language:    strings.ToLower(strings.TrimSpace(r.stringShort("language"))),
+			ConstValues: r.slcStr("values"),
+			MapValues:   r.mapStrStr("values"),
 		}
 
 		failures := p.parseNestedLabels(r, func(l *label) error {
@@ -560,7 +536,7 @@ func (p *Pkg) graphVariables() error {
 	})
 }
 
-func (p *Pkg) eachResource(resourceKind Kind, fn func(r Resource) []failure) error {
+func (p *Pkg) eachResource(resourceKind kind, fn func(r Resource) []failure) error {
 	var parseErr ParseErr
 	for i, r := range p.Spec.Resources {
 		k, err := r.kind()
@@ -580,7 +556,7 @@ func (p *Pkg) eachResource(resourceKind Kind, fn func(r Resource) []failure) err
 			})
 			continue
 		}
-		if !k.is(resourceKind) {
+		if k != resourceKind {
 			continue
 		}
 
@@ -617,7 +593,7 @@ func (p *Pkg) parseNestedLabels(r Resource, fn func(lb *label) error) []failure 
 	nestedLabels := make(map[string]*label)
 
 	var failures []failure
-	for i, nr := range r.slcResource(fieldAssociations) {
+	for i, nr := range r.nestedAssociations() {
 		fail := p.parseNestedLabel(i, nr, func(l *label) error {
 			if _, ok := nestedLabels[l.Name]; ok {
 				return fmt.Errorf("duplicate nested label: %q", l.Name)
@@ -644,7 +620,7 @@ func (p *Pkg) parseNestedLabel(idx int, nr Resource, fn func(lb *label) error) *
 			assIndex:        idx,
 		}
 	}
-	if !k.is(KindLabel) {
+	if k != kindLabel {
 		return nil
 	}
 
@@ -681,73 +657,56 @@ func parseChart(r Resource) (chart, []failure) {
 	c := chart{
 		Kind:        ck,
 		Name:        r.Name(),
-		Prefix:      r.stringShort(fieldPrefix),
-		Suffix:      r.stringShort(fieldSuffix),
-		Note:        r.stringShort(fieldChartNote),
-		NoteOnEmpty: r.boolShort(fieldChartNoteOnEmpty),
-		Shade:       r.boolShort(fieldChartShade),
-		XCol:        r.stringShort(fieldChartXCol),
-		YCol:        r.stringShort(fieldChartYCol),
-		XPos:        r.intShort(fieldChartXPos),
-		YPos:        r.intShort(fieldChartYPos),
-		Height:      r.intShort(fieldChartHeight),
-		Width:       r.intShort(fieldChartWidth),
-		Geom:        r.stringShort(fieldChartGeom),
+		Prefix:      r.stringShort("prefix"),
+		Suffix:      r.stringShort("suffix"),
+		Note:        r.stringShort("note"),
+		NoteOnEmpty: r.boolShort("noteOnEmpty"),
+		Shade:       r.boolShort("shade"),
+		XCol:        r.stringShort("xCol"),
+		YCol:        r.stringShort("yCol"),
+		XPos:        r.intShort("xPos"),
+		YPos:        r.intShort("yPos"),
+		Height:      r.intShort("height"),
+		Width:       r.intShort("width"),
+		Geom:        r.stringShort("geom"),
 	}
 
-	if presLeg, ok := r[fieldChartLegend].(legend); ok {
-		c.Legend = presLeg
-	} else {
-		if leg, ok := ifaceToResource(r[fieldChartLegend]); ok {
-			c.Legend.Type = leg.stringShort(fieldType)
-			c.Legend.Orientation = leg.stringShort(fieldLegendOrientation)
-		}
+	if leg, ok := ifaceToResource(r["legend"]); ok {
+		c.Legend.Type = leg.stringShort("type")
+		c.Legend.Orientation = leg.stringShort("orientation")
 	}
 
-	if dp, ok := r.int(fieldChartDecimalPlaces); ok {
+	if dp, ok := r.int("decimalPlaces"); ok {
 		c.EnforceDecimals = true
 		c.DecimalPlaces = dp
 	}
 
 	var failures []failure
-	if presentQueries, ok := r[fieldChartQueries].(queries); ok {
-		c.Queries = presentQueries
-	} else {
-		for _, rq := range r.slcResource(fieldChartQueries) {
-			c.Queries = append(c.Queries, query{
-				Query: strings.TrimSpace(rq.stringShort(fieldQuery)),
-			})
-		}
+	for _, rq := range r.slcResource("queries") {
+		c.Queries = append(c.Queries, query{
+			Query: strings.TrimSpace(rq.stringShort("query")),
+		})
 	}
 
-	if presentColors, ok := r[fieldChartColors].(colors); ok {
-		c.Colors = presentColors
-	} else {
-		for _, rc := range r.slcResource(fieldChartColors) {
-			c.Colors = append(c.Colors, &color{
-				// TODO: think we can just axe the stub here
-				id:    influxdb.ID(int(time.Now().UnixNano())).String(),
-				Name:  rc.Name(),
-				Type:  rc.stringShort(fieldType),
-				Hex:   rc.stringShort(fieldColorHex),
-				Value: flt64Ptr(rc.float64Short(fieldValue)),
-			})
-		}
+	for _, rc := range r.slcResource("colors") {
+		c.Colors = append(c.Colors, &color{
+			id:    influxdb.ID(int(time.Now().UnixNano())).String(),
+			Name:  rc.Name(),
+			Type:  rc.stringShort("type"),
+			Hex:   rc.stringShort("hex"),
+			Value: rc.float64Short("value"),
+		})
 	}
 
-	if presAxes, ok := r[fieldChartAxes].(axes); ok {
-		c.Axes = presAxes
-	} else {
-		for _, ra := range r.slcResource(fieldChartAxes) {
-			c.Axes = append(c.Axes, axis{
-				Base:   ra.stringShort(fieldAxisBase),
-				Label:  ra.stringShort(fieldAxisLabel),
-				Name:   ra.Name(),
-				Prefix: ra.stringShort(fieldPrefix),
-				Scale:  ra.stringShort(fieldAxisScale),
-				Suffix: ra.stringShort(fieldSuffix),
-			})
-		}
+	for _, ra := range r.slcResource("axes") {
+		c.Axes = append(c.Axes, axis{
+			Base:   ra.stringShort("base"),
+			Label:  ra.stringShort("label"),
+			Name:   ra.Name(),
+			Prefix: ra.stringShort("prefix"),
+			Scale:  ra.stringShort("scale"),
+			Suffix: ra.stringShort("suffix"),
+		})
 	}
 
 	if fails := c.validProperties(); len(fails) > 0 {
@@ -765,23 +724,25 @@ func parseChart(r Resource) (chart, []failure) {
 // available kinds that are supported.
 type Resource map[string]interface{}
 
-// Name returns the name of the resource.
 func (r Resource) Name() string {
-	return strings.TrimSpace(r.stringShort(fieldName))
+	return strings.TrimSpace(r.stringShort("name"))
 }
 
-func (r Resource) kind() (Kind, error) {
-	resKind, ok := r.string(fieldKind)
+func (r Resource) kind() (kind, error) {
+	resKind, ok := r.string("kind")
 	if !ok {
-		return KindUnknown, errors.New("no kind provided")
+		return kindUnknown, errors.New("no kind provided")
 	}
 
-	k := newKind(resKind)
-	if err := k.OK(); err != nil {
-		return k, err
+	newKind := kind(strings.TrimSpace(strings.ToLower(resKind)))
+	if newKind == kindUnknown {
+		return kindUnknown, errors.New("invalid kind")
+	}
+	if !kinds[newKind] {
+		return newKind, errors.New("unsupported kind provided")
 	}
 
-	return k, nil
+	return newKind, nil
 }
 
 func (r Resource) chartKind() (chartKind, error) {
@@ -791,6 +752,29 @@ func (r Resource) chartKind() (chartKind, error) {
 		return chartKindUnknown, errors.New("invalid chart kind provided: " + string(chartKind))
 	}
 	return chartKind, nil
+}
+
+func (r Resource) nestedAssociations() []Resource {
+	v, ok := r["associations"]
+	if !ok {
+		return nil
+	}
+
+	ifaces, ok := v.([]interface{})
+	if !ok {
+		return nil
+	}
+
+	var resources []Resource
+	for _, iface := range ifaces {
+		newRes, ok := ifaceToResource(iface)
+		if !ok {
+			continue
+		}
+		resources = append(resources, newRes)
+	}
+
+	return resources
 }
 
 func (r Resource) bool(key string) (bool, bool) {
@@ -859,10 +843,6 @@ func (r Resource) slcResource(key string) []Resource {
 		return nil
 	}
 
-	if resources, ok := v.([]Resource); ok {
-		return resources
-	}
-
 	iFaceSlc, ok := v.([]interface{})
 	if !ok {
 		return nil
@@ -886,10 +866,6 @@ func (r Resource) slcStr(key string) []string {
 		return nil
 	}
 
-	if strSlc, ok := v.([]string); ok {
-		return strSlc
-	}
-
 	iFaceSlc, ok := v.([]interface{})
 	if !ok {
 		return nil
@@ -908,16 +884,7 @@ func (r Resource) slcStr(key string) []string {
 }
 
 func (r Resource) mapStrStr(key string) map[string]string {
-	v, ok := r[key]
-	if !ok {
-		return nil
-	}
-
-	if m, ok := v.(map[string]string); ok {
-		return m
-	}
-
-	res, ok := ifaceToResource(v)
+	res, ok := ifaceToResource(r[key])
 	if !ok {
 		return nil
 	}
@@ -938,7 +905,8 @@ func ifaceToResource(i interface{}) (Resource, bool) {
 		return nil, false
 	}
 
-	if res, ok := i.(Resource); ok {
+	res, ok := i.(Resource)
+	if ok {
 		return res, true
 	}
 

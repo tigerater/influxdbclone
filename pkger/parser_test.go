@@ -74,7 +74,7 @@ spec:
       name: buck_1
       retention_period: 1h
 `,
-					valFields: []string{"meta.pkgName"},
+					valFields: []string{"pkgName"},
 				},
 				{
 					name: "missing pkgVersion",
@@ -88,7 +88,7 @@ spec:
       name: buck_1
       retention_period: 1h
 `,
-					valFields: []string{"meta.pkgVersion"},
+					valFields: []string{"pkgVersion"},
 				},
 				{
 					name: "missing multiple",
@@ -98,12 +98,12 @@ spec:
       name: buck_1
       retention_period: 1h
 `,
-					valFields: []string{"apiVersion", "kind", "meta.pkgVersion", "meta.pkgName"},
+					valFields: []string{"apiVersion", "kind", "pkgVersion", "pkgName"},
 				},
 			}
 
 			for _, tt := range tests {
-				testPkgErrors(t, KindPackage, tt)
+				testPkgErrors(t, kindPackage, tt)
 			}
 		})
 	})
@@ -203,7 +203,7 @@ spec:
 			}
 
 			for _, tt := range tests {
-				testPkgErrors(t, KindBucket, tt)
+				testPkgErrors(t, kindBucket, tt)
 			}
 		})
 	})
@@ -281,7 +281,7 @@ spec:
 			}
 
 			for _, tt := range tests {
-				testPkgErrors(t, KindLabel, tt)
+				testPkgErrors(t, kindLabel, tt)
 			}
 		})
 	})
@@ -435,7 +435,7 @@ spec:
 			}
 
 			for _, tt := range tests {
-				testPkgErrors(t, KindBucket, tt)
+				testPkgErrors(t, kindBucket, tt)
 			}
 		})
 	})
@@ -512,6 +512,33 @@ spec:
           colors:
             - name: laser
               type: text
+`,
+					},
+					{
+						name:           "no colors provided",
+						validationErrs: 2,
+						valFields:      []string{"charts[0].colors", "charts[0].colors"},
+						pkgStr: `apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+  description:  pack description
+spec:
+  resources:
+    - kind: Dashboard
+      name: dash_1
+      description: desc1
+      charts:
+        - kind:   Single_Stat
+          name:   single stat
+          suffix: days
+          width:  6
+          height: 3
+          shade: true
+          queries:
+            - query: >
+                from(bucket: v.bucket) |> range(start: v.timeRangeStart) |> filter(fn: (r) => r._measurement == "system") |> filter(fn: (r) => r._field == "uptime") |> last() |> map(fn: (r) => ({r with _value: r._value / 86400})) |> yield(name: "last")
 `,
 					},
 					{
@@ -635,7 +662,7 @@ spec:
 				}
 
 				for _, tt := range tests {
-					testPkgErrors(t, KindDashboard, tt)
+					testPkgErrors(t, kindDashboard, tt)
 				}
 			})
 		})
@@ -730,6 +757,40 @@ spec:
             - name: android
               type: scale
               hex: "#F4CF31"
+          axes:
+            - name : "x"
+              label: x_label
+              base: 10
+              scale: linear
+            - name: "y"
+              label: y_label
+              base: 10
+              scale: linear
+`,
+					},
+					{
+						name:           "no colors provided",
+						validationErrs: 3,
+						valFields:      []string{"charts[0].colors", "charts[0].colors", "charts[0].colors"},
+						pkgStr: `apiVersion: 0.1.0
+kind: Package
+meta:
+  pkgName:      pkg_name
+  pkgVersion:   1
+  description:  pack description
+spec:
+  resources:
+    - kind: Dashboard
+      name: dash_1
+      description: desc1
+      charts:
+        - kind:   Single_Stat_Plus_Line
+          name:   single stat plus line
+          width:  6
+          height: 3
+          queries:
+            - query: >
+                from(bucket: v.bucket) |> range(start: v.timeRangeStart) |> filter(fn: (r) => r._measurement == "system") |> filter(fn: (r) => r._field == "uptime") |> last() |> map(fn: (r) => ({r with _value: r._value / 86400})) |> yield(name: "last")
           axes:
             - name : "x"
               label: x_label
@@ -1007,7 +1068,7 @@ spec:
 				}
 
 				for _, tt := range tests {
-					testPkgErrors(t, KindDashboard, tt)
+					testPkgErrors(t, kindDashboard, tt)
 				}
 			})
 		})
@@ -1207,7 +1268,7 @@ spec:
 				}
 
 				for _, tt := range tests {
-					testPkgErrors(t, KindDashboard, tt)
+					testPkgErrors(t, kindDashboard, tt)
 				}
 			})
 		})
@@ -1451,7 +1512,7 @@ spec:
 				}
 
 				for _, tt := range tests {
-					testPkgErrors(t, KindDashboard, tt)
+					testPkgErrors(t, kindDashboard, tt)
 				}
 			})
 		})
@@ -1573,7 +1634,7 @@ spec:
 			}
 
 			for _, tt := range tests {
-				testPkgErrors(t, KindDashboard, tt)
+				testPkgErrors(t, kindDashboard, tt)
 			}
 		})
 	})
@@ -1768,7 +1829,7 @@ spec:
 			}
 
 			for _, tt := range tests {
-				testPkgErrors(t, KindVariable, tt)
+				testPkgErrors(t, kindVariable, tt)
 			}
 		})
 	})
@@ -1828,7 +1889,7 @@ type testPkgResourceError struct {
 
 // defaults to yaml encoding if encoding not provided
 // defaults num resources to 1 if resource errs not provided.
-func testPkgErrors(t *testing.T, k Kind, tt testPkgResourceError) {
+func testPkgErrors(t *testing.T, k kind, tt testPkgResourceError) {
 	t.Helper()
 	encoding := EncodingYAML
 	if tt.encoding != EncodingUnknown {

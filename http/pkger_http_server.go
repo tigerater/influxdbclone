@@ -54,13 +54,11 @@ type ReqCreatePkg struct {
 	PkgName        string `json:"pkgName"`
 	PkgDescription string `json:"pkgDescription"`
 	PkgVersion     string `json:"pkgVersion"`
-
-	Resources []pkger.ResourceToClone `json:"resources"`
 }
 
 // RespCreatePkg is a response body for the create pkg endpoint.
 type RespCreatePkg struct {
-	*pkger.Pkg
+	Package *pkger.Pkg `json:"package"`
 }
 
 func (s *HandlerPkg) createPkg(w http.ResponseWriter, r *http.Request) {
@@ -72,12 +70,11 @@ func (s *HandlerPkg) createPkg(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	newPkg, err := s.svc.CreatePkg(r.Context(),
-		pkger.CreateWithMetadata(pkger.Metadata{
+		pkger.WithMetadata(pkger.Metadata{
 			Description: reqBody.PkgDescription,
 			Name:        reqBody.PkgName,
 			Version:     reqBody.PkgVersion,
 		}),
-		pkger.CreateWithExistingResources(reqBody.Resources...),
 	)
 	if err != nil {
 		s.HandleHTTPError(r.Context(), err, w)
@@ -85,7 +82,7 @@ func (s *HandlerPkg) createPkg(w http.ResponseWriter, r *http.Request) {
 	}
 
 	s.encResp(r.Context(), w, http.StatusOK, RespCreatePkg{
-		Pkg: newPkg,
+		Package: newPkg,
 	})
 }
 

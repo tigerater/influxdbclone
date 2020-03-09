@@ -1,69 +1,39 @@
 package pkger
 
 import (
-	"errors"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/influxdata/influxdb"
 )
 
-// Package kinds.
 const (
-	KindUnknown   Kind = ""
-	KindBucket    Kind = "bucket"
-	KindDashboard Kind = "dashboard"
-	KindLabel     Kind = "label"
-	KindPackage   Kind = "package"
-	KindVariable  Kind = "variable"
+	kindUnknown   kind = ""
+	kindBucket    kind = "bucket"
+	kindDashboard kind = "dashboard"
+	kindLabel     kind = "label"
+	kindPackage   kind = "package"
+	kindVariable  kind = "variable"
 )
 
-var kinds = map[Kind]bool{
-	KindBucket:    true,
-	KindDashboard: true,
-	KindLabel:     true,
-	KindPackage:   true,
-	KindVariable:  true,
+var kinds = map[kind]bool{
+	kindBucket:    true,
+	kindDashboard: true,
+	kindLabel:     true,
+	kindPackage:   true,
+	kindVariable:  true,
 }
 
-// Kind is a resource kind.
-type Kind string
+type kind string
 
-func newKind(s string) Kind {
-	return Kind(strings.TrimSpace(strings.ToLower(s)))
-}
-
-// String provides the kind in human readable form.
-func (k Kind) String() string {
+func (k kind) String() string {
 	if kinds[k] {
 		return string(k)
 	}
-	if k == KindUnknown {
+	if k == kindUnknown {
 		return "unknown"
 	}
 	return string(k)
-}
-
-// OK validates the kind is valid.
-func (k Kind) OK() error {
-	newKind := Kind(strings.ToLower(string(k)))
-	if newKind == KindUnknown {
-		return errors.New("invalid kind")
-	}
-	if !kinds[newKind] {
-		return errors.New("unsupported kind provided")
-	}
-	return nil
-}
-
-func (k Kind) title() string {
-	return strings.Title(k.String())
-}
-
-func (k Kind) is(comp Kind) bool {
-	normed := Kind(strings.TrimSpace(strings.ToLower(string(k))))
-	return normed == comp
 }
 
 // SafeID is an equivalent influxdb.ID that encodes safely with
@@ -272,11 +242,6 @@ func (c chartKind) ok() bool {
 	}
 }
 
-func (c chartKind) title() string {
-	spacedKind := strings.ReplaceAll(string(c), "_", " ")
-	return strings.ReplaceAll(strings.Title(spacedKind), " ", "_")
-}
-
 // SummaryChart provides a summary of a pkg dashboard's chart.
 type SummaryChart struct {
 	Properties influxdb.ViewProperties `json:"properties"`
@@ -305,23 +270,6 @@ type SummaryVariable struct {
 	influxdb.Variable
 	LabelAssociations []influxdb.Label `json:"labelAssociations"`
 }
-
-const (
-	fieldAssociations = "associations"
-	fieldDescription  = "description"
-	fieldKind         = "kind"
-	fieldName         = "name"
-	fieldPrefix       = "prefix"
-	fieldQuery        = "query"
-	fieldSuffix       = "suffix"
-	fieldType         = "type"
-	fieldValue        = "value"
-	fieldValues       = "values"
-)
-
-const (
-	fieldBucketRetentionPeriod = "retention_period"
-)
 
 type bucket struct {
 	id              influxdb.ID
@@ -453,10 +401,6 @@ func (l *associationMapping) setVariableMapping(v *variable, exists bool) {
 	l.setMapping(key, val)
 }
 
-const (
-	fieldLabelColor = "color"
-)
-
 type label struct {
 	id          influxdb.ID
 	OrgID       influxdb.ID
@@ -554,13 +498,6 @@ func toInfluxLabels(labels ...*label) []influxdb.Label {
 	}
 	return iLabels
 }
-
-const (
-	fieldArgTypeConstant = "constant"
-	fieldArgTypeMap      = "map"
-	fieldArgTypeQuery    = "query"
-	fieldVarLanguage     = "language"
-)
 
 type variable struct {
 	id          influxdb.ID
@@ -666,10 +603,6 @@ func (v *variable) valid() []failure {
 	return failures
 }
 
-const (
-	fieldDashCharts = "charts"
-)
-
 type dashboard struct {
 	id          influxdb.ID
 	OrgID       influxdb.ID
@@ -712,24 +645,6 @@ func (d *dashboard) summarize() SummaryDashboard {
 	return iDash
 }
 
-const (
-	fieldChartAxes          = "axes"
-	fieldChartColors        = "colors"
-	fieldChartDecimalPlaces = "decimalPlaces"
-	fieldChartGeom          = "geom"
-	fieldChartHeight        = "height"
-	fieldChartLegend        = "legend"
-	fieldChartNote          = "note"
-	fieldChartNoteOnEmpty   = "noteOnEmpty"
-	fieldChartQueries       = "queries"
-	fieldChartShade         = "shade"
-	fieldChartWidth         = "width"
-	fieldChartXCol          = "xCol"
-	fieldChartXPos          = "xPos"
-	fieldChartYCol          = "yCol"
-	fieldChartYPos          = "yPos"
-)
-
 type chart struct {
 	Kind            chartKind
 	Name            string
@@ -753,23 +668,9 @@ type chart struct {
 
 func (c chart) properties() influxdb.ViewProperties {
 	switch c.Kind {
-	case chartKindGauge:
-		return influxdb.GaugeViewProperties{
-			Type:       influxdb.ViewPropertyTypeGauge,
-			Queries:    c.Queries.influxDashQueries(),
-			Prefix:     c.Prefix,
-			Suffix:     c.Suffix,
-			ViewColors: c.Colors.influxViewColors(),
-			DecimalPlaces: influxdb.DecimalPlaces{
-				IsEnforced: c.EnforceDecimals,
-				Digits:     int32(c.DecimalPlaces),
-			},
-			Note:              c.Note,
-			ShowNoteWhenEmpty: c.NoteOnEmpty,
-		}
 	case chartKindSingleStat:
 		return influxdb.SingleStatViewProperties{
-			Type:   influxdb.ViewPropertyTypeSingleStat,
+			Type:   "single-stat",
 			Prefix: c.Prefix,
 			Suffix: c.Suffix,
 			DecimalPlaces: influxdb.DecimalPlaces{
@@ -783,7 +684,7 @@ func (c chart) properties() influxdb.ViewProperties {
 		}
 	case chartKindSingleStatPlusLine:
 		return influxdb.LinePlusSingleStatProperties{
-			Type:   influxdb.ViewPropertyTypeSingleStatPlusLine,
+			Type:   "line-plus-single-stat",
 			Prefix: c.Prefix,
 			Suffix: c.Suffix,
 			DecimalPlaces: influxdb.DecimalPlaces{
@@ -802,7 +703,7 @@ func (c chart) properties() influxdb.ViewProperties {
 		}
 	case chartKindXY:
 		return influxdb.XYViewProperties{
-			Type:              influxdb.ViewPropertyTypeXY,
+			Type:              "xy",
 			Note:              c.Note,
 			ShowNoteWhenEmpty: c.NoteOnEmpty,
 			XColumn:           c.XCol,
@@ -813,6 +714,20 @@ func (c chart) properties() influxdb.ViewProperties {
 			ViewColors:        c.Colors.influxViewColors(),
 			Axes:              c.Axes.influxAxes(),
 			Geom:              c.Geom,
+		}
+	case chartKindGauge:
+		return influxdb.GaugeViewProperties{
+			Type:       "gauge",
+			Queries:    c.Queries.influxDashQueries(),
+			Prefix:     c.Prefix,
+			Suffix:     c.Suffix,
+			ViewColors: c.Colors.influxViewColors(),
+			DecimalPlaces: influxdb.DecimalPlaces{
+				IsEnforced: c.EnforceDecimals,
+				Digits:     int32(c.DecimalPlaces),
+			},
+			Note:              c.Note,
+			ShowNoteWhenEmpty: c.NoteOnEmpty,
 		}
 	default:
 		return nil
@@ -838,9 +753,10 @@ func (c chart) validProperties() []failure {
 	case chartKindSingleStat:
 		fails = append(fails, c.Colors.hasTypes(colorTypeText)...)
 	case chartKindSingleStatPlusLine:
-		fails = append(fails, c.Colors.hasTypes(colorTypeText)...)
+		fails = append(fails, c.Colors.hasTypes(colorTypeText, colorTypeScale)...)
 		fails = append(fails, c.Axes.hasAxes("x", "y")...)
 	case chartKindXY:
+		fails = append(fails, c.Colors.hasTypes(colorTypeScale)...)
 		fails = append(fails, validGeometry(c.Geom)...)
 		fails = append(fails, c.Axes.hasAxes("x", "y")...)
 	}
@@ -857,13 +773,9 @@ var geometryTypes = map[string]bool{
 
 func validGeometry(geom string) []failure {
 	if !geometryTypes[geom] {
-		msg := "type not found"
-		if geom != "" {
-			msg = "type provided is not supported"
-		}
 		return []failure{{
 			Field: "geom",
-			Msg:   fmt.Sprintf("%s: %q", msg, geom),
+			Msg:   fmt.Sprintf("type not found: %q", geom),
 		}}
 	}
 
@@ -896,19 +808,12 @@ const (
 	colorTypeThreshold = "threshold"
 )
 
-const (
-	fieldColorHex = "hex"
-)
-
 type color struct {
-	id   string
-	Name string `json:"name,omitempty" yaml:"name,omitempty"`
-	Type string `json:"type,omitempty" yaml:"type,omitempty"`
-	Hex  string `json:"hex,omitempty" yaml:"hex,omitempty"`
-	// using reference for Value here so we can set to nil and
-	// it will be ignored during encoding, keeps our exported pkgs
-	// clear of unneeded entries.
-	Value *float64 `json:"value,omitempty" yaml:"value,omitempty"`
+	id    string
+	Name  string
+	Type  string
+	Hex   string
+	Value float64
 }
 
 // TODO:
@@ -917,13 +822,6 @@ type color struct {
 type colors []*color
 
 func (c colors) influxViewColors() []influxdb.ViewColor {
-	ptrToFloat64 := func(f *float64) float64 {
-		if f == nil {
-			return 0
-		}
-		return *f
-	}
-
 	var iColors []influxdb.ViewColor
 	for _, cc := range c {
 		iColors = append(iColors, influxdb.ViewColor{
@@ -933,15 +831,12 @@ func (c colors) influxViewColors() []influxdb.ViewColor {
 			Type:  cc.Type,
 			Hex:   cc.Hex,
 			Name:  cc.Name,
-			Value: ptrToFloat64(cc.Value),
+			Value: cc.Value,
 		})
 	}
 	return iColors
 }
 
-// TODO: looks like much of these are actually getting defaults in
-//  the UI. looking at sytem charts, seeign lots of failures for missing
-//  color types or no colors at all.
 func (c colors) hasTypes(types ...string) []failure {
 	tMap := make(map[string]bool)
 	for _, cc := range c {
@@ -963,6 +858,13 @@ func (c colors) hasTypes(types ...string) []failure {
 
 func (c colors) valid() []failure {
 	var fails []failure
+	if len(c) == 0 {
+		fails = append(fails, failure{
+			Field: "colors",
+			Msg:   "at least 1 color must be provided",
+		})
+	}
+
 	for i, cc := range c {
 		if cc.Hex == "" {
 			fails = append(fails, failure{
@@ -976,7 +878,7 @@ func (c colors) valid() []failure {
 }
 
 type query struct {
-	Query string `json:"query" yaml:"query"`
+	Query string
 }
 
 type queries []query
@@ -1016,19 +918,13 @@ func (q queries) valid() []failure {
 	return fails
 }
 
-const (
-	fieldAxisBase  = "base"
-	fieldAxisLabel = "label"
-	fieldAxisScale = "scale"
-)
-
 type axis struct {
-	Base   string `json:"base,omitempty" yaml:"base,omitempty"`
-	Label  string `json:"label,omitempty" yaml:"label,omitempty"`
-	Name   string `json:"name,omitempty" yaml:"name,omitempty"`
-	Prefix string `json:"prefix,omitempty" yaml:"prefix,omitempty"`
-	Scale  string `json:"scale,omitempty" yaml:"scale,omitempty"`
-	Suffix string `json:"suffix,omitempty" yaml:"suffix,omitempty"`
+	Base   string
+	Label  string
+	Name   string
+	Prefix string
+	Scale  string
+	Suffix string
 }
 
 type axes []axis
@@ -1067,14 +963,9 @@ func (a axes) hasAxes(expectedAxes ...string) []failure {
 	return failures
 }
 
-const (
-	fieldLegendLanguage    = "language"
-	fieldLegendOrientation = "orientation"
-)
-
 type legend struct {
-	Orientation string `json:"orientation,omitempty" yaml:"orientation,omitempty"`
-	Type        string `json:"type" yaml:"type"`
+	Orientation string
+	Type        string
 }
 
 func (l legend) influxLegend() influxdb.Legend {
@@ -1082,11 +973,4 @@ func (l legend) influxLegend() influxdb.Legend {
 		Type:        l.Type,
 		Orientation: l.Orientation,
 	}
-}
-
-func flt64Ptr(f float64) *float64 {
-	if f != 0 {
-		return &f
-	}
-	return nil
 }
