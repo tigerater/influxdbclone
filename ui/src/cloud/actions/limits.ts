@@ -292,10 +292,7 @@ export const checkBucketLimits = () => async (
     } = getState()
 
     const bucketsMax = extractBucketMax(limits)
-    const buckets = list.filter(bucket => {
-      return bucket.type == 'user'
-    })
-    const bucketsCount = buckets.length
+    const bucketsCount = list.length
 
     if (bucketsCount >= bucketsMax) {
       dispatch(setBucketLimitStatus(LimitStatus.EXCEEDED))
