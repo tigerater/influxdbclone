@@ -60,10 +60,10 @@ func (as *AnalyticalStorage) FinishRun(ctx context.Context, taskID, runID influx
 			return run, err
 		}
 
-		tags := models.NewTags(map[string]string{
-			statusTag: run.Status,
-			taskIDTag: run.TaskID.String(),
-		})
+		tags := models.Tags{
+			models.NewTag([]byte(taskIDTag), []byte(run.TaskID.String())),
+			models.NewTag([]byte(statusTag), []byte(run.Status)),
+		}
 
 		// log an error if we have incomplete data on finish
 		if !run.ID.Valid() ||
