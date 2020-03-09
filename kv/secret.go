@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"errors"
+	"fmt"
 
 	"github.com/influxdata/influxdb"
 )
@@ -119,10 +120,7 @@ func (s *Service) getSecretKeys(ctx context.Context, tx Tx, orgID influxdb.ID) (
 	}
 
 	if id != orgID {
-		return []string{}, &influxdb.Error{
-			Code: influxdb.ENotFound,
-			Msg:  "organization has no secret keys",
-		}
+		return nil, fmt.Errorf("organization has no secret keys")
 	}
 
 	keys := []string{key}

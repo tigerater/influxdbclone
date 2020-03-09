@@ -102,7 +102,6 @@ type Diff struct {
 	Dashboards    []DiffDashboard    `json:"dashboards"`
 	Labels        []DiffLabel        `json:"labels"`
 	LabelMappings []DiffLabelMapping `json:"labelMappings"`
-	Telegrafs     []DiffTelegraf     `json:"telegrafConfigs"`
 	Variables     []DiffVariable     `json:"variables"`
 }
 
@@ -254,17 +253,6 @@ type DiffLabelMapping struct {
 
 	LabelID   SafeID `json:"labelID"`
 	LabelName string `json:"labelName"`
-}
-
-// DiffTelegraf is a diff of an individual telegraf.
-type DiffTelegraf struct {
-	influxdb.TelegrafConfig
-}
-
-func newDiffTelegraf(t *telegraf) DiffTelegraf {
-	return DiffTelegraf{
-		TelegrafConfig: t.config,
-	}
 }
 
 // DiffVariableValues are the varying values for a variable.
@@ -570,14 +558,6 @@ func (l assocMapVal) dashboard() (*dashboard, bool) {
 	return d, ok
 }
 
-func (l assocMapVal) telegraf() (*telegraf, bool) {
-	if l.v == nil {
-		return nil, false
-	}
-	t, ok := l.v.(*telegraf)
-	return t, ok
-}
-
 func (l assocMapVal) variable() (*variable, bool) {
 	if l.v == nil {
 		return nil, false
@@ -688,11 +668,6 @@ func (l *label) getMappedResourceID(k assocMapKey) influxdb.ID {
 		if ok {
 			return d.ID()
 		}
-	case influxdb.TelegrafsResourceType:
-		t, ok := l.mappings[k].telegraf()
-		if ok {
-			return t.ID()
-		}
 	case influxdb.VariablesResourceType:
 		v, ok := l.mappings[k].variable()
 		if ok {
@@ -746,20 +721,12 @@ type telegraf struct {
 	labels sortedLogos
 }
 
-func (t *telegraf) ID() influxdb.ID {
-	return t.config.ID
-}
-
 func (t *telegraf) Name() string {
 	return t.config.Name
 }
 
 func (t *telegraf) ResourceType() influxdb.ResourceType {
 	return influxdb.TelegrafsResourceType
-}
-
-func (t *telegraf) Exists() bool {
-	return false
 }
 
 func (t *telegraf) summarize() SummaryTelegraf {
