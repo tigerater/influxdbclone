@@ -54,7 +54,7 @@ export const generateThresholdsListHexs = ({
     hex: defaultColoring.textColor,
   }
 
-  if (lastValue != 0 && !lastValue) {
+  if (!lastValue) {
     return {...defaultColoring, textColor: baseColor.hex}
   }
 
