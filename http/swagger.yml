@@ -8590,7 +8590,17 @@ components:
           type: integer
     GaugeViewProperties:
       type: object
-      required: [type, queries, colors, shape, note, showNoteWhenEmpty, prefix, tickPrefix, suffix, tickSuffix, legend, decimalPlaces]
+      required:
+        - type
+        - queries
+        - colors
+        - shape
+        - note
+        - showNoteWhenEmpty
+        - prefix
+        - suffix
+        - legend
+        - decimalPlaces
       properties:
         type:
           type: string
@@ -8614,11 +8624,7 @@ components:
           type: boolean
         prefix:
           type: string
-        tickPrefix:
-          type: string
         suffix:
-          type: string
-        tickSuffix:
           type: string
         legend:
           $ref: '#/components/schemas/Legend'

@@ -12,9 +12,7 @@ import ThresholdsSettings from 'src/shared/components/ThresholdsSettings'
 import {
   setDecimalPlaces,
   setPrefix,
-  setTickPrefix,
   setSuffix,
-  setTickSuffix,
   setColors,
 } from 'src/timeMachine/actions'
 
@@ -28,16 +26,12 @@ interface OwnProps {
   colors: Color[]
   decimalPlaces?: DecimalPlaces
   prefix: string
-  tickPrefix: string
   suffix: string
-  tickSuffix: string
 }
 
 interface DispatchProps {
   onUpdatePrefix: (prefix: string) => void
-  onUpdateTickPrefix: (tickPrefix: string) => void
   onUpdateSuffix: (suffix: string) => void
-  onUpdateTickSuffix: (tickSuffix: string) => void
   onUpdateDecimalPlaces: (decimalPlaces: DecimalPlaces) => void
   onUpdateColors: (colors: Color[]) => void
 }
@@ -48,13 +42,9 @@ class GaugeOptions extends PureComponent<Props> {
   public render() {
     const {
       prefix,
-      tickPrefix,
       suffix,
-      tickSuffix,
       onUpdatePrefix,
-      onUpdateTickPrefix,
       onUpdateSuffix,
-      onUpdateTickSuffix,
       onUpdateColors,
     } = this.props
 
@@ -65,13 +55,9 @@ class GaugeOptions extends PureComponent<Props> {
         </Grid.Column>
         <Affixes
           prefix={prefix}
-          tickPrefix={tickPrefix}
           suffix={suffix}
-          tickSuffix={tickSuffix}
           onUpdatePrefix={onUpdatePrefix}
-          onUpdateTickPrefix={onUpdateTickPrefix}
           onUpdateSuffix={onUpdateSuffix}
-          onUpdateTickSuffix={onUpdateTickSuffix}
         />
         {this.decimalPlaces}
         <Grid.Column>
@@ -106,9 +92,7 @@ class GaugeOptions extends PureComponent<Props> {
 
 const mdtp: DispatchProps = {
   onUpdatePrefix: setPrefix,
-  onUpdateTickPrefix: setTickPrefix,
   onUpdateSuffix: setSuffix,
-  onUpdateTickSuffix: setTickSuffix,
   onUpdateDecimalPlaces: setDecimalPlaces,
   onUpdateColors: setColors,
 }
