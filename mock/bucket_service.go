@@ -2,7 +2,6 @@ package mock
 
 import (
 	"context"
-	"time"
 
 	platform "github.com/influxdata/influxdb"
 	"go.uber.org/zap"
@@ -17,13 +16,12 @@ type BucketService struct {
 	WithLoggerFn func(l *zap.Logger)
 
 	// Methods for an platform.BucketService
-	FindBucketByIDFn   func(context.Context, platform.ID) (*platform.Bucket, error)
-	FindBucketByNameFn func(context.Context, platform.ID, string) (*platform.Bucket, error)
-	FindBucketFn       func(context.Context, platform.BucketFilter) (*platform.Bucket, error)
-	FindBucketsFn      func(context.Context, platform.BucketFilter, ...platform.FindOptions) ([]*platform.Bucket, int, error)
-	CreateBucketFn     func(context.Context, *platform.Bucket) error
-	UpdateBucketFn     func(context.Context, platform.ID, platform.BucketUpdate) (*platform.Bucket, error)
-	DeleteBucketFn     func(context.Context, platform.ID) error
+	FindBucketByIDFn func(context.Context, platform.ID) (*platform.Bucket, error)
+	FindBucketFn     func(context.Context, platform.BucketFilter) (*platform.Bucket, error)
+	FindBucketsFn    func(context.Context, platform.BucketFilter, ...platform.FindOptions) ([]*platform.Bucket, int, error)
+	CreateBucketFn   func(context.Context, *platform.Bucket) error
+	UpdateBucketFn   func(context.Context, platform.ID, platform.BucketUpdate) (*platform.Bucket, error)
+	DeleteBucketFn   func(context.Context, platform.ID) error
 }
 
 // NewBucketService returns a mock BucketService where its methods will return
@@ -34,16 +32,7 @@ func NewBucketService() *BucketService {
 		CloseFn:          func() error { return nil },
 		WithLoggerFn:     func(l *zap.Logger) {},
 		FindBucketByIDFn: func(context.Context, platform.ID) (*platform.Bucket, error) { return nil, nil },
-		FindBucketByNameFn: func(context.Context, platform.ID, string) (*platform.Bucket, error) {
-			return &platform.Bucket{
-				ID:              platform.TasksSystemBucketID,
-				Type:            platform.BucketTypeSystem,
-				Name:            "_tasks",
-				RetentionPeriod: time.Hour * 24 * 3,
-				Description:     "System bucket for task logs",
-			}, nil
-		},
-		FindBucketFn: func(context.Context, platform.BucketFilter) (*platform.Bucket, error) { return nil, nil },
+		FindBucketFn:     func(context.Context, platform.BucketFilter) (*platform.Bucket, error) { return nil, nil },
 		FindBucketsFn: func(context.Context, platform.BucketFilter, ...platform.FindOptions) ([]*platform.Bucket, int, error) {
 			return nil, 0, nil
 		},
@@ -65,11 +54,6 @@ func (s *BucketService) WithLogger(l *zap.Logger) { s.WithLoggerFn(l) }
 // FindBucketByID returns a single bucket by ID.
 func (s *BucketService) FindBucketByID(ctx context.Context, id platform.ID) (*platform.Bucket, error) {
 	return s.FindBucketByIDFn(ctx, id)
-}
-
-// FindBucketByName returns a single bucket by name.
-func (s *BucketService) FindBucketByName(ctx context.Context, orgID platform.ID, name string) (*platform.Bucket, error) {
-	return s.FindBucketByNameFn(ctx, orgID, name)
 }
 
 // FindBucket returns the first bucket that matches filter.
