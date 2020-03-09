@@ -26,7 +26,7 @@ import {SortTypes} from 'src/shared/utils/sort'
 // Utils
 import {prettyBuckets} from 'src/shared/utils/prettyBucket'
 
-type SortKey = keyof PrettyBucket | 'retentionRules[0].everySeconds'
+type SortKey = keyof PrettyBucket
 
 interface OwnProps {
   buckets: PrettyBucket[]
@@ -37,9 +37,7 @@ interface OwnProps {
   sortKey: string
   sortDirection: Sort
   sortType: SortTypes
-  onClickColumn: (
-    sortType: SortTypes
-  ) => (nextSort: Sort, sortKey: SortKey) => void
+  onClickColumn: (mextSort: Sort, sortKey: SortKey) => void
 }
 
 interface DispatchProps {
@@ -75,6 +73,7 @@ class BucketList extends PureComponent<Props & WithRouterProps, State> {
 
   public render() {
     const {emptyState, sortKey, sortDirection, onClickColumn} = this.props
+
     return (
       <>
         <ResourceList>
@@ -83,15 +82,13 @@ class BucketList extends PureComponent<Props & WithRouterProps, State> {
               name="Name"
               sortKey={this.headerKeys[0]}
               sort={sortKey === this.headerKeys[0] ? sortDirection : Sort.None}
-              onClick={onClickColumn(SortTypes.String)}
-              testID="name-sorter"
+              onClick={onClickColumn}
             />
             <ResourceList.Sorter
               name="Retention"
               sortKey={this.headerKeys[1]}
               sort={sortKey === this.headerKeys[1] ? sortDirection : Sort.None}
-              onClick={onClickColumn(SortTypes.Float)}
-              testID="retention-sorter"
+              onClick={onClickColumn}
             />
           </ResourceList.Header>
           <ResourceList.Body emptyState={emptyState}>
@@ -103,7 +100,7 @@ class BucketList extends PureComponent<Props & WithRouterProps, State> {
   }
 
   private get headerKeys(): SortKey[] {
-    return ['name', 'retentionRules[0].everySeconds']
+    return ['name', 'ruleString']
   }
 
   private get listBuckets(): JSX.Element[] {
@@ -122,20 +119,18 @@ class BucketList extends PureComponent<Props & WithRouterProps, State> {
       sortType
     )
 
-    return sortedBuckets.map(bucket => {
-      return (
-        <BucketCard
-          key={bucket.id}
-          bucket={bucket}
-          onEditBucket={this.handleStartEdit}
-          onDeleteBucket={onDeleteBucket}
-          onDeleteData={this.handleStartDeleteData}
-          onAddData={this.handleStartAddData}
-          onUpdateBucket={this.handleUpdateBucket}
-          onFilterChange={onFilterChange}
-        />
-      )
-    })
+    return sortedBuckets.map(bucket => (
+      <BucketCard
+        key={bucket.id}
+        bucket={bucket}
+        onEditBucket={this.handleStartEdit}
+        onDeleteBucket={onDeleteBucket}
+        onDeleteData={this.handleStartDeleteData}
+        onAddData={this.handleStartAddData}
+        onUpdateBucket={this.handleUpdateBucket}
+        onFilterChange={onFilterChange}
+      />
+    ))
   }
 
   private handleStartEdit = (bucket: PrettyBucket) => {
