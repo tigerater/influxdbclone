@@ -2,7 +2,7 @@
 import React, {FC, useContext} from 'react'
 import {Link} from 'react-router'
 
-// Context
+// Components
 import {ResourceIDsContext} from 'src/alerting/components/AlertHistoryIndex'
 
 // Utils
