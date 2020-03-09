@@ -677,29 +677,15 @@ func (t *transpilerState) from(m *influxql.Measurement) (ast.Expression, error) 
 	defaultRP := rp == ""
 	filter.Default = &defaultRP
 	mapping, err := t.dbrpMappingSvc.Find(context.TODO(), filter)
-	var args []ast.Expression
 	if err != nil {
-		if !t.config.FallbackToDBRP {
-			return nil, err
-		}
-		// use `db/rp` naming convention
-		args = []ast.Expression{
-			&ast.ObjectExpression{
-				Properties: []*ast.Property{
-					{
-						Key: &ast.Identifier{
-							Name: "bucket",
-						},
-						Value: &ast.StringLiteral{
-							Value: fmt.Sprintf("%s/%s", db, rp),
-						},
-					},
-				},
-			},
-		}
-	} else {
-		// use mapping bucket id
-		args = []ast.Expression{
+		return nil, err
+	}
+
+	return &ast.CallExpression{
+		Callee: &ast.Identifier{
+			Name: "from",
+		},
+		Arguments: []ast.Expression{
 			&ast.ObjectExpression{
 				Properties: []*ast.Property{
 					{
@@ -712,14 +698,7 @@ func (t *transpilerState) from(m *influxql.Measurement) (ast.Expression, error) 
 					},
 				},
 			},
-		}
-	}
-
-	return &ast.CallExpression{
-		Callee: &ast.Identifier{
-			Name: "from",
 		},
-		Arguments: args,
 	}, nil
 }
 
