@@ -6,6 +6,7 @@ import {
   Input,
   FormElement,
   InputType,
+  TextArea,
   Panel,
   Grid,
   Columns,
@@ -34,6 +35,7 @@ const EndpointOptionsHTTP: FC<Props> = ({
   token,
   username,
   password,
+  contentTemplate,
   method,
   authMethod,
   onChangeParameter,
@@ -113,6 +115,17 @@ const EndpointOptionsHTTP: FC<Props> = ({
                 </Grid.Column>
               </>
             )}
+            <Grid.Column widthXS={Columns.Twelve}>
+              <FormElement label="Content Template">
+                <TextArea
+                  rows={2}
+                  className="endpoint-description--textarea"
+                  name="contentTemplate"
+                  value={contentTemplate}
+                  onChange={onChange}
+                />
+              </FormElement>
+            </Grid.Column>
           </Grid.Row>
         </Grid>
       </Panel.Body>

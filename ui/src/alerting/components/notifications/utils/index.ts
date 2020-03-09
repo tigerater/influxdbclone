@@ -25,7 +25,7 @@ type RuleVariantFields =
   | HTTPNotificationRuleBase
 
 const defaultMessage =
-  'Notification Rule: ${ r._notification_rule_name } triggered by check: ${ r._check_name }: ${ r._message }'
+  'Notification Rule: ${ r._notification_rule_name } triggered by check: ${ r._check_name }'
 
 export const getRuleVariantDefaults = (
   endpoints: NotificationEndpoint[],
