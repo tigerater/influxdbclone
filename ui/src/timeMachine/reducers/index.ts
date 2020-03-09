@@ -752,6 +752,8 @@ export const timeMachineReducer = (
 
         draftState.queryBuilder.tags[index].values = values
         draftState.queryBuilder.tags[index].valuesStatus = RemoteDataState.Done
+
+        buildActiveQuery(draftState)
       })
     }
 
