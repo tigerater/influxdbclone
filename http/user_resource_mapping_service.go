@@ -15,21 +15,23 @@ import (
 )
 
 // UserResourceMappingService is the struct of urm service
+// TODO(jm): how is basepath going to be populated?
 type UserResourceMappingService struct {
 	Addr               string
 	Token              string
 	InsecureSkipVerify bool
+	basePath           string
 }
 
 type resourceUserResponse struct {
 	Role influxdb.UserType `json:"role"`
-	*UserResponse
+	*userResponse
 }
 
 func newResourceUserResponse(u *influxdb.User, userType influxdb.UserType) *resourceUserResponse {
 	return &resourceUserResponse{
 		Role:         userType,
-		UserResponse: newUserResponse(u),
+		userResponse: newUserResponse(u),
 	}
 }
 
@@ -272,9 +274,22 @@ func decodeDeleteMemberRequest(ctx context.Context, r *http.Request) (*deleteMem
 
 // FindUserResourceMappings returns the user resource mappings
 func (s *UserResourceMappingService) FindUserResourceMappings(ctx context.Context, filter influxdb.UserResourceMappingFilter, opt ...influxdb.FindOptions) ([]*influxdb.UserResourceMapping, int, error) {
-	url, err := NewURL(s.Addr, resourceIDPath(filter.ResourceType, filter.ResourceID, string(filter.UserType)+"s"))
+	url, err := NewURL(s.Addr, s.basePath)
 	if err != nil {
 		return nil, 0, err
+	}
+
+	query := url.Query()
+
+	// this is not how this is going to work, lol
+	if filter.ResourceID.Valid() {
+		query.Add("resourceID", filter.ResourceID.String())
+	}
+	if filter.UserID.Valid() {
+		query.Add("userID", filter.UserID.String())
+	}
+	if filter.UserType != "" {
+		query.Add("userType", string(filter.UserType))
 	}
 
 	req, err := http.NewRequest("GET", url.String(), nil)
@@ -282,6 +297,7 @@ func (s *UserResourceMappingService) FindUserResourceMappings(ctx context.Contex
 		return nil, 0, err
 	}
 
+	req.URL.RawQuery = query.Encode()
 	SetToken(s.Token, req)
 
 	hc := NewClient(url.Scheme, s.InsecureSkipVerify)
@@ -295,21 +311,8 @@ func (s *UserResourceMappingService) FindUserResourceMappings(ctx context.Contex
 		return nil, 0, err
 	}
 
-	results := new(resourceUsersResponse)
-	if err := json.NewDecoder(resp.Body).Decode(results); err != nil {
-		return nil, 0, err
-	}
-
-	urs := make([]*influxdb.UserResourceMapping, len(results.Users))
-	for k, item := range results.Users {
-		urs[k] = &influxdb.UserResourceMapping{
-			ResourceID:   filter.ResourceID,
-			ResourceType: filter.ResourceType,
-			UserID:       item.User.ID,
-			UserType:     item.Role,
-		}
-	}
-	return urs, len(urs), nil
+	// TODO(jm): make this actually work
+	return nil, 0, nil
 }
 
 // CreateUserResourceMapping will create a user resource mapping

@@ -281,6 +281,11 @@ func organizationMembersListF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to initialize org service client: %v", err)
 	}
 
+	mappingSvc, err := newUserResourceMappingService(flags)
+	if err != nil {
+		return fmt.Errorf("failed to initialize members service client: %v", err)
+	}
+
 	if organizationMembersListFlags.id == "" && organizationMembersListFlags.name == "" {
 		return fmt.Errorf("must specify exactly one of id and name")
 	}
@@ -304,11 +309,28 @@ func organizationMembersListF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to find org: %v", err)
 	}
 
-	return membersListF(context.Background(), platform.UserResourceMappingFilter{
-		ResourceType: platform.OrgsResourceType,
-		ResourceID:   organization.ID,
-		UserType:     platform.Member,
-	}, flags)
+	mappingFilter := platform.UserResourceMappingFilter{
+		ResourceID: organization.ID,
+		UserType:   platform.Member,
+	}
+
+	mappings, _, err := mappingSvc.FindUserResourceMappings(context.Background(), mappingFilter)
+	if err != nil {
+		return fmt.Errorf("failed to find members: %v", err)
+	}
+
+	// TODO: look up each user and output their name
+	w := internal.NewTabWriter(os.Stdout)
+	w.WriteHeaders(
+		"ID",
+	)
+	for _, m := range mappings {
+		w.Write(map[string]interface{}{
+			"ID": m.UserID.String(),
+		})
+	}
+	w.Flush()
+	return nil
 }
 
 func init() {
@@ -361,8 +383,7 @@ func organizationMembersAddF(cmd *cobra.Command, args []string) error {
 		filter.ID = &fID
 	}
 
-	ctx := context.Background()
-	organization, err := orgSvc.FindOrganization(ctx, filter)
+	organization, err := orgSvc.FindOrganization(context.Background(), filter)
 	if err != nil {
 		return fmt.Errorf("failed to find org: %v", err)
 	}
@@ -373,7 +394,7 @@ func organizationMembersAddF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to decode member id %s: %v", organizationMembersAddFlags.memberID, err)
 	}
 
-	return membersAddF(ctx, platform.UserResourceMapping{
+	return membersAddF(platform.UserResourceMapping{
 		ResourceID:   organization.ID,
 		ResourceType: platform.OrgsResourceType,
 		MappingType:  platform.UserMappingType,
@@ -434,8 +455,7 @@ func organizationMembersRemoveF(cmd *cobra.Command, args []string) error {
 		filter.ID = &fID
 	}
 
-	ctx := context.Background()
-	organization, err := orgSvc.FindOrganization(ctx, filter)
+	organization, err := orgSvc.FindOrganization(context.Background(), filter)
 	if err != nil {
 		return fmt.Errorf("failed to find organization: %v", err)
 	}
@@ -446,7 +466,7 @@ func organizationMembersRemoveF(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to decode member id %s: %v", organizationMembersRemoveFlags.memberID, err)
 	}
 
-	return membersRemoveF(ctx, organization.ID, memberID, flags)
+	return membersRemoveF(organization.ID, memberID, flags)
 }
 
 func init() {
