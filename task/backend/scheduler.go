@@ -712,12 +712,16 @@ func (r *runner) clearRunning(id platform.ID) {
 }
 
 // fail sets r's state to failed, and marks this runner as idle.
-func (r *runner) fail(qr QueuedRun, runLogger *zap.Logger, stage string, reason error) {
-	if err := r.taskControlService.AddRunLog(r.ts.authCtx, r.task.ID, qr.RunID, time.Now(), stage+": "+reason.Error()); err != nil {
+func (r *runner) fail(qr QueuedRun, runLogger *zap.Logger, stage string, reason influxdb.Error) {
+	influxErr := &reason
+	err := r.taskControlService.AddRunLog(r.ts.authCtx, r.task.ID, qr.RunID, time.Now(), stage+": "+reason.Error())
+
+	if err != nil {
 		runLogger.Info("Failed to update run log", zap.Error(err))
+		influxErr = influxdb.ErrCouldNotLogError(err)
 	}
 
-	r.updateRunState(qr, RunFail, runLogger, reason)
+	r.updateRunState(qr, RunFail, runLogger, influxErr)
 	atomic.StoreUint32(r.state, runnerIdle)
 }
 
@@ -745,7 +749,8 @@ func (r *runner) executeAndWait(ctx context.Context, qr QueuedRun, runLogger *za
 		errMsg = "Beginning run execution failed, " + errMsg
 		// TODO(mr): retry?
 
-		r.fail(qr, runLogger, "Run failed to begin execution", influxdb.ErrRunExecutionError(err))
+		influxErr := *influxdb.ErrRunExecutionError(err)
+		r.fail(qr, runLogger, "Run failed to begin execution", influxErr)
 		return
 	}
 
@@ -771,7 +776,7 @@ func (r *runner) executeAndWait(ctx context.Context, qr QueuedRun, runLogger *za
 	close(ready)
 	if err != nil {
 		if err == platform.ErrRunCanceled {
-			r.updateRunState(qr, RunCanceled, runLogger, err)
+			r.updateRunState(qr, RunCanceled, runLogger, err.(*influxdb.Error))
 			errMsg = "Waiting for execution result failed, " + errMsg
 			// Move on to the next execution, for a canceled run.
 			r.startFromWorking(atomic.LoadInt64(r.ts.now))
@@ -781,7 +786,7 @@ func (r *runner) executeAndWait(ctx context.Context, qr QueuedRun, runLogger *za
 		runLogger.Info("Failed to wait for execution result", zap.Error(err))
 
 		// TODO(mr): retry?
-		r.fail(qr, runLogger, "Waiting for execution result", influxdb.ErrRunExecutionError(err))
+		r.fail(qr, runLogger, "Waiting for execution result", *influxdb.ErrRunExecutionError(err))
 		return
 	}
 	if err := rr.Err(); err != nil {
@@ -789,15 +794,16 @@ func (r *runner) executeAndWait(ctx context.Context, qr QueuedRun, runLogger *za
 		errMsg = "Run failed to execute, " + errMsg
 
 		// TODO(mr): retry?
-		r.fail(qr, runLogger, "Run failed to execute", influxdb.ErrRunExecutionError(err))
+		r.fail(qr, runLogger, "Run failed to execute", *influxdb.ErrRunExecutionError(err))
 		return
 	}
 
 	stats := rr.Statistics()
 
+	var influxErr *influxdb.Error
 	b, err := json.Marshal(stats)
 	if err != nil {
-		err = influxdb.ErrJsonMarshalError(err)
+		influxErr = influxdb.ErrJsonMarshalError(err)
 	} else {
 		// authctx can be updated mid process
 		r.ts.nextDueMu.RLock()
@@ -805,14 +811,14 @@ func (r *runner) executeAndWait(ctx context.Context, qr QueuedRun, runLogger *za
 		r.ts.nextDueMu.RUnlock()
 		r.taskControlService.AddRunLog(authCtx, r.task.ID, qr.RunID, time.Now(), string(b))
 	}
-	r.updateRunState(qr, RunSuccess, runLogger, err)
+	r.updateRunState(qr, RunSuccess, runLogger, influxErr)
 	runLogger.Debug("Execution succeeded")
 
 	// Check again if there is a new run available, without returning to idle state.
 	r.startFromWorking(atomic.LoadInt64(r.ts.now))
 }
 
-func (r *runner) updateRunState(qr QueuedRun, s RunStatus, runLogger *zap.Logger, err error) {
+func (r *runner) updateRunState(qr QueuedRun, s RunStatus, runLogger *zap.Logger, err *influxdb.Error) {
 	switch s {
 	case RunStarted:
 		dueAt := time.Unix(qr.DueAt, 0)
