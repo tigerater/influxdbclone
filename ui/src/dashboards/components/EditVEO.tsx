@@ -47,8 +47,11 @@ const EditViewVEO: FunctionComponent<Props> = ({
 }) => {
   useEffect(() => {
     getViewForTimeMachine(dashboardID, cellID, 'veo')
-    onExecuteQueries()
   }, [cellID, dashboardID])
+
+  useEffect(() => {
+    onExecuteQueries()
+  }, [view])
 
   const handleClose = () => {
     router.push(`/orgs/${orgID}/dashboards/${dashboardID}`)
