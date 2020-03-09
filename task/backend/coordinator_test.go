@@ -55,7 +55,7 @@ func Test_NotifyCoordinatorOfCreated(t *testing.T) {
 	}
 
 	if diff := cmp.Diff([]update{
-		{two, influxdb.TaskUpdate{LatestCompleted: &aTime, LatestScheduled: &aTime}},
+		{two, influxdb.TaskUpdate{LatestCompleted: &aTime}},
 	}, tasks.updates); diff != "" {
 		t.Errorf("unexpected updates to task service %v", diff)
 	}

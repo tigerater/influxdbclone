@@ -42,7 +42,6 @@ func NotifyCoordinatorOfExisting(ctx context.Context, log *zap.Logger, ts TaskSe
 
 			task, err := ts.UpdateTask(context.Background(), task.ID, influxdb.TaskUpdate{
 				LatestCompleted: &latestCompleted,
-				LatestScheduled: &latestCompleted,
 			})
 			if err != nil {
 				log.Error("Failed to set latestCompleted", zap.Error(err))
@@ -84,7 +83,6 @@ func TaskNotifyCoordinatorOfExisting(ctx context.Context, ts TaskService, tcs Ta
 
 			task, err := ts.UpdateTask(context.Background(), task.ID, influxdb.TaskUpdate{
 				LatestCompleted: &latestCompleted,
-				LatestScheduled: &latestCompleted,
 			})
 			if err != nil {
 				log.Error("Failed to set latestCompleted", zap.Error(err))
