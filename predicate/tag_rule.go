@@ -4,17 +4,11 @@ import (
 	"fmt"
 
 	"github.com/influxdata/influxdb"
-	"github.com/influxdata/influxdb/models"
 	"github.com/influxdata/influxdb/storage/reads/datatypes"
 )
 
 // TagRuleNode is a node type of a single tag rule.
 type TagRuleNode influxdb.TagRule
-
-var specialKey = map[string]string{
-	"_measurement": models.MeasurementTagKey,
-	"_field":       models.FieldKeyTagKey,
-}
 
 // NodeTypeLiteral convert a TagRuleNode to a nodeTypeLiteral.
 func NodeTypeLiteral(tr TagRuleNode) *datatypes.Node {
@@ -66,9 +60,6 @@ func (n TagRuleNode) ToDataType() (*datatypes.Node, error) {
 	compare, err := NodeComparison(n.Operator)
 	if err != nil {
 		return nil, err
-	}
-	if special, ok := specialKey[n.Key]; ok {
-		n.Key = special
 	}
 	return &datatypes.Node{
 		NodeType: datatypes.NodeTypeComparisonExpression,

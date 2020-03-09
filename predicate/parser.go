@@ -73,7 +73,9 @@ func Parse(sts string) (n Node, err error) {
 }
 
 func (p *parser) parseLogicalNode() (Node, error) {
-	n := new(LogicalNode)
+	n := &LogicalNode{
+		Children: make([]Node, 0),
+	}
 	for {
 		tok, pos, _ := p.scanIgnoreWhitespace()
 		switch tok {
@@ -89,30 +91,9 @@ func (p *parser) parseLogicalNode() (Node, error) {
 			if err != nil {
 				return *n, err
 			}
-			if n.Children[0] == nil {
-				n.Children[0] = tr
-			} else {
-				n.Children[1] = tr
-			}
+			n.Children = append(n.Children, tr)
 		case influxql.AND:
 			n.Operator = LogicalAnd
-			if n.Children[1] == nil {
-				continue
-			}
-			var n1 Node
-			var err error
-			if tokNext := p.peekTok(); tokNext == influxql.LPAREN {
-				n1, err = p.parseLogicalNode()
-			} else {
-				n1, err = p.parseTagRuleNode()
-			}
-			if err != nil {
-				return *n, err
-			}
-			n = &LogicalNode{
-				Children: [2]Node{*n, n1},
-				Operator: LogicalAnd,
-			}
 		case influxql.OR:
 			return *n, &influxdb.Error{
 				Code: influxdb.EInvalid,
@@ -131,11 +112,7 @@ func (p *parser) parseLogicalNode() (Node, error) {
 					Msg:  fmt.Sprintf("extra ( seen"),
 				}
 			}
-			if n.Children[0] == nil {
-				n.Children[0] = n1
-			} else {
-				n.Children[1] = n1
-			}
+			n.Children = append(n.Children, n1)
 		case influxql.RPAREN:
 			p.openParen--
 			fallthrough
@@ -146,7 +123,7 @@ func (p *parser) parseLogicalNode() (Node, error) {
 					Msg:  fmt.Sprintf("extra ) seen"),
 				}
 			}
-			if n.Children[1] == nil {
+			if len(n.Children) == 1 {
 				return n.Children[0], nil
 			}
 			return *n, nil
@@ -223,14 +200,4 @@ scanRegularTagValue:
 			Msg:  fmt.Sprintf("bad tag value: %q, at position %d", lit, pos.Char),
 		}
 	}
-}
-
-// peekRune returns the next rune that would be read by the scanner.
-func (p *parser) peekTok() influxql.Token {
-	tok, _, _ := p.scanIgnoreWhitespace()
-	if tok != influxql.EOF {
-		p.unscan()
-	}
-
-	return tok
 }

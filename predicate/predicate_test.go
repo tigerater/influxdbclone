@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/influxdata/influxdb"
-	"github.com/influxdata/influxdb/models"
 	"github.com/influxdata/influxdb/storage/reads/datatypes"
 	influxtesting "github.com/influxdata/influxdb/testing"
 )
@@ -47,62 +46,10 @@ func TestDataTypeConversion(t *testing.T) {
 			},
 		},
 		{
-			name: "measurement tag rule",
-			node: &TagRuleNode{
-				Operator: influxdb.Equal,
-				Tag: influxdb.Tag{
-					Key:   "_measurement",
-					Value: "cpu",
-				},
-			},
-			dataType: &datatypes.Node{
-				NodeType: datatypes.NodeTypeComparisonExpression,
-				Value:    &datatypes.Node_Comparison_{Comparison: datatypes.ComparisonEqual},
-				Children: []*datatypes.Node{
-					{
-						NodeType: datatypes.NodeTypeTagRef,
-						Value:    &datatypes.Node_TagRefValue{TagRefValue: models.MeasurementTagKey},
-					},
-					{
-						NodeType: datatypes.NodeTypeLiteral,
-						Value: &datatypes.Node_StringValue{
-							StringValue: "cpu",
-						},
-					},
-				},
-			},
-		},
-		{
-			name: "field tag rule",
-			node: &TagRuleNode{
-				Operator: influxdb.Equal,
-				Tag: influxdb.Tag{
-					Key:   "_field",
-					Value: "cpu",
-				},
-			},
-			dataType: &datatypes.Node{
-				NodeType: datatypes.NodeTypeComparisonExpression,
-				Value:    &datatypes.Node_Comparison_{Comparison: datatypes.ComparisonEqual},
-				Children: []*datatypes.Node{
-					{
-						NodeType: datatypes.NodeTypeTagRef,
-						Value:    &datatypes.Node_TagRefValue{TagRefValue: models.FieldKeyTagKey},
-					},
-					{
-						NodeType: datatypes.NodeTypeLiteral,
-						Value: &datatypes.Node_StringValue{
-							StringValue: "cpu",
-						},
-					},
-				},
-			},
-		},
-		{
 			name: "logical",
 			node: &LogicalNode{
 				Operator: LogicalAnd,
-				Children: [2]Node{
+				Children: []Node{
 					&TagRuleNode{
 						Operator: influxdb.Equal,
 						Tag: influxdb.Tag{
@@ -164,10 +111,10 @@ func TestDataTypeConversion(t *testing.T) {
 			name: "conplex logical",
 			node: &LogicalNode{
 				Operator: LogicalAnd,
-				Children: [2]Node{
+				Children: []Node{
 					&LogicalNode{
 						Operator: LogicalAnd,
-						Children: [2]Node{
+						Children: []Node{
 							&TagRuleNode{
 								Operator: influxdb.Equal,
 								Tag: influxdb.Tag{
