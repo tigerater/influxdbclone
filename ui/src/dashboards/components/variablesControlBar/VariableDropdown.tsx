@@ -73,7 +73,7 @@ class VariableDropdown extends PureComponent<Props> {
             >
               {dropdownValues.map(({name}) => (
                 /*
-                Use key as value since they are unique otherwise
+                Use key as value since they are unique otherwise 
                 multiple selection appear in the dropdown
               */
                 <Dropdown.Item
@@ -95,9 +95,12 @@ class VariableDropdown extends PureComponent<Props> {
   }
 
   private handleSelect = (selectedKey: string) => {
-    const {dashboardID, variableID, onSelectValue} = this.props
+    const {dashboardID, variableID, onSelectValue, values} = this.props
 
-    onSelectValue(dashboardID, variableID, selectedKey)
+    const selection = values.find(v => v.name === selectedKey)
+    const selectedValue = !!selection ? selection.value : ''
+
+    onSelectValue(dashboardID, variableID, selectedValue)
   }
 }
 

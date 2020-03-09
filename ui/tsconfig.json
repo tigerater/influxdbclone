@@ -31,10 +31,6 @@
     "build",
     "node_modules",
     "cypress",
-    "jest.config.js",
-    "webpack.tsconfig.json",
-    "src/**/*.test.ts",
-    "src/**/*.test.tsx",
-    "src/**/mocks.ts"
+    "webpack.tsconfig.json"
   ]
 }

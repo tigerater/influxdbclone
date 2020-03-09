@@ -19,18 +19,28 @@ import {validateVariableName} from 'src/variables/utils/validation'
 import {variableItemTypes} from 'src/variables/constants'
 
 // Types
-import {Props} from 'src/variables/components/VariableFormContext'
+import {IVariable as Variable} from '@influxdata/influx'
 import {
   ButtonType,
   ComponentColor,
   ComponentStatus,
 } from '@influxdata/clockface'
-import {VariableArguments, VariableArgumentType} from 'src/types'
+import {VariableArguments} from 'src/types'
+
+interface Props {
+  onCreateVariable: (
+    variable: Pick<Variable, 'name' | 'arguments' | 'selected'>
+  ) => void
+  onHideOverlay?: () => void
+  initialScript?: string
+  variables: Variable[]
+}
 
 interface State {
+  name: string
+  args: VariableArguments
   isNameValid: boolean
   hasValidArgs: boolean
-  firstRun: boolean
   selected: string[]
 }
 
@@ -38,19 +48,26 @@ export default class VariableForm extends PureComponent<Props, State> {
   constructor(props) {
     super(props)
     this.state = {
+      name: '',
+      args: {
+        type: 'query',
+        values: {
+          query: this.props.initialScript || '',
+          language: 'flux',
+        },
+      },
       isNameValid: false,
       hasValidArgs: false,
-      firstRun: true,
       selected: null,
     }
   }
 
   public render() {
-    const {name, variableType, onHideOverlay} = this.props
-    const {selected} = this.state
+    const {onHideOverlay} = this.props
+    const {name, args, selected} = this.state
 
     return (
-      <Form onSubmit={this.handleSubmit} testID="variable-form--root">
+      <Form onSubmit={this.handleSubmit}>
         <Grid>
           <Grid.Row>
             <Grid.Column widthXS={Columns.Six}>
@@ -78,11 +95,7 @@ export default class VariableForm extends PureComponent<Props, State> {
               <Form.Element label="Type" required={true}>
                 <Dropdown
                   button={(active, onClick) => (
-                    <Dropdown.Button
-                      active={active}
-                      onClick={onClick}
-                      testID="variable-form--dropdown-button"
-                    >
+                    <Dropdown.Button active={active} onClick={onClick}>
                       {this.typeDropdownLabel}
                     </Dropdown.Button>
                   )}
@@ -92,10 +105,9 @@ export default class VariableForm extends PureComponent<Props, State> {
                         <Dropdown.Item
                           key={v.type}
                           id={v.type}
-                          testID={`variable-form--dropdown-${v.type}`}
                           value={v.type}
                           onClick={this.handleChangeType}
-                          selected={v.type === variableType}
+                          selected={v.type === args.type}
                         >
                           {v.label}
                         </Dropdown.Item>
@@ -112,7 +124,7 @@ export default class VariableForm extends PureComponent<Props, State> {
                 onChange={this.handleChangeArgs}
                 onSelectMapDefault={this.handleSelectMapDefault}
                 selected={selected}
-                args={this.activeVariable}
+                args={args}
               />
             </Grid.Column>
           </Grid.Row>
@@ -143,10 +155,9 @@ export default class VariableForm extends PureComponent<Props, State> {
   }
 
   private get typeDropdownLabel(): string {
-    const {variableType} = this.props
+    const {args} = this.state
 
-    return variableItemTypes.find(variable => variable.type === variableType)
-      .label
+    return variableItemTypes.find(variable => variable.type === args.type).label
   }
 
   private get isFormValid(): boolean {
@@ -155,67 +166,67 @@ export default class VariableForm extends PureComponent<Props, State> {
     return this.validArgs && isNameValid
   }
 
-  private get activeVariable(): VariableArguments {
-    const {initialScript, variableType, query, map, constant} = this.props
-    const {firstRun} = this.state
-
-    switch (variableType) {
-      case 'query': {
-        let _query = query
-        if (firstRun && !_query.values.query.length) {
-          _query.values.query = initialScript || ''
-        }
-        return _query
-      }
-      case 'map':
-        return map
-      case 'constant':
-        return constant
-    }
-
-    return query
-  }
-
   private get validArgs(): boolean {
-    const {variableType, query, map, constant} = this.props
-
-    switch (variableType) {
+    const {args} = this.state
+    switch (args.type) {
       case 'query':
-        return !!query.values.query
+        const {query} = args.values
+        return !!query
       case 'constant':
-        return constant.values.length !== 0
+        return args.values.length !== 0
       case 'map':
-        return Object.keys(map.values).length !== 0
+        return Object.keys(args.values).length !== 0
       default:
         return false
     }
   }
 
   private handleSubmit = (): void => {
-    const {name, onCreateVariable, onHideOverlay} = this.props
-    const {selected} = this.state
+    const {onCreateVariable, onHideOverlay} = this.props
+    const {args, name, selected} = this.state
 
     onCreateVariable({
       selected,
       name,
-      arguments: this.activeVariable,
+      arguments: args,
     })
 
     onHideOverlay()
   }
 
   private handleChangeType = (selectedType: string) => {
-    const {variableType, onTypeUpdate} = this.props
     const {isNameValid} = this.state
     const defaults = {selected: null, hasValidArgs: false, isNameValid}
 
-    if (variableType === selectedType) {
-      return
+    switch (selectedType) {
+      case 'query':
+        return this.setState({
+          ...defaults,
+          args: {
+            type: 'query',
+            values: {
+              query: '',
+              language: 'flux',
+            },
+          },
+        })
+      case 'map':
+        return this.setState({
+          ...defaults,
+          args: {
+            type: 'map',
+            values: {},
+          },
+        })
+      case 'constant':
+        return this.setState({
+          ...defaults,
+          args: {
+            type: 'constant',
+            values: [],
+          },
+        })
     }
-
-    this.setState(defaults)
-
-    onTypeUpdate(selectedType as VariableArgumentType)
   }
 
   private handleSelectMapDefault = (selected: string) => {
@@ -229,21 +240,7 @@ export default class VariableForm extends PureComponent<Props, State> {
     args: VariableArguments
     isValid: boolean
   }) => {
-    const {onQueryUpdate, onMapUpdate, onConstantUpdate} = this.props
-
-    switch (args.type) {
-      case 'query':
-        onQueryUpdate(args)
-        break
-      case 'map':
-        onMapUpdate(args)
-        break
-      case 'constant':
-        onConstantUpdate(args)
-        break
-    }
-
-    this.setState({hasValidArgs: isValid})
+    this.setState({args, hasValidArgs: isValid})
   }
 
   private handleNameValidation = (name: string) => {
@@ -256,8 +253,10 @@ export default class VariableForm extends PureComponent<Props, State> {
   }
 
   private handleChangeInput = (e: ChangeEvent<HTMLInputElement>) => {
-    const {value} = e.target
+    const {value, name} = e.target
 
-    this.props.onNameUpdate(value)
+    const newState = {...this.state}
+    newState[name] = value
+    this.setState(newState)
   }
 }

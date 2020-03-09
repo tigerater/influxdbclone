@@ -29,12 +29,6 @@ describe('Checks', () => {
 
     cy.getByTestID(`selector-list ${field}`).click()
 
-    cy.getByTestID('save-cell--button').should('be.disabled')
-
-    cy.getByTestID('checkeo--header alerting-tab').click()
-
-    cy.getByTestID('add-threshold-condition-WARN').click()
-
     cy.getByTestID('save-cell--button').should('be.enabled')
   })
 })
