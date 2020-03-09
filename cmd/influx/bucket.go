@@ -52,8 +52,9 @@ func newBucketService(f Flags) (platform.BucketService, error) {
 		return newLocalKVService()
 	}
 	return &http.BucketService{
-		Addr:  f.host,
-		Token: f.token,
+		Addr:               f.host,
+		Token:              f.token,
+		InsecureSkipVerify: f.skipVerify,
 	}, nil
 }
 
@@ -89,14 +90,13 @@ func bucketCreateF(cmd *cobra.Command, args []string) error {
 		"ID",
 		"Name",
 		"Retention",
-		"Org",
 		"OrganizationID",
 	)
 	w.Write(map[string]interface{}{
-		"ID":        b.ID.String(),
-		"Name":      b.Name,
-		"Retention": b.RetentionPeriod,
-		"OrgID":     b.OrgID.String(),
+		"ID":             b.ID.String(),
+		"Name":           b.Name,
+		"Retention":      b.RetentionPeriod,
+		"OrganizationID": b.OrgID.String(),
 	})
 	w.Flush()
 
@@ -173,15 +173,14 @@ func bucketFindF(cmd *cobra.Command, args []string) error {
 		"ID",
 		"Name",
 		"Retention",
-		"Org",
 		"OrganizationID",
 	)
 	for _, b := range buckets {
 		w.Write(map[string]interface{}{
-			"ID":        b.ID.String(),
-			"Name":      b.Name,
-			"Retention": b.RetentionPeriod,
-			"OrgID":     b.OrgID.String(),
+			"ID":             b.ID.String(),
+			"Name":           b.Name,
+			"Retention":      b.RetentionPeriod,
+			"OrganizationID": b.OrgID.String(),
 		})
 	}
 	w.Flush()
@@ -242,14 +241,13 @@ func bucketUpdateF(cmd *cobra.Command, args []string) error {
 		"ID",
 		"Name",
 		"Retention",
-		"Organization",
 		"OrganizationID",
 	)
 	w.Write(map[string]interface{}{
-		"ID":        b.ID.String(),
-		"Name":      b.Name,
-		"Retention": b.RetentionPeriod,
-		"OrgID":     b.OrgID.String(),
+		"ID":             b.ID.String(),
+		"Name":           b.Name,
+		"Retention":      b.RetentionPeriod,
+		"OrganizationID": b.OrgID.String(),
 	})
 	w.Flush()
 
@@ -289,16 +287,15 @@ func bucketDeleteF(cmd *cobra.Command, args []string) error {
 		"ID",
 		"Name",
 		"Retention",
-		"Organization",
 		"OrganizationID",
 		"Deleted",
 	)
 	w.Write(map[string]interface{}{
-		"ID":        b.ID.String(),
-		"Name":      b.Name,
-		"Retention": b.RetentionPeriod,
-		"OrgID":     b.OrgID.String(),
-		"Deleted":   true,
+		"ID":             b.ID.String(),
+		"Name":           b.Name,
+		"Retention":      b.RetentionPeriod,
+		"OrganizationID": b.OrgID.String(),
+		"Deleted":        true,
 	})
 	w.Flush()
 

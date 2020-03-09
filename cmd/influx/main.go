@@ -37,7 +37,7 @@ func init() {
 		deleteCmd,
 		organizationCmd,
 		pingCmd,
-		pkgCmd(),
+		pkgCmd(newPkgerSVC),
 		queryCmd,
 		replCmd,
 		setupCmd,
@@ -64,6 +64,8 @@ func init() {
 
 	influxCmd.PersistentFlags().BoolVar(&flags.local, "local", false, "Run commands locally against the filesystem")
 
+	influxCmd.PersistentFlags().BoolVar(&flags.skipVerify, "skip-verify", false, "SkipVerify controls whether a client verifies the server's certificate chain and host name.")
+
 	// Override help on all the commands tree
 	walk(influxCmd, func(c *cobra.Command) {
 		c.Flags().BoolP("help", "h", false, fmt.Sprintf("Help for the %s command ", c.Name()))
@@ -78,9 +80,18 @@ func main() {
 
 // Flags contains all the CLI flag values for influx.
 type Flags struct {
-	token string
-	host  string
-	local bool
+	token      string
+	host       string
+	local      bool
+	skipVerify bool
+}
+
+func (f Flags) httpClientOpts() httpClientOpts {
+	return httpClientOpts{
+		addr:       f.host,
+		token:      f.token,
+		skipVerify: f.skipVerify,
+	}
 }
 
 var flags Flags
@@ -114,7 +125,8 @@ func writeTokenToPath(tok, path, dir string) error {
 
 func checkSetup(host string) error {
 	s := &http.SetupService{
-		Addr: flags.host,
+		Addr:               flags.host,
+		InsecureSkipVerify: flags.skipVerify,
 	}
 
 	isOnboarding, err := s.IsOnboarding(context.Background())

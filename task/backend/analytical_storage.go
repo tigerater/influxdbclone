@@ -70,12 +70,12 @@ type AnalyticalStorage struct {
 func (as *AnalyticalStorage) FinishRun(ctx context.Context, taskID, runID influxdb.ID) (*influxdb.Run, error) {
 	run, err := as.TaskControlService.FinishRun(ctx, taskID, runID)
 	if run != nil && run.ID.String() != "" {
-		task, err := as.TaskService.FindTaskByID(ctx, run.TaskID)
+		task, err := as.TaskService.FindTaskByID(influxdb.FindTaskWithoutAuth(ctx), run.TaskID)
 		if err != nil {
 			return run, err
 		}
 
-		sb, err := influxdb.FindSystemBucket(ctx, as.BucketService, task.OrganizationID, influxdb.TasksSystemBucketName)
+		sb, err := as.BucketService.FindBucketByName(ctx, task.OrganizationID, influxdb.TasksSystemBucketName)
 		if err != nil {
 			return run, err
 		}
@@ -142,7 +142,7 @@ func (as *AnalyticalStorage) FindRuns(ctx context.Context, filter influxdb.RunFi
 		return runs, n, err
 	}
 
-	sb, err := influxdb.FindSystemBucket(ctx, as.BucketService, task.OrganizationID, influxdb.TasksSystemBucketName)
+	sb, err := as.BucketService.FindBucketByName(ctx, task.OrganizationID, influxdb.TasksSystemBucketName)
 	if err != nil {
 		return runs, n, err
 	}
@@ -246,7 +246,7 @@ func (as *AnalyticalStorage) FindRunByID(ctx context.Context, taskID, runID infl
 		return run, err
 	}
 
-	sb, err := influxdb.FindSystemBucket(ctx, as.BucketService, task.OrganizationID, influxdb.TasksSystemBucketName)
+	sb, err := as.BucketService.FindBucketByName(ctx, task.OrganizationID, influxdb.TasksSystemBucketName)
 	if err != nil {
 		return run, err
 	}

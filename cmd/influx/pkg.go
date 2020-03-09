@@ -1,10 +1,12 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -18,30 +20,42 @@ import (
 	"github.com/olekukonko/tablewriter"
 	"github.com/spf13/cobra"
 	input "github.com/tcnksm/go-input"
+	"gopkg.in/yaml.v3"
 )
 
-func pkgCmd() *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "pkg",
-		Short: "Create a reusable pkg to create resources in a declarative manner",
-	}
+type pkgSVCFn func(cliReq httpClientOpts) (pkger.SVC, error)
 
-	path := cmd.Flags().String("path", "", "path to manifest file")
-	cmd.MarkFlagFilename("path", "yaml", "yml", "json")
-	cmd.MarkFlagRequired("path")
-
-	orgID := cmd.Flags().String("org-id", "", "The ID of the organization that owns the bucket")
-	cmd.MarkFlagRequired("org-id")
-
-	hasColor := cmd.Flags().Bool("color", true, "Enable color in output, defaults true")
-	hasTableBorders := cmd.Flags().Bool("table-borders", true, "Enable table borders, defaults true")
-
-	cmd.RunE = pkgApply(orgID, path, hasColor, hasTableBorders)
+func pkgCmd(newSVCFn pkgSVCFn) *cobra.Command {
+	cmd := pkgApplyCmd(newSVCFn)
+	cmd.AddCommand(
+		pkgCreateCmd(newSVCFn),
+	)
 
 	return cmd
 }
 
-func pkgApply(orgID, path *string, hasColor, hasTableBorders *bool) func(*cobra.Command, []string) error {
+func pkgApplyCmd(newSVCFn pkgSVCFn) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "pkg",
+		Short: "Apply a pkg to create resources",
+	}
+
+	path := cmd.Flags().StringP("path", "p", "", "path to manifest file")
+	cmd.MarkFlagFilename("path", "yaml", "yml", "json")
+	cmd.MarkFlagRequired("path")
+
+	orgID := cmd.Flags().StringP("org-id", "o", "", "The ID of the organization that owns the bucket")
+	cmd.MarkFlagRequired("org-id")
+
+	hasColor := cmd.Flags().BoolP("color", "c", true, "Enable color in output, defaults true")
+	hasTableBorders := cmd.Flags().Bool("table-borders", true, "Enable table borders, defaults true")
+
+	cmd.RunE = pkgApplyRunEFn(newSVCFn, orgID, path, hasColor, hasTableBorders)
+
+	return cmd
+}
+
+func pkgApplyRunEFn(newSVCFn pkgSVCFn, orgID, path *string, hasColor, hasTableBorders *bool) func(*cobra.Command, []string) error {
 	return func(cmd *cobra.Command, args []string) (e error) {
 		if !*hasColor {
 			color.NoColor = true
@@ -52,7 +66,7 @@ func pkgApply(orgID, path *string, hasColor, hasTableBorders *bool) func(*cobra.
 			return err
 		}
 
-		svc, err := newPkgerSVC(flags)
+		svc, err := newSVCFn(flags.httpClientOpts())
 		if err != nil {
 			return err
 		}
@@ -91,63 +105,115 @@ func pkgApply(orgID, path *string, hasColor, hasTableBorders *bool) func(*cobra.
 	}
 }
 
-func newPkgerSVC(f Flags) (*pkger.Service, error) {
-	bucketSVC, err := newBucketService(f)
-	if err != nil {
-		return nil, err
+func pkgCreateCmd(newSVCFn pkgSVCFn) *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "new",
+		Short: "Create a reusable pkg to create resources in a declarative manner",
 	}
 
-	labelSVC, err := newLabelService(f)
+	wd, err := os.Getwd()
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
 
-	dashSVC, err := newDashboardService(f)
-	if err != nil {
-		return nil, err
-	}
+	var opts pkgCreateRunOpts
+	cmd.Flags().StringVarP(&opts.outPath, "out", "o", filepath.Join(wd, "pkg.json"), "output file for created pkg; defaults to pkg.json; the extension of provided file (.yml/.json) will dictate encoding")
+	cmd.Flags().BoolVarP(&opts.quiet, "quiet", "q", false, "skip interactive mode")
+	cmd.Flags().StringVarP(&opts.meta.Name, "name", "n", "", "name for new pkg")
+	cmd.Flags().StringVarP(&opts.meta.Description, "description", "d", "", "description for new pkg")
+	cmd.Flags().StringVarP(&opts.meta.Version, "version", "v", "", "version for new pkg")
 
-	varSVC, err := newVariableService(f)
-	if err != nil {
-		return nil, err
-	}
+	cmd.RunE = pkgCreateRunEFn(newSVCFn, &opts)
 
+	return cmd
+}
+
+type pkgCreateRunOpts struct {
+	quiet   bool
+	outPath string
+	meta    pkger.Metadata
+}
+
+func pkgCreateRunEFn(newSVCFn pkgSVCFn, opt *pkgCreateRunOpts) func(*cobra.Command, []string) error {
+	return func(cmd *cobra.Command, args []string) error {
+		if !opt.quiet {
+			ui := &input.UI{
+				Writer: os.Stdout,
+				Reader: os.Stdin,
+			}
+
+			if opt.meta.Name == "" {
+				opt.meta.Name = getInput(ui, "pkg name:", "")
+			}
+			if opt.meta.Description == "" {
+				opt.meta.Description = getInput(ui, "pkg description:", opt.meta.Description)
+			}
+			if opt.meta.Version == "" {
+				opt.meta.Version = getInput(ui, "pkg version:", opt.meta.Version)
+			}
+		}
+
+		pkgSVC, err := newSVCFn(flags.httpClientOpts())
+		if err != nil {
+			return err
+		}
+
+		newPkg, err := pkgSVC.CreatePkg(context.Background(), pkger.CreateWithMetadata(opt.meta))
+		if err != nil {
+			return err
+		}
+
+		var (
+			buf bytes.Buffer
+			enc interface {
+				Encode(interface{}) error
+			}
+		)
+
+		switch ext := filepath.Ext(opt.outPath); ext {
+		case ".yml":
+			enc = yaml.NewEncoder(&buf)
+		default:
+			jsonEnc := json.NewEncoder(&buf)
+			jsonEnc.SetIndent("", "\t")
+			enc = jsonEnc
+		}
+		if err := enc.Encode(newPkg); err != nil {
+			return err
+		}
+
+		return ioutil.WriteFile(opt.outPath, buf.Bytes(), os.ModePerm)
+	}
+}
+
+type httpClientOpts struct {
+	token, addr string
+	skipVerify  bool
+}
+
+func newPkgerSVC(cliReqOpts httpClientOpts) (pkger.SVC, error) {
 	return pkger.NewService(
-		pkger.WithBucketSVC(bucketSVC),
-		pkger.WithDashboardSVC(dashSVC),
-		pkger.WithLabelSVC(labelSVC),
-		pkger.WithVariableSVC(varSVC),
+		pkger.WithBucketSVC(&http.BucketService{
+			Addr:               cliReqOpts.addr,
+			Token:              cliReqOpts.token,
+			InsecureSkipVerify: cliReqOpts.skipVerify,
+		}),
+		pkger.WithDashboardSVC(&http.DashboardService{
+			Addr:               cliReqOpts.addr,
+			Token:              cliReqOpts.token,
+			InsecureSkipVerify: cliReqOpts.skipVerify,
+		}),
+		pkger.WithLabelSVC(&http.LabelService{
+			Addr:               cliReqOpts.addr,
+			Token:              cliReqOpts.token,
+			InsecureSkipVerify: cliReqOpts.skipVerify,
+		}),
+		pkger.WithVariableSVC(&http.VariableService{
+			Addr:               cliReqOpts.addr,
+			Token:              cliReqOpts.token,
+			InsecureSkipVerify: cliReqOpts.skipVerify,
+		}),
 	), nil
-}
-
-func newDashboardService(f Flags) (influxdb.DashboardService, error) {
-	if f.local {
-		return newLocalKVService()
-	}
-	return &http.DashboardService{
-		Addr:  f.host,
-		Token: f.token,
-	}, nil
-}
-
-func newLabelService(f Flags) (influxdb.LabelService, error) {
-	if f.local {
-		return newLocalKVService()
-	}
-	return &http.LabelService{
-		Addr:  f.host,
-		Token: f.token,
-	}, nil
-}
-
-func newVariableService(f Flags) (influxdb.VariableService, error) {
-	if f.local {
-		return newLocalKVService()
-	}
-	return &http.VariableService{
-		Addr:  f.host,
-		Token: f.token,
-	}, nil
 }
 
 func pkgFromFile(path string) (*pkger.Pkg, error) {

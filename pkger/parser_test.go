@@ -2,6 +2,7 @@ package pkger
 
 import (
 	"path/filepath"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -692,7 +693,7 @@ spec:
 
 				actual := sum.Dashboards[0]
 				assert.Equal(t, "dashboard w/ single heatmap chart", actual.Name)
-				assert.Equal(t, "a dashboard w/ heatmap scatter chart", actual.Description)
+				assert.Equal(t, "a dashboard w/ heatmap chart", actual.Description)
 
 				require.Len(t, actual.Charts, 1)
 				actualChart := actual.Charts[0]
@@ -707,6 +708,9 @@ spec:
 				assert.Equal(t, "heatmap note", props.Note)
 				assert.Equal(t, int32(10), props.BinSize)
 				assert.True(t, props.ShowNoteWhenEmpty)
+
+				assert.Equal(t, []float64{0, 10}, props.XDomain)
+				assert.Equal(t, []float64{0, 100}, props.YDomain)
 
 				require.Len(t, props.Queries, 1)
 				q := props.Queries[0]
@@ -740,7 +744,7 @@ spec:
 		{
 			"kind": "Dashboard",
 			"name": "dashboard w/ single heatmap chart",
-			"description": "a dashboard w/ heatmap scatter chart",
+			"description": "a dashboard w/ heatmap chart",
 			"charts": [
 			{
 				"kind": "heatmap",
@@ -812,7 +816,7 @@ spec:
 		{
 			"kind": "Dashboard",
 			"name": "dashboard w/ single heatmap chart",
-			"description": "a dashboard w/ heatmap scatter chart",
+			"description": "a dashboard w/ heatmap chart",
 			"charts": [
 			{
 				"kind": "heatmap",
@@ -869,7 +873,249 @@ spec:
 		{
 			"kind": "Dashboard",
 			"name": "dashboard w/ single heatmap chart",
-			"description": "a dashboard w/ heatmap scatter chart",
+			"description": "a dashboard w/ heatmap chart",
+			"charts": [
+			{
+				"kind": "heatmap",
+				"name": "heatmap chart",
+				"note": "heatmap note",
+				"noteOnEmpty": true,
+				"xPos": 1,
+				"yPos": 2,
+				"width": 6,
+				"height": 3,
+				"xCol": "_time",
+				"yCol": "_value",
+				"binSize": 10,
+				"queries": [
+				{
+					"query": null
+				}
+				],
+				"axes":[
+				{
+					"name": "x",
+					"label": "x_label",
+					"prefix": "x_prefix",
+					"suffix": "x_suffix"
+				},
+				{
+					"name": "y",
+					"label": "y_label",
+					"prefix": "y_prefix",
+					"suffix": "y_suffix"
+				}
+				],
+				"colors": [
+				{
+					"hex": "#8F8AF4"
+				},
+				{
+					"hex": "#F4CF31"
+				},
+				{
+					"hex": "#FFFFFF"
+				}
+				]
+			}
+			]
+		}
+		]
+	}
+	}
+						  
+`,
+					},
+				}
+
+				for _, tt := range tests {
+					testPkgErrors(t, KindDashboard, tt)
+				}
+			})
+		})
+
+		t.Run("single dashboard histogram chart", func(t *testing.T) {
+			testfileRunner(t, "testdata/dashboard_histogram", func(t *testing.T, pkg *Pkg) {
+				sum := pkg.Summary()
+				require.Len(t, sum.Dashboards, 1)
+
+				actual := sum.Dashboards[0]
+				assert.Equal(t, "dashboard w/ single histogram chart", actual.Name)
+				assert.Equal(t, "a dashboard w/ single histogram chart", actual.Description)
+
+				require.Len(t, actual.Charts, 1)
+				actualChart := actual.Charts[0]
+				assert.Equal(t, 3, actualChart.Height)
+				assert.Equal(t, 6, actualChart.Width)
+
+				props, ok := actualChart.Properties.(influxdb.HistogramViewProperties)
+				require.True(t, ok)
+				assert.Equal(t, "histogram", props.GetType())
+				assert.Equal(t, "histogram note", props.Note)
+				assert.Equal(t, 30, props.BinCount)
+				assert.True(t, props.ShowNoteWhenEmpty)
+				assert.Equal(t, []float64{0, 10}, props.XDomain)
+				assert.Equal(t, []string{}, props.FillColumns)
+				require.Len(t, props.Queries, 1)
+				q := props.Queries[0]
+				queryText := `from(bucket: v.bucket) |> range(start: v.timeRangeStart, stop: v.timeRangeStop) |> filter(fn: (r) => r._measurement == "boltdb_reads_total") |> filter(fn: (r) => r._field == "counter")`
+				assert.Equal(t, queryText, q.Text)
+				assert.Equal(t, "advanced", q.EditMode)
+
+				require.Len(t, props.ViewColors, 3)
+				assert.Equal(t, "#8F8AF4", props.ViewColors[0].Hex)
+				assert.Equal(t, "#F4CF31", props.ViewColors[1].Hex)
+				assert.Equal(t, "#FFFFFF", props.ViewColors[2].Hex)
+			})
+
+			t.Run("handles invalid config", func(t *testing.T) {
+				tests := []testPkgResourceError{
+					{
+						name:           "missing x axis",
+						encoding:       EncodingJSON,
+						validationErrs: 1,
+						valFields:      []string{"charts[0].axes"},
+						pkgStr: `
+{
+	"apiVersion": "0.1.0",
+	"kind": "Package",
+	"meta": {
+		"pkgName": "pkg_name",
+		"pkgVersion": "1",
+		"description": "pack description"
+	},
+	"spec": {
+		"resources": [
+		{
+			"kind": "Dashboard",
+			"name": "dashboard w/ single histogram chart",
+			"description": "a dashboard w/ single histogram chart",
+			"charts": [
+			{
+				"kind": "histogram",
+				"name": "histogram chart",
+				"note": "histogram note",
+				"noteOnEmpty": true,
+				"xPos": 1,
+				"yPos": 2,
+				"width": 6,
+				"height": 3,
+				"xCol": "_time",
+				"yCol": "_value",
+				"position": "stacked",
+				"binCount": 30,
+				"queries": [
+				{
+					"query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
+				}
+				],
+				"axes":[],
+				"colors": [
+				{
+					"hex": "#8F8AF4"
+				},
+				{
+					"hex": "#F4CF31"
+				},
+				{
+					"hex": "#FFFFFF"
+				}
+				]
+			}
+			]
+		}
+		]
+	}
+	}
+						  
+			`,
+					},
+					{
+						name:           "missing x-axis",
+						encoding:       EncodingJSON,
+						validationErrs: 1,
+						valFields:      []string{"charts[0].axes", "charts[0].axes"},
+						pkgStr: `
+{
+	"apiVersion": "0.1.0",
+	"kind": "Package",
+	"meta": {
+		"pkgName": "pkg_name",
+		"pkgVersion": "1",
+		"description": "pack description"
+	},
+	"spec": {
+		"resources": [
+		{
+			"kind": "Dashboard",
+			"name": "dashboard w/ single histogram chart",
+			"description": "a dashboard w/ single histogram chart",
+			"charts": [
+			{
+				"kind": "histogram",
+				"name": "histogram chart",
+				"note": "histogram note",
+				"noteOnEmpty": true,
+				"xPos": 1,
+				"yPos": 2,
+				"width": 6,
+				"height": 3,
+				"xCol": "_time",
+				"yCol": "_value",
+				"position": "stacked",
+				"binCount": 30,
+				"queries": [
+				{
+					"query": "from(bucket: v.bucket)  |> range(start: v.timeRangeStart)  |> filter(fn: (r) => r._measurement == \"mem\")  |> filter(fn: (r) => r._field == \"used_percent\")  |> aggregateWindow(every: v.windowPeriod, fn: mean, createEmpty: false)  |> yield(name: \"mean\")"
+				}
+				],
+				"axes":[
+				{
+					"name": "y",
+					"label": "y_label",
+					"domain": [0, 10]
+				}
+				],
+				"colors": [
+				{
+					"hex": "#8F8AF4"
+				},
+				{
+					"hex": "#F4CF31"
+				},
+				{
+					"hex": "#FFFFFF"
+				}
+				]
+			}
+			]
+		}
+		]
+	}
+	}
+											
+			`,
+					},
+					{
+						name:           "missing a query value",
+						encoding:       EncodingJSON,
+						validationErrs: 1,
+						valFields:      []string{"charts[0].queries[0].query"},
+						pkgStr: `
+{
+	"apiVersion": "0.1.0",
+	"kind": "Package",
+	"meta": {
+		"pkgName": "pkg_name",
+		"pkgVersion": "1",
+		"description": "pack description"
+	},
+	"spec": {
+		"resources": [
+		{
+			"kind": "Dashboard",
+			"name": "dashboard w/ single heatmap chart",
+			"description": "a dashboard w/ heatmap chart",
 			"charts": [
 			{
 				"kind": "heatmap",
@@ -1008,6 +1254,8 @@ spec:
 				assert.Equal(t, expectedQuery, q.Text)
 				assert.Equal(t, "advanced", q.EditMode)
 
+				assert.Equal(t, []float64{0, 10}, props.XDomain)
+				assert.Equal(t, []float64{0, 100}, props.YDomain)
 				assert.Equal(t, "x_label", props.XAxisLabel)
 				assert.Equal(t, "y_label", props.YAxisLabel)
 				assert.Equal(t, "x_prefix", props.XPrefix)
@@ -2719,31 +2967,85 @@ func testPkgErrors(t *testing.T, k Kind, tt testPkgResourceError) {
 		_, err := Parse(encoding, FromString(tt.pkgStr))
 		require.Error(t, err)
 
-		pErr, ok := IsParseErr(err)
-		require.True(t, ok, err)
+		require.True(t, IsParseErr(err), err)
 
+		pErr := err.(*ParseErr)
 		require.Len(t, pErr.Resources, resErrs)
 
 		resErr := pErr.Resources[0]
 		assert.Equal(t, k.String(), resErr.Kind)
 
-		require.Len(t, resErr.ValidationFails, len(tt.valFields))
-		for i, vFail := range resErr.ValidationFails {
-			assert.Equal(t, tt.valFields[i], vFail.Field)
+		for i, vFail := range resErr.ValidationErrs {
+			if len(tt.valFields) == i {
+				break
+			}
+			expectedField := tt.valFields[i]
+			findErr(t, expectedField, vFail)
 		}
 
-		assFails := pErr.Resources[0].AssociationFails
-		require.Len(t, assFails, len(tt.assIdxs))
 		if tt.assErrs == 0 {
 			return
 		}
 
-		for i, f := range assFails {
-			assert.Equal(t, "associations", assFails[i].Field)
-			assert.Equal(t, tt.assIdxs[i], f.Index)
+		assFails := pErr.Resources[0].AssociationErrs
+		for i, assFail := range assFails {
+			if len(tt.valFields) == i {
+				break
+			}
+			expectedField := tt.valFields[i]
+			findErr(t, expectedField, assFail)
 		}
 	}
 	t.Run(tt.name, fn)
+}
+
+func findErr(t *testing.T, expectedField string, vErr ValidationErr) ValidationErr {
+	t.Helper()
+
+	fields := strings.Split(expectedField, ".")
+	if len(fields) == 1 {
+		require.Equal(t, expectedField, vErr.Field)
+		return vErr
+	}
+
+	currentFieldName, idx := nextField(t, fields[0])
+	if idx > -1 {
+		require.NotNil(t, vErr.Index)
+		require.Equal(t, idx, *vErr.Index)
+	}
+	require.Equal(t, currentFieldName, vErr.Field)
+
+	next := strings.Join(fields[1:], ".")
+	nestedField, _ := nextField(t, next)
+	for _, n := range vErr.Nested {
+		if n.Field == nestedField {
+			return findErr(t, next, n)
+		}
+	}
+	assert.Fail(t, "did not find field: "+expectedField)
+
+	return vErr
+}
+
+func nextField(t *testing.T, field string) (string, int) {
+	t.Helper()
+
+	fields := strings.Split(field, ".")
+	if len(fields) == 1 && !strings.HasSuffix(fields[0], "]") {
+		return field, -1
+	}
+	parts := strings.Split(fields[0], "[")
+	if len(parts) == 1 {
+		return "", 0
+	}
+	fieldName := parts[0]
+
+	if strIdx := strings.Index(parts[1], "]"); strIdx > -1 {
+		idx, err := strconv.Atoi(parts[1][:strIdx])
+		require.NoError(t, err)
+		return fieldName, idx
+	}
+	return "", -1
 }
 
 type baseAsserts struct {

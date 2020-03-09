@@ -76,6 +76,32 @@ func convertCellView(cv cellView) chart {
 	case influxdb.GaugeViewProperties:
 		setCommon(chartKindGauge, p.ViewColors, p.DecimalPlaces, p.Queries)
 		setNoteFixes(p.Note, p.ShowNoteWhenEmpty, p.Prefix, p.Suffix)
+	case influxdb.HeatmapViewProperties:
+		ch.Kind = chartKindHeatMap
+		ch.Queries = convertQueries(p.Queries)
+		ch.Colors = stringsToColors(p.ViewColors)
+		ch.XCol = p.XColumn
+		ch.YCol = p.YColumn
+		ch.Axes = []axis{
+			{Label: p.XAxisLabel, Prefix: p.XPrefix, Suffix: p.XSuffix, Name: "x", Domain: p.XDomain},
+			{Label: p.YAxisLabel, Prefix: p.YPrefix, Suffix: p.YSuffix, Name: "y", Domain: p.YDomain},
+		}
+		ch.Note = p.Note
+		ch.NoteOnEmpty = p.ShowNoteWhenEmpty
+		ch.BinSize = int(p.BinSize)
+	case influxdb.HistogramViewProperties:
+		ch.Kind = chartKindHistogram
+		ch.Queries = convertQueries(p.Queries)
+		ch.Colors = convertColors(p.ViewColors)
+		ch.XCol = p.XColumn
+		ch.Axes = []axis{{Label: p.XAxisLabel, Name: "x", Domain: p.XDomain}}
+		ch.Note = p.Note
+		ch.NoteOnEmpty = p.ShowNoteWhenEmpty
+		ch.BinCount = p.BinCount
+		ch.Position = p.Position
+	case influxdb.MarkdownViewProperties:
+		ch.Kind = chartKindMarkdown
+		ch.Note = p.Note
 	case influxdb.LinePlusSingleStatProperties:
 		setCommon(chartKindSingleStatPlusLine, p.ViewColors, p.DecimalPlaces, p.Queries)
 		setNoteFixes(p.Note, p.ShowNoteWhenEmpty, p.Prefix, p.Suffix)
@@ -87,9 +113,18 @@ func convertCellView(cv cellView) chart {
 	case influxdb.SingleStatViewProperties:
 		setCommon(chartKindSingleStat, p.ViewColors, p.DecimalPlaces, p.Queries)
 		setNoteFixes(p.Note, p.ShowNoteWhenEmpty, p.Prefix, p.Suffix)
-	case influxdb.MarkdownViewProperties:
-		ch.Kind = chartKindMarkdown
+	case influxdb.ScatterViewProperties:
+		ch.Kind = chartKindScatter
+		ch.Queries = convertQueries(p.Queries)
+		ch.Colors = stringsToColors(p.ViewColors)
+		ch.XCol = p.XColumn
+		ch.YCol = p.YColumn
+		ch.Axes = []axis{
+			{Label: p.XAxisLabel, Prefix: p.XPrefix, Suffix: p.XSuffix, Name: "x", Domain: p.XDomain},
+			{Label: p.YAxisLabel, Prefix: p.YPrefix, Suffix: p.YSuffix, Name: "y", Domain: p.YDomain},
+		}
 		ch.Note = p.Note
+		ch.NoteOnEmpty = p.ShowNoteWhenEmpty
 	case influxdb.XYViewProperties:
 		setCommon(chartKindXY, p.ViewColors, influxdb.DecimalPlaces{}, p.Queries)
 		setNoteFixes(p.Note, p.ShowNoteWhenEmpty, "", "")
@@ -137,12 +172,13 @@ func convertChartToResource(ch chart) Resource {
 	}
 
 	ignoreEmptyStrPairs := map[string]string{
-		fieldChartNote: ch.Note,
-		fieldPrefix:    ch.Prefix,
-		fieldSuffix:    ch.Suffix,
-		fieldChartGeom: ch.Geom,
-		fieldChartXCol: ch.XCol,
-		fieldChartYCol: ch.YCol,
+		fieldChartNote:     ch.Note,
+		fieldPrefix:        ch.Prefix,
+		fieldSuffix:        ch.Suffix,
+		fieldChartGeom:     ch.Geom,
+		fieldChartXCol:     ch.XCol,
+		fieldChartYCol:     ch.YCol,
+		fieldChartPosition: ch.Position,
 	}
 	for k, v := range ignoreEmptyStrPairs {
 		if v != "" {
@@ -151,8 +187,10 @@ func convertChartToResource(ch chart) Resource {
 	}
 
 	ignoreEmptyIntPairs := map[string]int{
-		fieldChartXPos: ch.XPos,
-		fieldChartYPos: ch.YPos,
+		fieldChartXPos:     ch.XPos,
+		fieldChartYPos:     ch.YPos,
+		fieldChartBinCount: ch.BinCount,
+		fieldChartBinSize:  ch.BinSize,
 	}
 	for k, v := range ignoreEmptyIntPairs {
 		if v != 0 {
@@ -280,4 +318,12 @@ func variableToResource(v influxdb.Variable, name string) Resource {
 	}
 
 	return r
+}
+
+func stringsToColors(clrs []string) colors {
+	newColors := make(colors, 0)
+	for _, x := range clrs {
+		newColors = append(newColors, &color{Hex: x})
+	}
+	return newColors
 }

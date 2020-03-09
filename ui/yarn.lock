@@ -1004,20 +1004,20 @@
     debug "^3.1.0"
     lodash.once "^4.1.1"
 
-"@influxdata/clockface@1.0.5":
-  version "1.0.5"
-  resolved "https://registry.yarnpkg.com/@influxdata/clockface/-/clockface-1.0.5.tgz#966d95aa98738e328f884f14bff09a4e66cde55e"
-  integrity sha512-x+YL1XiS0JiAw/iTHKolnjMnj66M+lDlG9ErxZgf94TPSWzRdrF0ZUIjg2mCQ8v8OZFo35Ytk0+rkKeeXpxqrQ==
+"@influxdata/clockface@1.0.6":
+  version "1.0.6"
+  resolved "https://registry.yarnpkg.com/@influxdata/clockface/-/clockface-1.0.6.tgz#cecb1dae9f92ca2b8e5843346de05ce492777f00"
+  integrity sha512-uSwRELaSEL/NjJnwKm1f1O5tmga1gSX3zgGqqXQpF3w2gkp5cM3rLOAJCad78DI5EzOCIXEaWwOTSs/Kgm9rGQ==
 
 "@influxdata/flux-parser@^0.3.0":
   version "0.3.0"
   resolved "https://registry.yarnpkg.com/@influxdata/flux-parser/-/flux-parser-0.3.0.tgz#b63123ac814ad32c65e46a4097ba3d8b959416a5"
   integrity sha512-nsm801l60kXFulcSWA2YH2YRz9oSsMlTK9Evn6Og9BoQnQMcwUsSUEug8mQRIUljnkNYV58JSs0W0mP8h7Y/ZQ==
 
-"@influxdata/giraffe@0.16.4":
-  version "0.16.4"
-  resolved "https://registry.yarnpkg.com/@influxdata/giraffe/-/giraffe-0.16.4.tgz#679792950bccdcfb64d9530f07aba71985d341b4"
-  integrity sha512-krykV32T2pUq1EwQqHlrgPBlyBm9UZyDOvaCh1D3gVB9ZQJ9+87ftzECYbE0htbxKxBTUlnAKEmyzmIktNfxOQ==
+"@influxdata/giraffe@0.16.5":
+  version "0.16.5"
+  resolved "https://registry.yarnpkg.com/@influxdata/giraffe/-/giraffe-0.16.5.tgz#31cb7732656420d69e4998332763b2234ddbcdac"
+  integrity sha512-LoPGngLpv2WAuc6y9hTBVrm7nxd+c6NiSlmuhCUtXRAlGrW1t3zdEF5CxX6OVEhnZqnpD55hLcFDjDw3Iw/b5w==
 
 "@influxdata/influx@0.5.5":
   version "0.5.5"
