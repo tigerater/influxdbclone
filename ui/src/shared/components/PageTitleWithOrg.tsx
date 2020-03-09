@@ -3,13 +3,7 @@ import React, {PureComponent} from 'react'
 import {connect} from 'react-redux'
 
 // Components
-import {
-  Page,
-  FlexBox,
-  FlexDirection,
-  AlignItems,
-  ComponentSize,
-} from '@influxdata/clockface'
+import {Page} from '@influxdata/clockface'
 
 // Types
 import {AppState} from 'src/types'
@@ -33,16 +27,7 @@ class PageTitleWithOrg extends PureComponent<Props> {
   render() {
     const {orgName, title, altText} = this.props
 
-    return (
-      <FlexBox
-        direction={FlexDirection.Column}
-        alignItems={AlignItems.FlexStart}
-        margin={ComponentSize.Small}
-      >
-        <Page.Title title={title} altText={altText} />
-        <Page.SubTitle title={orgName} />
-      </FlexBox>
-    )
+    return <Page.Title title={`${orgName} / ${title}`} altText={altText} />
   }
 }
 
