@@ -18,10 +18,6 @@ import {deleteMember} from 'src/members/actions'
 import {ComponentSize} from '@influxdata/clockface'
 import {AppState, Member} from 'src/types'
 import {SortTypes} from 'src/shared/utils/sort'
-import {ResourceType} from 'src/shared/components/GetResources'
-
-// Selectors
-import {getAll} from 'src/shared/selectors'
 
 interface StateProps {
   members: Member[]
@@ -120,9 +116,8 @@ class Members extends PureComponent<Props & WithRouterProps, State> {
   }
 }
 
-const mstp = (state: AppState): StateProps => {
-  const members = getAll<Member[]>(state, ResourceType.Members)
-  return {members}
+const mstp = ({members: {list}}: AppState): StateProps => {
+  return {members: list}
 }
 
 const mdtp: DispatchProps = {
