@@ -102,22 +102,7 @@ func newPkgerSVC(f Flags) (*pkger.Service, error) {
 		return nil, err
 	}
 
-	dashSVC, err := newDashboardService(f)
-	if err != nil {
-		return nil, err
-	}
-
-	return pkger.NewService(zap.NewNop(), bucketSVC, labelSVC, dashSVC), nil
-}
-
-func newDashboardService(f Flags) (influxdb.DashboardService, error) {
-	if f.local {
-		return newLocalKVService()
-	}
-	return &http.DashboardService{
-		Addr:  f.host,
-		Token: f.token,
-	}, nil
+	return pkger.NewService(zap.NewNop(), bucketSVC, labelSVC), nil
 }
 
 func newLabelService(f Flags) (influxdb.LabelService, error) {
@@ -184,10 +169,10 @@ func printPkgDiff(hasColor, hasTableBorders bool, diff pkger.Diff) {
 		return fmt.Sprintf("%s\n%s", red(o), green(n))
 	}
 
-	if labels := diff.Labels; len(labels) > 0 {
+	if len(diff.Labels) > 0 {
 		headers := []string{"New", "ID", "Name", "Color", "Description"}
-		tablePrinter("LABELS", headers, len(labels), hasColor, hasTableBorders, func(w *tablewriter.Table) {
-			for _, l := range labels {
+		tablePrinter("LABELS", headers, len(diff.Labels), hasColor, hasTableBorders, func(w *tablewriter.Table) {
+			for _, l := range diff.Labels {
 				w.Append([]string{
 					boolDiff(l.IsNew()),
 					l.ID.String(),
@@ -199,30 +184,16 @@ func printPkgDiff(hasColor, hasTableBorders bool, diff pkger.Diff) {
 		})
 	}
 
-	if bkts := diff.Buckets; len(bkts) > 0 {
+	if len(diff.Buckets) > 0 {
 		headers := []string{"New", "ID", "Name", "Retention Period", "Description"}
-		tablePrinter("BUCKETS", headers, len(bkts), hasColor, hasTableBorders, func(w *tablewriter.Table) {
-			for _, b := range bkts {
+		tablePrinter("BUCKETS", headers, len(diff.Buckets), hasColor, hasTableBorders, func(w *tablewriter.Table) {
+			for _, b := range diff.Buckets {
 				w.Append([]string{
 					boolDiff(b.IsNew()),
 					b.ID.String(),
 					b.Name,
 					durDiff(b.IsNew(), b.OldRetention, b.NewRetention),
 					strDiff(b.IsNew(), b.OldDesc, b.NewDesc),
-				})
-			}
-		})
-	}
-
-	if dashes := diff.Dashboards; len(dashes) > 0 {
-		headers := []string{"New", "ID", "Name", "Description"}
-		tablePrinter("DASHBOARDS", headers, len(dashes), hasColor, hasTableBorders, func(w *tablewriter.Table) {
-			for _, d := range dashes {
-				w.Append([]string{
-					boolDiff(d.IsNew()),
-					d.ID.String(),
-					d.Name,
-					strDiff(d.IsNew(), d.OldDesc, d.NewDesc),
 				})
 			}
 		})
@@ -269,19 +240,6 @@ func printPkgSummary(hasColor, hasTableBorders bool, sum pkger.Summary) {
 					bucket.Name,
 					formatDuration(bucket.RetentionPeriod),
 					bucket.Description,
-				})
-			}
-		})
-	}
-
-	if dashes := sum.Dashboards; len(dashes) > 0 {
-		headers := []string{"ID", "Name", "Description"}
-		tablePrinter("DASHBOARDS", headers, len(dashes), hasColor, hasTableBorders, func(w *tablewriter.Table) {
-			for _, d := range dashes {
-				w.Append([]string{
-					d.ID.String(),
-					d.Name,
-					d.Description,
 				})
 			}
 		})

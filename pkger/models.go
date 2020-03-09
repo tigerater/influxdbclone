@@ -37,7 +37,6 @@ type Metadata struct {
 // what is new and or updated from the current state of the platform.
 type Diff struct {
 	Buckets       []DiffBucket
-	Dashboards    []DiffDashboard
 	Labels        []DiffLabel
 	LabelMappings []DiffLabelMapping
 }
@@ -64,27 +63,6 @@ func newDiffBucket(b *bucket, i influxdb.Bucket) DiffBucket {
 		OldRetention: i.RetentionPeriod,
 		NewRetention: b.RetentionPeriod,
 	}
-}
-
-// DiffDashboard is a diff of an individual dashboard.
-type DiffDashboard struct {
-	ID               influxdb.ID
-	Name             string
-	OldDesc, NewDesc string
-}
-
-func newDiffDashboard(d *dashboard, i influxdb.Dashboard) DiffDashboard {
-	return DiffDashboard{
-		ID:      i.ID,
-		Name:    d.Name,
-		OldDesc: i.Description,
-		NewDesc: d.Description,
-	}
-}
-
-// IsNew indicates whether a pkg dashboard is going to be new to the platform.
-func (d DiffDashboard) IsNew() bool {
-	return d.ID == influxdb.ID(0)
 }
 
 // DiffLabel is a diff of an individual label.
@@ -129,7 +107,6 @@ type DiffLabelMapping struct {
 // will be created from a pkg.
 type Summary struct {
 	Buckets       []SummaryBucket
-	Dashboards    []SummaryDashboard
 	Labels        []SummaryLabel
 	LabelMappings []SummaryLabelMapping
 }
@@ -137,16 +114,7 @@ type Summary struct {
 // SummaryBucket provides a summary of a pkg bucket.
 type SummaryBucket struct {
 	influxdb.Bucket
-	LabelAssociations []influxdb.Label
-}
-
-// SummaryDashboard provides a summary of a pkg dashboard.
-type SummaryDashboard struct {
-	ID          influxdb.ID
-	OrgID       influxdb.ID
-	Name        string
-	Description string
-	LabelAssociations []influxdb.Label
+	Associations []influxdb.Label
 }
 
 // SummaryLabel provides a summary of a pkg label.
@@ -183,14 +151,6 @@ func (b *bucket) ID() influxdb.ID {
 	return b.id
 }
 
-func (b *bucket) ResourceType() influxdb.ResourceType {
-	return influxdb.BucketsResourceType
-}
-
-func (b *bucket) Exists() bool {
-	return b.existing != nil
-}
-
 func (b *bucket) summarize() SummaryBucket {
 	iBkt := SummaryBucket{
 		Bucket: influxdb.Bucket{
@@ -202,7 +162,7 @@ func (b *bucket) summarize() SummaryBucket {
 		},
 	}
 	for _, l := range b.labels {
-		iBkt.LabelAssociations = append(iBkt.LabelAssociations, influxdb.Label{
+		iBkt.Associations = append(iBkt.Associations, influxdb.Label{
 			ID:         l.ID(),
 			OrgID:      l.OrgID,
 			Name:       l.Name,
@@ -230,14 +190,6 @@ func (l labelMapVal) bucket() (*bucket, bool) {
 	return b, ok
 }
 
-func (l labelMapVal) dashboard() (*dashboard, bool) {
-	if l.v == nil {
-		return nil, false
-	}
-	d, ok := l.v.(*dashboard)
-	return d, ok
-}
-
 type label struct {
 	id          influxdb.ID
 	OrgID       influxdb.ID
@@ -258,10 +210,6 @@ func (l *label) ID() influxdb.ID {
 		return l.existing.ID
 	}
 	return l.id
-}
-
-func (l *label) ResourceType() influxdb.ResourceType {
-	return influxdb.LabelsResourceType
 }
 
 func (l *label) summarize() SummaryLabel {
@@ -300,11 +248,6 @@ func (l *label) getMappedResourceID(k labelMapKey) influxdb.ID {
 		if ok {
 			return b.ID()
 		}
-	case influxdb.DashboardsResourceType:
-		d, ok := l.mappings[k].dashboard()
-		if ok {
-			return d.ID()
-		}
 	}
 	return 0
 }
@@ -327,71 +270,9 @@ func (l *label) setBucketMapping(b *bucket, exists bool) {
 	}
 }
 
-func (l *label) setDashboardMapping(d *dashboard, exists bool) {
-	if l == nil {
-		return
-	}
-	if l.mappings == nil {
-		l.mappings = make(map[labelMapKey]labelMapVal)
-	}
-
-	key := labelMapKey{
-		resType: influxdb.DashboardsResourceType,
-		name:    d.Name,
-	}
-	l.mappings[key] = labelMapVal{
-		exists: exists,
-		v:      d,
-	}
-}
-
 func (l *label) properties() map[string]string {
 	return map[string]string{
 		"color":       l.Color,
 		"description": l.Description,
 	}
-}
-
-type dashboard struct {
-	id          influxdb.ID
-	OrgID       influxdb.ID
-	Name        string
-	Description string
-
-	labels []*label
-
-	existing *influxdb.Dashboard
-}
-
-func (d *dashboard) ID() influxdb.ID {
-	if d.existing != nil {
-		return d.existing.ID
-	}
-	return d.id
-}
-
-func (d *dashboard) ResourceType() influxdb.ResourceType {
-	return influxdb.DashboardsResourceType
-}
-
-func (d *dashboard) Exists() bool {
-	return d.existing != nil
-}
-
-func (d *dashboard) summarize() SummaryDashboard {
-	iDash := SummaryDashboard{
-		ID:          d.ID(),
-		OrgID:       d.OrgID,
-		Name:        d.Name,
-		Description: d.Description,
-	}
-	for _, l := range d.labels {
-		iDash.LabelAssociations = append(iDash.LabelAssociations, influxdb.Label{
-			ID:         l.ID(),
-			OrgID:      l.OrgID,
-			Name:       l.Name,
-			Properties: l.properties(),
-		})
-	}
-	return iDash
 }

@@ -168,7 +168,6 @@ func (d dashboardResponse) toPlatform() *platform.Dashboard {
 		ID:             d.ID,
 		OrganizationID: d.OrganizationID,
 		Name:           d.Name,
-		Description:    d.Description,
 		Meta:           d.Meta,
 		Cells:          cells,
 	}
@@ -1192,17 +1191,18 @@ func (s *DashboardService) CreateDashboard(ctx context.Context, d *platform.Dash
 // UpdateDashboard updates a single dashboard with changeset.
 // Returns the new dashboard state after update.
 func (s *DashboardService) UpdateDashboard(ctx context.Context, id platform.ID, upd platform.DashboardUpdate) (*platform.Dashboard, error) {
+	//op := s.OpPrefix + platform.OpUpdateDashboard
 	u, err := NewURL(s.Addr, dashboardIDPath(id))
 	if err != nil {
 		return nil, err
 	}
 
-	var buf bytes.Buffer
-	if err := json.NewEncoder(&buf).Encode(upd); err != nil {
+	b, err := json.Marshal(upd)
+	if err != nil {
 		return nil, err
 	}
 
-	req, err := http.NewRequest("PATCH", u.String(), &buf)
+	req, err := http.NewRequest("PATCH", u.String(), bytes.NewReader(b))
 	if err != nil {
 		return nil, err
 	}
