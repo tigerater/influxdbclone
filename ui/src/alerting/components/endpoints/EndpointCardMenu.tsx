@@ -11,15 +11,18 @@ interface Props {
   onView: () => void
 }
 
-const EndpointCardContext: FC<Props> = ({onDelete, onView}) => {
+const EndpointCardContext: FC<Props> = ({onDelete, onClone, onView}) => {
   return (
     <Context>
-      <Context.Menu icon={IconFont.EyeOpen} testID="context-history-menu">
+      <Context.Menu icon={IconFont.EyeOpen}>
         <Context.Item
           label="View History"
           action={onView}
-          testID="context-history-task"
+          testID="endpoint-card-edit"
         />
+      </Context.Menu>
+      <Context.Menu icon={IconFont.Duplicate} color={ComponentColor.Secondary}>
+        <Context.Item label="Clone" action={onClone} />
       </Context.Menu>
       <Context.Menu
         icon={IconFont.Trash}
