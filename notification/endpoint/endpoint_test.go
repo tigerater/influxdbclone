@@ -55,13 +55,13 @@ func TestValidEndpoint(t *testing.T) {
 			},
 		},
 		{
-			name: "empty slack url and token",
+			name: "empty slack url",
 			src: &endpoint.Slack{
 				Base: goodBase,
 			},
 			err: &influxdb.Error{
 				Code: influxdb.EInvalid,
-				Msg:  "slack endpoint URL and token are empty",
+				Msg:  "slack endpoint URL is empty",
 			},
 		},
 		{
@@ -81,7 +81,10 @@ func TestValidEndpoint(t *testing.T) {
 				Base: goodBase,
 				URL:  "localhost",
 			},
-			err: nil,
+			err: &influxdb.Error{
+				Code: influxdb.EInvalid,
+				Msg:  "slack endpoint token is invalid",
+			},
 		},
 		{
 			name: "invalid slack token",
