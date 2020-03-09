@@ -1,49 +1,28 @@
 // Libraries
-import React, {PureComponent, createRef, RefObject} from 'react'
+import React, {SFC} from 'react'
+import ReactTooltip from 'react-tooltip'
 
 // Components
-import {
-  Popover,
-  PopoverPosition,
-  PopoverInteraction,
-  PopoverType,
-} from '@influxdata/clockface'
+import {Popover, PopoverInteraction} from '@influxdata/clockface'
 
+const graphTipsText =
+  '<h1>Graph Tips:</h1><p><code>Click + Drag</code> Zoom in (X or Y)<br/><code>Shift + Click</code> Pan Graph Window<br/><code>Double Click</code> Reset Graph Window</p><h1>Static Legend Tips:</h1><p><code>Click</code>Focus on single Series<br/><code>Shift + Click</code> Show/Hide single Series</p>'
 
-export default class GraphTips extends PureComponent{
-  private triggerRef: RefObject<HTMLSpanElement> = createRef()
+const GraphTips: SFC = () => (
+  <div
+    className="graph-tips"
+    data-for="graph-tips-tooltip"
+    data-tip={graphTipsText}
+  >
+    <span>?</span>
+    <ReactTooltip
+      id="graph-tips-tooltip"
+      effect="solid"
+      html={true}
+      place="bottom"
+      class="influx-tooltip"
+    />
+  </div>
+)
 
-  public render() {
-    return (
-      <>
-        <span ref={this.triggerRef}>?</span>
-        <Popover
-          type={PopoverType.Outline}
-          position={PopoverPosition.Below}
-          triggerRef={this.triggerRef}
-          distanceFromTrigger={8}
-          showEvent={PopoverInteraction.Hover}
-          hideEvent={PopoverInteraction.Hover}
-          contents={() => (
-            <span>
-              <h1>Graph Tips:</h1>
-              <p>
-                <code>Click + Drag</code> Zoom in (X or Y)
-                <br />
-                <code>Shift + Click</code> Pan Graph Window
-                <br />
-                <code>Double Click</code> Reset Graph Window
-              </p>
-              <h1>Static Legend Tips:</h1>
-              <p>
-                <code>Click</code>Focus on single Series
-                <br />
-                <code>Shift + Click</code> Show/Hide single Series
-              </p>
-            </span>
-          )}
-        />
-      </>
-    )
-  }
-}
+export default GraphTips
