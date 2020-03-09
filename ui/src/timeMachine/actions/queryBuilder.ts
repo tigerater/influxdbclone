@@ -237,14 +237,10 @@ export const loadBuckets = () => async (
   dispatch(setBuilderBucketsStatus(RemoteDataState.Loading))
 
   try {
-    let buckets = await queryBuilderFetcher.findBuckets({
+    const buckets = await queryBuilderFetcher.findBuckets({
       url: queryURL,
       orgID,
     })
-
-    const systemBuckets = buckets.filter(b => b.startsWith('_'))
-    const userBuckets = buckets.filter(b => !b.startsWith('_'))
-    buckets = [...userBuckets, ...systemBuckets]
 
     const selectedBucket = getActiveQuery(getState()).builderConfig.buckets[0]
 

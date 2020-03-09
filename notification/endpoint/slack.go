@@ -33,9 +33,11 @@ func (s *Slack) BackfillSecretKeys() {
 
 // SecretFields return available secret fields.
 func (s Slack) SecretFields() []influxdb.SecretField {
-	return []influxdb.SecretField{
-		s.Token,
+	arr := []influxdb.SecretField{}
+	if s.Token.Key != "" {
+		arr = append(arr, s.Token)
 	}
+	return arr
 }
 
 // Valid returns error if some configuration is invalid
@@ -43,20 +45,22 @@ func (s Slack) Valid() error {
 	if err := s.Base.valid(); err != nil {
 		return err
 	}
-	if s.URL == "" {
+	if s.URL == "" && s.Token.Key == "" {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
-			Msg:  "slack endpoint URL is empty",
+			Msg:  "slack endpoint URL and token are empty",
 		}
 	}
-	if _, err := url.Parse(s.URL); err != nil {
-		return &influxdb.Error{
-			Code: influxdb.EInvalid,
-			Msg:  fmt.Sprintf("slack endpoint URL is invalid: %s", err.Error()),
+	if s.URL != "" {
+		if _, err := url.Parse(s.URL); err != nil {
+			return &influxdb.Error{
+				Code: influxdb.EInvalid,
+				Msg:  fmt.Sprintf("slack endpoint URL is invalid: %s", err.Error()),
+			}
 		}
 	}
 	// TODO(desa): this requirement seems odd
-	if s.Token.Key != s.ID.String()+slackTokenSuffix {
+	if s.Token.Key != "" && s.Token.Key != s.ID.String()+slackTokenSuffix {
 		return &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Msg:  "slack endpoint token is invalid",
