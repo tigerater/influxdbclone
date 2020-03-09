@@ -2,7 +2,7 @@
 import React, {PureComponent} from 'react'
 import {withRouter, WithRouterProps} from 'react-router'
 import {connect} from 'react-redux'
-import _ from 'lodash'
+import {sortBy} from 'lodash'
 
 // Components
 import {
@@ -13,11 +13,11 @@ import {
 } from '@influxdata/clockface'
 import TemplateBrowser from 'src/templates/components/createFromTemplateOverlay/TemplateBrowser'
 import TemplateBrowserEmpty from 'src/templates/components/createFromTemplateOverlay/TemplateBrowserEmpty'
-import GetResources from 'src/shared/components/GetResources'
+import GetResources from 'src/resources/components/GetResources'
 
 // Actions
-import {createDashboardFromTemplate as createDashboardFromTemplateAction} from 'src/dashboards/actions'
-import {getTemplateByID} from 'src/templates/actions'
+import {createDashboardFromTemplate as createDashboardFromTemplateAction} from 'src/dashboards/actions/thunks'
+import {getTemplateByID} from 'src/templates/actions/thunks'
 
 // Constants
 import {influxdbTemplateList} from 'src/templates/constants/defaultTemplates'
@@ -33,6 +33,9 @@ import {
   DashboardTemplate,
   ResourceType,
 } from 'src/types'
+
+// Selectors
+import {getAll} from 'src/resources/selectors/getAll'
 
 interface StateProps {
   templates: TemplateSummary[]
@@ -186,17 +189,23 @@ class DashboardImportFromTemplateOverlay extends PureComponent<
   }
 }
 
-const mstp = ({templates: {items, status}}: AppState): StateProps => {
+const mstp = (state: AppState): StateProps => {
+  const {
+    resources: {
+      templates: {status},
+    },
+  } = state
+  const items = getAll(state, ResourceType.Templates)
   const filteredTemplates = items.filter(
     t => !t.meta.type || t.meta.type === TemplateType.Dashboard
   )
 
-  const templates = _.sortBy(filteredTemplates, item =>
+  const templates = sortBy(filteredTemplates, item =>
     item.meta.name.toLocaleLowerCase()
   )
 
   return {
-    templates: [...templates, ...(influxdbTemplateList as TemplateSummary[])],
+    templates: [...templates, ...(influxdbTemplateList as any)],
     templateStatus: status,
   }
 }

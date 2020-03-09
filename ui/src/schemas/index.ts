@@ -1,18 +1,24 @@
 // Libraries
 import {schema} from 'normalizr'
+import {omit} from 'lodash'
 
 // Types
 import {
-  ResourceType,
-  Telegraf,
-  Task,
+  Cell,
+  Dashboard,
   Label,
   RemoteDataState,
+  ResourceType,
+  Task,
+  Telegraf,
   Variable,
+  View,
 } from 'src/types'
+import {CellsWithViewProperties} from 'src/client'
 
 // Utils
 import {addLabelDefaults} from 'src/labels/utils'
+import {defaultView} from 'src/views/helpers'
 
 /* Authorizations */
 
@@ -25,6 +31,87 @@ export const arrayOfAuths = [auth]
 // Defines the schema for the "buckets" resource
 export const bucket = new schema.Entity(ResourceType.Buckets)
 export const arrayOfBuckets = [bucket]
+
+/* Views */
+
+// Defines the schema for the "views" resource
+
+export const viewsFromCells = (
+  cells: CellsWithViewProperties,
+  dashboardID: string
+): View[] => {
+  return cells.map(cell => {
+    const {properties, id, name} = cell
+
+    return {
+      id,
+      ...defaultView(name),
+      cellID: id,
+      properties,
+      dashboardID,
+    }
+  })
+}
+
+export const view = new schema.Entity(ResourceType.Views)
+export const arrayOfViews = [view]
+
+/* Cells */
+
+// Defines the schema for the "cells" resource
+export const cell = new schema.Entity(
+  ResourceType.Cells,
+  {},
+  {
+    processStrategy: (cell: Cell, parent: Dashboard) => {
+      return {
+        ...omit<Cell>(cell, 'properties'),
+        dashboardID: cell.dashboardID ? cell.dashboardID : parent.id,
+        status: RemoteDataState.Done,
+      }
+    },
+  }
+)
+export const arrayOfCells = [cell]
+
+/* Dashboards */
+
+// Defines the schema for the "dashboards" resource
+export const dashboard = new schema.Entity(
+  ResourceType.Dashboards,
+  {
+    cells: arrayOfCells,
+    views: arrayOfViews,
+  },
+  {
+    processStrategy: (dashboard: Dashboard) => addDashboardDefaults(dashboard),
+  }
+)
+export const arrayOfDashboards = [dashboard]
+
+export const addDashboardDefaults = (dashboard: Dashboard): Dashboard => {
+  return {
+    ...dashboard,
+    id: dashboard.id || '',
+    labels: (dashboard.labels || []).map(addLabelDefaults),
+    name: dashboard.name || '',
+    orgID: dashboard.orgID || '',
+    meta: addDashboardMetaDefaults(dashboard.meta),
+    status: RemoteDataState.Done,
+  }
+}
+
+const addDashboardMetaDefaults = (meta: Dashboard['meta']) => {
+  if (!meta) {
+    return {}
+  }
+
+  if (!meta.updatedAt) {
+    return {...meta, updatedAt: new Date().toDateString()}
+  }
+
+  return meta
+}
 
 /* Members */
 
@@ -39,6 +126,7 @@ export const org = new schema.Entity(ResourceType.Orgs)
 export const arrayOfOrgs = [org]
 
 /* Tasks */
+
 // Defines the schema for the tasks resource
 export const task = new schema.Entity(
   ResourceType.Tasks,
@@ -88,6 +176,12 @@ export const telegraf = new schema.Entity(
 
 export const arrayOfTelegrafs = [telegraf]
 
+/* Templates */
+
+// Defines the schema for the "templates" resource
+export const template = new schema.Entity(ResourceType.Templates)
+export const arrayOfTemplates = [template]
+
 /* Scrapers */
 
 // Defines the schema for the "scrapers" resource
@@ -113,6 +207,7 @@ export const variable = new schema.Entity(
 )
 export const arrayOfVariables = [variable]
 
+// Defaults
 const addStatus = <R extends {status: RemoteDataState}>(resource: R) => {
   return resource.status ? resource.status : RemoteDataState.Done
 }

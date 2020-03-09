@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	"github.com/google/btree"
@@ -56,6 +57,10 @@ func (s *KVStore) Update(ctx context.Context, fn func(kv.Tx) error) error {
 	})
 }
 
+func (s *KVStore) Backup(ctx context.Context, w io.Writer) error {
+	panic("not implemented")
+}
+
 // Flush removes all data from the buckets.  Used for testing.
 func (s *KVStore) Flush(ctx context.Context) {
 	s.mu.Lock()
@@ -100,7 +105,7 @@ func (t *Tx) createBucketIfNotExists(b []byte) (kv.Bucket, error) {
 	if t.writable {
 		bkt, ok := t.kv.buckets[string(b)]
 		if !ok {
-			bkt = &Bucket{btree.New(2)}
+			bkt = &Bucket{btree: btree.New(2)}
 			t.kv.buckets[string(b)] = bkt
 			t.kv.ro[string(b)] = &bucket{Bucket: bkt}
 			return bkt, nil
@@ -128,6 +133,7 @@ func (t *Tx) Bucket(b []byte) (kv.Bucket, error) {
 
 // Bucket is a btree that implements kv.Bucket.
 type Bucket struct {
+	mu    sync.RWMutex
 	btree *btree.BTree
 }
 
@@ -164,6 +170,9 @@ func (i *item) Less(b btree.Item) bool {
 
 // Get retrieves the value at the provided key.
 func (b *Bucket) Get(key []byte) ([]byte, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
 	i := b.btree.Get(&item{key: key})
 
 	if i == nil {
@@ -180,12 +189,18 @@ func (b *Bucket) Get(key []byte) ([]byte, error) {
 
 // Put sets the key value pair provided.
 func (b *Bucket) Put(key []byte, value []byte) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	_ = b.btree.ReplaceOrInsert(&item{key: key, value: value})
 	return nil
 }
 
 // Delete removes the key provided.
 func (b *Bucket) Delete(key []byte) error {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+
 	_ = b.btree.Delete(&item{key: key})
 	return nil
 }
@@ -208,6 +223,9 @@ func (b *Bucket) Cursor(opts ...kv.CursorHint) (kv.Cursor, error) {
 }
 
 func (b *Bucket) getAll(o *kv.CursorHints) ([]kv.Pair, error) {
+	b.mu.RLock()
+	defer b.mu.RUnlock()
+
 	fn := o.PredicateFn
 
 	var pairs []kv.Pair
@@ -240,6 +258,11 @@ type pair struct {
 
 // ForwardCursor returns a directional cursor which starts at the provided seeked key
 func (b *Bucket) ForwardCursor(seek []byte, opts ...kv.CursorOption) (kv.ForwardCursor, error) {
+	config := kv.NewCursorConfig(opts...)
+	if config.Prefix != nil && !bytes.HasPrefix(seek, config.Prefix) {
+		return nil, fmt.Errorf("seek bytes %q not prefixed with %q: %w", string(seek), string(config.Prefix), kv.ErrSeekMissingPrefix)
+	}
+
 	var (
 		pairs = make(chan []pair)
 		stop  = make(chan struct{})
@@ -258,24 +281,26 @@ func (b *Bucket) ForwardCursor(seek []byte, opts ...kv.CursorOption) (kv.Forward
 	)
 
 	go func() {
+
 		defer close(pairs)
 
 		var (
 			batch   []pair
-			config  = kv.NewCursorConfig(opts...)
 			fn      = config.Hints.PredicateFn
-			iterate = func(it btree.ItemIterator) {
-				b.btree.AscendGreaterOrEqual(&item{key: seek}, it)
-			}
+			iterate = b.ascend
 		)
 
 		if config.Direction == kv.CursorDescending {
-			iterate = func(it btree.ItemIterator) {
-				b.btree.DescendLessOrEqual(&item{key: seek}, it)
+			iterate = b.descend
+			if len(seek) == 0 {
+				seek = b.btree.Max().(*item).key
+
 			}
 		}
 
-		iterate(func(i btree.Item) bool {
+		b.mu.RLock()
+		iterate(seek, config, func(i btree.Item) bool {
+
 			select {
 			case <-stop:
 				// if signalled to stop then exit iteration
@@ -287,6 +312,10 @@ func (b *Bucket) ForwardCursor(seek []byte, opts ...kv.CursorOption) (kv.Forward
 			if !ok {
 				batch = append(batch, pair{err: fmt.Errorf("error item is type %T not *item", i)})
 
+				return false
+			}
+
+			if config.Prefix != nil && !bytes.HasPrefix(j.key, config.Prefix) {
 				return false
 			}
 
@@ -309,12 +338,21 @@ func (b *Bucket) ForwardCursor(seek []byte, opts ...kv.CursorOption) (kv.Forward
 			// we've been signalled to stop
 			return false
 		})
+		b.mu.RUnlock()
 
 		// send if any left in batch
 		send(batch)
 	}()
 
 	return &ForwardCursor{pairs: pairs, stop: stop}, nil
+}
+
+func (b *Bucket) ascend(seek []byte, config kv.CursorConfig, it btree.ItemIterator) {
+	b.btree.AscendGreaterOrEqual(&item{key: seek}, it)
+}
+
+func (b *Bucket) descend(seek []byte, config kv.CursorConfig, it btree.ItemIterator) {
+	b.btree.DescendLessOrEqual(&item{key: seek}, it)
 }
 
 // ForwardCursor is a kv.ForwardCursor which iterates over an in-memory btree
@@ -338,6 +376,7 @@ func (c *ForwardCursor) Err() error {
 // Close releases the producing goroutines for the forward cursor.
 // It blocks until the producing goroutine exits.
 func (c *ForwardCursor) Close() error {
+
 	if c.closed {
 		return nil
 	}

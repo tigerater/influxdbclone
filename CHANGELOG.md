@@ -1,4 +1,17 @@
-## v2.0.0-beta.2 [Unreleased]
+## v2.0.0-beta.2 [2020-01-24]
+
+### Features
+
+1. [16523](https://github.com/influxdata/influxdb/pull/16523): Change influx packages to be CRD compliant
+1. [16547](https://github.com/influxdata/influxdb/pull/16547): Allow trailing newline in credentials file and CLI integration
+1. [16545](https://github.com/influxdata/influxdb/pull/16545): Add support for prefixed cursor search to ForwardCursor types
+1. [16504](https://github.com/influxdata/influxdb/pull/16504): Add backup and restore
+1. [16522](https://github.com/influxdata/influxdb/pull/16522): Introduce resource logger to tasks, buckets and organizations
+
+### Bug Fixes
+
+1. [16656](https://github.com/influxdata/influxdb/pull/16656): Check engine closed before collecting index metrics
+1. [16412](https://github.com/influxdata/influxdb/pull/16412): Reject writes which use any of the reserved tag keys
 
 ### Bug Fixes
 
@@ -6,7 +19,9 @@
 
 ### UI Improvements
 
+1. [16575](https://github.com/influxdata/influxdb/pull/16575): Swap billingURL with checkoutURL
 1. [16203](https://github.com/influxdata/influxdb/pull/16203): Move cloud navigation to top of page instead of within left side navigation
+1. [16536](https://github.com/influxdata/influxdb/pull/16536): Adjust aggregate window periods to be more "reasonable". Use duration input with validation.
 
 ## v2.0.0-beta.1 [2020-01-08]
 
@@ -44,6 +59,7 @@
 1. [16509](https://github.com/influxdata/influxdb/pull/16509): Add support for applying an influx package via a public facing URL
 1. [16511](https://github.com/influxdata/influxdb/pull/16511): Add jsonnet support for influx packages
 1. [14782](https://github.com/influxdata/influxdb/pull/16336): Add view page for Check
+1. [16537](https://github.com/influxdata/influxdb/pull/16537): Add update password for CLI
 
 ### Bug Fixes
 
@@ -68,6 +84,7 @@
 1. [16491](https://github.com/influxdata/influxdb/pull/16491): Add missing env vals to influx cli usage and fixes precedence of flag/env var priority
 
 ### UI Improvements
+
 1. [16444](https://github.com/influxdata/influxdb/pull/16444): Add honeybadger reporting to create checks
 
 ## v2.0.0-alpha.21 [2019-12-13]

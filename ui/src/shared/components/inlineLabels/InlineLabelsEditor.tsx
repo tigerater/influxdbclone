@@ -1,5 +1,6 @@
 // Libraries
 import React, {Component, ChangeEvent, createRef} from 'react'
+import {connect} from 'react-redux'
 import _ from 'lodash'
 
 // Components
@@ -13,6 +14,7 @@ import {validateLabelUniqueness} from 'src/labels/utils/'
 // Types
 import {Label} from 'src/types'
 import {OverlayState} from 'src/types/overlay'
+import {createLabel} from 'src/labels/actions'
 
 // Constants
 export const ADD_NEW_LABEL_ITEM_ID = 'add-new-label'
@@ -27,12 +29,19 @@ export const ADD_NEW_LABEL_LABEL: Label = {
 
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
-interface Props {
+interface DispatchProps {
+  onCreateLabel: typeof createLabel
+}
+
+interface StateProps {}
+
+interface OwnProps {
   selectedLabels: Label[]
   labels: Label[]
-  onAddLabel: (label: Label) => Promise<void> | void
-  onCreateLabel: (label: Label) => Promise<void> | void
+  onAddLabel: (label: Label) => void
 }
+
+type Props = DispatchProps & StateProps & OwnProps
 
 interface State {
   searchTerm: string
@@ -43,7 +52,7 @@ interface State {
 
 @ErrorHandling
 class InlineLabelsEditor extends Component<Props, State> {
-  private popoverTrigger = createRef<HTMLButtonElement>()
+  private popoverTrigger = createRef<HTMLDivElement>()
 
   constructor(props: Props) {
     super(props)
@@ -62,17 +71,18 @@ class InlineLabelsEditor extends Component<Props, State> {
     return (
       <>
         <div className="inline-labels--editor">
-          <div className="inline-labels--add">
-            <SquareButton
-              color={ComponentColor.Secondary}
-              titleText="Add labels"
-              icon={IconFont.Plus}
-              testID="inline-labels--add"
-              ref={this.popoverTrigger}
-            />
+          <div className="inline-labels--add-wrapper" ref={this.popoverTrigger}>
+            <div className="inline-labels--add">
+              <SquareButton
+                color={ComponentColor.Secondary}
+                titleText="Add labels"
+                icon={IconFont.Plus}
+                testID="inline-labels--add"
+              />
+            </div>
+            {this.noLabelsIndicator}
           </div>
           {this.popover}
-          {this.noLabelsIndicator}
         </div>
         <CreateLabelOverlay
           isVisible={isCreatingLabel === OverlayState.Open}
@@ -154,7 +164,11 @@ class InlineLabelsEditor extends Component<Props, State> {
     const {availableLabels} = this
     const {isPopoverVisible} = this.state
 
-    if (_.isEmpty(availableLabels) && !isPopoverVisible) {
+    if (_.isEmpty(availableLabels)) {
+      if (isPopoverVisible) {
+        return
+      }
+
       return this.setState({
         isPopoverVisible: true,
         selectedItemID: null,
@@ -231,13 +245,11 @@ class InlineLabelsEditor extends Component<Props, State> {
 
   private handleCreateLabel = async (label: Label) => {
     const {onCreateLabel, onAddLabel} = this.props
+    const {name, properties} = label
 
-    try {
-      await onCreateLabel(label)
-      const newLabel = this.props.labels.find(l => l.name === label.name)
-      await onAddLabel(newLabel)
-    } catch (error) {
-    }
+    await onCreateLabel(name, properties)
+    const newLabel = this.props.labels.find(l => l.name === label.name)
+    onAddLabel(newLabel)
   }
 
   private handleStartCreatingLabel = (): void => {
@@ -245,7 +257,7 @@ class InlineLabelsEditor extends Component<Props, State> {
   }
 
   private handleStopCreatingLabel = (): void => {
-    this.setState({isCreatingLabel: OverlayState.Closed})
+    this.setState({isCreatingLabel: OverlayState.Closed, searchTerm: ''})
   }
 
   private handleEnsureUniqueLabelName = (name: string): string | null => {
@@ -256,4 +268,15 @@ class InlineLabelsEditor extends Component<Props, State> {
   }
 }
 
-export default InlineLabelsEditor
+const mstp = (): StateProps => {
+  return {}
+}
+
+const mdtp: DispatchProps = {
+  onCreateLabel: createLabel,
+}
+
+export default connect<StateProps, DispatchProps, OwnProps>(
+  mstp,
+  mdtp
+)(InlineLabelsEditor)

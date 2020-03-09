@@ -25,7 +25,7 @@ import TaskPage from 'src/tasks/containers/TaskPage'
 import TasksPage from 'src/tasks/containers/TasksPage'
 import TaskRunsPage from 'src/tasks/components/TaskRunsPage'
 import TaskEditPage from 'src/tasks/containers/TaskEditPage'
-import DashboardPage from 'src/dashboards/components/DashboardPage'
+import DashboardContainer from 'src/dashboards/components/DashboardContainer'
 import DashboardsIndex from 'src/dashboards/components/dashboard_index/DashboardsIndex'
 import DashboardExportOverlay from 'src/dashboards/components/DashboardExportOverlay'
 import DashboardImportOverlay from 'src/dashboards/components/DashboardImportOverlay'
@@ -52,6 +52,7 @@ import ClientGoOverlay from 'src/clientLibraries/components/ClientGoOverlay'
 import ClientJavaOverlay from 'src/clientLibraries/components/ClientJavaOverlay'
 import ClientJSOverlay from 'src/clientLibraries/components/ClientJSOverlay'
 import ClientPythonOverlay from 'src/clientLibraries/components/ClientPythonOverlay'
+import ClientRubyOverlay from 'src/clientLibraries/components/ClientRubyOverlay'
 import TemplateImportOverlay from 'src/templates/components/TemplateImportOverlay'
 import TemplateExportOverlay from 'src/templates/components/TemplateExportOverlay'
 import VariablesIndex from 'src/variables/containers/VariablesIndex'
@@ -77,18 +78,18 @@ import RenameVariableOverlay from 'src/variables/components/RenameVariableOverla
 import UpdateVariableOverlay from 'src/variables/components/UpdateVariableOverlay'
 import TaskImportFromTemplateOverlay from 'src/tasks/components/TaskImportFromTemplateOverlay'
 import StaticTemplateViewOverlay from 'src/templates/components/StaticTemplateViewOverlay'
-import CheckHistory from 'src/alerting/components/CheckHistory'
+import CheckHistory from 'src/checks/components/CheckHistory'
 import AlertingIndex from 'src/alerting/components/AlertingIndex'
 import AlertHistoryIndex from 'src/alerting/components/AlertHistoryIndex'
 import BucketsDeleteDataOverlay from 'src/shared/components/DeleteDataOverlay'
 import DEDeleteDataOverlay from 'src/dataExplorer/components/DeleteDataOverlay'
-import NewThresholdCheckEO from 'src/alerting/components/NewThresholdCheckEO'
-import NewDeadmanCheckEO from 'src/alerting/components/NewDeadmanCheckEO'
-import EditCheckEO from 'src/alerting/components/EditCheckEO'
-import NewRuleOverlay from 'src/alerting/components/notifications/NewRuleOverlay'
-import EditRuleOverlay from 'src/alerting/components/notifications/EditRuleOverlay'
-import NewEndpointOverlay from 'src/alerting/components/endpoints/NewEndpointOverlay'
-import EditEndpointOverlay from 'src/alerting/components/endpoints/EditEndpointOverlay'
+import NewThresholdCheckEO from 'src/checks/components/NewThresholdCheckEO'
+import NewDeadmanCheckEO from 'src/checks/components/NewDeadmanCheckEO'
+import EditCheckEO from 'src/checks/components/EditCheckEO'
+import NewRuleOverlay from 'src/notifications/rules/components/NewRuleOverlay'
+import EditRuleOverlay from 'src/notifications/rules/components/EditRuleOverlay'
+import NewEndpointOverlay from 'src/notifications/endpoints/components/NewEndpointOverlay'
+import EditEndpointOverlay from 'src/notifications/endpoints/components/EditEndpointOverlay'
 import NoOrgsPage from 'src/organizations/containers/NoOrgsPage'
 
 // Overlays
@@ -250,7 +251,7 @@ class Root extends PureComponent {
                           </Route>
                           <Route
                             path="dashboards/:dashboardID"
-                            component={DashboardPage}
+                            component={DashboardContainer}
                           >
                             <Route path="cells">
                               <Route path="new" component={NewVEO} />
@@ -348,6 +349,10 @@ class Root extends PureComponent {
                               <Route
                                 path="python"
                                 component={ClientPythonOverlay}
+                              />
+                              <Route
+                                path="ruby"
+                                component={ClientRubyOverlay}
                               />
                             </Route>
                           </Route>

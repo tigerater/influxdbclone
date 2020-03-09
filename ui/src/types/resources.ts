@@ -1,18 +1,23 @@
 import {
-  Bucket,
   Authorization,
-  Organization,
+  Bucket,
+  Cell,
+  Dashboard,
   Member,
+  Organization,
   RemoteDataState,
-  Telegraf,
   Scraper,
+  View,
   TasksState,
+  Telegraf,
+  TemplatesState,
   VariablesState,
 } from 'src/types'
 
 export enum ResourceType {
   Authorizations = 'tokens',
   Buckets = 'buckets',
+  Cells = 'cells',
   Checks = 'checks',
   Dashboards = 'dashboards',
   Labels = 'labels',
@@ -26,6 +31,7 @@ export enum ResourceType {
   Templates = 'templates',
   Telegrafs = 'telegrafs',
   Variables = 'variables',
+  Views = 'views',
 }
 
 export interface NormalizedState<R> {
@@ -44,14 +50,21 @@ export interface TelegrafsState extends NormalizedState<Telegraf> {
   currentConfig: {status: RemoteDataState; item: string}
 }
 
+// Cells "allIDs" are Dashboard.cells
+type CellsState = Omit<NormalizedState<Cell>, 'allIDs'>
+
 // ResourceState defines the types for normalized resources
 export interface ResourceState {
   [ResourceType.Authorizations]: NormalizedState<Authorization>
   [ResourceType.Buckets]: NormalizedState<Bucket>
+  [ResourceType.Cells]: CellsState
+  [ResourceType.Dashboards]: NormalizedState<Dashboard>
   [ResourceType.Members]: NormalizedState<Member>
   [ResourceType.Orgs]: OrgsState
-  [ResourceType.Telegrafs]: TelegrafsState
   [ResourceType.Scrapers]: NormalizedState<Scraper>
   [ResourceType.Tasks]: TasksState
+  [ResourceType.Telegrafs]: TelegrafsState
+  [ResourceType.Templates]: TemplatesState
   [ResourceType.Variables]: VariablesState
+  [ResourceType.Views]: NormalizedState<View>
 }

@@ -391,8 +391,13 @@ func (s *FluxService) Query(ctx context.Context, w io.Writer, r *query.ProxyRequ
 	} else if s.Name != "" {
 		hreq.Header.Add("User-Agent", s.Name)
 	}
-	hreq = hreq.WithContext(ctx)
 
+	// Now that the request is all set, we can apply header mutators.
+	if err := r.Request.ApplyOptions(hreq.Header); err != nil {
+		return flux.Statistics{}, tracing.LogError(span, err)
+	}
+
+	hreq = hreq.WithContext(ctx)
 	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
 	resp, err := hc.Do(hreq)
 	if err != nil {
@@ -466,6 +471,11 @@ func (s *FluxQueryService) Query(ctx context.Context, r *query.Request) (flux.Re
 	}
 	hreq = hreq.WithContext(ctx)
 
+	// Now that the request is all set, we can apply header mutators.
+	if err := r.ApplyOptions(hreq.Header); err != nil {
+		return nil, tracing.LogError(span, err)
+	}
+
 	hc := NewClient(u.Scheme, s.InsecureSkipVerify)
 	resp, err := hc.Do(hreq)
 	if err != nil {
@@ -491,7 +501,7 @@ func (s FluxQueryService) Check(ctx context.Context) check.Response {
 }
 
 // GetQueryResponse runs a flux query with common parameters and returns the response from the query service.
-func GetQueryResponse(addr, flux, org, token string, headers ...string) (*http.Response, error) {
+func GetQueryResponse(qr *QueryRequest, addr, org, token string, headers ...string) (*http.Response, error) {
 	if len(headers)%2 != 0 {
 		return nil, fmt.Errorf("headers must be key value pairs")
 	}
@@ -502,18 +512,6 @@ func GetQueryResponse(addr, flux, org, token string, headers ...string) (*http.R
 	params := url.Values{}
 	params.Set(Org, org)
 	u.RawQuery = params.Encode()
-
-	header := true
-	qr := &QueryRequest{
-		Type:  "flux",
-		Query: flux,
-		Dialect: QueryDialect{
-			Header:         &header,
-			Delimiter:      ",",
-			CommentPrefix:  "#",
-			DateTimeFormat: "RFC3339",
-		},
-	}
 
 	var body bytes.Buffer
 	if err := json.NewEncoder(&body).Encode(qr); err != nil {
@@ -552,7 +550,18 @@ func GetQueryResponseBody(res *http.Response) ([]byte, error) {
 
 // SimpleQuery runs a flux query with common parameters and returns CSV results.
 func SimpleQuery(addr, flux, org, token string, headers ...string) ([]byte, error) {
-	res, err := GetQueryResponse(addr, flux, org, token, headers...)
+	header := true
+	qr := &QueryRequest{
+		Type:  "flux",
+		Query: flux,
+		Dialect: QueryDialect{
+			Header:         &header,
+			Delimiter:      ",",
+			CommentPrefix:  "#",
+			DateTimeFormat: "RFC3339",
+		},
+	}
+	res, err := GetQueryResponse(qr, addr, org, token, headers...)
 	if err != nil {
 		return nil, err
 	}
