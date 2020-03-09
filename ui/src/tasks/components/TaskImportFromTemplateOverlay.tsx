@@ -2,7 +2,7 @@
 import React, {PureComponent} from 'react'
 import {withRouter, WithRouterProps} from 'react-router'
 import {connect} from 'react-redux'
-import {sortBy} from 'lodash'
+import _ from 'lodash'
 
 // Components
 import {
@@ -12,7 +12,7 @@ import {
   Overlay,
 } from '@influxdata/clockface'
 import TemplateBrowser from 'src/templates/components/createFromTemplateOverlay/TemplateBrowser'
-import TemplateBrowserEmpty from 'src/tasks/components/TemplateBrowserEmpty'
+import TemplateBrowserEmpty from 'src/templates/components/createFromTemplateOverlay/TemplateBrowserEmpty'
 
 // Actions
 import {createTaskFromTemplate as createTaskFromTemplateAction} from 'src/tasks/actions'
@@ -59,8 +59,8 @@ class TaskImportFromTemplateOverlay extends PureComponent<
 
   render() {
     return (
-      <Overlay visible={true}>
-        <GetResources resources={[ResourceType.Templates]}>
+      <GetResources resources={[ResourceType.Templates]}>
+        <Overlay visible={true}>
           <Overlay.Container maxWidth={900}>
             <Overlay.Header
               title="Create Task from a Template"
@@ -83,8 +83,8 @@ class TaskImportFromTemplateOverlay extends PureComponent<
               />
             </Overlay.Footer>
           </Overlay.Container>
-        </GetResources>
-      </Overlay>
+        </Overlay>
+      </GetResources>
     )
   }
 
@@ -142,7 +142,7 @@ const mstp = ({templates: {items, status}}: AppState): StateProps => {
     t => !t.meta.type || t.meta.type === TemplateType.Task
   )
 
-  const templates = sortBy(filteredTemplates, item =>
+  const templates = _.sortBy(filteredTemplates, item =>
     item.meta.name.toLocaleLowerCase()
   )
 
