@@ -9,16 +9,10 @@ import RuleMessageContents from 'src/alerting/components/notifications/RuleMessa
 
 // Utils
 import {getRuleVariantDefaults} from 'src/alerting/components/notifications/utils'
-import {getResourceList} from 'src/alerting/selectors'
 import {useRuleDispatch} from './RuleOverlayProvider'
 
 // Types
-import {
-  NotificationEndpoint,
-  NotificationRuleDraft,
-  AppState,
-  ResourceType,
-} from 'src/types'
+import {NotificationEndpoint, NotificationRuleDraft, AppState} from 'src/types'
 
 interface StateProps {
   endpoints: NotificationEndpoint[]
@@ -71,13 +65,8 @@ const RuleMessage: FC<Props> = ({endpoints, rule}) => {
   )
 }
 
-const mstp = (state: AppState) => {
-  return {
-    endpoints: getResourceList<NotificationEndpoint>(
-      state,
-      ResourceType.NotificationEndpoints
-    ),
-  }
+const mstp = ({endpoints}: AppState) => {
+  return {endpoints: endpoints.list}
 }
 
 export default connect(mstp)(RuleMessage)
