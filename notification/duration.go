@@ -43,12 +43,3 @@ func (d *Duration) UnmarshalJSON(b []byte) error {
 
 	return nil
 }
-
-// FromTimeDuration converts a time.Duration to a notification.Duration type.
-func FromTimeDuration(d time.Duration) (Duration, error) {
-	dur, err := parser.ParseDuration(d.String())
-	if err != nil {
-		return Duration{}, err
-	}
-	return Duration(*dur), nil
-}
