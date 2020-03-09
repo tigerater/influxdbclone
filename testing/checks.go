@@ -248,12 +248,6 @@ func CreateCheck(
 						UserID:       MustIDBase16(sixID),
 						UserType:     influxdb.Owner,
 					},
-					{
-						ResourceID:   MustIDBase16(orgOneID),
-						ResourceType: influxdb.OrgsResourceType,
-						UserID:       MustIDBase16(twoID),
-						UserType:     influxdb.Member,
-					},
 				},
 			},
 			args: args{
@@ -292,12 +286,6 @@ func CreateCheck(
 			},
 			wants: wants{
 				urms: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(checkOneID),
-						ResourceType: influxdb.ChecksResourceType,
-						UserID:       MustIDBase16(twoID),
-						UserType:     influxdb.Member,
-					},
 					{
 						ResourceID:   MustIDBase16(checkOneID),
 						ResourceType: influxdb.ChecksResourceType,
@@ -358,26 +346,6 @@ func CreateCheck(
 				IDGenerator: &mock.IDGenerator{
 					IDFn: func() influxdb.ID {
 						return MustIDBase16(checkTwoID)
-					},
-				},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(orgTwoID),
-						ResourceType: influxdb.OrgsResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-					},
-					{
-						ResourceID:   MustIDBase16(orgOneID),
-						ResourceType: influxdb.OrgsResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-					},
-					{
-						ResourceID:   MustIDBase16(checkOneID),
-						ResourceType: influxdb.ChecksResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
 					},
 				},
 				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2006, 5, 4, 1, 2, 3, 0, time.UTC)},
@@ -448,20 +416,6 @@ func CreateCheck(
 				},
 			},
 			wants: wants{
-				urms: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(checkOneID),
-						ResourceType: influxdb.ChecksResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-					},
-					{
-						ResourceID:   MustIDBase16(checkTwoID),
-						ResourceType: influxdb.ChecksResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-					},
-				},
 				checks: []influxdb.Check{
 					deadman1,
 					threshold1,
@@ -471,26 +425,6 @@ func CreateCheck(
 		{
 			name: "names should be unique within an organization",
 			fields: CheckFields{
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(orgTwoID),
-						ResourceType: influxdb.OrgsResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-					},
-					{
-						ResourceID:   MustIDBase16(orgOneID),
-						ResourceType: influxdb.OrgsResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-					},
-					{
-						ResourceID:   MustIDBase16(checkOneID),
-						ResourceType: influxdb.ChecksResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-					},
-				},
 				IDGenerator: &mock.IDGenerator{
 					IDFn: func() influxdb.ID {
 						return MustIDBase16(checkTwoID)
@@ -542,14 +476,6 @@ func CreateCheck(
 				},
 			},
 			wants: wants{
-				urms: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(checkOneID),
-						ResourceType: influxdb.ChecksResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-					},
-				},
 				checks: []influxdb.Check{
 					deadman1,
 				},
@@ -569,26 +495,6 @@ func CreateCheck(
 					},
 				},
 				TimeGenerator: mock.TimeGenerator{FakeValue: time.Date(2006, 5, 4, 1, 2, 3, 0, time.UTC)},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(orgTwoID),
-						ResourceType: influxdb.OrgsResourceType,
-						UserID:       MustIDBase16(twoID),
-						UserType:     influxdb.Owner,
-					},
-					{
-						ResourceID:   MustIDBase16(orgOneID),
-						ResourceType: influxdb.OrgsResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-					},
-					{
-						ResourceID:   MustIDBase16(checkOneID),
-						ResourceType: influxdb.ChecksResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-					},
-				},
 				Organizations: []*influxdb.Organization{
 					{
 						Name: "theorg",
@@ -634,20 +540,6 @@ func CreateCheck(
 				},
 			},
 			wants: wants{
-				urms: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(checkOneID),
-						ResourceType: influxdb.ChecksResourceType,
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-					},
-					{
-						ResourceID:   MustIDBase16(checkTwoID),
-						ResourceType: influxdb.ChecksResourceType,
-						UserID:       MustIDBase16(twoID),
-						UserType:     influxdb.Owner,
-					},
-				},
 				checks: []influxdb.Check{
 					deadman1,
 					&check.Threshold{
@@ -745,20 +637,8 @@ func CreateCheck(
 			diffPlatformErrors(tt.name, err, tt.wants.err, opPrefix, t)
 
 			defer s.DeleteCheck(ctx, tt.args.check.GetID())
-			urms, _, err := s.FindUserResourceMappings(ctx, influxdb.UserResourceMappingFilter{
-				ResourceType: influxdb.ChecksResourceType,
-			})
-			if err != nil {
-				t.Fatalf("failed to retrieve user resource mappings: %v", err)
-			}
-			if diff := cmp.Diff(urms, tt.wants.urms, userResourceMappingCmpOptions...); diff != "" {
-				t.Errorf("user resource mappings are different -got/+want\ndiff %s", diff)
-			}
 
-			checks, _, err := s.FindChecks(ctx, influxdb.CheckFilter{
-				UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-					ResourceType: influxdb.ChecksResourceType,
-				}})
+			checks, _, err := s.FindChecks(ctx, influxdb.CheckFilter{})
 			if err != nil {
 				t.Fatalf("failed to retrieve checks: %v", err)
 			}
@@ -862,7 +742,6 @@ func FindChecks(
 		name         string
 		organization string
 		OrgID        influxdb.ID
-		userID       influxdb.ID
 		findOptions  influxdb.FindOptions
 	}
 
@@ -879,20 +758,6 @@ func FindChecks(
 		{
 			name: "find all checks",
 			fields: CheckFields{
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-				},
 				Organizations: []*influxdb.Organization{
 					{
 						Name: "theorg",
@@ -908,9 +773,7 @@ func FindChecks(
 					threshold1,
 				},
 			},
-			args: args{
-				userID: MustIDBase16(sixID),
-			},
+			args: args{},
 			wants: wants{
 				checks: []influxdb.Check{
 					deadman1,
@@ -921,20 +784,6 @@ func FindChecks(
 		{
 			name: "find all checks by offset and limit",
 			fields: CheckFields{
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-				},
 				Organizations: []*influxdb.Organization{
 					{
 						Name: "theorg",
@@ -961,20 +810,6 @@ func FindChecks(
 		{
 			name: "find all checks by descending",
 			fields: CheckFields{
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-				},
 				Organizations: []*influxdb.Organization{
 					{
 						Name: "theorg",
@@ -987,7 +822,6 @@ func FindChecks(
 				},
 			},
 			args: args{
-				userID: MustIDBase16(sixID),
 				findOptions: influxdb.FindOptions{
 					Limit:      1,
 					Descending: true,
@@ -1002,20 +836,6 @@ func FindChecks(
 		{
 			name: "find checks by organization name",
 			fields: CheckFields{
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-				},
 				Organizations: []*influxdb.Organization{
 					{
 						Name: "theorg",
@@ -1032,7 +852,6 @@ func FindChecks(
 				},
 			},
 			args: args{
-				userID:       MustIDBase16(sixID),
 				organization: "theorg",
 			},
 			wants: wants{
@@ -1044,20 +863,6 @@ func FindChecks(
 		{
 			name: "find checks by organization id",
 			fields: CheckFields{
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-				},
 				Organizations: []*influxdb.Organization{
 					{
 						Name: "theorg",
@@ -1074,8 +879,7 @@ func FindChecks(
 				},
 			},
 			args: args{
-				userID: MustIDBase16(sixID),
-				OrgID:  MustIDBase16(orgTwoID),
+				OrgID: MustIDBase16(orgTwoID),
 			},
 			wants: wants{
 				checks: []influxdb.Check{
@@ -1092,28 +896,13 @@ func FindChecks(
 						ID:   MustIDBase16(orgOneID),
 					},
 				},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-				},
 				Checks: []influxdb.Check{
 					deadman1,
 					threshold1,
 				},
 			},
 			args: args{
-				userID: MustIDBase16(sixID),
-				name:   "name2",
+				name: "name2",
 			},
 			wants: wants{
 				checks: []influxdb.Check{
@@ -1133,8 +922,7 @@ func FindChecks(
 				Checks: []influxdb.Check{},
 			},
 			args: args{
-				userID: MustIDBase16(sixID),
-				name:   "xyz",
+				name: "xyz",
 			},
 			wants: wants{},
 		},
@@ -1146,12 +934,7 @@ func FindChecks(
 			defer done()
 			ctx := context.Background()
 
-			filter := influxdb.CheckFilter{
-				UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-					UserID:       tt.args.userID,
-					ResourceType: influxdb.ChecksResourceType,
-				},
-			}
+			filter := influxdb.CheckFilter{}
 			if tt.args.ID.Valid() {
 				filter.ID = &tt.args.ID
 			}
@@ -1181,8 +964,7 @@ func DeleteCheck(
 	t *testing.T,
 ) {
 	type args struct {
-		ID     string
-		userID influxdb.ID
+		ID string
 	}
 	type wants struct {
 		err    error
@@ -1205,20 +987,6 @@ func DeleteCheck(
 						ID:   MustIDBase16(orgOneID),
 					},
 				},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-				},
 				Tasks: []influxdb.TaskCreate{
 					{
 						Flux: `option task = { every: 10s, name: "foo" }
@@ -1233,8 +1001,7 @@ data = from(bucket: "telegraf") |> range(start: -1m)`,
 				},
 			},
 			args: args{
-				ID:     checkOneID,
-				userID: MustIDBase16(sixID),
+				ID: checkOneID,
 			},
 			wants: wants{
 				checks: []influxdb.Check{
@@ -1252,24 +1019,10 @@ data = from(bucket: "telegraf") |> range(start: -1m)`,
 						ID:   MustIDBase16(orgOneID),
 					},
 				},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Owner,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.ChecksResourceType,
-					},
-				},
 				Tasks: []influxdb.TaskCreate{
 					{
 						Flux: `option task = { every: 10s, name: "foo" }
-		data = from(bucket: "telegraf") |> range(start: -1m)`,
+data = from(bucket: "telegraf") |> range(start: -1m)`,
 						OrganizationID: MustIDBase16(orgOneID),
 						OwnerID:        MustIDBase16(sixID),
 					},
@@ -1280,8 +1033,7 @@ data = from(bucket: "telegraf") |> range(start: -1m)`,
 				},
 			},
 			args: args{
-				ID:     "1234567890654321",
-				userID: MustIDBase16(sixID),
+				ID: "1234567890654321",
 			},
 			wants: wants{
 				err: &influxdb.Error{
@@ -1305,12 +1057,7 @@ data = from(bucket: "telegraf") |> range(start: -1m)`,
 			err := s.DeleteCheck(ctx, MustIDBase16(tt.args.ID))
 			diffPlatformErrors(tt.name, err, tt.wants.err, opPrefix, t)
 
-			filter := influxdb.CheckFilter{
-				UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-					UserID:       tt.args.userID,
-					ResourceType: influxdb.ChecksResourceType,
-				},
-			}
+			filter := influxdb.CheckFilter{}
 			checks, _, err := s.FindChecks(ctx, filter)
 			if err != nil {
 				t.Fatalf("failed to retrieve checks: %v", err)

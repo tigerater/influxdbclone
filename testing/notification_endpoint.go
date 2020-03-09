@@ -483,20 +483,6 @@ func FindNotificationEndpoints(
 		{
 			name: "find all notification endpoints",
 			fields: NotificationEndpointFields{
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
@@ -529,12 +515,7 @@ func FindNotificationEndpoints(
 				},
 			},
 			args: args{
-				filter: influxdb.NotificationEndpointFilter{
-					UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-						UserID:       MustIDBase16(sixID),
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-				},
+				filter: influxdb.NotificationEndpointFilter{},
 			},
 			wants: wants{
 				notificationEndpoints: []influxdb.NotificationEndpoint{
@@ -582,26 +563,6 @@ func FindNotificationEndpoints(
 						Name: "org4",
 					},
 				},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(fourID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
@@ -638,10 +599,6 @@ func FindNotificationEndpoints(
 			args: args{
 				filter: influxdb.NotificationEndpointFilter{
 					OrgID: idPtr(MustIDBase16(oneID)),
-					UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-						ResourceType: influxdb.NotificationEndpointResourceType,
-						UserID:       MustIDBase16(sixID),
-					},
 				},
 			},
 			wants: wants{
@@ -670,20 +627,6 @@ func FindNotificationEndpoints(
 					{
 						ID:   MustIDBase16(fourID),
 						Name: "org4",
-					},
-				},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
 					},
 				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
@@ -723,10 +666,6 @@ func FindNotificationEndpoints(
 			args: args{
 				filter: influxdb.NotificationEndpointFilter{
 					Org: strPtr("org4"),
-					UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-						UserID:       MustIDBase16(sixID),
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
 				},
 			},
 			wants: wants{
@@ -768,20 +707,6 @@ func FindNotificationEndpoints(
 						Name: "org4",
 					},
 				},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
@@ -819,10 +744,6 @@ func FindNotificationEndpoints(
 			args: args{
 				filter: influxdb.NotificationEndpointFilter{
 					Org: strPtr("org4"),
-					UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-						UserID:       MustIDBase16(sixID),
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
 				},
 				opts: influxdb.FindOptions{
 					Limit: 2,
@@ -867,27 +788,6 @@ func FindNotificationEndpoints(
 						Name: "org4",
 					},
 				},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-
-					{
-						ResourceID:   MustIDBase16(fourID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
@@ -925,10 +825,6 @@ func FindNotificationEndpoints(
 			args: args{
 				filter: influxdb.NotificationEndpointFilter{
 					Org: strPtr("org4"),
-					UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-						UserID:       MustIDBase16(sixID),
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
 				},
 				opts: influxdb.FindOptions{
 					Offset: 1,
@@ -973,26 +869,6 @@ func FindNotificationEndpoints(
 						Name: "org4",
 					},
 				},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(fourID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
 					&endpoint.Slack{
 						Base: endpoint.Base{
@@ -1030,10 +906,6 @@ func FindNotificationEndpoints(
 			args: args{
 				filter: influxdb.NotificationEndpointFilter{
 					ID: idPtr(MustIDBase16(fourID)),
-					UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-						UserID:       MustIDBase16(sixID),
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
 				},
 			},
 			wants: wants{
@@ -1062,26 +934,6 @@ func FindNotificationEndpoints(
 					{
 						ID:   MustIDBase16(fourID),
 						Name: "org4",
-					},
-				},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(threeID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
 					},
 				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
@@ -1120,10 +972,6 @@ func FindNotificationEndpoints(
 			args: args{
 				filter: influxdb.NotificationEndpointFilter{
 					OrgID: idPtr(MustIDBase16(oneID)),
-					UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-						UserID:       MustIDBase16(sixID),
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
 				},
 			},
 			wants: wants{
@@ -1141,20 +989,6 @@ func FindNotificationEndpoints(
 					{
 						ID:   MustIDBase16(fourID),
 						Name: "org4",
-					},
-				},
-				UserResourceMappings: []*influxdb.UserResourceMapping{
-					{
-						ResourceID:   MustIDBase16(oneID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
-					{
-						ResourceID:   MustIDBase16(twoID),
-						UserID:       MustIDBase16(sixID),
-						UserType:     influxdb.Member,
-						ResourceType: influxdb.NotificationEndpointResourceType,
 					},
 				},
 				NotificationEndpoints: []influxdb.NotificationEndpoint{
@@ -1193,10 +1027,6 @@ func FindNotificationEndpoints(
 			args: args{
 				filter: influxdb.NotificationEndpointFilter{
 					ID: idPtr(MustIDBase16(fiveID)),
-					UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-						UserID:       MustIDBase16(sixID),
-						ResourceType: influxdb.NotificationEndpointResourceType,
-					},
 				},
 			},
 			wants: wants{},

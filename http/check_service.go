@@ -330,16 +330,7 @@ func (h *CheckHandler) handleGetCheck(w http.ResponseWriter, r *http.Request) {
 }
 
 func decodeCheckFilter(ctx context.Context, r *http.Request) (*influxdb.CheckFilter, *influxdb.FindOptions, error) {
-	auth, err := pctx.GetAuthorizer(ctx)
-	if err != nil {
-		return nil, nil, err
-	}
-	f := &influxdb.CheckFilter{
-		UserResourceMappingFilter: influxdb.UserResourceMappingFilter{
-			UserID:       auth.GetUserID(),
-			ResourceType: influxdb.ChecksResourceType,
-		},
-	}
+	f := &influxdb.CheckFilter{}
 
 	opts, err := decodeFindOptions(ctx, r)
 	if err != nil {

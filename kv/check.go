@@ -156,7 +156,7 @@ func (s *Service) FindCheck(ctx context.Context, filter influxdb.CheckFilter) (i
 			filter.OrgID = &o.ID
 		}
 
-		filterFn := filterChecksFn(nil, filter)
+		filterFn := filterChecksFn(filter)
 		return s.forEachCheck(ctx, tx, false, func(chk influxdb.Check) bool {
 			if filterFn(chk) {
 				c = chk
@@ -182,7 +182,7 @@ func (s *Service) FindCheck(ctx context.Context, filter influxdb.CheckFilter) (i
 	return c, nil
 }
 
-func filterChecksFn(idMap map[influxdb.ID]bool, filter influxdb.CheckFilter) func(c influxdb.Check) bool {
+func filterChecksFn(filter influxdb.CheckFilter) func(c influxdb.Check) bool {
 	return func(c influxdb.Check) bool {
 		if filter.ID != nil {
 			if c.GetID() != *filter.ID {
@@ -199,10 +199,7 @@ func filterChecksFn(idMap map[influxdb.ID]bool, filter influxdb.CheckFilter) fun
 				return false
 			}
 		}
-		if idMap == nil {
-			return true
-		}
-		return idMap[c.GetID()]
+		return true
 	}
 }
 
@@ -244,19 +241,6 @@ func (s *Service) findChecks(ctx context.Context, tx Tx, filter influxdb.CheckFi
 	defer span.Finish()
 
 	cs := []influxdb.Check{}
-	m, err := s.findUserResourceMappings(ctx, tx, filter.UserResourceMappingFilter)
-	if err != nil {
-		return nil, err
-	}
-
-	if len(m) == 0 {
-		return cs, nil
-	}
-
-	idMap := make(map[influxdb.ID]bool)
-	for _, item := range m {
-		idMap[item.ResourceID] = true
-	}
 	if filter.Org != nil {
 		o, err := s.findOrganizationByName(ctx, tx, *filter.Org)
 		if err != nil {
@@ -275,8 +259,8 @@ func (s *Service) findChecks(ctx context.Context, tx Tx, filter influxdb.CheckFi
 		descending = opts[0].Descending
 	}
 
-	filterFn := filterChecksFn(idMap, filter)
-	err = s.forEachCheck(ctx, tx, descending, func(c influxdb.Check) bool {
+	filterFn := filterChecksFn(filter)
+	err := s.forEachCheck(ctx, tx, descending, func(c influxdb.Check) bool {
 		if filterFn(c) {
 			if count >= offset {
 				cs = append(cs, c)
