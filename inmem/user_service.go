@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/influxdata/influxdb"
 	platform "github.com/influxdata/influxdb"
 )
 
@@ -158,7 +157,6 @@ func (s *Service) CreateUser(ctx context.Context, u *platform.User) error {
 		}
 	}
 	u.ID = s.IDGenerator.ID()
-	u.Status = influxdb.Active
 	s.PutUser(ctx, u)
 	return nil
 }

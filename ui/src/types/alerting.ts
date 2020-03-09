@@ -7,6 +7,7 @@ import {
   PagerDutyNotificationRuleBase,
   HTTPNotificationRuleBase,
   NotificationRule,
+  CheckStatusLevel,
 } from 'src/client'
 
 type Omit<T, U> = Pick<T, Exclude<keyof T, U>>
@@ -45,17 +46,10 @@ type SMTPRule = NotificationRuleBaseDraft & SMTPNotificationRuleBase
 type PagerDutyRule = NotificationRuleBaseDraft & PagerDutyNotificationRuleBase
 type HTTPRule = NotificationRuleBaseDraft & HTTPNotificationRuleBase
 
-export type LowercaseCheckStatusLevel =
-  | 'crit'
-  | 'warn'
-  | 'info'
-  | 'ok'
-  | 'unkown'
-
 // The data for a row in the status history table
 export interface StatusRow {
   time: number
-  level: LowercaseCheckStatusLevel
+  level: CheckStatusLevel
   checkID: string
   checkName: string
   message: string
@@ -64,7 +58,7 @@ export interface StatusRow {
 // The data for a row in the notification history table
 export interface NotificationRow {
   time: number
-  level: LowercaseCheckStatusLevel
+  level: CheckStatusLevel
   checkID: string
   checkName: string
   notificationRuleID: string

@@ -8,7 +8,6 @@ import (
 
 	platform "github.com/influxdata/influxdb"
 	platcontext "github.com/influxdata/influxdb/context"
-	"github.com/influxdata/influxdb/jsonweb"
 	"github.com/julienschmidt/httprouter"
 	"go.uber.org/zap"
 )
@@ -21,7 +20,6 @@ type AuthenticationHandler struct {
 	AuthorizationService platform.AuthorizationService
 	SessionService       platform.SessionService
 	UserService          platform.UserService
-	TokenParser          *jsonweb.TokenParser
 	SessionRenewDisabled bool
 
 	// This is only really used for it's lookup method the specific http
@@ -37,7 +35,6 @@ func NewAuthenticationHandler(h platform.HTTPErrorHandler) *AuthenticationHandle
 		Logger:           zap.NewNop(),
 		HTTPErrorHandler: h,
 		Handler:          http.DefaultServeMux,
-		TokenParser:      jsonweb.NewTokenParser(jsonweb.EmptyKeyStore),
 		noAuthRouter:     httprouter.New(),
 	}
 }
@@ -103,19 +100,16 @@ func (h *AuthenticationHandler) ServeHTTP(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	// jwt based auth is permission based rather than identity based
-	// and therefor has no associated user. if the user ID is invalid
-	// disregard the user active check
-	if auth.GetUserID().Valid() {
-		if err = h.isUserActive(ctx, auth); err != nil {
-			InactiveUserError(ctx, h, w)
-			return
-		}
+	err = h.isUserActive(ctx, auth)
+	if err != nil {
+		InactiveUserError(ctx, h, w)
+		return
 	}
 
 	ctx = platcontext.SetAuthorizer(ctx, auth)
 
-	h.Handler.ServeHTTP(w, r.WithContext(ctx))
+	r = r.WithContext(ctx)
+	h.Handler.ServeHTTP(w, r)
 }
 
 func (h *AuthenticationHandler) isUserActive(ctx context.Context, auth platform.Authorizer) error {
@@ -131,22 +125,9 @@ func (h *AuthenticationHandler) isUserActive(ctx context.Context, auth platform.
 	return &platform.Error{Code: platform.EForbidden, Msg: "User is inactive"}
 }
 
-func (h *AuthenticationHandler) extractAuthorization(ctx context.Context, r *http.Request) (platform.Authorizer, error) {
+func (h *AuthenticationHandler) extractAuthorization(ctx context.Context, r *http.Request) (*platform.Authorization, error) {
 	t, err := GetToken(r)
 	if err != nil {
-		return nil, err
-	}
-
-	token, err := h.TokenParser.Parse(t)
-	if err == nil {
-		return token, nil
-	}
-
-	// if the error returned signifies ths token is
-	// not a well formed JWT then use it as a lookup
-	// key for its associated authorization
-	// otherwise return the error
-	if !jsonweb.IsMalformedError(err) {
 		return nil, err
 	}
 

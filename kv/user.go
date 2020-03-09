@@ -236,7 +236,6 @@ func (s *Service) createUser(ctx context.Context, tx Tx, u *influxdb.User) error
 	}
 
 	u.ID = s.IDGenerator.ID()
-	u.Status = influxdb.Active
 	if err := s.appendUserEventToLog(ctx, tx, u.ID, userCreatedEvent); err != nil {
 		return err
 	}

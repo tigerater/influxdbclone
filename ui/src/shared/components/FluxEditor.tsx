@@ -4,7 +4,6 @@ import {Controlled as ReactCodeMirror, IInstance} from 'react-codemirror2'
 import {EditorChange, LineWidget, Position} from 'codemirror'
 import {ShowHintOptions} from 'src/types/codemirror'
 import 'src/external/codemirror'
-import 'codemirror/addon/comment/comment'
 
 // Components
 import {ErrorHandling} from 'src/shared/decorators/errors'
@@ -98,11 +97,7 @@ class FluxEditor extends PureComponent<Props, State> {
       theme: 'time-machine',
       completeSingle: false,
       gutters: ['error-gutter'],
-      comment: true,
-      extraKeys: {
-        Tab: onTab,
-        'Ctrl-/': 'toggleComment',
-      },
+      extraKeys: {Tab: onTab},
     }
 
     return (
