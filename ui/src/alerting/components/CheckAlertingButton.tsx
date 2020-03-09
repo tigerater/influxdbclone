@@ -51,7 +51,7 @@ const CheckAlertingButton: FunctionComponent<Props> = ({
     <Popover
       visible={!isQueryAlertable}
       position={PopoverPosition.ToTheRight}
-      showEvent={PopoverInteraction.None}
+      showEvent={PopoverInteraction.Click}
       hideEvent={PopoverInteraction.None}
       color={ComponentColor.Primary}
       type={PopoverType.Outline}

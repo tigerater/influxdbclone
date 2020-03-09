@@ -136,11 +136,6 @@ func CreateNotificationRule(
 							RunbookLink: "runbooklink1",
 							SleepUntil:  &time3,
 							Every:       mustDuration("1h"),
-							StatusRules: []notification.StatusRule{
-								{
-									CurrentLevel: notification.Critical,
-								},
-							},
 							TagRules: []notification.TagRule{
 								{
 									Tag: influxdb.Tag{
@@ -187,11 +182,6 @@ func CreateNotificationRule(
 						RunbookLink: "runbooklink1",
 						SleepUntil:  &time3,
 						Every:       mustDuration("1h"),
-						StatusRules: []notification.StatusRule{
-							{
-								CurrentLevel: notification.Critical,
-							},
-						},
 						TagRules: []notification.TagRule{
 							{
 								Tag: influxdb.Tag{
@@ -225,11 +215,6 @@ func CreateNotificationRule(
 							RunbookLink: "runbooklink1",
 							SleepUntil:  &time3,
 							Every:       mustDuration("1h"),
-							StatusRules: []notification.StatusRule{
-								{
-									CurrentLevel: notification.Critical,
-								},
-							},
 							TagRules: []notification.TagRule{
 								{
 									Tag: influxdb.Tag{
@@ -265,11 +250,6 @@ func CreateNotificationRule(
 							RunbookLink: "runbooklink1",
 							SleepUntil:  &time3,
 							Every:       mustDuration("1h"),
-							StatusRules: []notification.StatusRule{
-								{
-									CurrentLevel: notification.Critical,
-								},
-							},
 							TagRules: []notification.TagRule{
 								{
 									Tag: influxdb.Tag{
@@ -1625,15 +1605,10 @@ func UpdateNotificationRule(
 				NotificationRules: []influxdb.NotificationRule{
 					&rule.Slack{
 						Base: rule.Base{
-							ID:      MustIDBase16(oneID),
-							Name:    "name1",
-							OwnerID: MustIDBase16(sixID),
-							OrgID:   MustIDBase16(fourID),
-							StatusRules: []notification.StatusRule{
-								{
-									CurrentLevel: notification.Info,
-								},
-							},
+							ID:          MustIDBase16(oneID),
+							Name:        "name1",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
 							EndpointID:  MustIDBase16(twoID),
 							Status:      influxdb.Active,
 							TaskID:      MustIDBase16(twoID),
@@ -1650,15 +1625,10 @@ func UpdateNotificationRule(
 					},
 					&rule.Slack{
 						Base: rule.Base{
-							ID:      MustIDBase16(twoID),
-							Name:    "name2",
-							OwnerID: MustIDBase16(sixID),
-							OrgID:   MustIDBase16(fourID),
-							StatusRules: []notification.StatusRule{
-								{
-									CurrentLevel: notification.Info,
-								},
-							},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							OwnerID:     MustIDBase16(sixID),
+							OrgID:       MustIDBase16(fourID),
 							TaskID:      MustIDBase16(twoID),
 							EndpointID:  MustIDBase16(twoID),
 							Status:      influxdb.Active,
@@ -1679,16 +1649,11 @@ func UpdateNotificationRule(
 				id:     MustIDBase16(twoID),
 				notificationRule: &rule.Slack{
 					Base: rule.Base{
-						OwnerID:    MustIDBase16(sixID),
-						Name:       "name3",
-						OrgID:      MustIDBase16(fourID),
-						EndpointID: MustIDBase16(twoID),
-						Status:     influxdb.Inactive,
-						StatusRules: []notification.StatusRule{
-							{
-								CurrentLevel: notification.Info,
-							},
-						},
+						OwnerID:     MustIDBase16(sixID),
+						Name:        "name3",
+						OrgID:       MustIDBase16(fourID),
+						EndpointID:  MustIDBase16(twoID),
+						Status:      influxdb.Inactive,
 						RunbookLink: "runbooklink3",
 						SleepUntil:  &time3,
 						Every:       mustDuration("2h"),
@@ -1699,16 +1664,11 @@ func UpdateNotificationRule(
 			wants: wants{
 				notificationRule: &rule.Slack{
 					Base: rule.Base{
-						ID:      MustIDBase16(twoID),
-						Name:    "name3",
-						OwnerID: MustIDBase16(sixID),
-						OrgID:   MustIDBase16(fourID),
-						TaskID:  MustIDBase16(twoID),
-						StatusRules: []notification.StatusRule{
-							{
-								CurrentLevel: notification.Info,
-							},
-						},
+						ID:          MustIDBase16(twoID),
+						Name:        "name3",
+						OwnerID:     MustIDBase16(sixID),
+						OrgID:       MustIDBase16(fourID),
+						TaskID:      MustIDBase16(twoID),
 						EndpointID:  MustIDBase16(twoID),
 						Status:      influxdb.Inactive,
 						RunbookLink: "runbooklink3",
@@ -1838,7 +1798,7 @@ func PatchNotificationRule(
 			},
 		},
 		{
-			name: "regular patch",
+			name: "regular update",
 			fields: NotificationRuleFields{
 				TimeGenerator: fakeGenerator,
 				IDGenerator:   mock.NewIDGenerator(twoID, t),
@@ -1892,14 +1852,6 @@ func PatchNotificationRule(
 							RunbookLink: "runbooklink1",
 							SleepUntil:  &time3,
 							Every:       mustDuration("1h"),
-							StatusRules: []notification.StatusRule{
-								{
-									CurrentLevel: notification.Critical,
-								},
-								{
-									CurrentLevel: notification.Info,
-								},
-							},
 							CRUDLog: influxdb.CRUDLog{
 								CreatedAt: timeGen1.Now(),
 								UpdatedAt: timeGen2.Now(),
@@ -1910,20 +1862,12 @@ func PatchNotificationRule(
 					},
 					&rule.Slack{
 						Base: rule.Base{
-							ID:         MustIDBase16(twoID),
-							Name:       "name2",
-							Status:     influxdb.Active,
-							OwnerID:    MustIDBase16(sixID),
-							EndpointID: MustIDBase16(twoID),
-							TaskID:     MustIDBase16(twoID),
-							StatusRules: []notification.StatusRule{
-								{
-									CurrentLevel: notification.Critical,
-								},
-								{
-									CurrentLevel: notification.Info,
-								},
-							},
+							ID:          MustIDBase16(twoID),
+							Name:        "name2",
+							Status:      influxdb.Active,
+							OwnerID:     MustIDBase16(sixID),
+							EndpointID:  MustIDBase16(twoID),
+							TaskID:      MustIDBase16(twoID),
 							OrgID:       MustIDBase16(fourID),
 							RunbookLink: "runbooklink2",
 							SleepUntil:  &time3,
@@ -1953,21 +1897,13 @@ func PatchNotificationRule(
 			wants: wants{
 				notificationRule: &rule.Slack{
 					Base: rule.Base{
-						ID:         MustIDBase16(twoID),
-						Name:       name3,
-						Status:     status3,
-						OwnerID:    MustIDBase16(sixID),
-						OrgID:      MustIDBase16(fourID),
-						EndpointID: MustIDBase16(twoID),
-						TaskID:     MustIDBase16(twoID),
-						StatusRules: []notification.StatusRule{
-							{
-								CurrentLevel: notification.Critical,
-							},
-							{
-								CurrentLevel: notification.Info,
-							},
-						},
+						ID:          MustIDBase16(twoID),
+						Name:        name3,
+						Status:      status3,
+						OwnerID:     MustIDBase16(sixID),
+						OrgID:       MustIDBase16(fourID),
+						EndpointID:  MustIDBase16(twoID),
+						TaskID:      MustIDBase16(twoID),
 						RunbookLink: "runbooklink2",
 						SleepUntil:  &time3,
 						Every:       mustDuration("1h"),
