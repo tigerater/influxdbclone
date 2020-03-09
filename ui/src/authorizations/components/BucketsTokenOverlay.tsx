@@ -28,7 +28,6 @@ import {
   allBucketsPermissions,
   BucketTab,
 } from 'src/authorizations/utils/permissions'
-import {isSystemBucket} from 'src/buckets/constants/index'
 
 // Actions
 import {createAuthorization} from 'src/authorizations/actions'
@@ -68,6 +67,7 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
   }
 
   render() {
+    const {buckets} = this.props
     const {
       description,
       readBuckets,
@@ -107,7 +107,7 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
                       >
                         <BucketsSelector
                           onSelect={this.handleSelectReadBucket}
-                          buckets={this.nonSystemBuckets}
+                          buckets={buckets}
                           selectedBuckets={readBuckets}
                           title="Read"
                           onSelectAll={this.handleReadSelectAllBuckets}
@@ -122,7 +122,7 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
                       >
                         <BucketsSelector
                           onSelect={this.handleSelectWriteBucket}
-                          buckets={this.nonSystemBuckets}
+                          buckets={buckets}
                           selectedBuckets={writeBuckets}
                           title="Write"
                           onSelectAll={this.handleWriteSelectAllBuckets}
@@ -262,12 +262,6 @@ class BucketsTokenOverlay extends PureComponent<Props, State> {
     } = this.props
 
     return allBucketsPermissions(orgID, 'write')
-  }
-
-  private get nonSystemBuckets(): Bucket[] {
-    const {buckets} = this.props
-
-    return buckets.filter(bucket => !isSystemBucket(bucket.name))
   }
 
   private handleInputChange = (e: ChangeEvent<HTMLInputElement>) => {

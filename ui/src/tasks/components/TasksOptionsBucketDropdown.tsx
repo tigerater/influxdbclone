@@ -6,9 +6,6 @@ import {connect} from 'react-redux'
 // Components
 import {Dropdown, ComponentStatus} from '@influxdata/clockface'
 
-// Utils
-import {isSystemBucket} from 'src/buckets/constants/index'
-
 // Types
 import {RemoteDataState, AppState, Bucket} from 'src/types'
 
@@ -61,31 +58,27 @@ class TaskOptionsBucketDropdown extends PureComponent<Props> {
   private get dropdownItems(): JSX.Element[] {
     const {buckets} = this.props
 
-    if (!buckets || !buckets.length) {
+    if (buckets && buckets.length) {
+      return buckets.map(bucket => {
+        return (
+          <Dropdown.Item
+            id={bucket.name}
+            key={bucket.name}
+            value={bucket.name}
+            onClick={this.props.onChangeBucketName}
+            selected={bucket.id === this.selectedName}
+          >
+            {bucket.name}
+          </Dropdown.Item>
+        )
+      })
+    } else {
       return [
         <Dropdown.Item id="no-buckets" key="no-buckets" value="no-buckets">
           No Buckets found in Org
         </Dropdown.Item>,
       ]
     }
-
-    const nonSystemBuckets = buckets.filter(
-      bucket => !isSystemBucket(bucket.name)
-    )
-
-    return nonSystemBuckets.map(bucket => {
-      return (
-        <Dropdown.Item
-          id={bucket.name}
-          key={bucket.name}
-          value={bucket.name}
-          onClick={this.props.onChangeBucketName}
-          selected={bucket.id === this.selectedName}
-        >
-          {bucket.name}
-        </Dropdown.Item>
-      )
-    })
   }
 
   private get status(): ComponentStatus {
