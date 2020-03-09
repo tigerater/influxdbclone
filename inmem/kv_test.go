@@ -84,58 +84,32 @@ func TestKVStore_Buckets(t *testing.T) {
 	}
 }
 
-func TestKVStore_Bucket_CursorHintPredicate(t *testing.T) {
+func TestKVStore_Bucket_CursorHintKeyPredicate(t *testing.T) {
 	s := inmem.NewKVStore()
 
 	bucket := "urm"
 	fillBucket(t, s, bucket, 10)
 
-	t.Run("filter by key", func(t *testing.T) {
-		_ = s.View(context.Background(), func(tx kv.Tx) error {
-			b, err := tx.Bucket([]byte(bucket))
-			if err != nil {
-				return err
-			}
+	_ = s.View(context.Background(), func(tx kv.Tx) error {
+		b, err := tx.Bucket([]byte(bucket))
+		if err != nil {
+			return err
+		}
 
-			cur, _ := b.Cursor(kv.WithCursorHintPredicate(func(key, _ []byte) bool {
-				return len(key) < 32 || string(key[16:]) == "8d5dc900004589c3"
-			}))
+		cur, _ := b.Cursor(kv.WithCursorHintKeyPredicate(func(key []byte) bool {
+			return len(key) < 32 || string(key[16:]) == "8d5dc900004589c3"
+		}))
 
-			count := 0
-			for k, _ := cur.First(); len(k) > 0; k, _ = cur.Next() {
-				count++
-			}
+		count := 0
+		for k, _ := cur.First(); len(k) > 0; k, _ = cur.Next() {
+			count++
+		}
 
-			if exp, got := 1, count; got != exp {
-				t.Errorf("unexpected number of keys, -got/+exp\n%s", cmp.Diff(got, exp))
-			}
+		if exp, got := 1, count; got != exp {
+			t.Errorf("unexpected number of keys, -got/+exp\n%s", cmp.Diff(got, exp))
+		}
 
-			return nil
-		})
-	})
-
-	t.Run("filter by value", func(t *testing.T) {
-		_ = s.View(context.Background(), func(tx kv.Tx) error {
-			b, err := tx.Bucket([]byte(bucket))
-			if err != nil {
-				return err
-			}
-
-			cur, _ := b.Cursor(kv.WithCursorHintPredicate(func(_, val []byte) bool {
-				return len(val) < 32 || string(val[16:]) == "8d5dc900004589c3"
-			}))
-
-			count := 0
-			for k, _ := cur.First(); len(k) > 0; k, _ = cur.Next() {
-				count++
-			}
-
-			if exp, got := 1, count; got != exp {
-				t.Errorf("unexpected number of keys, -got/+exp\n%s", cmp.Diff(got, exp))
-			}
-
-			return nil
-		})
+		return nil
 	})
 }
 
@@ -169,7 +143,7 @@ func BenchmarkKVStore_Bucket_Cursor(b *testing.B) {
 	}
 
 	searchKey := "629ffa00003dd2ce"
-	predicate := kv.CursorPredicateFunc(func(key, _ []byte) bool {
+	predicate := kv.KeyPredicateFunc(func(key []byte) bool {
 		return len(key) < 32 || string(key[16:]) == searchKey
 	})
 
@@ -192,7 +166,7 @@ func BenchmarkKVStore_Bucket_Cursor(b *testing.B) {
 			b.ReportAllocs()
 
 			for i := 0; i < b.N; i++ {
-				openCursor(b, s, bucket, scanAll, kv.WithCursorHintPredicate(predicate))
+				openCursor(b, s, bucket, scanAll, kv.WithCursorHintKeyPredicate(predicate))
 			}
 		})
 	})
@@ -200,7 +174,7 @@ func BenchmarkKVStore_Bucket_Cursor(b *testing.B) {
 
 const sourceFile = "kvdata/keys.txt"
 
-func fillBucket(t testing.TB, s *inmem.KVStore, bucket string, lines int) {
+func fillBucket(t testing.TB, s *inmem.KVStore, bucket string, lines int64) {
 	t.Helper()
 	err := s.Update(context.Background(), func(tx kv.Tx) error {
 		b, err := tx.Bucket([]byte(bucket))
@@ -215,14 +189,14 @@ func fillBucket(t testing.TB, s *inmem.KVStore, bucket string, lines int) {
 		defer f.Close()
 
 		if lines == 0 {
-			lines = math.MaxInt64
+			lines = int64(math.MaxInt64)
 		}
 
 		scan := bufio.NewScanner(bufio.NewReader(f))
 		for scan.Scan() {
 			var key []byte
 			key = append(key, scan.Bytes()...)
-			_ = b.Put(key, key)
+			_ = b.Put(key, nil)
 			lines--
 			if lines <= 0 {
 				break
