@@ -6,6 +6,7 @@ import {
   SMTPNotificationRuleBase,
   PagerDutyNotificationRuleBase,
   HTTPNotificationRuleBase,
+  NotificationRule,
 } from 'src/client'
 
 type Omit<T, U> = Pick<T, Exclude<keyof T, U>>
@@ -19,6 +20,10 @@ interface WithClientID<T> {
 export type StatusRuleDraft = WithClientID<StatusRule>
 
 export type TagRuleDraft = WithClientID<TagRule>
+
+// TODO: Spec this out in the OpenAPI spec instead. It should be whatever the
+// server accepts as the request body for a `POST /api/v2/notificationRules`
+export type NewNotificationRule = Omit<NotificationRule, 'id'>
 
 export type NotificationRuleBaseDraft = Overwrite<
   NotificationRuleBase,
@@ -75,7 +80,6 @@ export {
   CheckBase,
   StatusRule,
   TagRule,
-  PostCheck,
   CheckStatusLevel,
   RuleStatusLevel,
   GreaterThreshold,
@@ -84,7 +88,6 @@ export {
   ThresholdCheck,
   DeadmanCheck,
   NotificationEndpoint,
-  PostNotificationEndpoint,
   NotificationRuleBase,
   NotificationRule,
   NotificationRuleUpdate,
@@ -102,7 +105,6 @@ export {
   HTTPNotificationEndpoint,
   NotificationEndpointUpdate,
   NotificationEndpointBase,
-  PostNotificationRule,
 } from '../client'
 
 import {Check, Threshold, HTTPNotificationEndpoint} from '../client'

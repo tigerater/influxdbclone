@@ -5200,7 +5200,7 @@ paths:
         content:
           application/json:
             schema:
-                $ref: "#/components/schemas/PostCheck"
+                $ref: "#/components/schemas/Check"
       responses:
         '201':
           description: Check created
@@ -5494,7 +5494,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PostNotificationRule"
+              $ref: "#/components/schemas/NotificationRule"
       responses:
         '201':
           description: Notification rule created
@@ -5854,7 +5854,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PostNotificationEndpoint"
+              $ref: "#/components/schemas/NotificationEndpoint"
       responses:
         '201':
           description: Notification endpoint created
@@ -9442,21 +9442,6 @@ components:
         mapping:
           deadman:  "#/components/schemas/DeadmanCheck"
           threshold: "#/components/schemas/ThresholdCheck"
-    PostCheck:
-      allOf:
-        - $ref: "#/components/schemas/Check"
-        - type: object
-          properties:
-            status:
-              type: string
-              enum:
-                - active
-                - inactive
-            labels:
-              type: array
-              description: List of label ids to associate with check
-              items:
-                type: string
     Checks:
       properties:
         checks:
@@ -9660,21 +9645,6 @@ components:
           smtp: "#/components/schemas/SMTPNotificationRule"
           pagerduty: "#/components/schemas/PagerDutyNotificationRule"
           http: "#/components/schemas/HTTPNotificationRule"
-    PostNotificationRule:
-      allOf:
-        - $ref: "#/components/schemas/NotificationRule"
-        - type: object
-          properties:
-            status:
-              type: string
-              enum:
-                - active
-                - inactive
-            labels:
-              type: array
-              description: List of label ids to associate with notification rule
-              items:
-                type: string
     NotificationRules:
       properties:
         notificationRules:
@@ -9874,21 +9844,6 @@ components:
           slack: "#/components/schemas/SlackNotificationEndpoint"
           pagerduty:  "#/components/schemas/PagerDutyNotificationEndpoint"
           http: "#/components/schemas/HTTPNotificationEndpoint"
-    PostNotificationEndpoint:
-      allOf:
-        - $ref: "#/components/schemas/NotificationEndpoint"
-        - type: object
-          properties:
-            status:
-              type: string
-              enum:
-                - active
-                - inactive
-            labels:
-              type: array
-              description: List of label ids to associate with check
-              items:
-                type: string
     NotificationEndpoints:
       properties:
         notificationEndpoints:

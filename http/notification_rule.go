@@ -389,51 +389,37 @@ func decodeUserResourceMappingFilter(ctx context.Context, r *http.Request, typ i
 	return f, nil
 }
 
-type postNotificationRuleRequest struct {
-	influxdb.NotificationRuleCreate
-	Labels []string `json:"labels"`
-}
-
-func decodePostNotificationRuleRequest(ctx context.Context, r *http.Request) (postNotificationRuleRequest, error) {
-	var pnrr postNotificationRuleRequest
+func decodePostNotificationRuleRequest(ctx context.Context, r *http.Request) (influxdb.NotificationRuleCreate, error) {
+	var nrc influxdb.NotificationRuleCreate
 	var sts statusDecode
-	var dl decodeLabels
 
 	buf := new(bytes.Buffer)
 	_, err := buf.ReadFrom(r.Body)
 	if err != nil {
-		return pnrr, &influxdb.Error{
+		return nrc, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Err:  err,
 		}
 	}
 	defer r.Body.Close()
-
 	nr, err := rule.UnmarshalJSON(buf.Bytes())
 	if err != nil {
-		return pnrr, &influxdb.Error{
+		return nrc, &influxdb.Error{
 			Code: influxdb.EInvalid,
 			Err:  err,
 		}
 	}
 
 	if err := json.Unmarshal(buf.Bytes(), &sts); err != nil {
-		return pnrr, err
+		return nrc, err
 	}
 
-	if err := json.Unmarshal(buf.Bytes(), &dl); err != nil {
-		return pnrr, err
+	nrc = influxdb.NotificationRuleCreate{
+		NotificationRule: nr,
+		Status:           *sts.Status,
 	}
 
-	pnrr = postNotificationRuleRequest{
-		NotificationRuleCreate: influxdb.NotificationRuleCreate{
-			NotificationRule: nr,
-			Status:           *sts.Status,
-		},
-		Labels: dl.Labels,
-	}
-
-	return pnrr, nil
+	return nrc, nil
 }
 
 func decodePutNotificationRuleRequest(ctx context.Context, r *http.Request) (influxdb.NotificationRuleCreate, error) {
@@ -539,15 +525,13 @@ func (h *NotificationRuleHandler) handlePostNotificationRule(w http.ResponseWrit
 		return
 	}
 
-	if err := h.NotificationRuleStore.CreateNotificationRule(ctx, nr.NotificationRuleCreate, auth.GetUserID()); err != nil {
+	if err := h.NotificationRuleStore.CreateNotificationRule(ctx, nr, auth.GetUserID()); err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
 	}
 	h.Logger.Debug("notification rule created", zap.String("notificationRule", fmt.Sprint(nr)))
 
-	labels := h.mapNewNotificationRuleLabels(ctx, nr.NotificationRuleCreate, nr.Labels)
-
-	res, err := h.newNotificationRuleResponse(ctx, nr, labels)
+	res, err := h.newNotificationRuleResponse(ctx, nr, []*influxdb.Label{})
 	if err != nil {
 		h.HandleHTTPError(ctx, err, w)
 		return
@@ -557,37 +541,6 @@ func (h *NotificationRuleHandler) handlePostNotificationRule(w http.ResponseWrit
 		logEncodingError(h.Logger, r, err)
 		return
 	}
-}
-
-func (h *NotificationRuleHandler) mapNewNotificationRuleLabels(ctx context.Context, nrc influxdb.NotificationRuleCreate, labels []string) []*influxdb.Label {
-	var ls []*influxdb.Label
-	for _, sid := range labels {
-		var lid influxdb.ID
-		err := lid.DecodeFromString(sid)
-
-		if err != nil {
-			continue
-		}
-
-		label, err := h.LabelService.FindLabelByID(ctx, lid)
-		if err != nil {
-			continue
-		}
-
-		mapping := influxdb.LabelMapping{
-			LabelID:      label.ID,
-			ResourceID:   nrc.GetID(),
-			ResourceType: influxdb.NotificationRuleResourceType,
-		}
-
-		err = h.LabelService.CreateLabelMapping(ctx, &mapping)
-		if err != nil {
-			continue
-		}
-
-		ls = append(ls, label)
-	}
-	return ls
 }
 
 // handlePutNotificationRule is the HTTP handler for the PUT /api/v2/notificationRule route.

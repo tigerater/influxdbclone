@@ -4,6 +4,8 @@ import uuid from 'uuid'
 
 // Types
 import {
+  StatusRule,
+  TagRule,
   StatusRuleDraft,
   SlackNotificationRuleBase,
   SMTPNotificationRuleBase,
@@ -11,9 +13,9 @@ import {
   NotificationEndpoint,
   NotificationRule,
   NotificationRuleDraft,
+  NewNotificationRule,
   HTTPNotificationRuleBase,
   RuleStatusLevel,
-  PostNotificationRule,
 } from 'src/types'
 
 type RuleVariantFields =
@@ -101,18 +103,35 @@ export const initRuleDraft = (orgID: string): NotificationRuleDraft => ({
 })
 
 // Prepare a newly created rule for persistence
-export const draftRuleToPostRule = (
+export const draftRuleToNewRule = (
   draftRule: NotificationRuleDraft
-): PostNotificationRule => {
+): NewNotificationRule => {
   return {
-    id: '',
     ...draftRule,
     statusRules: draftRule.statusRules.map(r => r.value),
-    tagRules: draftRule.tagRules
-      .map(r => r.value)
-      .filter(tr => tr.key && tr.value),
-    labels: draftRule.labels.map(l => l.id),
-  } as PostNotificationRule
+    tagRules: draftRule.tagRules.map(r => r.value),
+  }
+}
+
+// Prepare an edited rule for persistence
+export const draftRuleToRule = (
+  draftRule: NotificationRuleDraft
+): NotificationRule => {
+  if (!draftRule.id) {
+    throw new Error('draft rule is missing id')
+  }
+
+  const statusRules: StatusRule[] = draftRule.statusRules.map(r => r.value)
+
+  const tagRules: TagRule[] = draftRule.tagRules
+    .map(r => r.value)
+    .filter(tr => tr.key && tr.value)
+
+  return {
+    ...draftRule,
+    statusRules,
+    tagRules,
+  } as NotificationRule
 }
 
 export const newTagRuleDraft = () => ({
